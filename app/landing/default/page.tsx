@@ -1,3 +1,4 @@
+// v2
 import type { Metadata } from 'next'
 import { LandingVariant } from '@/components/landing-variant'
 
