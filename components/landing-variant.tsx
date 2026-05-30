@@ -42,6 +42,18 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
           Get started free
         </Link>
       </section>
+
+      <footer className="border-t border-gray-200 px-6 py-8 text-center">
+        <Link
+          href="/our-approach"
+          className="text-sm font-medium text-blue-700 hover:underline"
+        >
+          About Our Approach → How we keep attorney services separate
+        </Link>
+        <p className="mt-3 text-xs text-gray-600">
+          OwnerPilot AI is not a law firm and does not provide legal advice. For legal matters, consult a California licensed attorney of your choosing.
+        </p>
+      </footer>
     </main>
   )
 }
