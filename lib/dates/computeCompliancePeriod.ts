@@ -11,9 +11,15 @@
  *   - AB 2343 (2019): the 3-day count excludes Saturdays, Sundays, and
  *                     judicial holidays.
  *
+ * COMMENCEMENT DEFINITION (settled — attorney review Q11):
+ *   The period commences on the first counted day — i.e. the day after the
+ *   day of service if that day is a non-weekend, non-holiday day; otherwise
+ *   the first non-weekend, non-holiday day thereafter. This equals
+ *   countedDays[0]. The attorney directed locking the engine to this rule
+ *   and NOT shipping the "day after service" alternative, so that option has
+ *   been removed.
+ *
  * SCOPE BOUNDARY — what this engine does NOT do, on purpose:
- *   - It does not decide the legal *definition* of "commencement" for the
- *     notice face. See COMMENCEMENT_DEFINITION below — OPEN ATTORNEY QUESTION.
  *   - It does not add mailing days for substituted / post-and-mail service.
  *     The attorney flagged that extension as UNSETTLED. The engine raises a
  *     flag so the UI shows her hedge language; it never invents a date.
@@ -25,25 +31,12 @@
 
 export type ServiceMethod = 'personal' | 'substituted' | 'post_and_mail';
 
-/**
- * OPEN ATTORNEY QUESTION (new — surface in next redline):
- * When service lands the day before a weekend/holiday, does the period
- * "commence" on:
- *   - 'first_counted_day'  : the first non-weekend/holiday day after service, OR
- *   - 'day_after_service'  : literally the calendar day after service?
- * Default below is 'first_counted_day'. This affects only the displayed
- * commencement date, never the expiration date.
- */
-export type CommencementDefinition = 'first_counted_day' | 'day_after_service';
-
 export interface CompliancePeriodInput {
   /** Date the notice is (or will be) served, as 'YYYY-MM-DD'. */
   serviceDate: string;
   serviceMethod: ServiceMethod;
   /** Verified CA judicial-holiday set for the relevant year(s), 'YYYY-MM-DD'. */
   holidays: Set<string>;
-  /** Defaults to 'first_counted_day'. See note above. */
-  commencementDefinition?: CommencementDefinition;
 }
 
 export interface CompliancePeriodResult {
@@ -114,8 +107,6 @@ export function computeCompliancePeriod(
   input: CompliancePeriodInput,
 ): CompliancePeriodResult {
   const { serviceDate, serviceMethod, holidays } = input;
-  const commencementDefinition =
-    input.commencementDefinition ?? 'first_counted_day';
 
   // Validate service date parses.
   parseISO(serviceDate);
@@ -141,10 +132,8 @@ export function computeCompliancePeriod(
   const countedDays = counted as [string, string, string];
   const expirationDate = countedDays[2];
 
-  const commencementDate =
-    commencementDefinition === 'day_after_service'
-      ? addDays(serviceDate, 1)
-      : countedDays[0];
+  // Commencement = first counted day (attorney review Q11, settled).
+  const commencementDate = countedDays[0];
 
   const notes: string[] = [];
   notes.push(
@@ -152,8 +141,8 @@ export function computeCompliancePeriod(
       `Sundays, and judicial holidays (AB 2343).`,
   );
   notes.push(
-    `Commencement definition used: "${commencementDefinition}" — ` +
-      `OPEN ATTORNEY QUESTION, pending confirmation.`,
+    `Commencement = first counted (non-weekend/non-holiday) day, per ` +
+      `attorney review Q11.`,
   );
 
   const mailingExtensionFlag =

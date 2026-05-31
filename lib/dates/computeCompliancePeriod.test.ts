@@ -59,7 +59,7 @@ console.log('\n2. Service Thursday — weekend pushes expiration into next week'
   eq('countedDays', r.countedDays, ['2026-06-05', '2026-06-08', '2026-06-09']);
 }
 
-console.log('\n3. Service Friday — both commencement definitions');
+console.log('\n3. Service Friday — commencement is first counted day (Q11 locked)');
 {
   const def = computeCompliancePeriod({
     serviceDate: '2026-06-05',
@@ -67,16 +67,8 @@ console.log('\n3. Service Friday — both commencement definitions');
     holidays: NO_HOLIDAYS,
   });
   eq('expiration', def.expirationDate, '2026-06-10');
-  eq('commencement (first_counted default)', def.commencementDate, '2026-06-08');
-
-  const alt = computeCompliancePeriod({
-    serviceDate: '2026-06-05',
-    serviceMethod: 'personal',
-    holidays: NO_HOLIDAYS,
-    commencementDefinition: 'day_after_service',
-  });
-  eq('commencement (day_after_service)', alt.commencementDate, '2026-06-06');
-  eq('expiration unchanged by definition', alt.expirationDate, '2026-06-10');
+  // Friday service: Sat excluded, Day1 = Mon 06-08, Day2 = Tue 06-09, Day3 = Wed 06-10.
+  eq('commencement (first counted day)', def.commencementDate, '2026-06-08');
 }
 
 console.log('\n4. Mid-week holiday is skipped in the count');
