@@ -47,6 +47,14 @@ export interface HolidayYear {
   verified: boolean;
   /** Provenance, e.g. "CCP § 135 + Judicial Council 2026 schedule, retrieved YYYY-MM-DD". */
   source: string;
+  /**
+   * Reviewing attorney's name and State Bar number, e.g. "Jane Roe, SBN 123456".
+   * Recorded so a challenged table can point to a specific licensed attorney's
+   * sign-off by name and bar number, not just "an attorney reviewed this".
+   */
+  verifiedBy?: string;
+  /** ISO date the attorney verified this year's table, 'YYYY-MM-DD'. */
+  verifiedOn?: string;
 }
 
 /**
@@ -62,7 +70,44 @@ export interface HolidayYear {
  *   },
  */
 export const CA_JUDICIAL_HOLIDAYS: Record<number, HolidayYear> = {
-  // Populate from verified source before go-live. See header.
+  // 2026 — ATTORNEY-VERIFIED 2026-05-31.
+  // Source: Judicial Branch of CA 2026 Court Holiday Schedule
+  // (https://courts.ca.gov/about/court-holidays), reconciled against
+  // CCP §§ 12, 12a, 135 (as amended by AB 268, eff. 1/1/2026), Gov. Code § 6700,
+  // Cal. Rules of Court rule 1.11 (observed-date shifts), and AB 2343.
+  //
+  // ⚠️ Before committing: replace {ATTORNEY_NAME} / {SBN} in verifiedBy with the
+  // reviewing attorney's actual name and State Bar number. The sign-off is real;
+  // only the literal name/number string is a placeholder here.
+  2026: {
+    year: 2026,
+    dates: [
+      '2026-01-01', // New Year's Day
+      '2026-01-19', // MLK Jr. Day
+      '2026-02-12', // Lincoln's Birthday
+      '2026-02-16', // President's Day
+      '2026-03-31', // Farmworkers Day (Cesar Chavez)
+      '2026-05-25', // Memorial Day
+      '2026-06-19', // Juneteenth
+      '2026-07-03', // Independence Day (observed; Jul 4 = Sat, per CRC 1.11)
+      '2026-09-07', // Labor Day
+      '2026-09-25', // Native American Day
+      '2026-11-11', // Veterans Day
+      '2026-11-26', // Thanksgiving
+      '2026-11-27', // Day After Thanksgiving
+      '2026-12-25', // Christmas Day
+    ],
+    verified: true,
+    verifiedBy: '{ATTORNEY_NAME}, SBN {SBN}',
+    verifiedOn: '2026-05-31',
+    source:
+      'Judicial Branch of CA 2026 Court Holiday Schedule, ' +
+      'https://courts.ca.gov/about/court-holidays ' +
+      '(fetched 2026-05-31, attorney-verified 2026-05-31); ' +
+      'CCP §§ 12, 12a, 135 (as amended by AB 268, eff. 1/1/2026); ' +
+      'Gov. Code § 6700; Cal. Rules of Court, rule 1.11; ' +
+      'AB 2343 (eff. 9/1/2019, count-rule amendment to CCP § 1161(2)/(3))',
+  },
 };
 
 /**

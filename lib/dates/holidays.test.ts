@@ -55,13 +55,36 @@ console.log('\nD. Span union covers both years, throws if either is missing');
   check('span throws when a year is missing', threw);
 }
 
-console.log('\nE. Stub ships empty (no unverified real dates baked in)');
+console.log('\nE. Any pre-populated production year is verified (no unverified real dates)');
 {
-  const realYears = Object.keys(CA_JUDICIAL_HOLIDAYS)
+  const productionYears = Object.keys(CA_JUDICIAL_HOLIDAYS)
     .map(Number)
     .filter((y) => y < 2900); // exclude test-injected sentinel years
-  check('no production years pre-populated in stub', realYears.length === 0,
-    `found ${JSON.stringify(realYears)}`);
+  // It is fine (expected) for verified years to ship; what must NEVER ship is a
+  // pre-populated-but-unverified real year.
+  const unverified = productionYears.filter(
+    (y) => !CA_JUDICIAL_HOLIDAYS[y].verified,
+  );
+  check('no unverified production years baked in', unverified.length === 0,
+    `unverified: ${JSON.stringify(unverified)}`);
+}
+
+console.log('\nF. The verified 2026 table loads and has the expected shape');
+{
+  let set: Set<string> | null = null;
+  let threw = false;
+  try { set = getVerifiedHolidaySet(2026); } catch { threw = true; }
+  check('2026 no longer throws (now verified)', !threw);
+  check('2026 has 14 observed holidays', set !== null && set.size === 14,
+    set ? `size ${set.size}` : 'null');
+  check('includes observed July 3 (not July 4)',
+    set !== null && set.has('2026-07-03') && !set.has('2026-07-04'));
+  check('excludes Columbus Day (federal, not CA judicial)',
+    set !== null && !set.has('2026-10-12'));
+  const entry = CA_JUDICIAL_HOLIDAYS[2026];
+  check('2026 entry carries verifiedOn', entry.verifiedOn === '2026-05-31');
+  check('2026 entry carries a source citing CRC 1.11',
+    typeof entry.source === 'string' && entry.source.includes('rule 1.11'));
 }
 
 console.log(`\n${'-'.repeat(40)}`);
