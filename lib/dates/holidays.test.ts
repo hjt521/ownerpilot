@@ -55,18 +55,24 @@ console.log('\nD. Span union covers both years, throws if either is missing');
   check('span throws when a year is missing', threw);
 }
 
-console.log('\nE. Any pre-populated production year is verified (no unverified real dates)');
+console.log('\nE. Unverified production years are allowed ONLY if staged, and still throw');
 {
   const productionYears = Object.keys(CA_JUDICIAL_HOLIDAYS)
     .map(Number)
     .filter((y) => y < 2900); // exclude test-injected sentinel years
-  // It is fine (expected) for verified years to ship; what must NEVER ship is a
-  // pre-populated-but-unverified real year.
   const unverified = productionYears.filter(
     (y) => !CA_JUDICIAL_HOLIDAYS[y].verified,
   );
-  check('no unverified production years baked in', unverified.length === 0,
-    `unverified: ${JSON.stringify(unverified)}`);
+  // 2027 is intentionally staged (sourced, pending attorney sign-off). Any OTHER
+  // unverified production year would be an accident.
+  const STAGED = new Set([2027]);
+  const unexpected = unverified.filter((y) => !STAGED.has(y));
+  check('no unexpected unverified years (only staged 2027)', unexpected.length === 0,
+    `unexpected: ${JSON.stringify(unexpected)}`);
+  // The forcing function must still hold: a staged-but-unverified year THROWS.
+  let threw = false;
+  try { getVerifiedHolidaySet(2027); } catch { threw = true; }
+  check('staged 2027 still throws (gate not bypassed by staging)', threw);
 }
 
 console.log('\nF. The verified 2026 table loads and has the expected shape');

@@ -108,6 +108,43 @@ export const CA_JUDICIAL_HOLIDAYS: Record<number, HolidayYear> = {
       'Gov. Code § 6700; Cal. Rules of Court, rule 1.11; ' +
       'AB 2343 (eff. 9/1/2019, count-rule amendment to CCP § 1161(2)/(3))',
   },
+
+  // 2027 — STAGED, NOT YET VERIFIED. Sourced from three independent official
+  // superior-court schedules (San Diego, Lassen, Orange County) in agreement,
+  // pending attorney sign-off. Stays verified:false so the engine still THROWS
+  // for 2027 until the attorney verifies — staging here does NOT bypass the gate.
+  // See citation pull: ownerpilot_citation_pull_2027_holidays_for_verification.
+  // DECISION POINT pending: 2027-12-31 (2028 New Year observed early) is included
+  // here per drafter recommendation (A); attorney to confirm or direct removal.
+  2027: {
+    year: 2027,
+    dates: [
+      '2027-01-01', // New Year's Day
+      '2027-01-18', // MLK Jr. Day
+      '2027-02-12', // Lincoln's Birthday
+      '2027-02-15', // Presidents' Day
+      '2027-03-31', // Cesar Chavez Day
+      '2027-05-31', // Memorial Day
+      '2027-06-18', // Juneteenth (observed; Jun 19 = Sat, CRC 1.11)
+      '2027-07-05', // Independence Day (observed; Jul 4 = Sun, CRC 1.11)
+      '2027-09-06', // Labor Day
+      '2027-09-24', // Native American Day
+      '2027-11-11', // Veterans Day
+      '2027-11-25', // Thanksgiving
+      '2027-11-26', // Day After Thanksgiving
+      '2027-12-24', // Christmas Day (observed; Dec 25 = Sat, CRC 1.11)
+      '2027-12-31', // 2028 New Year observed early (Jan 1 2028 = Sat) — DECISION POINT (A)
+    ],
+    verified: false, // ← attorney flips to true after verifying the three court sources
+    verifiedBy: '{ATTORNEY_NAME}, SBN {SBN}',
+    verifiedOn: '',
+    source:
+      '2027 schedules of San Diego, Lassen, and Orange County Superior Courts ' +
+      '(three independent official sources in agreement, fetched 2026-05-31); ' +
+      'Judicial Council statewide 2027 page not yet published as of 2026-05-31; ' +
+      'CCP §§ 12, 12a, 135 (as amended by AB 268, eff. 1/1/2026); ' +
+      'Gov. Code § 6700; Cal. Rules of Court, rule 1.11; AB 2343',
+  },
 };
 
 /**
