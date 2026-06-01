@@ -1,14 +1,22 @@
 'use client';
 
-import { useState, type ChangeEvent } from 'react';
+import { useState, type ChangeEvent, type ReactNode } from 'react';
 import {
   createFlowState,
   FlowStep,
   NoticeFlowState,
   NoticeFlowData,
   DisputeAnswer,
+  RentPeriod,
+  SignerRole,
 } from '@/lib/flow/noticeFlowState';
 import { validateStep, advance, goBack, STEP_ORDER } from '@/lib/flow/advancement';
+import { evaluateCanProduce } from '@/lib/flow/gates';
+import type {
+  PaymentMethod,
+  PaymentMethodKind,
+} from '@/lib/payments/validatePaymentMethods';
+import type { ServiceMethod } from '@/lib/dates/computeCompliancePeriod';
 
 /**
  * NoticeFlow — the field-collection UI for the 3-Day Notice to Pay Rent or Quit.
@@ -39,8 +47,13 @@ export function NoticeFlow() {
   const [state, setState] = useState<NoticeFlowState>(createFlowState);
   const [showIssues, setShowIssues] = useState(false);
 
-  const update = (patch: Partial<NoticeFlowData>) => {
-    setState((s) => ({ ...s, data: { ...s.data, ...patch } }));
+  const update = (
+    patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>),
+  ) => {
+    setState((s) => {
+      const resolved = typeof patch === 'function' ? patch(s.data) : patch;
+      return { ...s, data: { ...s.data, ...resolved } };
+    });
     setShowIssues(false);
   };
 
@@ -103,9 +116,24 @@ export function NoticeFlow() {
           {state.step === FlowStep.PropertyIdentification && (
             <PropertyStep data={state.data} update={update} />
           )}
-          {![FlowStep.PreflightDispute, FlowStep.PropertyIdentification].includes(
-            state.step,
-          ) && <PlaceholderStep label={STEP_LABELS[state.step]} />}
+          {state.step === FlowStep.Tenants && (
+            <TenantsStep data={state.data} update={update} />
+          )}
+          {state.step === FlowStep.AmountOwed && (
+            <AmountStep data={state.data} update={update} />
+          )}
+          {state.step === FlowStep.PaymentInstructions && (
+            <PaymentStep data={state.data} update={update} />
+          )}
+          {state.step === FlowStep.LandlordAgentInfo && (
+            <LandlordStep data={state.data} update={update} />
+          )}
+          {state.step === FlowStep.Review && (
+            <ReviewStep data={state.data} />
+          )}
+          {state.step === FlowStep.ServiceInstructions && (
+            <ServiceStep />
+          )}
         </section>
 
         {/* Validation issues */}
@@ -128,12 +156,14 @@ export function NoticeFlow() {
           >
             ← Back
           </button>
-          <button
-            onClick={onNext}
-            className="inline-flex items-center px-6 py-3 bg-blue-700 text-white font-semibold rounded-lg hover:bg-blue-800 transition-colors"
-          >
-            Continue →
-          </button>
+          {stepIndex < totalSteps - 1 && (
+            <button
+              onClick={onNext}
+              className="inline-flex items-center px-6 py-3 bg-blue-700 text-white font-semibold rounded-lg hover:bg-blue-800 transition-colors"
+            >
+              Continue →
+            </button>
+          )}
         </div>
 
         {/* Persistent disclaimer (matches our-approach footer tone) */}
@@ -157,7 +187,7 @@ function DisputeStep({
   update,
 }: {
   data: NoticeFlowData;
-  update: (patch: Partial<NoticeFlowData>) => void;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
 }) {
   const d = data.dispute;
   const set = (key: keyof typeof d, value: DisputeAnswer) =>
@@ -326,7 +356,7 @@ function PropertyStep({
   update,
 }: {
   data: NoticeFlowData;
-  update: (patch: Partial<NoticeFlowData>) => void;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -360,13 +390,557 @@ function PropertyStep({
   );
 }
 
-// --- Placeholder for unbuilt steps ------------------------------------------
+// --- Shared field helpers ---------------------------------------------------
 
-function PlaceholderStep({ label }: { label: string }) {
+function FieldLabel({ htmlFor, children }: { htmlFor: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-gray-300 px-5 py-10 text-center">
-      <p className="text-gray-500">
-        “{label}” — this step&apos;s form is coming next.
+    <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-700 mb-2">
+      {children}
+    </label>
+  );
+}
+
+const inputClass =
+  'w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none';
+
+/**
+ * A reliable date field. Native <input type="date"> proved unreliable in Safari
+ * (it renders today's date as a visual placeholder without committing a value,
+ * so onChange/onBlur never capture it). This is a plain text input constrained
+ * to YYYY-MM-DD: digits and dashes only, auto-inserting dashes as you type, and
+ * writing to state on every keystroke. Fully controlled, browser-independent.
+ */
+function DateField({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const format = (raw: string): string => {
+    const digits = raw.replace(/\D/g, '').slice(0, 8); // YYYYMMDD
+    const y = digits.slice(0, 4);
+    const m = digits.slice(4, 6);
+    const d = digits.slice(6, 8);
+    let out = y;
+    if (digits.length > 4) out += '-' + m;
+    if (digits.length > 6) out += '-' + d;
+    return out;
+  };
+  return (
+    <input
+      id={id}
+      type="text"
+      inputMode="numeric"
+      placeholder="YYYY-MM-DD"
+      value={value}
+      onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(format(e.target.value))}
+      className={inputClass}
+    />
+  );
+}
+
+function StepIntro({ children }: { children: ReactNode }) {
+  return <p className="text-lg text-gray-800 leading-relaxed">{children}</p>;
+}
+
+// --- Step 2: Tenants --------------------------------------------------------
+
+function TenantsStep({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  // tenantNames is always seeded (>=1 row) by createFlowState.
+  const names = data.tenantNames;
+  const setName = (i: number, value: string) => {
+    update((d) => ({
+      tenantNames: d.tenantNames.map((n, idx) => (idx === i ? value : n)),
+    }));
+  };
+  const addRow = () => update((d) => ({ tenantNames: [...d.tenantNames, ''] }));
+  const removeRow = (i: number) =>
+    update((d) => ({ tenantNames: d.tenantNames.filter((_, idx) => idx !== i) }));
+
+  return (
+    <div className="space-y-6">
+      <StepIntro>
+        Who is the notice directed to? List every adult tenant named on the
+        lease. The notice must name each tenant you intend to hold responsible.
+      </StepIntro>
+      <div className="space-y-3">
+        {names.map((name, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              type="text"
+              value={name}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setName(i, e.target.value)}
+              placeholder={`Tenant ${i + 1} full name`}
+              className={inputClass}
+            />
+            {names.length > 1 && (
+              <button
+                onClick={() => removeRow(i)}
+                className="px-3 text-gray-500 hover:text-gray-800 transition-colors"
+                aria-label={`Remove tenant ${i + 1}`}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={addRow}
+        className="text-blue-700 font-medium hover:text-blue-800 transition-colors"
+      >
+        + Add another tenant
+      </button>
+    </div>
+  );
+}
+
+// --- Step 3: Amount owed ----------------------------------------------------
+
+function AmountStep({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  // rentPeriods is always seeded (>=1 row) by createFlowState, so we read it
+  // directly — no display-only fallback, no seeding effect. This removes the
+  // state/display divergence that previously dropped an added row's start date.
+  const periods = data.rentPeriods;
+
+  const setPeriod = (i: number, patch: Partial<RentPeriod>) => {
+    update((d) => ({
+      rentPeriods: d.rentPeriods.map((p, idx) => (idx === i ? { ...p, ...patch } : p)),
+    }));
+  };
+  const addRow = () =>
+    update((d) => ({
+      rentPeriods: [...d.rentPeriods, { periodStartDate: '', periodEndDate: '', amount: 0 }],
+    }));
+  const removeRow = (i: number) =>
+    update((d) => ({ rentPeriods: d.rentPeriods.filter((_, idx) => idx !== i) }));
+
+  const total = periods.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      <StepIntro>
+        What rent is past due? Enter each rent period the tenant owes. Include
+        only <strong>base rent</strong> — not late fees, utilities, or other
+        charges.
+      </StepIntro>
+
+      <div className="space-y-4">
+        {periods.map((p, i) => (
+          <div key={i} className="rounded-lg border border-gray-200 px-4 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-700">
+                Rent period {i + 1}
+              </span>
+              {periods.length > 1 && (
+                <button
+                  onClick={() => removeRow(i)}
+                  className="text-gray-500 hover:text-gray-800 text-sm"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <FieldLabel htmlFor={`start-${i}`}>Period start</FieldLabel>
+                <DateField
+                  id={`start-${i}`}
+                  value={p.periodStartDate}
+                  onChange={(v) => setPeriod(i, { periodStartDate: v })}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor={`end-${i}`}>Period end</FieldLabel>
+                <DateField
+                  id={`end-${i}`}
+                  value={p.periodEndDate}
+                  onChange={(v) => setPeriod(i, { periodEndDate: v })}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor={`amt-${i}`}>Base rent ($)</FieldLabel>
+                <input
+                  id={`amt-${i}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={p.amount === 0 ? '' : p.amount}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setPeriod(i, { amount: Number(e.target.value) })
+                  }
+                  placeholder="0.00"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={addRow}
+        className="text-blue-700 font-medium hover:text-blue-800 transition-colors"
+      >
+        + Add another rent period
+      </button>
+
+      <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+        <span className="text-sm font-semibold text-gray-700">Total demanded</span>
+        <span className="text-lg font-bold text-gray-900">
+          ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      </div>
+
+      <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={data.baseRentOnlyConfirmed === true}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            update({ baseRentOnlyConfirmed: e.target.checked })
+          }
+          className="mt-1"
+        />
+        <span className="text-sm text-gray-800 leading-relaxed">
+          I confirm this amount is <strong>base rent only</strong> — it does not
+          include late fees, utilities, or other charges. (California law
+          requires a 3-day notice to demand only rent.)
+        </span>
+      </label>
+    </div>
+  );
+}
+
+// --- Step 4: Payment instructions -------------------------------------------
+
+const PAYMENT_LABELS: Record<PaymentMethodKind, string> = {
+  in_person: 'In person',
+  mail: 'By mail',
+  bank_deposit: 'Bank deposit',
+  eft: 'Electronic funds transfer (EFT)',
+  cash: 'Cash',
+};
+
+function PaymentStep({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  const methods = data.paymentMethods;
+  const has = (kind: PaymentMethodKind) => methods.some((m) => m.kind === kind);
+  const get = (kind: PaymentMethodKind) => methods.find((m) => m.kind === kind);
+
+  const toggle = (kind: PaymentMethodKind) => {
+    if (has(kind)) {
+      update({ paymentMethods: methods.filter((m) => m.kind !== kind) });
+    } else {
+      update({ paymentMethods: [...methods, { kind } as PaymentMethod] });
+    }
+  };
+  const patchMethod = (kind: PaymentMethodKind, patch: Record<string, unknown>) => {
+    update({
+      paymentMethods: methods.map((m) =>
+        m.kind === kind ? ({ ...m, ...patch } as PaymentMethod) : m,
+      ),
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <StepIntro>
+        How can the tenant pay? California law requires offering at least one
+        method that is <strong>not cash and not electronic</strong> (for
+        example, a check or money order in person or by mail). The detailed
+        rules are checked at the Review step.
+      </StepIntro>
+
+      <div className="space-y-3">
+        {(Object.keys(PAYMENT_LABELS) as PaymentMethodKind[]).map((kind) => {
+          const selected = has(kind);
+          const m = get(kind);
+          return (
+            <div
+              key={kind}
+              className={`rounded-lg border px-4 py-3 ${
+                selected ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+              }`}
+            >
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={selected} onChange={() => toggle(kind)} />
+                <span className="font-medium text-gray-900">{PAYMENT_LABELS[kind]}</span>
+              </label>
+
+              {selected && m?.kind === 'in_person' && (
+                <input
+                  type="text"
+                  value={m.daysHours ?? ''}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    patchMethod('in_person', { daysHours: e.target.value })
+                  }
+                  placeholder="Days & hours available (e.g. Mon–Fri 9am–5pm)"
+                  className={`${inputClass} mt-3`}
+                />
+              )}
+              {selected && m?.kind === 'mail' && (
+                <input
+                  type="text"
+                  value={m.mailAddress ?? ''}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    patchMethod('mail', { mailAddress: e.target.value })
+                  }
+                  placeholder="Mailing address for payment"
+                  className={`${inputClass} mt-3`}
+                />
+              )}
+              {selected && m?.kind === 'bank_deposit' && (
+                <div className="mt-3 space-y-3">
+                  <input
+                    type="text"
+                    value={m.bankName ?? ''}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      patchMethod('bank_deposit', { bankName: e.target.value })
+                    }
+                    placeholder="Bank name"
+                    className={inputClass}
+                  />
+                  <input
+                    type="text"
+                    value={m.branchAddress ?? ''}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      patchMethod('bank_deposit', { branchAddress: e.target.value })
+                    }
+                    placeholder="Branch street address"
+                    className={inputClass}
+                  />
+                  <input
+                    type="text"
+                    value={m.accountNumber ?? ''}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      patchMethod('bank_deposit', { accountNumber: e.target.value })
+                    }
+                    placeholder="Account number"
+                    className={inputClass}
+                  />
+                  <label className="flex items-start gap-2 text-sm text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={m.within5MilesConfirmed === true}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        patchMethod('bank_deposit', { within5MilesConfirmed: e.target.checked })
+                      }
+                      className="mt-1"
+                    />
+                    <span>I confirm this branch is within five miles of the rental property.</span>
+                  </label>
+                </div>
+              )}
+              {selected && m?.kind === 'eft' && (
+                <label className="flex items-start gap-2 text-sm text-gray-800 mt-3">
+                  <input
+                    type="checkbox"
+                    checked={m.previouslyEstablishedConfirmed === true}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      patchMethod('eft', { previouslyEstablishedConfirmed: e.target.checked })
+                    }
+                    className="mt-1"
+                  />
+                  <span>
+                    I confirm an EFT procedure was previously established with this tenant.
+                  </span>
+                </label>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// --- Step 5: Landlord / agent info ------------------------------------------
+
+const SIGNER_ROLE_LABELS: Record<SignerRole, string> = {
+  owner: 'The property owner',
+  authorized_agent_broker: 'A licensed broker / property manager',
+  other_authorized_agent: 'Another authorized agent',
+};
+
+const SERVICE_METHOD_LABELS: Record<ServiceMethod, string> = {
+  personal: 'In person (personal service)',
+  substituted: 'Substituted service (someone else at the property)',
+  post_and_mail: 'Post and mail (posted at property + mailed)',
+};
+
+function LandlordStep({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <StepIntro>
+        Who is signing and serving the notice, and when?
+      </StepIntro>
+
+      <div>
+        <FieldLabel htmlFor="signerName">Signer&apos;s full name</FieldLabel>
+        <input
+          id="signerName"
+          type="text"
+          value={data.signerName ?? ''}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => update({ signerName: e.target.value })}
+          placeholder="Full legal name of the person signing"
+          className={inputClass}
+        />
+      </div>
+
+      <div>
+        <FieldLabel htmlFor="signerRole">Who is signing?</FieldLabel>
+        <div className="space-y-2">
+          {(Object.keys(SIGNER_ROLE_LABELS) as SignerRole[]).map((role) => (
+            <label
+              key={role}
+              className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+                data.signerRole === role ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+              }`}
+            >
+              <input
+                type="radio"
+                name="signerRole"
+                checked={data.signerRole === role}
+                onChange={() => update({ signerRole: role })}
+              />
+              <span className="text-gray-900">{SIGNER_ROLE_LABELS[role]}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {data.signerRole && data.signerRole !== 'owner' && (
+        <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={data.authorityEvidenceOnFile === true}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              update({ authorityEvidenceOnFile: e.target.checked })
+            }
+            className="mt-1"
+          />
+          <span className="text-sm text-amber-900 leading-relaxed">
+            I confirm written authority to sign on the owner&apos;s behalf (a
+            property management agreement or written authorization) is on file.
+          </span>
+        </label>
+      )}
+
+      <div>
+        <FieldLabel htmlFor="serviceDate">Intended service date</FieldLabel>
+        <DateField
+          id="serviceDate"
+          value={data.serviceDate ?? ''}
+          onChange={(v) => update({ serviceDate: v })}
+        />
+      </div>
+
+      <div>
+        <FieldLabel htmlFor="serviceMethod">How will the notice be served?</FieldLabel>
+        <div className="space-y-2">
+          {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((method) => (
+            <label
+              key={method}
+              className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+                data.serviceMethod === method ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+              }`}
+            >
+              <input
+                type="radio"
+                name="serviceMethod"
+                checked={data.serviceMethod === method}
+                onChange={() => update({ serviceMethod: method })}
+              />
+              <span className="text-gray-900">{SERVICE_METHOD_LABELS[method]}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Step 6: Review ---------------------------------------------------------
+
+function ReviewStep({ data }: { data: NoticeFlowData }) {
+  const result = evaluateCanProduce(data);
+
+  return (
+    <div className="space-y-6">
+      <StepIntro>
+        Last check before producing the notice. Everything below must be clear.
+      </StepIntro>
+
+      {result.canProduce ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4">
+          <p className="font-semibold text-green-900 mb-1">Ready to produce.</p>
+          <p className="text-sm text-green-900 leading-relaxed">
+            All requirements are met.
+            {result.computedDates && (
+              <>
+                {' '}The tenant will have until{' '}
+                <strong>{result.computedDates.expirationDate}</strong> to pay or
+                vacate (period begins {result.computedDates.commencementDate}).
+              </>
+            )}
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4">
+          <p className="font-semibold text-amber-900 mb-2">
+            Not ready yet — {result.blockers.length}{' '}
+            {result.blockers.length === 1 ? 'item needs' : 'items need'} attention:
+          </p>
+          <ul className="space-y-1 text-sm text-amber-900 list-disc pl-5">
+            {result.blockers.map((b) => (
+              <li key={b.code}>{b.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Step 7: Service instructions (terminal placeholder for this slice) -----
+
+function ServiceStep() {
+  return (
+    <div className="space-y-4">
+      <StepIntro>
+        Serving the notice correctly is as important as preparing it. Detailed
+        service and proof-of-service guidance is the next piece we&apos;re
+        building.
+      </StepIntro>
+      <p className="text-sm text-gray-500 leading-relaxed">
+        (This step will cover how to serve, recording proof of service, and any
+        local filing obligations.)
       </p>
     </div>
   );

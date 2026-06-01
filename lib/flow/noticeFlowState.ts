@@ -104,8 +104,8 @@ export function createFlowState(): NoticeFlowState {
     step: FlowStep.PreflightDispute,
     data: {
       dispute: {},
-      tenantNames: [],
-      rentPeriods: [],
+      tenantNames: [''],
+      rentPeriods: [{ periodStartDate: '', periodEndDate: '', amount: 0 }],
       paymentMethods: [],
     },
   };

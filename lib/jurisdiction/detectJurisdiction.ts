@@ -91,10 +91,11 @@ const OVERLAY_ATTORNEY_MESSAGE =
   'California licensed attorney before serving a notice for this property.';
 
 const LA_CONFIRM_MESSAGE =
-  'This property may be in the City of Los Angeles, which has additional ' +
-  'requirements (a Right-to-Counsel notice and an LAHD filing) that attach to ' +
-  'every eviction notice. OwnerPilot needs to confirm the exact jurisdiction ' +
-  'before continuing — we will verify the address rather than guess.';
+  'This property looks like it may be in the City of Los Angeles. LA eviction ' +
+  'notices carry extra requirements — a Right-to-Counsel notice and an LAHD ' +
+  'filing — and OwnerPilot’s full LA support is still being finalized. We can’t ' +
+  'produce an LA notice yet; LA support is coming soon. For a property outside ' +
+  'the City of Los Angeles, you can continue.';
 
 const AMBIGUOUS_CONFIRM_MESSAGE =
   'OwnerPilot needs to confirm this property’s exact city/jurisdiction before ' +
