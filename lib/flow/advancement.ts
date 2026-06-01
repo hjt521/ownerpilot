@@ -66,23 +66,13 @@ export function validateStep(
       if (d.cleared) {
         return { canAdvance: true, issues: [], hardBlocked: false };
       }
-      // Distinguish "unanswered" (not yet blockable, just incomplete) from
-      // "answered yes" (hard-blocked to attorney).
-      const anyYes =
-        data.dispute.tenantFiledComplaint === true ||
-        data.dispute.tenantWrittenWithholding === true ||
-        data.dispute.tenantBankruptcy === true;
-      if (anyYes) {
-        return {
-          canAdvance: false,
-          issues: d.reasons,
-          hardBlocked: true,
-        };
-      }
+      // 'yes' => hard-block to attorney. 'unknown'/unanswered => block as a
+      // "go check" state (hardBlocked stays false; UI shows guidance). An
+      // 'unknown' is NEVER allowed to advance as if it were 'no'.
       return {
         canAdvance: false,
-        issues: ['Please answer all three questions to continue.'],
-        hardBlocked: false,
+        issues: d.reasons,
+        hardBlocked: d.hardBlocked,
       };
     }
 

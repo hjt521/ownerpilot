@@ -27,11 +27,50 @@ import { computeCompliancePeriod } from '../dates/computeCompliancePeriod';
 
 // --- 1. Dispute hard-block -------------------------------------------------
 
+/**
+ * Per-question policy for an 'unknown' answer. This is the attorney-reviewable
+ * heart of the dispute screen: which "I don't know" answers may proceed
+ * (with a logged warning) vs. which must block.
+ *
+ *  - complaint  : 'unknown' may PROCEED (lower stakes; a tenant complaint does
+ *                 not void a 3-day notice). Logged, not silently dropped.
+ *  - withholding: 'unknown' BLOCKS. A written habitability/repair withholding
+ *                 can be an affirmative defense to the UD; must be confirmed.
+ *  - bankruptcy : 'unknown' BLOCKS, with automatic-stay guidance.
+ *
+ * NOTE: this relaxation (complaint-unknown proceeding) is a change to the
+ * attorney-reviewed dispute screen and is flagged for her next review.
+ */
+export const UNKNOWN_PROCEEDS: Record<keyof DisputeScreen, boolean> = {
+  tenantFiledComplaint: true, // proceed-with-warning
+  tenantWrittenWithholding: false, // blocks
+  tenantBankruptcy: false, // blocks (automatic stay)
+};
+
 export interface DisputeBlockResult {
-  /** True if any dispute condition is present OR any answer is still missing. */
+  /** True if any dispute condition is present OR any BLOCKING answer is missing/unknown. */
   blocked: boolean;
-  /** True only when all three questions are answered AND all are 'no'. */
+  /** True when the screen may advance (all 'yes' absent; all blocking-unknowns resolved). */
   cleared: boolean;
+  /**
+   * True when an answer is 'yes' — route to attorney handoff. Distinct from a
+   * mere 'unknown'/unanswered.
+   */
+  hardBlocked: boolean;
+  /**
+   * True when blocked solely because a BLOCKING question is 'unknown' or
+   * unanswered (no 'yes'). UI shows "confirm before serving" guidance.
+   */
+  needsCheck: boolean;
+  /** True specifically when BANKRUPTCY is 'unknown' — triggers the automatic-stay box. */
+  bankruptcyUnknown: boolean;
+  /**
+   * Per-question advisory state for inline UI. 'proceed_warning' = unknown that
+   * is allowed forward but logged; 'blocking' = unknown/unanswered that blocks.
+   */
+  perQuestion: Partial<
+    Record<keyof DisputeScreen, 'proceed_warning' | 'blocking'>
+  >;
   reasons: string[];
 }
 
@@ -48,35 +87,86 @@ export function evaluateDisputeScreen(
   const { tenantFiledComplaint, tenantWrittenWithholding, tenantBankruptcy } =
     dispute;
 
-  const allAnswered =
-    tenantFiledComplaint !== undefined &&
-    tenantWrittenWithholding !== undefined &&
-    tenantBankruptcy !== undefined;
-
-  if (tenantFiledComplaint === true) {
+  // 'yes' answers => hard-block to attorney.
+  if (tenantFiledComplaint === 'yes') {
     reasons.push(
       'Tenant has filed a complaint (court, fair housing, or code enforcement).',
     );
   }
-  if (tenantWrittenWithholding === true) {
+  if (tenantWrittenWithholding === 'yes') {
     reasons.push(
       'Tenant has given written notice of withholding rent over a dispute.',
     );
   }
-  if (tenantBankruptcy === true) {
+  if (tenantBankruptcy === 'yes') {
     reasons.push('Tenant has filed for bankruptcy.');
   }
-
   const anyYes = reasons.length > 0;
-  const cleared = allAnswered && !anyYes;
-  // Blocked if any 'yes', OR if not all answered (fail closed).
-  const blocked = anyYes || !allAnswered;
 
-  if (!allAnswered && !anyYes) {
-    reasons.push('Pre-flight dispute questions are not all answered.');
+  // Classify each question. An answer is "settled" (won't block) when it is
+  // 'no', OR it is 'unknown' on a question whose policy allows proceeding.
+  // 'unanswered' (undefined) always blocks. 'unknown' on a blocking question
+  // blocks. 'unknown' is NEVER treated as 'no'.
+  const perQuestion: DisputeBlockResult['perQuestion'] = {};
+  const keys: (keyof DisputeScreen)[] = [
+    'tenantFiledComplaint',
+    'tenantWrittenWithholding',
+    'tenantBankruptcy',
+  ];
+  let anyBlockingUnknownOrUnanswered = false;
+  for (const k of keys) {
+    const v = dispute[k];
+    if (v === 'unknown') {
+      if (UNKNOWN_PROCEEDS[k]) {
+        perQuestion[k] = 'proceed_warning';
+      } else {
+        perQuestion[k] = 'blocking';
+        anyBlockingUnknownOrUnanswered = true;
+      }
+    } else if (v === undefined) {
+      // Unanswered always blocks, regardless of the question's unknown policy.
+      perQuestion[k] = 'blocking';
+      anyBlockingUnknownOrUnanswered = true;
+    }
   }
 
-  return { blocked, cleared, reasons };
+  const bankruptcyUnknown = tenantBankruptcy === 'unknown';
+
+  // Cleared = no 'yes', and no question is blocking (unanswered or blocking-unknown).
+  const cleared = !anyYes && !anyBlockingUnknownOrUnanswered;
+  const hardBlocked = anyYes;
+  const needsCheck = !anyYes && anyBlockingUnknownOrUnanswered;
+  const blocked = !cleared;
+
+  // Reason messages for blocking states (bankruptcy gets the detailed box in UI).
+  if (bankruptcyUnknown) {
+    reasons.push(
+      "You marked tenant bankruptcy as \u201cI don\u2019t know.\u201d This must be " +
+        'confirmed before serving — see the guidance below.',
+    );
+  }
+  if (perQuestion.tenantWrittenWithholding === 'blocking' && tenantWrittenWithholding === 'unknown') {
+    reasons.push(
+      "You marked the written-withholding question as \u201cI don\u2019t know.\u201d " +
+        'A written habitability or repair dispute can be a defense to an ' +
+        'eviction — please confirm before serving.',
+    );
+  }
+  if (needsCheck && reasons.length === 0) {
+    reasons.push(
+      'Please answer the remaining question(s) before continuing.',
+    );
+  }
+
+  return {
+    blocked,
+    cleared,
+    hardBlocked,
+    needsCheck,
+    bankruptcyUnknown,
+    perQuestion,
+    reasons,
+  };
 }
 
 /** The user-facing handoff when the dispute screen blocks. */

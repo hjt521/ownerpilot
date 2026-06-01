@@ -20,7 +20,7 @@ function check(name: string, cond: boolean, detail = '') {
 
 function fullData(): NoticeFlowData {
   return {
-    dispute: { tenantFiledComplaint: false, tenantWrittenWithholding: false, tenantBankruptcy: false },
+    dispute: { tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' },
     propertyAddress: '12 Almond Ln, Fresno, CA 93650',
     propertyCity: 'Fresno',
     tenantNames: ['Jane Tenant'],
@@ -45,7 +45,7 @@ console.log('\n1. All "no" -> can advance, not hard-blocked');
 
 console.log('\n2. Unanswered -> cannot advance, NOT hard-blocked (just incomplete)');
 {
-  const d = fullData(); d.dispute = { tenantFiledComplaint: false };
+  const d = fullData(); d.dispute = { tenantFiledComplaint: 'no' };
   const v = validateStep(FlowStep.PreflightDispute, d);
   check('cannot advance', v.canAdvance === false);
   check('not hardBlocked (incomplete)', v.hardBlocked === false);
@@ -53,7 +53,7 @@ console.log('\n2. Unanswered -> cannot advance, NOT hard-blocked (just incomplet
 
 console.log('\n3. A "yes" -> cannot advance AND hard-blocked (attorney handoff)');
 {
-  const d = fullData(); d.dispute = { tenantFiledComplaint: true, tenantWrittenWithholding: false, tenantBankruptcy: false };
+  const d = fullData(); d.dispute = { tenantFiledComplaint: 'yes', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' };
   const v = validateStep(FlowStep.PreflightDispute, d);
   check('cannot advance', v.canAdvance === false);
   check('hardBlocked', v.hardBlocked === true);
@@ -151,7 +151,7 @@ console.log('\n11. goBack moves back, never before first step');
 
 console.log('\n12. Dispute hard-block stops advance into the flow');
 {
-  const d = fullData(); d.dispute = { tenantBankruptcy: true, tenantFiledComplaint: false, tenantWrittenWithholding: false };
+  const d = fullData(); d.dispute = { tenantBankruptcy: 'yes', tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no' };
   const s: NoticeFlowState = { step: FlowStep.PreflightDispute, data: d };
   const r = advance(s);
   check('did not move', r.moved === false);

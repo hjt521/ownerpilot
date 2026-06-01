@@ -38,14 +38,24 @@ export interface RentPeriod {
   amount: number;
 }
 
+/**
+ * A tri-state answer for the pre-flight dispute questions. `unknown` ("I don't
+ * know") is a FIRST-CLASS state, distinct from `no`. It is NEVER treated as
+ * `no`: an unchecked unknown must not flow through as a clean answer, because
+ * (for bankruptcy especially) proceeding on an unchecked unknown can mean
+ * serving into an active automatic stay. `unknown` blocks clearing, same as an
+ * unanswered question.
+ */
+export type DisputeAnswer = 'yes' | 'no' | 'unknown';
+
 /** The three pre-flight active-dispute questions (chat HARD RULES, applied to docs). */
 export interface DisputeScreen {
   /** Tenant filed any complaint (court, fair housing agency, code enforcement)? */
-  tenantFiledComplaint?: boolean;
+  tenantFiledComplaint?: DisputeAnswer;
   /** Tenant gave WRITTEN notice of withholding for habitability/repairs/other dispute? */
-  tenantWrittenWithholding?: boolean;
+  tenantWrittenWithholding?: DisputeAnswer;
   /** Tenant filed for bankruptcy? */
-  tenantBankruptcy?: boolean;
+  tenantBankruptcy?: DisputeAnswer;
 }
 
 export type SignerRole =

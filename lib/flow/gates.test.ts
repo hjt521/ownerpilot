@@ -24,9 +24,9 @@ console.log('\n=== Dispute screen ===');
 console.log('\n1. All three "no" -> cleared, not blocked');
 {
   const r = evaluateDisputeScreen({
-    tenantFiledComplaint: false,
-    tenantWrittenWithholding: false,
-    tenantBankruptcy: false,
+    tenantFiledComplaint: 'no',
+    tenantWrittenWithholding: 'no',
+    tenantBankruptcy: 'no',
   });
   check('cleared', r.cleared === true);
   check('not blocked', r.blocked === false);
@@ -34,7 +34,7 @@ console.log('\n1. All three "no" -> cleared, not blocked');
 
 console.log('\n2. Unanswered -> NOT cleared, blocked (fails closed)');
 {
-  const r = evaluateDisputeScreen({ tenantFiledComplaint: false });
+  const r = evaluateDisputeScreen({ tenantFiledComplaint: 'no' });
   check('not cleared', r.cleared === false);
   check('blocked', r.blocked === true);
 }
@@ -48,12 +48,54 @@ console.log('\n3. Empty screen -> blocked');
 
 console.log('\n4. Each "yes" blocks');
 {
-  const a = evaluateDisputeScreen({ tenantFiledComplaint: true, tenantWrittenWithholding: false, tenantBankruptcy: false });
-  const b = evaluateDisputeScreen({ tenantFiledComplaint: false, tenantWrittenWithholding: true, tenantBankruptcy: false });
-  const c = evaluateDisputeScreen({ tenantFiledComplaint: false, tenantWrittenWithholding: false, tenantBankruptcy: true });
+  const a = evaluateDisputeScreen({ tenantFiledComplaint: 'yes', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' });
+  const b = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'yes', tenantBankruptcy: 'no' });
+  const c = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'yes' });
   check('complaint yes blocks', a.blocked && !a.cleared);
   check('withholding yes blocks', b.blocked && !b.cleared);
   check('bankruptcy yes blocks', c.blocked && !c.cleared);
+  check('yes is hardBlocked', a.hardBlocked && b.hardBlocked && c.hardBlocked);
+}
+
+console.log('\n4b. Per-question "I don\u2019t know" policy (complaint proceeds; withholding/bankruptcy block)');
+{
+  // Complaint unknown PROCEEDS (lower stakes) when others are 'no'.
+  const cu = evaluateDisputeScreen({ tenantFiledComplaint: 'unknown', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' });
+  check('complaint-unknown CLEARS (proceeds)', cu.cleared === true);
+  check('complaint-unknown not hardBlocked', cu.hardBlocked === false);
+  check('complaint-unknown flagged proceed_warning', cu.perQuestion.tenantFiledComplaint === 'proceed_warning');
+
+  // Withholding unknown BLOCKS (habitability defense risk).
+  const wu = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'unknown', tenantBankruptcy: 'no' });
+  check('withholding-unknown does NOT clear', wu.cleared === false);
+  check('withholding-unknown blocks', wu.blocked === true);
+  check('withholding-unknown flagged blocking', wu.perQuestion.tenantWrittenWithholding === 'blocking');
+  check('withholding-unknown not hardBlocked', wu.hardBlocked === false);
+
+  // Bankruptcy unknown BLOCKS with the automatic-stay flag.
+  const bu = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'unknown' });
+  check('bankruptcy-unknown does NOT clear', bu.cleared === false);
+  check('bankruptcy-unknown flagged', bu.bankruptcyUnknown === true);
+  check('bankruptcy-unknown flagged blocking', bu.perQuestion.tenantBankruptcy === 'blocking');
+
+  // The critical invariant: blocking-unknown is NEVER treated as 'no'.
+  check('withholding-unknown never clears', wu.cleared === false);
+  check('bankruptcy-unknown never clears', bu.cleared === false);
+}
+
+console.log('\n4b-2. Unanswered ALWAYS blocks, even on the proceed-policy question');
+{
+  // complaint is the proceed-on-unknown question, but UNANSWERED still blocks.
+  const r = evaluateDisputeScreen({ tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' });
+  check('unanswered complaint blocks', r.cleared === false && r.blocked === true);
+  check('unanswered complaint flagged blocking', r.perQuestion.tenantFiledComplaint === 'blocking');
+}
+
+console.log('\n4c. yes + unknown together still hard-blocks (yes dominates)');
+{
+  const r = evaluateDisputeScreen({ tenantFiledComplaint: 'yes', tenantWrittenWithholding: 'no', tenantBankruptcy: 'unknown' });
+  check('hardBlocked when a yes present', r.hardBlocked === true);
+  check('not cleared', r.cleared === false);
 }
 
 console.log('\n=== Review gate (evaluateCanProduce) ===');
@@ -63,9 +105,9 @@ console.log('\n=== Review gate (evaluateCanProduce) ===');
 function validBaseline(): NoticeFlowData {
   return {
     dispute: {
-      tenantFiledComplaint: false,
-      tenantWrittenWithholding: false,
-      tenantBankruptcy: false,
+      tenantFiledComplaint: 'no',
+      tenantWrittenWithholding: 'no',
+      tenantBankruptcy: 'no',
     },
     propertyAddress: '12 Almond Ln, Fresno, CA 93650',
     propertyCity: 'Fresno',
