@@ -14,7 +14,7 @@ import {
 } from '@/lib/flow/noticeFlowState';
 import { validateStep } from '@/lib/flow/advancement';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
-import { renderNotice, NoticeRenderError } from '@/lib/produce/renderNotice';
+import { renderNotice, NoticeRenderError, formatNoticeDate } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import type { ServiceMethod } from '@/lib/dates/computeCompliancePeriod';
 
@@ -1259,8 +1259,8 @@ function ReviewStep({ data }: { data: NoticeFlowData }) {
             {result.computedDates && (
               <>
                 {' '}The tenant will have until{' '}
-                <strong>{result.computedDates.expirationDate}</strong> to pay or
-                vacate (period begins {result.computedDates.commencementDate}).
+                <strong>{formatNoticeDate(result.computedDates.expirationDate)}</strong> to pay or
+                vacate (period begins {formatNoticeDate(result.computedDates.commencementDate)}).
               </>
             )}
           </p>
