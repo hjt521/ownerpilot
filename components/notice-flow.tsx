@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ChangeEvent, type ReactNode } from 'react';
+import { useState, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   createFlowState,
   FlowStep,
@@ -77,6 +77,21 @@ export function NoticeFlow() {
   const stepIndex = STEP_ORDER.indexOf(state.step);
   const totalSteps = STEP_ORDER.length;
 
+  // Enter advances the flow, scoped to avoid hijacking other Enter behaviors:
+  // - not on the last step (no forward action there),
+  // - not when focus is on a <button> (dispute choices, calendar nav/icon keep
+  //   their own native Enter),
+  // - not in a <textarea> (Enter is a newline there).
+  // Typing a date or name and pressing Enter SHOULD advance — the natural gesture.
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter') return;
+    if (stepIndex >= totalSteps - 1) return;
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === 'BUTTON' || tag === 'TEXTAREA') return;
+    e.preventDefault();
+    onNext();
+  };
+
   // Hard-block to attorney handoff (dispute screen, any "yes").
   if (validation.hardBlocked) {
     return <AttorneyHandoff />;
@@ -84,7 +99,7 @@ export function NoticeFlow() {
 
   return (
     <main className="min-h-screen bg-white">
-      <article className="mx-auto max-w-2xl px-6 py-12 md:py-16">
+      <article className="mx-auto max-w-2xl px-6 py-12 md:py-16" onKeyDown={onKeyDown}>
         {/* Progress eyebrow */}
         <header className="mb-8">
           <p className="text-sm font-semibold uppercase tracking-wider text-blue-700 mb-3">
@@ -404,11 +419,22 @@ const inputClass =
   'w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none';
 
 /**
- * A reliable date field. Native <input type="date"> proved unreliable in Safari
- * (it renders today's date as a visual placeholder without committing a value,
- * so onChange/onBlur never capture it). This is a plain text input constrained
- * to YYYY-MM-DD: digits and dashes only, auto-inserting dashes as you type, and
- * writing to state on every keystroke. Fully controlled, browser-independent.
+ * A reliable date field with an optional calendar picker.
+ *
+ * Background: native <input type="date"> proved unreliable in Safari (it renders
+ * today's date as a visual placeholder without committing a value, so
+ * onChange/onBlur never capture it). The fix was a controlled text input. This
+ * version keeps that reliable text input as the SOURCE OF TRUTH (typing always
+ * works, every browser) and layers a self-contained calendar popover on top for
+ * point-and-click convenience. The calendar writes through the same onChange as
+ * typing, so there is no separate state and the Safari failure mode cannot
+ * return. No external date-picker dependency — a small month grid we control,
+ * styled to match the flow.
+ *
+ * Interface is unchanged: { id, value, onChange } with value (storage) as
+ * 'YYYY-MM-DD' — the format the legal date engine and all tests require. The
+ * user sees and types US-format 'MM/DD/YYYY'; the component converts at the
+ * boundary (display <-> ISO storage), so the engine never sees anything but ISO.
  */
 function DateField({
   id,
@@ -419,26 +445,173 @@ function DateField({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const format = (raw: string): string => {
-    const digits = raw.replace(/\D/g, '').slice(0, 8); // YYYYMMDD
-    const y = digits.slice(0, 4);
-    const m = digits.slice(4, 6);
-    const d = digits.slice(6, 8);
-    let out = y;
-    if (digits.length > 4) out += '-' + m;
-    if (digits.length > 6) out += '-' + d;
+  const [open, setOpen] = useState(false);
+
+  // Local DISPLAY string (MM/DD/YYYY, slashes auto-inserted). This is what the
+  // user sees and edits. Storage (the `value` prop / onChange) is always ISO
+  // 'YYYY-MM-DD' or empty — never a partial — so the legal engine and validators
+  // only ever see a complete valid date or nothing, and the produce gate stays
+  // closed until a full date is entered. We seed the display from the stored ISO
+  // and keep it in sync on edits.
+  const isoToDisplay = (iso: string): string => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m) return '';
+    return `${m[2]}/${m[3]}/${m[1]}`;
+  };
+
+  const formatDisplay = (raw: string): string => {
+    const digits = raw.replace(/\D/g, '').slice(0, 8); // MMDDYYYY
+    const mm = digits.slice(0, 2);
+    const dd = digits.slice(2, 4);
+    const yyyy = digits.slice(4, 8);
+    let out = mm;
+    if (digits.length > 2) out += '/' + dd;
+    if (digits.length > 4) out += '/' + yyyy;
     return out;
   };
+
+  const [display, setDisplay] = useState(isoToDisplay(value));
+
+  const handleType = (raw: string) => {
+    const formatted = formatDisplay(raw);
+    setDisplay(formatted);
+    const digits = raw.replace(/\D/g, '').slice(0, 8); // MMDDYYYY
+    if (digits.length < 8) {
+      onChange(''); // incomplete -> store empty so validators keep the gate closed
+      return;
+    }
+    const mm = digits.slice(0, 2);
+    const dd = digits.slice(2, 4);
+    const yyyy = digits.slice(4, 8);
+    onChange(`${yyyy}-${mm}-${dd}`);
+  };
+
+  // Parse the current value into a Date for the calendar's initial month/selection.
+  // Returns null if value isn't a complete, valid YYYY-MM-DD.
+  const parsed = ((): { y: number; m: number; d: number } | null => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return null;
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const d = Number(match[3]);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    return { y, m, d };
+  })();
+
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(parsed ? parsed.y : today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(parsed ? parsed.m - 1 : today.getMonth()); // 0-based
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  const selectDay = (day: number) => {
+    const iso = `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
+    onChange(iso);
+    setDisplay(isoToDisplay(iso)); // keep the text input in sync with the pick
+    setOpen(false);
+  };
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
+    else setViewMonth((m) => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
+    else setViewMonth((m) => m + 1);
+  };
+
+  const firstWeekday = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const isSelected = (day: number) =>
+    parsed != null && parsed.y === viewYear && parsed.m - 1 === viewMonth && parsed.d === day;
+
   return (
-    <input
-      id={id}
-      type="text"
-      inputMode="numeric"
-      placeholder="YYYY-MM-DD"
-      value={value}
-      onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(format(e.target.value))}
-      className={inputClass}
-    />
+    <div className="relative">
+      <div className="flex">
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          placeholder="MM/DD/YYYY"
+          value={display}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => handleType(e.target.value)}
+          className={inputClass + ' rounded-r-none'}
+        />
+        <button
+          type="button"
+          aria-label="Open calendar"
+          onClick={() => setOpen((o) => !o)}
+          className="rounded-lg rounded-l-none border border-l-0 border-gray-300 px-3 text-gray-600 hover:bg-gray-50 hover:text-blue-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </button>
+      </div>
+
+      {open && (
+        <div className="absolute z-10 mt-2 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              type="button"
+              aria-label="Previous month"
+              onClick={prevMonth}
+              className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100"
+            >
+              &#8592;
+            </button>
+            <span className="text-sm font-semibold text-gray-900">
+              {monthNames[viewMonth]} {viewYear}
+            </span>
+            <button
+              type="button"
+              aria-label="Next month"
+              onClick={nextMonth}
+              className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100"
+            >
+              &#8594;
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+              <div key={`h-${i}`} className="py-1 text-xs font-medium text-gray-400">
+                {d}
+              </div>
+            ))}
+            {cells.map((day, i) =>
+              day === null ? (
+                <div key={`e-${i}`} />
+              ) : (
+                <button
+                  key={`d-${day}`}
+                  type="button"
+                  onClick={() => selectDay(day)}
+                  className={
+                    'rounded py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-500 ' +
+                    (isSelected(day)
+                      ? 'bg-blue-700 text-white'
+                      : 'text-gray-900 hover:bg-blue-50 hover:text-blue-700')
+                  }
+                >
+                  {day}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
