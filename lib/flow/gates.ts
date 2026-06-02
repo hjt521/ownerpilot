@@ -24,6 +24,16 @@ import {
 import { detectJurisdiction } from '../jurisdiction/detectJurisdiction';
 import { getVerifiedHolidaySet } from '../dates/holidays';
 import { computeCompliancePeriod } from '../dates/computeCompliancePeriod';
+import {
+  validatePaymentBranch,
+  PaymentBranchError,
+  PaymentBranchWarning,
+} from '../payments/validatePaymentBranch';
+import {
+  NOTICE_TEMPLATE_VERSION,
+  V4_WORDING_SIGNED_OFF,
+  GEOCODING_LIVE,
+} from './templateVersion';
 
 // --- 1. Dispute hard-block -------------------------------------------------
 
@@ -329,5 +339,159 @@ export function evaluateCanProduce(data: NoticeFlowData): CanProduceResult {
     blockers,
     computedDates,
     paymentErrors: pay.errors,
+  };
+}
+
+// --- 3. v4 aggregate review gate (payment-fields change) -------------------
+//
+// Parallel to evaluateCanProduce, for the v4 payment model (single payment
+// branch + § 1161(2) payee trio + additive EFT), per the attorney ruling of
+// 2026-06-01. The final UI cutover will switch Review to call this and the old
+// gate will be removed. Until then this is additive and unused in production.
+//
+// Adds two v4-specific production gates on top of the shared checks:
+//   - TEMPLATE_NOT_SIGNED_OFF: blocks until the attorney signs off v4 wording.
+//   - BANK_5_MILE_NOT_VERIFIED: a notice listing a bank-deposit branch needs the
+//     § 1161(2) 5-mile rule satisfied. Until geocoding is live, that means a
+//     human within-5-miles attestation (ruling C2). Intake only warns; PRODUCTION
+//     blocks here.
+
+export interface CanProduceResultV4 {
+  /** Fails closed: true only when there are zero blockers. */
+  canProduce: boolean;
+  blockers: ProduceBlocker[];
+  computedDates?: { commencementDate: string; expirationDate: string };
+  /** Payment-config field errors, for field-level UI mapping. */
+  paymentErrors: PaymentBranchError[];
+  /** Payment-config advisories (e.g. 5-mile not yet attested). */
+  paymentWarnings: PaymentBranchWarning[];
+  /** The template version this decision was made against. */
+  templateVersion: string;
+}
+
+export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
+  const blockers: ProduceBlocker[] = [];
+
+  // (a) Dispute screen must be cleared (shared logic).
+  const dispute = evaluateDisputeScreen(data.dispute);
+  if (!dispute.cleared) {
+    blockers.push({
+      code: 'DISPUTE_NOT_CLEARED',
+      message:
+        dispute.reasons[0] ?? 'The pre-flight dispute screen has not been cleared.',
+    });
+  }
+
+  // (b) Property + jurisdiction.
+  if (!data.propertyAddress || data.propertyAddress.trim() === '') {
+    blockers.push({ code: 'PROPERTY_ADDRESS_MISSING', message: 'A property address is required.' });
+  } else {
+    const jur = detectJurisdiction({ address: data.propertyAddress, city: data.propertyCity });
+    if (jur.decision !== 'NO_KNOWN_OVERLAY') {
+      blockers.push({ code: `JURISDICTION_${jur.decision}`, message: jur.message });
+    }
+  }
+
+  // (c) At least one tenant named.
+  if (!data.tenantNames || data.tenantNames.filter((n) => n.trim()).length === 0) {
+    blockers.push({ code: 'NO_TENANT', message: 'At least one tenant name is required.' });
+  }
+
+  // (d) Rent periods present and base-rent-only confirmed.
+  if (!data.rentPeriods || data.rentPeriods.length === 0) {
+    blockers.push({ code: 'NO_RENT_PERIODS', message: 'At least one rent period (base rent) is required.' });
+  }
+  if (data.baseRentOnlyConfirmed !== true) {
+    blockers.push({
+      code: 'BASE_RENT_NOT_CONFIRMED',
+      message:
+        'You must confirm the amount is base rent only (no late fees, utilities, or other charges).',
+    });
+  }
+
+  // (e) v4 payment configuration valid (§ 1161(2) payee trio + branch + EFT).
+  const pay = validatePaymentBranch(data);
+  if (!pay.valid) {
+    blockers.push({
+      code: 'PAYMENT_CONFIG_INVALID',
+      message: 'The payment configuration is not yet complete or valid.',
+    });
+  }
+
+  // (e2) 5-mile production gate for the bank-deposit branch (ruling C2).
+  if (data.paymentBranch === 'bank_deposit') {
+    if (GEOCODING_LIVE) {
+      // When geocoding lands, verify by distance here instead of attestation.
+      // (Left intentionally to the geocode-dependency slice.)
+    } else if (data.bankBranchWithinFiveMilesAttested !== true) {
+      blockers.push({
+        code: 'BANK_5_MILE_NOT_VERIFIED',
+        message:
+          'A notice listing a bank-deposit branch requires confirmation that the ' +
+          'branch is within five miles of the rental property (Cal. Code Civ. Proc. ' +
+          '§ 1161(2)). Confirm this, or choose a different payment method.',
+      });
+    }
+  }
+
+  // (f) Signer + authority (the signer may differ from the § 1161(2) payee).
+  if (!data.signerName || data.signerName.trim() === '') {
+    blockers.push({ code: 'SIGNER_MISSING', message: 'A signer name is required.' });
+  }
+  if (!data.signerRole) {
+    blockers.push({ code: 'SIGNER_ROLE_MISSING', message: 'A signer role is required.' });
+  } else if (data.signerRole !== 'owner' && data.authorityEvidenceOnFile !== true) {
+    blockers.push({
+      code: 'AUTHORITY_EVIDENCE_MISSING',
+      message:
+        'A non-owner signer requires authority evidence (property management ' +
+        'agreement or written authorization) on file.',
+    });
+  }
+
+  // (g) Dates: service date + method present, computable against a verified year.
+  let computedDates: CanProduceResultV4['computedDates'];
+  if (!data.serviceDate || !data.serviceMethod) {
+    blockers.push({
+      code: 'SERVICE_DATE_OR_METHOD_MISSING',
+      message: 'A service date and service method are required.',
+    });
+  } else {
+    try {
+      const year = Number(data.serviceDate.slice(0, 4));
+      const holidays = getVerifiedHolidaySet(year);
+      const period = computeCompliancePeriod({
+        serviceDate: data.serviceDate,
+        serviceMethod: data.serviceMethod,
+        holidays,
+      });
+      computedDates = { commencementDate: period.commencementDate, expirationDate: period.expirationDate };
+    } catch {
+      blockers.push({
+        code: 'DATES_NOT_COMPUTABLE',
+        message:
+          'The compliance dates cannot be computed for this service date ' +
+          '(the holiday calendar for that year may not be verified yet).',
+      });
+    }
+  }
+
+  // (h) v4 wording sign-off gate — fails closed until the attorney signs off.
+  if (!V4_WORDING_SIGNED_OFF) {
+    blockers.push({
+      code: 'TEMPLATE_NOT_SIGNED_OFF',
+      message:
+        'This notice version is pending attorney sign-off of the updated ' +
+        'payment-section wording and cannot be produced yet.',
+    });
+  }
+
+  return {
+    canProduce: blockers.length === 0,
+    blockers,
+    computedDates,
+    paymentErrors: pay.errors,
+    paymentWarnings: pay.warnings,
+    templateVersion: NOTICE_TEMPLATE_VERSION,
   };
 }

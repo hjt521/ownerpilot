@@ -9,13 +9,13 @@ import {
   DisputeAnswer,
   RentPeriod,
   SignerRole,
+  PaymentBranch,
+  LandlordContact,
 } from '@/lib/flow/noticeFlowState';
-import { validateStep, advance, goBack, STEP_ORDER } from '@/lib/flow/advancement';
-import { evaluateCanProduce } from '@/lib/flow/gates';
-import type {
-  PaymentMethod,
-  PaymentMethodKind,
-} from '@/lib/payments/validatePaymentMethods';
+import { validateStep } from '@/lib/flow/advancement';
+import { evaluateCanProduceV4 } from '@/lib/flow/gates';
+import { renderNotice, NoticeRenderError } from '@/lib/produce/renderNotice';
+import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import type { ServiceMethod } from '@/lib/dates/computeCompliancePeriod';
 
 /**
@@ -32,19 +32,67 @@ import type { ServiceMethod } from '@/lib/dates/computeCompliancePeriod';
  * UI never offers production for a blocked jurisdiction.
  */
 
-const STEP_LABELS: Record<FlowStep, string> = {
-  [FlowStep.PreflightDispute]: 'Before we start',
-  [FlowStep.PropertyIdentification]: 'The property',
-  [FlowStep.Tenants]: 'The tenant(s)',
-  [FlowStep.AmountOwed]: 'Rent owed',
-  [FlowStep.PaymentInstructions]: 'How to pay',
-  [FlowStep.LandlordAgentInfo]: 'Who is serving',
-  [FlowStep.Review]: 'Review',
-  [FlowStep.ServiceInstructions]: 'Serving the notice',
-};
+/**
+ * The flow is presented as four PAGES, each grouping one or more underlying
+ * FlowSteps. Field validation still lives per-step in advancement.ts
+ * (validateStep); a page is advanceable only when every step it contains is.
+ * The dispute hard-block is its own page (page 1), so the attorney handoff
+ * fires before any data is collected.
+ */
+const PAGES: { label: string; steps: FlowStep[] }[] = [
+  { label: 'Before we start', steps: [FlowStep.PreflightDispute] },
+  {
+    label: 'The notice',
+    steps: [
+      FlowStep.PropertyIdentification,
+      FlowStep.Tenants,
+      FlowStep.AmountOwed,
+      FlowStep.PaymentInstructions,
+    ],
+  },
+  { label: 'Who is signing', steps: [FlowStep.LandlordAgentInfo] },
+  { label: 'Review & serve', steps: [FlowStep.Review, FlowStep.ServiceInstructions] },
+];
+
+/** Required-field marker. */
+function Req() {
+  return (
+    <span className="text-red-600" aria-hidden="true">
+      {' '}*
+    </span>
+  );
+}
+
+function renderStepBody(
+  step: FlowStep,
+  data: NoticeFlowData,
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void,
+): ReactNode {
+  switch (step) {
+    case FlowStep.PreflightDispute:
+      return <DisputeStep data={data} update={update} />;
+    case FlowStep.PropertyIdentification:
+      return <PropertyStep data={data} update={update} />;
+    case FlowStep.Tenants:
+      return <TenantsStep data={data} update={update} />;
+    case FlowStep.AmountOwed:
+      return <AmountStep data={data} update={update} />;
+    case FlowStep.PaymentInstructions:
+      return <PaymentStep data={data} update={update} />;
+    case FlowStep.LandlordAgentInfo:
+      return <LandlordStep data={data} update={update} />;
+    case FlowStep.Review:
+      return <ReviewStep data={data} />;
+    case FlowStep.ServiceInstructions:
+      return <ServiceStep />;
+    default:
+      return null;
+  }
+}
 
 export function NoticeFlow() {
   const [state, setState] = useState<NoticeFlowState>(createFlowState);
+  const [pageIndex, setPageIndex] = useState(0);
   const [showIssues, setShowIssues] = useState(false);
 
   const update = (
@@ -57,12 +105,23 @@ export function NoticeFlow() {
     setShowIssues(false);
   };
 
-  const validation = validateStep(state.step, state.data);
+  const page = PAGES[pageIndex];
+  const totalPages = PAGES.length;
+
+  // A page is advanceable only when every step it contains validates. The
+  // dispute step can also hard-block (attorney handoff) — only page 1 has it.
+  let hardBlocked = false;
+  const issues: string[] = [];
+  for (const step of page.steps) {
+    const v = validateStep(step, state.data);
+    if (v.hardBlocked) hardBlocked = true;
+    for (const it of v.issues) issues.push(it);
+  }
+  const canAdvance = issues.length === 0;
 
   const onNext = () => {
-    const result = advance(state);
-    if (result.moved) {
-      setState(result.state);
+    if (canAdvance) {
+      setPageIndex((i) => Math.min(i + 1, totalPages - 1));
       setShowIssues(false);
     } else {
       setShowIssues(true);
@@ -70,22 +129,17 @@ export function NoticeFlow() {
   };
 
   const onBack = () => {
-    setState(goBack(state));
+    setPageIndex((i) => Math.max(i - 1, 0));
     setShowIssues(false);
   };
 
-  const stepIndex = STEP_ORDER.indexOf(state.step);
-  const totalSteps = STEP_ORDER.length;
-
   // Enter advances the flow, scoped to avoid hijacking other Enter behaviors:
-  // - not on the last step (no forward action there),
-  // - not when focus is on a <button> (dispute choices, calendar nav/icon keep
-  //   their own native Enter),
+  // - not on the last page (no forward action there),
+  // - not when focus is on a <button> (dispute choices, calendar keep their own),
   // - not in a <textarea> (Enter is a newline there).
-  // Typing a date or name and pressing Enter SHOULD advance — the natural gesture.
   const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Enter') return;
-    if (stepIndex >= totalSteps - 1) return;
+    if (pageIndex >= totalPages - 1) return;
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'BUTTON' || tag === 'TEXTAREA') return;
     e.preventDefault();
@@ -93,7 +147,7 @@ export function NoticeFlow() {
   };
 
   // Hard-block to attorney handoff (dispute screen, any "yes").
-  if (validation.hardBlocked) {
+  if (hardBlocked) {
     return <AttorneyHandoff />;
   }
 
@@ -106,56 +160,45 @@ export function NoticeFlow() {
             3-Day Notice to Pay Rent or Quit
           </p>
           <div className="flex items-center gap-2 mb-4" aria-hidden>
-            {STEP_ORDER.map((s, i) => (
+            {PAGES.map((p, i) => (
               <div
-                key={s}
+                key={p.label}
                 className={`h-1 flex-1 rounded-full ${
-                  i <= stepIndex ? 'bg-blue-700' : 'bg-gray-200'
+                  i <= pageIndex ? 'bg-blue-700' : 'bg-gray-200'
                 }`}
               />
             ))}
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-            {STEP_LABELS[state.step]}
+            {page.label}
           </h1>
           <p className="text-sm text-gray-500 mt-2">
-            Step {stepIndex + 1} of {totalSteps}
+            Step {pageIndex + 1} of {totalPages}
           </p>
+          {(pageIndex === 1 || pageIndex === 2) && (
+            <p className="text-sm text-gray-500 mt-1">
+              Fields marked <span className="text-red-600">*</span> are required.
+            </p>
+          )}
         </header>
 
-        {/* Step body */}
+        {/* Step body — every step in the current page, divided */}
         <section className="mb-10">
-          {state.step === FlowStep.PreflightDispute && (
-            <DisputeStep data={state.data} update={update} />
-          )}
-          {state.step === FlowStep.PropertyIdentification && (
-            <PropertyStep data={state.data} update={update} />
-          )}
-          {state.step === FlowStep.Tenants && (
-            <TenantsStep data={state.data} update={update} />
-          )}
-          {state.step === FlowStep.AmountOwed && (
-            <AmountStep data={state.data} update={update} />
-          )}
-          {state.step === FlowStep.PaymentInstructions && (
-            <PaymentStep data={state.data} update={update} />
-          )}
-          {state.step === FlowStep.LandlordAgentInfo && (
-            <LandlordStep data={state.data} update={update} />
-          )}
-          {state.step === FlowStep.Review && (
-            <ReviewStep data={state.data} />
-          )}
-          {state.step === FlowStep.ServiceInstructions && (
-            <ServiceStep />
-          )}
+          {page.steps.map((step, idx) => (
+            <div
+              key={step}
+              className={idx > 0 ? 'pt-4 mt-4 border-t border-gray-200' : ''}
+            >
+              {renderStepBody(step, state.data, update)}
+            </div>
+          ))}
         </section>
 
         {/* Validation issues */}
-        {showIssues && validation.issues.length > 0 && (
+        {showIssues && issues.length > 0 && (
           <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
             <ul className="space-y-1 text-sm text-amber-900">
-              {validation.issues.map((issue, i) => (
+              {issues.map((issue, i) => (
                 <li key={i}>{issue}</li>
               ))}
             </ul>
@@ -166,12 +209,12 @@ export function NoticeFlow() {
         <div className="flex items-center justify-between border-t border-gray-200 pt-6">
           <button
             onClick={onBack}
-            disabled={stepIndex === 0}
+            disabled={pageIndex === 0}
             className="text-gray-600 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900 transition-colors"
           >
             ← Back
           </button>
-          {stepIndex < totalSteps - 1 && (
+          {pageIndex < totalPages - 1 && (
             <button
               onClick={onNext}
               className="inline-flex items-center px-6 py-3 bg-blue-700 text-white font-semibold rounded-lg hover:bg-blue-800 transition-colors"
@@ -209,7 +252,7 @@ function DisputeStep({
     update({ dispute: { ...d, [key]: value } });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <p className="text-lg text-gray-800 leading-relaxed">
         Before you start: this notice is appropriate for routine non-payment
         situations. A few questions first — if any apply, this is past where a
@@ -273,8 +316,8 @@ function TriQuestion({
     return 'bg-blue-50 border-blue-400 text-blue-900';
   };
   return (
-    <div className="rounded-lg border border-gray-200 px-5 py-4">
-      <p className="text-gray-900 mb-3 leading-relaxed">{question}</p>
+    <div className="rounded-lg border border-gray-200 px-5 py-3">
+      <p className="text-gray-900 mb-2 leading-relaxed">{question}</p>
       <div className="flex flex-wrap gap-3">
         {options.map(({ label, v }) => (
           <button
@@ -383,7 +426,7 @@ function PropertyStep({
           htmlFor="propertyAddress"
           className="block text-sm font-semibold text-gray-700 mb-2"
         >
-          Property street address
+          Property street address<Req />
         </label>
         <input
           id="propertyAddress"
@@ -646,6 +689,9 @@ function TenantsStep({
         lease. The notice must name each tenant you intend to hold responsible.
       </StepIntro>
       <div className="space-y-3">
+        <span className="block text-sm font-semibold text-gray-700">
+          Tenant name(s)<Req />
+        </span>
         {names.map((name, i) => (
           <div key={i} className="flex gap-2">
             <input
@@ -731,7 +777,7 @@ function AmountStep({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <FieldLabel htmlFor={`start-${i}`}>Period start</FieldLabel>
+                <FieldLabel htmlFor={`start-${i}`}>Period start<Req /></FieldLabel>
                 <DateField
                   id={`start-${i}`}
                   value={p.periodStartDate}
@@ -739,7 +785,7 @@ function AmountStep({
                 />
               </div>
               <div>
-                <FieldLabel htmlFor={`end-${i}`}>Period end</FieldLabel>
+                <FieldLabel htmlFor={`end-${i}`}>Period end<Req /></FieldLabel>
                 <DateField
                   id={`end-${i}`}
                   value={p.periodEndDate}
@@ -747,7 +793,7 @@ function AmountStep({
                 />
               </div>
               <div>
-                <FieldLabel htmlFor={`amt-${i}`}>Base rent ($)</FieldLabel>
+                <FieldLabel htmlFor={`amt-${i}`}>Base rent ($)<Req /></FieldLabel>
                 <input
                   id={`amt-${i}`}
                   type="number"
@@ -780,7 +826,7 @@ function AmountStep({
         </span>
       </div>
 
-      <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
+      <label className="flex items-start gap-2 cursor-pointer pt-1">
         <input
           type="checkbox"
           checked={data.baseRentOnlyConfirmed === true}
@@ -789,24 +835,31 @@ function AmountStep({
           }
           className="mt-1"
         />
-        <span className="text-sm text-gray-800 leading-relaxed">
-          I confirm this amount is <strong>base rent only</strong> — it does not
-          include late fees, utilities, or other charges. (California law
-          requires a 3-day notice to demand only rent.)
+        <span className="text-sm text-gray-700 leading-relaxed">
+          I confirm this is{' '}
+          <strong className="font-semibold">base rent only</strong> — no late
+          fees, utilities, or other charges.
+          <span className="block text-xs text-gray-400 mt-0.5">
+            California law requires a 3-day notice to demand only rent.
+          </span>
         </span>
       </label>
     </div>
   );
 }
 
-// --- Step 4: Payment instructions -------------------------------------------
+// --- Step 4: Payment instructions (v4: § 1161(2) payee + payment branch) ----
 
-const PAYMENT_LABELS: Record<PaymentMethodKind, string> = {
-  in_person: 'In person',
-  mail: 'By mail',
-  bank_deposit: 'Bank deposit',
-  eft: 'Electronic funds transfer (EFT)',
-  cash: 'Cash',
+const PAYMENT_BRANCH_LABELS: Record<PaymentBranch, string> = {
+  mail_only: 'By mail only',
+  in_person_and_mail: 'In person and by mail',
+  bank_deposit: 'By deposit at a financial institution',
+};
+
+const PAYMENT_BRANCH_HELP: Record<PaymentBranch, string> = {
+  mail_only: 'The tenant mails payment to the address above.',
+  in_person_and_mail: 'The tenant may hand-deliver during set hours, or mail it.',
+  bank_deposit: 'The tenant deposits a check or money order at a bank branch.',
 };
 
 function PaymentStep({
@@ -816,132 +869,225 @@ function PaymentStep({
   data: NoticeFlowData;
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
 }) {
-  const methods = data.paymentMethods;
-  const has = (kind: PaymentMethodKind) => methods.some((m) => m.kind === kind);
-  const get = (kind: PaymentMethodKind) => methods.find((m) => m.kind === kind);
-
-  const toggle = (kind: PaymentMethodKind) => {
-    if (has(kind)) {
-      update({ paymentMethods: methods.filter((m) => m.kind !== kind) });
-    } else {
-      update({ paymentMethods: [...methods, { kind } as PaymentMethod] });
-    }
-  };
-  const patchMethod = (kind: PaymentMethodKind, patch: Record<string, unknown>) => {
-    update({
-      paymentMethods: methods.map((m) =>
-        m.kind === kind ? ({ ...m, ...patch } as PaymentMethod) : m,
-      ),
-    });
-  };
+  const c: LandlordContact = data.landlordContact ?? {};
+  const setContact = (patch: Partial<LandlordContact>) =>
+    update({ landlordContact: { ...c, ...patch } });
+  const branch = data.paymentBranch;
 
   return (
-    <div className="space-y-6">
-      <StepIntro>
-        How can the tenant pay? California law requires offering at least one
-        method that is <strong>not cash and not electronic</strong> (for
-        example, a check or money order in person or by mail). The detailed
-        rules are checked at the Review step.
-      </StepIntro>
+    <div className="space-y-8">
+      {/* Section 1 — person to receive payment (§ 1161(2) name/phone/address) */}
+      <div className="space-y-4">
+        <StepIntro>
+          California law requires the notice to name the person to receive
+          payment, with a telephone number and a street address. This can be the
+          owner or an agent, and need not be the same person who signs.
+        </StepIntro>
 
+        <div>
+          <FieldLabel htmlFor="payeeName">Name to receive payment<Req /></FieldLabel>
+          <input
+            id="payeeName"
+            type="text"
+            value={c.name ?? ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setContact({ name: e.target.value })}
+            placeholder="Person or company to whom rent is paid"
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <FieldLabel htmlFor="payeePhone">Telephone<Req /></FieldLabel>
+          <input
+            id="payeePhone"
+            type="tel"
+            value={c.phone ?? ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setContact({ phone: e.target.value })}
+            placeholder="(555) 555-5555"
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <FieldLabel htmlFor="payeeAddress">Street address to receive payment<Req /></FieldLabel>
+          <input
+            id="payeeAddress"
+            type="text"
+            value={c.streetAddress ?? ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setContact({ streetAddress: e.target.value })
+            }
+            placeholder="123 Main St, City, CA 90000"
+            className={inputClass}
+          />
+        </div>
+      </div>
+
+      {/* Section 2 — how rent may be paid (single branch) */}
       <div className="space-y-3">
-        {(Object.keys(PAYMENT_LABELS) as PaymentMethodKind[]).map((kind) => {
-          const selected = has(kind);
-          const m = get(kind);
-          return (
-            <div
-              key={kind}
-              className={`rounded-lg border px-4 py-3 ${
-                selected ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
-              }`}
-            >
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={selected} onChange={() => toggle(kind)} />
-                <span className="font-medium text-gray-900">{PAYMENT_LABELS[kind]}</span>
-              </label>
+        <span className="block text-sm font-semibold text-gray-700 mb-1">
+          How may rent be paid?<Req />
+        </span>
+        {(Object.keys(PAYMENT_BRANCH_LABELS) as PaymentBranch[]).map((b) => (
+          <label
+            key={b}
+            className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+              branch === b ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+            }`}
+          >
+            <input
+              type="radio"
+              name="paymentBranch"
+              checked={branch === b}
+              onChange={() => update({ paymentBranch: b })}
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-gray-900 font-medium">{PAYMENT_BRANCH_LABELS[b]}</span>
+              <span className="block text-sm text-gray-500">{PAYMENT_BRANCH_HELP[b]}</span>
+            </span>
+          </label>
+        ))}
 
-              {selected && m?.kind === 'in_person' && (
+        {branch === 'in_person_and_mail' && (
+          <div className="mt-1 rounded-lg border border-gray-200 px-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <FieldLabel htmlFor="pdDays">Days personal delivery is available<Req /></FieldLabel>
                 <input
+                  id="pdDays"
                   type="text"
-                  value={m.daysHours ?? ''}
+                  value={data.personalDeliveryDays ?? ''}
                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    patchMethod('in_person', { daysHours: e.target.value })
+                    update({ personalDeliveryDays: e.target.value })
                   }
-                  placeholder="Days & hours available (e.g. Mon–Fri 9am–5pm)"
-                  className={`${inputClass} mt-3`}
+                  placeholder="Monday through Friday"
+                  className={inputClass}
                 />
-              )}
-              {selected && m?.kind === 'mail' && (
+              </div>
+              <div>
+                <FieldLabel htmlFor="pdHours">Hours personal delivery is available<Req /></FieldLabel>
                 <input
+                  id="pdHours"
                   type="text"
-                  value={m.mailAddress ?? ''}
+                  value={data.personalDeliveryHours ?? ''}
                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    patchMethod('mail', { mailAddress: e.target.value })
+                    update({ personalDeliveryHours: e.target.value })
                   }
-                  placeholder="Mailing address for payment"
-                  className={`${inputClass} mt-3`}
+                  placeholder="9:00 a.m. to 5:00 p.m."
+                  className={inputClass}
                 />
-              )}
-              {selected && m?.kind === 'bank_deposit' && (
-                <div className="mt-3 space-y-3">
-                  <input
-                    type="text"
-                    value={m.bankName ?? ''}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      patchMethod('bank_deposit', { bankName: e.target.value })
-                    }
-                    placeholder="Bank name"
-                    className={inputClass}
-                  />
-                  <input
-                    type="text"
-                    value={m.branchAddress ?? ''}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      patchMethod('bank_deposit', { branchAddress: e.target.value })
-                    }
-                    placeholder="Branch street address"
-                    className={inputClass}
-                  />
-                  <input
-                    type="text"
-                    value={m.accountNumber ?? ''}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      patchMethod('bank_deposit', { accountNumber: e.target.value })
-                    }
-                    placeholder="Account number"
-                    className={inputClass}
-                  />
-                  <label className="flex items-start gap-2 text-sm text-gray-800">
-                    <input
-                      type="checkbox"
-                      checked={m.within5MilesConfirmed === true}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                        patchMethod('bank_deposit', { within5MilesConfirmed: e.target.checked })
-                      }
-                      className="mt-1"
-                    />
-                    <span>I confirm this branch is within five miles of the rental property.</span>
-                  </label>
-                </div>
-              )}
-              {selected && m?.kind === 'eft' && (
-                <label className="flex items-start gap-2 text-sm text-gray-800 mt-3">
-                  <input
-                    type="checkbox"
-                    checked={m.previouslyEstablishedConfirmed === true}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      patchMethod('eft', { previouslyEstablishedConfirmed: e.target.checked })
-                    }
-                    className="mt-1"
-                  />
-                  <span>
-                    I confirm an EFT procedure was previously established with this tenant.
-                  </span>
-                </label>
-              )}
+              </div>
             </div>
-          );
-        })}
+          </div>
+        )}
+
+        {branch === 'bank_deposit' && (
+          <div className="mt-1 space-y-3 rounded-lg border border-gray-200 px-4 py-4">
+            <div>
+              <FieldLabel htmlFor="bankName">Bank name<Req /></FieldLabel>
+              <input
+                id="bankName"
+                type="text"
+                value={data.bankName ?? ''}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => update({ bankName: e.target.value })}
+                placeholder="Bank name"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="bankBranch">Branch street address<Req /></FieldLabel>
+              <input
+                id="bankBranch"
+                type="text"
+                value={data.bankBranchAddress ?? ''}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  update({ bankBranchAddress: e.target.value })
+                }
+                placeholder="Branch street address"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="bankAcct">Account number<Req /></FieldLabel>
+              <input
+                id="bankAcct"
+                type="text"
+                value={data.bankAccountNumber ?? ''}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  update({ bankAccountNumber: e.target.value })
+                }
+                placeholder="Account number"
+                className={inputClass}
+              />
+            </div>
+            <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.bankDepositPaperInstrumentConfirmed === true}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  update({ bankDepositPaperInstrumentConfirmed: e.target.checked })
+                }
+                className="mt-1"
+              />
+              <span className="text-sm text-gray-800 leading-relaxed">
+                I confirm payment is made by <strong>check, money order, or
+                cashier&apos;s check</strong> deposited to the account (not cash).
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.bankBranchWithinFiveMilesAttested === true}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  update({ bankBranchWithinFiveMilesAttested: e.target.checked })
+                }
+                className="mt-1"
+              />
+              <span className="text-sm text-amber-900 leading-relaxed">
+                I confirm this branch is <strong>within five miles</strong> of the
+                rental property (required by Cal. Code Civ. Proc. &sect; 1161(2)).
+              </span>
+            </label>
+          </div>
+        )}
+        {/* Optional EFT election (add-on only) — last row in the same group so
+            its spacing matches the option boxes above. */}
+        <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={data.eftElectionAvailable === true}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              update({ eftElectionAvailable: e.target.checked })
+            }
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-gray-900 font-medium">
+              Also allow electronic funds transfer{' '}
+              <span className="font-normal text-gray-500">(optional)</span>
+            </span>
+            <span className="block text-sm text-gray-500">
+              Adds EFT as a payment option, in addition to the method above.
+            </span>
+          </span>
+        </label>
+        {data.eftElectionAvailable === true && (
+          <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={data.eftPreviouslyEstablishedConfirmed === true}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                update({ eftPreviouslyEstablishedConfirmed: e.target.checked })
+              }
+              className="mt-1"
+            />
+            <span className="text-sm text-amber-900 leading-relaxed">
+              I confirm an EFT procedure was <strong>previously established</strong>
+              {' '}with this tenant. (EFT may only be offered if it already exists.)
+            </span>
+          </label>
+        )}
       </div>
     </div>
   );
@@ -975,7 +1121,7 @@ function LandlordStep({
       </StepIntro>
 
       <div>
-        <FieldLabel htmlFor="signerName">Signer&apos;s full name</FieldLabel>
+        <FieldLabel htmlFor="signerName">Signer&apos;s full name<Req /></FieldLabel>
         <input
           id="signerName"
           type="text"
@@ -987,7 +1133,7 @@ function LandlordStep({
       </div>
 
       <div>
-        <FieldLabel htmlFor="signerRole">Who is signing?</FieldLabel>
+        <FieldLabel htmlFor="signerRole">Who is signing?<Req /></FieldLabel>
         <div className="space-y-2">
           {(Object.keys(SIGNER_ROLE_LABELS) as SignerRole[]).map((role) => (
             <label
@@ -1026,7 +1172,7 @@ function LandlordStep({
       )}
 
       <div>
-        <FieldLabel htmlFor="serviceDate">Intended service date</FieldLabel>
+        <FieldLabel htmlFor="serviceDate">Intended service date<Req /></FieldLabel>
         <DateField
           id="serviceDate"
           value={data.serviceDate ?? ''}
@@ -1035,7 +1181,7 @@ function LandlordStep({
       </div>
 
       <div>
-        <FieldLabel htmlFor="serviceMethod">How will the notice be served?</FieldLabel>
+        <FieldLabel htmlFor="serviceMethod">How will the notice be served?<Req /></FieldLabel>
         <div className="space-y-2">
           {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((method) => (
             <label
@@ -1062,7 +1208,42 @@ function LandlordStep({
 // --- Step 6: Review ---------------------------------------------------------
 
 function ReviewStep({ data }: { data: NoticeFlowData }) {
-  const result = evaluateCanProduce(data);
+  const result = evaluateCanProduceV4(data);
+
+  // When the gate says ready, render the notice from the build-locked template
+  // and build the styled document. The renderer fails closed; wrap it so any
+  // unexpected gap surfaces as a clear message rather than a crash.
+  let docHtml: string | null = null;
+  let renderError: string | null = null;
+  if (result.canProduce && result.computedDates) {
+    try {
+      const rendered = renderNotice({
+        data,
+        dates: {
+          compliancePeriodStartDate: result.computedDates.commencementDate,
+          compliancePeriodEndDate: result.computedDates.expirationDate,
+        },
+      });
+      docHtml = buildNoticeDocumentHtml(rendered.model);
+    } catch (e) {
+      renderError =
+        e instanceof NoticeRenderError
+          ? e.message
+          : 'The notice could not be generated. Please review your entries.';
+    }
+  }
+
+  const downloadPdf = () => {
+    if (!docHtml) return;
+    // Open the styled document and trigger the browser's print-to-PDF.
+    // The user picks "Save as PDF" in the print dialog. No external dependency.
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(docHtml);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
 
   return (
     <div className="space-y-6">
@@ -1095,6 +1276,43 @@ function ReviewStep({ data }: { data: NoticeFlowData }) {
               <li key={b.code}>{b.message}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {renderError && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          {renderError}
+        </div>
+      )}
+
+      {docHtml && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Notice preview</h2>
+            <button
+              type="button"
+              onClick={downloadPdf}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Download PDF
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            This is a broker-prepared draft for your review. Sign it in ink before
+            serving, and serve it on the date shown. The proof of service is
+            completed after you serve — not before.
+          </p>
+          <iframe
+            title="Notice preview"
+            srcDoc={docHtml}
+            className="w-full rounded-lg border border-gray-300 bg-white"
+            style={{ height: '40rem' }}
+          />
         </div>
       )}
     </div>

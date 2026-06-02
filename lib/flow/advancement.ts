@@ -114,15 +114,34 @@ export function validateStep(
       }
       break;
 
-    case FlowStep.PaymentInstructions:
-      // This step defers to the payment validator at the produce gate; for
-      // advancement we only require that at least one method has been chosen.
-      // (Full § 1947.3 / per-method validity is surfaced by the validator and
-      // consolidated at Review.)
-      if (!data.paymentMethods || data.paymentMethods.length === 0) {
-        issues.push('Choose at least one payment method.');
+    case FlowStep.PaymentInstructions: {
+      // v4 model (attorney ruling 2026-06-01): the § 1161(2) payee trio + one
+      // payment branch. Advancement checks PRESENCE/shape only; deep validity
+      // (phone format, P.O.-box rules, § 1947.3 paper-instrument, 5-mile,
+      // EFT-previously-established, wording sign-off) is surfaced by
+      // validatePaymentBranch and consolidated at Review by evaluateCanProduceV4.
+      const c = data.landlordContact;
+      if (isBlank(c?.name)) issues.push('A name to receive payment is required.');
+      if (isBlank(c?.phone)) issues.push('A telephone number for payment is required.');
+      if (isBlank(c?.streetAddress)) {
+        issues.push('A street address to receive payment is required.');
+      }
+      if (!data.paymentBranch) {
+        issues.push('Choose how rent may be paid.');
+      } else if (data.paymentBranch === 'in_person_and_mail') {
+        if (isBlank(data.personalDeliveryDays)) {
+          issues.push('Enter the days personal delivery is available.');
+        }
+        if (isBlank(data.personalDeliveryHours)) {
+          issues.push('Enter the hours personal delivery is available.');
+        }
+      } else if (data.paymentBranch === 'bank_deposit') {
+        if (isBlank(data.bankName)) issues.push('Enter the bank name.');
+        if (isBlank(data.bankBranchAddress)) issues.push('Enter the bank branch address.');
+        if (isBlank(data.bankAccountNumber)) issues.push('Enter the account number.');
       }
       break;
+    }
 
     case FlowStep.LandlordAgentInfo:
       if (isBlank(data.signerName)) issues.push('A signer name is required.');
