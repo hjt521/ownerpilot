@@ -20,9 +20,20 @@
  *   been removed.
  *
  * SCOPE BOUNDARY — what this engine does NOT do, on purpose:
- *   - It does not add mailing days for substituted / post-and-mail service.
- *     The attorney flagged that extension as UNSETTLED. The engine raises a
- *     flag so the UI shows her hedge language; it never invents a date.
+ *   This engine computes the notice's facial compliance period only — the 3 business
+ *   days the tenant has to cure, per CCP § 1161 and the day-count rules in CCP §§ 12,
+ *   12a, 135 (AB 2343 eff. 9/1/2019: weekends and judicial holidays excluded).
+ *
+ *   It does NOT add the +5 calendar day mailing buffer for substituted or
+ *   posting-and-mailing service. The +5 is a FILING-STAGE rule (governing when the
+ *   landlord may file the unlawful detainer), not a NOTICE-FACE rule. Putting it on
+ *   the face would misstate the statutory 3-day demand under CCP § 1161(2).
+ *
+ *   For substituted / post-and-mail, the engine raises `mailingExtensionFlag: true`
+ *   so the UI displays the attorney-approved filing-stage guidance (see A2(b) copy
+ *   in ownerpilot_service_and_payment_redesign_attorney_ruling.md). The flag's only
+ *   job is to trigger that already-approved UI copy. The engine does not invent or
+ *   render any date based on the +5.
  *   - It does not validate holiday data. It consumes a verified Set injected
  *     by the caller (see holidays.ts).
  *
@@ -48,9 +59,20 @@ export interface CompliancePeriodResult {
   /** The three qualifying days that were counted. */
   countedDays: [string, string, string];
   /**
-   * True for substituted / post-and-mail service. When true the UI MUST
-   * display the attorney's hedge: the real deadline may be later, and the
-   * mailing date must be captured separately. The engine has NOT added days.
+   * When `true`, the produced notice's face shows the statutory 3-business-day
+   * compliance period only (CCP § 1161; weekends/holidays excluded per CCP
+   * §§ 12, 12a, 135 and AB 2343). The face deadline is the tenant's correct
+   * cure deadline and is not extended by the service method.
+   *
+   * The flag's sole job is to trigger the UI's filing-stage guidance — the
+   * attorney-approved A2(b) copy — telling the landlord that most California
+   * courts require an additional 5 calendar days after the face deadline before
+   * an unlawful detainer may be filed. The +5 is a landlord filing buffer, not
+   * a tenant cure extension; it never appears on the notice face. The engine
+   * does not add days here.
+   *
+   * The service-method mailing date must be captured separately by the
+   * signer/serve step for the proof of service; the engine does not derive it.
    */
   mailingExtensionFlag: boolean;
   /** Human-readable notes for the review gate / audit trail. */
@@ -150,11 +172,12 @@ export function computeCompliancePeriod(
 
   if (mailingExtensionFlag) {
     notes.push(
-      `Service method is "${serviceMethod}". The mailing-day extension is ` +
-        `legally UNSETTLED (per attorney review). The expiration date above ` +
-        `is the personal-service computation. The UI MUST display the ` +
-        `attorney's hedge that the actual deadline may be later, and the ` +
-        `mailing date must be captured separately. No days were added here.`,
+      `Method is substituted / post-and-mail. The compliance period above is ` +
+        `computed from the statutory 3 business days only (CCP § 1161, ` +
+        `weekends/holidays excluded). The +5 calendar day filing buffer is NOT ` +
+        `applied here — it lives in the UI's approved filing-stage guidance, ` +
+        `not on the notice face. mailingExtensionFlag is raised solely to ` +
+        `trigger that UI display. No days were added to the face date.`,
     );
   }
 
