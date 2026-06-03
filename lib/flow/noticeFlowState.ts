@@ -151,6 +151,77 @@ export interface NoticeFlowData {
   // Date inputs (drive the date engine at production time)
   serviceDate?: string; // 'YYYY-MM-DD'
   serviceMethod?: ServiceMethod;
+
+  // --- A2 escalation foundation (attorney ruling 2026-06-02) ----------------
+  // Additive and persistence-agnostic: these live in the state object so a
+  // later persistence slice (Supabase/auth) can save/load them unchanged.
+  //
+  // NOTE (blocked, attorney): the produced notice's "Dated:" line is currently
+  // derived from serviceDate (renderNotice.ts). Her A2 ruling requires the
+  // notice DATE to stay fixed on re-serve while the SERVICE date changes. That
+  // separation is a notice-face question pending her sign-off, so the
+  // recompute-on-re-serve UI is NOT wired yet. The fields below do not touch
+  // the notice face or the date math.
+
+  /**
+   * Reasonable-diligence record of service attempts. Per attorney A2, failed
+   * attempts establish diligence for escalating to the next method; they do
+   * NOT affect the date computation (the engine counts from the successful
+   * method's service date only). Listed on the proof of service.
+   */
+  serviceAttempts?: ServiceAttempt[];
+  /**
+   * Snapshot of the face-determining fields captured when the notice was
+   * produced. Used by evaluateStaleness (lib/flow/escalation.ts) to detect a
+   * stale notice on re-serve: if the amount or any face field changed since
+   * production, it is legally a NEW notice (attorney A2 exceptions i/ii), and
+   * the same notice may not be re-served. Service date/method are intentionally
+   * excluded from the snapshot — changing them is the normal re-serve case.
+   */
+  productionSnapshot?: ProductionSnapshot;
+}
+
+/** Outcome of a single service attempt. */
+export type ServiceAttemptOutcome = 'succeeded' | 'failed';
+
+/** A single recorded service attempt (reasonable-diligence record). */
+export interface ServiceAttempt {
+  method: ServiceMethod;
+  /** Date the attempt was made, 'YYYY-MM-DD'. */
+  date: string;
+  outcome: ServiceAttemptOutcome;
+  /** Optional free-text note (e.g. "no answer, 6pm weekday"). */
+  note?: string;
+}
+
+/**
+ * The face-determining values captured at production time. Compared against
+ * current data by evaluateStaleness. Deliberately EXCLUDES serviceDate /
+ * serviceMethod: re-serving by a new method on a new date is the normal
+ * escalation path, not a "stale" change. A change to any field captured here
+ * means the notice's face would differ from what was produced => new notice.
+ */
+export interface ProductionSnapshot {
+  /** When the snapshot was taken (ISO timestamp). */
+  producedAtISO: string;
+  propertyAddress: string;
+  propertyCounty: string;
+  tenantNames: string[];
+  /** Sum of base-rent amounts demanded, for a fast amount-changed check. */
+  totalAmount: number;
+  rentPeriods: { start: string; end: string; amount: number }[];
+  payeeName: string;
+  payeePhone: string;
+  payeeStreetAddress: string;
+  paymentBranch?: PaymentBranch;
+  personalDeliveryDays?: string;
+  personalDeliveryHours?: string;
+  bankName?: string;
+  bankBranchAddress?: string;
+  bankAccountNumber?: string;
+  eftElectionAvailable?: boolean;
+  signerName: string;
+  signerRole?: SignerRole;
 }
 
 export interface NoticeFlowState {
