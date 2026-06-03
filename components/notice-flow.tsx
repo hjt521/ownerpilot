@@ -929,128 +929,129 @@ function PaymentStep({
           How may rent be paid?<Req />
         </span>
         {(Object.keys(PAYMENT_BRANCH_LABELS) as PaymentBranch[]).map((b) => (
-          <label
-            key={b}
-            className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-              branch === b ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
-            }`}
-          >
-            <input
-              type="radio"
-              name="paymentBranch"
-              checked={branch === b}
-              onChange={() => update({ paymentBranch: b })}
-              className="mt-1"
-            />
-            <span>
-              <span className="block text-gray-900 font-medium">{PAYMENT_BRANCH_LABELS[b]}</span>
-              <span className="block text-sm text-gray-500">{PAYMENT_BRANCH_HELP[b]}</span>
-            </span>
-          </label>
+          <Fragment key={b}>
+            <label
+              className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+                branch === b ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+              }`}
+            >
+              <input
+                type="radio"
+                name="paymentBranch"
+                checked={branch === b}
+                onChange={() => update({ paymentBranch: b })}
+                className="mt-1"
+              />
+              <span>
+                <span className="block text-gray-900 font-medium">{PAYMENT_BRANCH_LABELS[b]}</span>
+                <span className="block text-sm text-gray-500">{PAYMENT_BRANCH_HELP[b]}</span>
+              </span>
+            </label>
+
+            {branch === b && b === 'in_person_and_mail' && (
+              <div className="rounded-lg border border-gray-200 px-4 py-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <FieldLabel htmlFor="pdDays">Days personal delivery is available<Req /></FieldLabel>
+                    <input
+                      id="pdDays"
+                      type="text"
+                      value={data.personalDeliveryDays ?? ''}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        update({ personalDeliveryDays: e.target.value })
+                      }
+                      placeholder="Monday through Friday"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor="pdHours">Hours personal delivery is available<Req /></FieldLabel>
+                    <input
+                      id="pdHours"
+                      type="text"
+                      value={data.personalDeliveryHours ?? ''}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        update({ personalDeliveryHours: e.target.value })
+                      }
+                      placeholder="9:00 a.m. to 5:00 p.m."
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {branch === b && b === 'bank_deposit' && (
+              <div className="space-y-3 rounded-lg border border-gray-200 px-4 py-4">
+                <div>
+                  <FieldLabel htmlFor="bankName">Bank name<Req /></FieldLabel>
+                  <input
+                    id="bankName"
+                    type="text"
+                    value={data.bankName ?? ''}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => update({ bankName: e.target.value })}
+                    placeholder="Bank name"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <FieldLabel htmlFor="bankBranch">Branch street address<Req /></FieldLabel>
+                  <input
+                    id="bankBranch"
+                    type="text"
+                    value={data.bankBranchAddress ?? ''}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      update({ bankBranchAddress: e.target.value })
+                    }
+                    placeholder="Branch street address"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <FieldLabel htmlFor="bankAcct">Account number<Req /></FieldLabel>
+                  <input
+                    id="bankAcct"
+                    type="text"
+                    value={data.bankAccountNumber ?? ''}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      update({ bankAccountNumber: e.target.value })
+                    }
+                    placeholder="Account number"
+                    className={inputClass}
+                  />
+                </div>
+                <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={data.bankDepositPaperInstrumentConfirmed === true}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      update({ bankDepositPaperInstrumentConfirmed: e.target.checked })
+                    }
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-gray-800 leading-relaxed">
+                    I confirm payment is made by <strong>check, money order, or
+                    cashier&apos;s check</strong> deposited to the account (not cash).
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={data.bankBranchWithinFiveMilesAttested === true}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      update({ bankBranchWithinFiveMilesAttested: e.target.checked })
+                    }
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-amber-900 leading-relaxed">
+                    I confirm this branch is <strong>within five miles</strong> of the
+                    rental property (required by Cal. Code Civ. Proc. &sect; 1161(2)).
+                  </span>
+                </label>
+              </div>
+            )}
+          </Fragment>
         ))}
-
-        {branch === 'in_person_and_mail' && (
-          <div className="mt-1 rounded-lg border border-gray-200 px-4 py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <FieldLabel htmlFor="pdDays">Days personal delivery is available<Req /></FieldLabel>
-                <input
-                  id="pdDays"
-                  type="text"
-                  value={data.personalDeliveryDays ?? ''}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    update({ personalDeliveryDays: e.target.value })
-                  }
-                  placeholder="Monday through Friday"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <FieldLabel htmlFor="pdHours">Hours personal delivery is available<Req /></FieldLabel>
-                <input
-                  id="pdHours"
-                  type="text"
-                  value={data.personalDeliveryHours ?? ''}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    update({ personalDeliveryHours: e.target.value })
-                  }
-                  placeholder="9:00 a.m. to 5:00 p.m."
-                  className={inputClass}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {branch === 'bank_deposit' && (
-          <div className="mt-1 space-y-3 rounded-lg border border-gray-200 px-4 py-4">
-            <div>
-              <FieldLabel htmlFor="bankName">Bank name<Req /></FieldLabel>
-              <input
-                id="bankName"
-                type="text"
-                value={data.bankName ?? ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => update({ bankName: e.target.value })}
-                placeholder="Bank name"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <FieldLabel htmlFor="bankBranch">Branch street address<Req /></FieldLabel>
-              <input
-                id="bankBranch"
-                type="text"
-                value={data.bankBranchAddress ?? ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  update({ bankBranchAddress: e.target.value })
-                }
-                placeholder="Branch street address"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <FieldLabel htmlFor="bankAcct">Account number<Req /></FieldLabel>
-              <input
-                id="bankAcct"
-                type="text"
-                value={data.bankAccountNumber ?? ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  update({ bankAccountNumber: e.target.value })
-                }
-                placeholder="Account number"
-                className={inputClass}
-              />
-            </div>
-            <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={data.bankDepositPaperInstrumentConfirmed === true}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  update({ bankDepositPaperInstrumentConfirmed: e.target.checked })
-                }
-                className="mt-1"
-              />
-              <span className="text-sm text-gray-800 leading-relaxed">
-                I confirm payment is made by <strong>check, money order, or
-                cashier&apos;s check</strong> deposited to the account (not cash).
-              </span>
-            </label>
-            <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={data.bankBranchWithinFiveMilesAttested === true}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  update({ bankBranchWithinFiveMilesAttested: e.target.checked })
-                }
-                className="mt-1"
-              />
-              <span className="text-sm text-amber-900 leading-relaxed">
-                I confirm this branch is <strong>within five miles</strong> of the
-                rental property (required by Cal. Code Civ. Proc. &sect; 1161(2)).
-              </span>
-            </label>
-          </div>
-        )}
         {/* Optional EFT election (add-on only) — last row in the same group so
             its spacing matches the option boxes above. */}
         <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
@@ -1121,7 +1122,7 @@ type GuidanceBlock =
 const SERVICE_GUIDANCE: { method: ServiceMethod; title: string; blocks: GuidanceBlock[] }[] = [
   {
     method: 'personal',
-    title: 'Personal service — how to do it',
+    title: 'Personal service — Instructions',
     blocks: [
       { kind: 'p', text: `Personal service is the cleanest method. Here's how it works:` },
       {
@@ -1138,7 +1139,7 @@ const SERVICE_GUIDANCE: { method: ServiceMethod; title: string; blocks: Guidance
   },
   {
     method: 'substituted',
-    title: 'Substituted service — how to do it',
+    title: 'Substituted service — Instructions',
     blocks: [
       { kind: 'p', text: `Substituted service is only allowed **after** you (or your server) have made a real, good-faith effort to hand the notice to the tenant in person and couldn't. The technical name is "reasonable diligence." Here's what that means in practice:` },
       { kind: 'h', text: `First — attempt personal service` },
@@ -1171,9 +1172,9 @@ const SERVICE_GUIDANCE: { method: ServiceMethod; title: string; blocks: Guidance
   },
   {
     method: 'post_and_mail',
-    title: 'Posting and mailing — how to do it',
+    title: 'Posting and mailing — Instructions',
     blocks: [
-      { kind: 'p', text: `Posting and mailing is the last-resort method. It's only available after **both** personal service has failed (reasonable diligence — see substituted service above) **and** substituted service couldn't be completed because no person of suitable age and discretion could be found at the home or workplace.` },
+      { kind: 'p', text: `Posting and mailing is the last-resort method. It's only available after **both** personal service has failed (the same reasonable-diligence standard — at least three good-faith attempts on different days and times) **and** substituted service couldn't be completed because no person of suitable age and discretion could be found at the home or workplace.` },
       { kind: 'p', text: `If those two conditions are met:` },
       { kind: 'h', text: `Post` },
       {
@@ -1195,6 +1196,24 @@ const SERVICE_GUIDANCE: { method: ServiceMethod; title: string; blocks: Guidance
       { kind: 'p', text: `Same as substituted service: 3 business days + most California courts require you to add 5 calendar days for the mailing. Treat a 3-day post-and-mail as an **8-business-day-plus** timeline before you can file the unlawful detainer. Filing earlier risks dismissal.` },
     ],
   },
+];
+
+// Escalation guidance (attorney ruling 2026-06-02, A2(b)). VERBATIM — no
+// paraphrase. Renders once below the method selector; the date mechanics it
+// describes (same notice, clock restarts from the successful method) are the
+// engine behavior A2 gates on, not yet built — copy here is informational.
+const SERVICE_ESCALATION: GuidanceBlock[] = [
+  { kind: 'h', text: `If a service attempt doesn't succeed` },
+  { kind: 'p', text: `If you can't complete the method you picked, come back here and pick the next one — but only after you've genuinely tried the current method. The order matters legally, not just as a preference:` },
+  {
+    kind: 'ul',
+    items: [
+      `**Personal service** — if the tenant can't be reached after **at least three good-faith attempts on different days and at different times** (one morning, one evening, one weekend is the practical baseline), you may move to substituted service. Keep notes of every attempt; your server will list them on the proof of service.`,
+      `**Substituted service** — if no person of suitable age and discretion can be found at the tenant's home or workplace after reasonable attempts, you may move to posting and mailing.`,
+    ],
+  },
+  { kind: 'p', text: `When you return and pick the next method, OwnerPilot will use the **same notice** — same notice date, same amount due — but the **3-day deadline restarts from the date the new method actually succeeds**. For substituted service and posting-and-mailing, the 3 business days are counted from the date the mailing went out, and most California courts require an extra 5 calendar days on top of that before you can file an unlawful detainer.` },
+  { kind: 'p', text: `**One exception:** if the amount the tenant owes changes between attempts — they paid part of it, rent rolled into a new period, you found a miscalculation — that's a new notice, not the same one served a different way. Start a new flow.` },
 ];
 
 // Local-filing copy: attorney-approved GENERIC placeholder (Q5). Jurisdiction-
@@ -1260,6 +1279,11 @@ function LandlordStep({
       <StepIntro>
         Who is signing and serving the notice, and when?
       </StepIntro>
+      <p className="text-sm text-gray-600 leading-relaxed -mt-2">
+        This is the last step before producing the notice. Tell us who will sign
+        it, and how and when you plan to serve it. You&apos;ll get
+        method-specific service instructions on the next screen.
+      </p>
 
       <div>
         <FieldLabel htmlFor="signerName">Signer&apos;s full name<Req /></FieldLabel>
@@ -1323,23 +1347,41 @@ function LandlordStep({
 
       <div>
         <FieldLabel htmlFor="serviceMethod">How will the notice be served?<Req /></FieldLabel>
+        <p className="text-sm text-gray-600 leading-relaxed mb-3">
+          {renderInlineBold(`California recognizes three service methods, and they aren't interchangeable. Start with **personal service** — handing the notice directly to the tenant. If that doesn't work after reasonable, repeated attempts, **substituted service** becomes available. Only if substituted service can't be completed either does **posting and mailing** become available. Pick the method you plan to use first. If a method fails, you'll come back here and select the next one — keep reading for how that works.`)}
+        </p>
         <div className="space-y-2">
-          {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((method) => (
-            <label
-              key={method}
-              className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                data.serviceMethod === method ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
-              }`}
-            >
-              <input
-                type="radio"
-                name="serviceMethod"
-                checked={data.serviceMethod === method}
-                onChange={() => update({ serviceMethod: method })}
-              />
-              <span className="text-gray-900">{SERVICE_METHOD_LABELS[method]}</span>
-            </label>
-          ))}
+          {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((method) => {
+            const selected = data.serviceMethod === method;
+            const guide = SERVICE_GUIDANCE.find((g) => g.method === method);
+            return (
+              <Fragment key={method}>
+                <label
+                  className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+                    selected ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="serviceMethod"
+                    checked={selected}
+                    onChange={() => update({ serviceMethod: method })}
+                  />
+                  <span className="text-gray-900">{SERVICE_METHOD_LABELS[method]}</span>
+                </label>
+
+                {selected && guide && (
+                  <div className="rounded-lg border border-gray-200 px-5 py-4 space-y-2">
+                    <p className="font-semibold text-gray-900">{guide.title}</p>
+                    <GuidanceBlocks blocks={guide.blocks} />
+                  </div>
+                )}
+              </Fragment>
+            );
+          })}
+        </div>
+        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-5 py-4 space-y-2">
+          <GuidanceBlocks blocks={SERVICE_ESCALATION} />
         </div>
       </div>
     </div>
@@ -1495,35 +1537,8 @@ function ServiceStep({ data }: { data: NoticeFlowData }) {
         </div>
       </div>
 
-      {/* How to serve — all three methods in order so the cross-references
-          ("see substituted service above") resolve; the chosen one is badged.
-          A landlord who picks personal may still escalate if it fails. */}
-      <section className="space-y-3">
-        <h3 className="font-semibold text-gray-900">How to serve</h3>
-        <div className="space-y-4">
-          {SERVICE_GUIDANCE.map((g) => {
-            const selected = data.serviceMethod === g.method;
-            return (
-              <div
-                key={g.method}
-                className={`rounded-lg border px-5 py-4 space-y-2 ${
-                  selected ? 'border-blue-400 bg-blue-50/40' : 'border-gray-200'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-semibold text-gray-900">{g.title}</p>
-                  {selected && (
-                    <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                      Your selected method
-                    </span>
-                  )}
-                </div>
-                <GuidanceBlocks blocks={g.blocks} />
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      {/* How to serve guidance now lives on the Step 3 method selector (expands
+          under each option). Step 4 keeps proof-of-service + local filing only. */}
 
       {/* Complete the proof of service — Q4 revised wording (verbatim). */}
       <section className="space-y-2">
