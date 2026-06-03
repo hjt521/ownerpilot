@@ -148,51 +148,99 @@ export interface NoticeFlowData {
   /** For broker/other-agent signers, evidence of authority must be on file. */
   authorityEvidenceOnFile?: boolean;
 
-  // Date inputs (drive the date engine at production time)
+  // --- Notice execution + service dates (attorney ruling B1, 2026-06-02) ----
+  // BINDING: the signing date (the "Dated:" line) and the service date(s) are
+  // two distinct legal facts and must be two distinct fields. The face carries
+  // the signingDate (invariant after signing); the proof of service carries the
+  // service attempt(s); the 3-day clock runs from the day after the SUCCESSFUL
+  // service. See deriveComplianceInputs() in lib/flow/escalation.ts.
+
+  /** The "Dated:" line on the notice face (when the landlord executed it).
+   *  Invariant after signing; never changes on re-serve. */
+  signingDate?: string; // 'YYYY-MM-DD'
+  /** Optional: where the notice was signed. Not currently shown on the face. */
+  signingAddress?: string;
+
+  // LEGACY single-shot date inputs. Retained so existing gates/renderer/flow
+  // keep working until the re-serve UI slice cuts over to deriving these from
+  // the successful service attempt. NOT removed in this slice (would break
+  // signed-off code). deriveComplianceInputs() computes the effective values
+  // from serviceAttempts when present.
   serviceDate?: string; // 'YYYY-MM-DD'
   serviceMethod?: ServiceMethod;
 
-  // --- A2 escalation foundation (attorney ruling 2026-06-02) ----------------
-  // Additive and persistence-agnostic: these live in the state object so a
-  // later persistence slice (Supabase/auth) can save/load them unchanged.
-  //
-  // NOTE (blocked, attorney): the produced notice's "Dated:" line is currently
-  // derived from serviceDate (renderNotice.ts). Her A2 ruling requires the
-  // notice DATE to stay fixed on re-serve while the SERVICE date changes. That
-  // separation is a notice-face question pending her sign-off, so the
-  // recompute-on-re-serve UI is NOT wired yet. The fields below do not touch
-  // the notice face or the date math.
+  // --- A2 escalation model (attorney ruling B1, 2026-06-02) -----------------
+  // Additive and persistence-agnostic: a later persistence slice can save/load
+  // these unchanged.
 
   /**
-   * Reasonable-diligence record of service attempts. Per attorney A2, failed
+   * Reasonable-diligence record of service attempts. Per attorney B1, failed
    * attempts establish diligence for escalating to the next method; they do
-   * NOT affect the date computation (the engine counts from the successful
-   * method's service date only). Listed on the proof of service.
+   * NOT affect the date computation and never alter the face. The proof of
+   * service lists failed attempts as the diligence narrative and the SUCCESS
+   * entry as the actual service event.
    */
   serviceAttempts?: ServiceAttempt[];
+  /** Computed: id of the SUCCESS entry in serviceAttempts, if any. */
+  successfulServiceAttemptId?: string;
   /**
-   * Snapshot of the face-determining fields captured when the notice was
-   * produced. Used by evaluateStaleness (lib/flow/escalation.ts) to detect a
-   * stale notice on re-serve: if the amount or any face field changed since
-   * production, it is legally a NEW notice (attorney A2 exceptions i/ii), and
-   * the same notice may not be re-served. Service date/method are intentionally
-   * excluded from the snapshot — changing them is the normal re-serve case.
+   * Detection basis for staleness: a snapshot of the face-determining fields
+   * captured when the notice was produced. Compared against current data by
+   * evaluateStaleness (lib/flow/escalation.ts). Service date/method are
+   * intentionally excluded — re-serving on a new date is the normal path.
    */
   productionSnapshot?: ProductionSnapshot;
+  /**
+   * Verdict (attorney B1): null/undefined = the produced notice is still valid;
+   * a non-null reason means the notice's face has drifted and a NEW notice must
+   * be generated (new signingDate, new serviceAttempts[], no carry-over of
+   * prior failed attempts). Derived from evaluateStaleness.
+   */
+  stalenessReason?: StalenessReason | null;
 }
 
-/** Outcome of a single service attempt. */
-export type ServiceAttemptOutcome = 'succeeded' | 'failed';
+/** Outcome of a single service attempt (attorney B1 enum). */
+export type ServiceAttemptOutcome = 'SUCCESS' | 'FAILED';
 
-/** A single recorded service attempt (reasonable-diligence record). */
+/**
+ * Identity of the person who attempted service. A valid server must be 18+ and
+ * must NOT be a party to the notice (CCP service requirements). Captured for
+ * the proof of service.
+ */
+export interface ServiceServerIdentity {
+  name: string;
+  address: string;
+  /** Must be true for a valid server. */
+  age18Plus: boolean;
+  /** Must be false — a party to the notice may not serve it. */
+  partyToNotice: boolean;
+}
+
+/**
+ * A single recorded service attempt (attorney B1 binding shape).
+ * NOTE: `method` keeps the existing engine ServiceMethod enum
+ * ('personal' | 'substituted' | 'post_and_mail'); the attorney's ruling uses
+ * the uppercase labels PERSONAL / SUBSTITUTED / POSTING_AND_MAILING, which map
+ * 1:1. Keeping the lowercase enum avoids a breaking rename across the date
+ * engine (flagged for her as a representation detail, not legal substance).
+ */
 export interface ServiceAttempt {
-  method: ServiceMethod;
+  /** Stable id (so successfulServiceAttemptId can reference it). */
+  id?: string;
   /** Date the attempt was made, 'YYYY-MM-DD'. */
-  date: string;
+  attemptDate: string;
+  method: ServiceMethod;
   outcome: ServiceAttemptOutcome;
-  /** Optional free-text note (e.g. "no answer, 6pm weekday"). */
-  note?: string;
+  /** Reasonable-diligence record (e.g. "no answer, 6pm weekday"). */
+  notes?: string;
+  /** Required for substituted / post-and-mail SUCCESS: the date mailing
+   *  completed. The compliance engine counts from this date for those methods. */
+  mailingDate?: string;
+  server: ServiceServerIdentity;
 }
+
+/** Why a produced notice is stale (attorney B1 enum). */
+export type StalenessReason = 'AMOUNT_CHANGED' | 'FACE_FIELD_CHANGED';
 
 /**
  * The face-determining values captured at production time. Compared against

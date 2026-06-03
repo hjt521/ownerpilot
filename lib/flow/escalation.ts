@@ -28,7 +28,10 @@
 import type {
   NoticeFlowData,
   ProductionSnapshot,
+  ServiceAttempt,
+  StalenessReason,
 } from './noticeFlowState';
+import type { ServiceMethod } from '../dates/computeCompliancePeriod';
 
 /** Sum of base-rent amounts demanded. */
 function totalAmount(data: NoticeFlowData): number {
@@ -78,10 +81,16 @@ export function captureProductionSnapshot(
 export interface StalenessResult {
   /** True if the amount or any face field changed since the snapshot. */
   stale: boolean;
-  /** True specifically if the demanded amount changed (attorney A2 exception i). */
+  /** True specifically if the demanded amount changed (attorney B1: AMOUNT_CHANGED). */
   amountChanged: boolean;
   /** Human-readable labels of every face field that changed. */
   changedFields: string[];
+  /**
+   * Attorney B1 verdict enum: 'AMOUNT_CHANGED' if the amount changed,
+   * 'FACE_FIELD_CHANGED' if some other face field changed, null if fresh.
+   * Store this on NoticeFlowData.stalenessReason.
+   */
+  reason: StalenessReason | null;
 }
 
 /** Compare two normalized string values for change. */
@@ -106,7 +115,7 @@ export function evaluateStaleness(
   snapshot: ProductionSnapshot | undefined = data.productionSnapshot,
 ): StalenessResult {
   if (!snapshot) {
-    return { stale: false, amountChanged: false, changedFields: [] };
+    return { stale: false, amountChanged: false, changedFields: [], reason: null };
   }
 
   const changedFields: string[] = [];
@@ -183,9 +192,96 @@ export function evaluateStaleness(
     changedFields.push('Signer role');
   }
 
+  const stale = changedFields.length > 0;
   return {
-    stale: changedFields.length > 0,
+    stale,
     amountChanged,
     changedFields,
+    reason: !stale ? null : amountChanged ? 'AMOUNT_CHANGED' : 'FACE_FIELD_CHANGED',
   };
+}
+
+// --- Service-attempt + signing-date helpers (attorney ruling B1) -----------
+
+/** Return the SUCCESS service attempt, if any (there should be at most one). */
+export function getSuccessfulAttempt(
+  data: NoticeFlowData,
+): ServiceAttempt | undefined {
+  return (data.serviceAttempts || []).find((a) => a.outcome === 'SUCCESS');
+}
+
+export interface ComplianceInputs {
+  serviceDate: string;
+  serviceMethod: ServiceMethod;
+}
+
+/**
+ * Derive the compliance-engine inputs from the SUCCESSFUL service attempt,
+ * per attorney B1:
+ *   - PERSONAL success  => count from attemptDate.
+ *   - SUBSTITUTED / POSTING_AND_MAILING success => count from mailingDate (the
+ *     date mailing completed). Returns undefined if mailingDate is missing
+ *     (it is required for those methods to be a valid SUCCESS).
+ * Returns undefined when there is no successful attempt yet. The date MATH is
+ * unchanged — this only selects which captured date feeds the existing engine.
+ */
+export function deriveComplianceInputs(
+  data: NoticeFlowData,
+): ComplianceInputs | undefined {
+  const success = getSuccessfulAttempt(data);
+  if (!success) return undefined;
+  if (success.method === 'personal') {
+    if (!success.attemptDate) return undefined;
+    return { serviceDate: success.attemptDate, serviceMethod: 'personal' };
+  }
+  // substituted / post_and_mail: count from the mailing date.
+  if (!success.mailingDate) return undefined;
+  return { serviceDate: success.mailingDate, serviceMethod: success.method };
+}
+
+export interface SigningDateCheck {
+  /** False = a hard error (refuse to proceed). */
+  ok: boolean;
+  /** Set when ok is false. */
+  error?: string;
+  /** Set when proceeding is allowed but the gap is large (soft flag). */
+  warning?: string;
+}
+
+/**
+ * Validate the signing date against the first service attempt (attorney B1
+ * question 3):
+ *   - Signing date may PRECEDE the first service date (normal).
+ *   - Signing AFTER the first service date is a hard error (would look backdated).
+ *   - Signing more than `maxGapDays` calendar days before the first service is
+ *     a soft warning (operational safety rail; default 30, configurable).
+ * Pure: no date-engine dependency; uses calendar-day arithmetic only.
+ */
+export function validateSigningDate(
+  signingDate: string | undefined,
+  firstServiceDate: string | undefined,
+  maxGapDays = 30,
+): SigningDateCheck {
+  if (!signingDate || !firstServiceDate) return { ok: true };
+  const sign = new Date(`${signingDate}T00:00:00`);
+  const serve = new Date(`${firstServiceDate}T00:00:00`);
+  if (Number.isNaN(sign.getTime()) || Number.isNaN(serve.getTime())) {
+    return { ok: true }; // malformed input is caught elsewhere
+  }
+  const dayMs = 24 * 60 * 60 * 1000;
+  const gapDays = Math.round((serve.getTime() - sign.getTime()) / dayMs);
+  if (gapDays < 0) {
+    return {
+      ok: false,
+      error:
+        'The signing date is after the first service date. A notice cannot be served before it is signed.',
+    };
+  }
+  if (gapDays > maxGapDays) {
+    return {
+      ok: true,
+      warning: `This notice was signed ${gapDays} days before the first service attempt. Notices older than ${maxGapDays} days should generally be re-signed before serving.`,
+    };
+  }
+  return { ok: true };
 }

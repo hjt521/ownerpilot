@@ -8,8 +8,11 @@
 import {
   captureProductionSnapshot,
   evaluateStaleness,
+  getSuccessfulAttempt,
+  deriveComplianceInputs,
+  validateSigningDate,
 } from './escalation';
-import type { NoticeFlowData } from './noticeFlowState';
+import type { NoticeFlowData, ServiceAttempt } from './noticeFlowState';
 
 let passed = 0;
 let failed = 0;
@@ -114,6 +117,78 @@ console.log('\n=== Tenant change ===\n');
   const r = evaluateStaleness(data);
   check('13. tenant change => stale', r.stale === true);
   check('14. tenant change => names "Tenant names"', r.changedFields.includes('Tenant names'));
+}
+
+console.log('\n=== stalenessReason enum (B1) ===\n');
+{
+  const data = baseData();
+  data.productionSnapshot = captureProductionSnapshot(data);
+  check('15. fresh => reason null', evaluateStaleness(data).reason === null);
+}
+{
+  const data = baseData();
+  data.productionSnapshot = captureProductionSnapshot(data);
+  data.rentPeriods = [{ periodStartDate: '2026-05-01', periodEndDate: '2026-05-31', amount: 2500 }];
+  check('16. amount change => reason AMOUNT_CHANGED', evaluateStaleness(data).reason === 'AMOUNT_CHANGED');
+}
+{
+  const data = baseData();
+  data.productionSnapshot = captureProductionSnapshot(data);
+  data.tenantNames = ['Jane Tenant', 'John Tenant'];
+  check('17. face change => reason FACE_FIELD_CHANGED', evaluateStaleness(data).reason === 'FACE_FIELD_CHANGED');
+}
+
+console.log('\n=== getSuccessfulAttempt / deriveComplianceInputs (B1) ===\n');
+const server = { name: 'Pat Server', address: '9 Server Rd', age18Plus: true, partyToNotice: false };
+function attempt(over: Partial<ServiceAttempt>): ServiceAttempt {
+  return { attemptDate: '2026-06-01', method: 'personal', outcome: 'FAILED', server, ...over };
+}
+{
+  const data = baseData();
+  data.serviceAttempts = [attempt({ outcome: 'FAILED' })];
+  check('18. no SUCCESS => getSuccessfulAttempt undefined', getSuccessfulAttempt(data) === undefined);
+  check('19. no SUCCESS => deriveComplianceInputs undefined', deriveComplianceInputs(data) === undefined);
+}
+{
+  const data = baseData();
+  data.serviceAttempts = [
+    attempt({ attemptDate: '2026-06-01', method: 'personal', outcome: 'FAILED' }),
+    attempt({ attemptDate: '2026-06-03', method: 'personal', outcome: 'SUCCESS', id: 's1' }),
+  ];
+  const ci = deriveComplianceInputs(data);
+  check('20. personal SUCCESS => counts from attemptDate', !!ci && ci.serviceDate === '2026-06-03' && ci.serviceMethod === 'personal', JSON.stringify(ci));
+  check('21. getSuccessfulAttempt returns the SUCCESS entry', getSuccessfulAttempt(data)?.id === 's1');
+}
+{
+  const data = baseData();
+  data.serviceAttempts = [
+    attempt({ method: 'substituted', outcome: 'SUCCESS', attemptDate: '2026-06-04', mailingDate: '2026-06-05' }),
+  ];
+  const ci = deriveComplianceInputs(data);
+  check('22. substituted SUCCESS => counts from mailingDate', !!ci && ci.serviceDate === '2026-06-05' && ci.serviceMethod === 'substituted', JSON.stringify(ci));
+}
+{
+  const data = baseData();
+  data.serviceAttempts = [attempt({ method: 'post_and_mail', outcome: 'SUCCESS', mailingDate: undefined })];
+  check('23. post_and_mail SUCCESS without mailingDate => undefined (invalid)', deriveComplianceInputs(data) === undefined);
+}
+
+console.log('\n=== validateSigningDate (B1 q3) ===\n');
+{
+  const r = validateSigningDate('2026-06-01', '2026-06-02');
+  check('24. signing before service => ok, no warning', r.ok === true && !r.warning && !r.error);
+}
+{
+  const r = validateSigningDate('2026-06-02', '2026-06-01');
+  check('25. signing AFTER service => hard error', r.ok === false && !!r.error);
+}
+{
+  const r = validateSigningDate('2026-05-01', '2026-06-15');
+  check('26. signing >30 days before service => warning, still ok', r.ok === true && !!r.warning);
+}
+{
+  const r = validateSigningDate(undefined, '2026-06-01');
+  check('27. missing signing date => ok (validated elsewhere)', r.ok === true);
 }
 
 console.log(`\n${'-'.repeat(40)}`);
