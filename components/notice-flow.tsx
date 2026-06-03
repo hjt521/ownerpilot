@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useState, Fragment, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   createFlowState,
   FlowStep,
@@ -84,7 +84,7 @@ function renderStepBody(
     case FlowStep.Review:
       return <ReviewStep data={data} />;
     case FlowStep.ServiceInstructions:
-      return <ServiceStep />;
+      return <ServiceStep data={data} />;
     default:
       return null;
   }
@@ -1107,6 +1107,147 @@ const SERVICE_METHOD_LABELS: Record<ServiceMethod, string> = {
   post_and_mail: 'Post and mail (posted at property + mailed)',
 };
 
+// Attorney-approved on-screen service guidance (ruling 2026-06-02,
+// `ownerpilot_service_instructions_attorney_ruling.md`). VERBATIM — no paraphrase.
+// Double-asterisks mark bold per the ruling; renderInlineBold turns them into <strong>.
+// Condition 2: if POS_PROSE for a method changes, the matching copy here must be
+// re-reviewed in the same pass. Condition 6: each render logged (method,
+// jurisdiction, notice ID) — pending logging hookup.
+type GuidanceBlock =
+  | { kind: 'p'; text: string }
+  | { kind: 'h'; text: string }
+  | { kind: 'ul'; items: string[] };
+
+const SERVICE_GUIDANCE: { method: ServiceMethod; title: string; blocks: GuidanceBlock[] }[] = [
+  {
+    method: 'personal',
+    title: 'Personal service — how to do it',
+    blocks: [
+      { kind: 'p', text: `Personal service is the cleanest method. Here's how it works:` },
+      {
+        kind: 'ul',
+        items: [
+          `**Someone 18 or older who is not you and not a party to this notice** hands a copy of the notice directly to the tenant.`,
+          `Hand it to the tenant — not a roommate, not a family member, not a neighbor. If the tenant won't take it, setting it down at their feet after telling them what it is generally counts; running after them is not required.`,
+          `The server fills in **where** the notice was handed over (street address) on page 2 of the form, **after** it is served — not before.`,
+          `The 3-day clock starts the **day after** delivery. Don't count the day you served it. Weekends and court holidays don't count toward the 3 days. (This is built into how the form's deadline is calculated.)`,
+        ],
+      },
+      { kind: 'p', text: `Keep it simple: if you can hand it to the tenant in person, do that. Every other method exists because personal service didn't work.` },
+    ],
+  },
+  {
+    method: 'substituted',
+    title: 'Substituted service — how to do it',
+    blocks: [
+      { kind: 'p', text: `Substituted service is only allowed **after** you (or your server) have made a real, good-faith effort to hand the notice to the tenant in person and couldn't. The technical name is "reasonable diligence." Here's what that means in practice:` },
+      { kind: 'h', text: `First — attempt personal service` },
+      {
+        kind: 'ul',
+        items: [
+          `Most California courts expect **at least three attempts**, on **different days and at different times of day** (e.g., one morning, one evening, one weekend). One drive-by at 2pm on a Tuesday isn't enough.`,
+          `Keep notes — date, time, what happened. Your server will list these on the proof of service.`,
+        ],
+      },
+      { kind: 'h', text: `Then — substituted service` },
+      {
+        kind: 'ul',
+        items: [
+          `Leave a copy with a **person of suitable age and discretion** at the tenant's home or usual workplace. In practice that means someone who looks like an adult (typically 18+), appears to live or work there, and seems capable of understanding what they're being handed. A young child, a stranger walking past, or someone who refuses to identify themselves doesn't qualify.`,
+          `Tell that person what the document is. Don't slide it under the door.`,
+        ],
+      },
+      { kind: 'h', text: `And — mail a copy` },
+      {
+        kind: 'ul',
+        items: [
+          `On the **same day** as the substituted hand-off, mail a copy of the notice to the tenant at the address where service was made. First-class mail is fine. Keep the postmark or a mailing receipt.`,
+          `If you skip the mailing, or mail it the next day, the service is **defective** — the 3-day clock never legally starts.`,
+        ],
+      },
+      { kind: 'h', text: `What this does to the timing` },
+      { kind: 'p', text: `Substituted service requires the same 3 business days (weekends and court holidays excluded). **Most California courts also require you to add 5 calendar days to the period because of the mailing step.** That is enforced reflexively by many trial courts, and filing your unlawful detainer too early — even by one day — is grounds for dismissal. The safe path: wait the full 3 business days + 5 calendar days before filing if you served by substitution.` },
+    ],
+  },
+  {
+    method: 'post_and_mail',
+    title: 'Posting and mailing — how to do it',
+    blocks: [
+      { kind: 'p', text: `Posting and mailing is the last-resort method. It's only available after **both** personal service has failed (reasonable diligence — see substituted service above) **and** substituted service couldn't be completed because no person of suitable age and discretion could be found at the home or workplace.` },
+      { kind: 'p', text: `If those two conditions are met:` },
+      { kind: 'h', text: `Post` },
+      {
+        kind: 'ul',
+        items: [
+          `Affix a copy of the notice in a **conspicuous place on the property** — the front door is the standard choice. Tape, tack, or otherwise attach it so it's plainly visible to anyone approaching the unit.`,
+          `Take a dated photo of the posted notice showing the address. This is your evidence that posting happened on the date claimed. If you don't have a photo and the tenant contests service, you have a problem.`,
+        ],
+      },
+      { kind: 'h', text: `Mail` },
+      {
+        kind: 'ul',
+        items: [
+          `On the **same day** as the posting, mail a copy of the notice to the tenant at the address of the rental property. First-class mail. Keep the postmark or mailing receipt.`,
+          `Same trap as substituted service: skip the mailing or mail it the next day, and the service is **defective**.`,
+        ],
+      },
+      { kind: 'h', text: `What this does to the timing` },
+      { kind: 'p', text: `Same as substituted service: 3 business days + most California courts require you to add 5 calendar days for the mailing. Treat a 3-day post-and-mail as an **8-business-day-plus** timeline before you can file the unlawful detainer. Filing earlier risks dismissal.` },
+    ],
+  },
+];
+
+// Local-filing copy: attorney-approved GENERIC placeholder (Q5). Jurisdiction-
+// specific copy (LAMC sections, day counts, form embeds) stays pending the
+// verified-rules data per condition 3.
+const LOCAL_FILING_COPY: string[] = [
+  `California **state law** does not require you to file a 3-day pay-or-quit with any state agency at the service stage. (The court filing — the unlawful detainer complaint — comes later, only if the tenant doesn't pay or vacate.)`,
+  `**Some California cities and counties do require landlords to file or report notices.** Examples include the City of Los Angeles (where copies of certain notices and other documentation must be filed with the LA Housing Department) and other rent-controlled or just-cause jurisdictions. **Whether a filing requirement applies to your notice depends on the property's exact address and the local ordinance in effect on the date of service.**`,
+  `OwnerPilot's address-specific local-rules data is being built. Until that data is live for your jurisdiction, **confirm any local filing requirement with your city's housing or rent-stabilization department, or with your attorney, before you file your unlawful detainer.** A missed local filing can be a complete defense to an eviction.`,
+];
+
+// Splits attorney copy on `**` and renders odd segments bold. Text is otherwise
+// reproduced exactly as approved.
+function renderInlineBold(text: string): ReactNode {
+  return text.split('**').map((seg, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="font-semibold">{seg}</strong>
+    ) : (
+      <Fragment key={i}>{seg}</Fragment>
+    ),
+  );
+}
+
+function GuidanceBlocks({ blocks }: { blocks: GuidanceBlock[] }) {
+  return (
+    <>
+      {blocks.map((b, i) => {
+        if (b.kind === 'h') {
+          return (
+            <p key={i} className="text-sm font-semibold text-gray-900 mt-3">
+              {renderInlineBold(b.text)}
+            </p>
+          );
+        }
+        if (b.kind === 'ul') {
+          return (
+            <ul key={i} className="list-disc space-y-1.5 pl-5 text-sm text-gray-700 leading-relaxed">
+              {b.items.map((it, j) => (
+                <li key={j}>{renderInlineBold(it)}</li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <p key={i} className="text-sm text-gray-700 leading-relaxed">
+            {renderInlineBold(b.text)}
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
 function LandlordStep({
   data,
   update,
@@ -1319,20 +1460,97 @@ function ReviewStep({ data }: { data: NoticeFlowData }) {
   );
 }
 
-// --- Step 7: Service instructions (terminal placeholder for this slice) -----
+// --- Step 7: Service instructions -------------------------------------------
+// Post-production guidance. The legal substance (how to serve under CCP § 1162,
+// local filing) is NOT authored here — it renders as "pending attorney review"
+// until the service-instruction copy is signed off, then drops into these
+// sections. This shell only structures the step and echoes data already captured.
 
-function ServiceStep() {
+function ServiceStep({ data }: { data: NoticeFlowData }) {
+  const serviceDateDisplay =
+    data.serviceDate && /^\d{4}-\d{2}-\d{2}$/.test(data.serviceDate)
+      ? formatNoticeDate(data.serviceDate)
+      : null;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <StepIntro>
-        Serving the notice correctly is as important as preparing it. Detailed
-        service and proof-of-service guidance is the next piece we&apos;re
-        building.
+        You&apos;ve produced the notice. Serving it correctly is what makes it
+        count — here&apos;s what happens next.
       </StepIntro>
-      <p className="text-sm text-gray-500 leading-relaxed">
-        (This step will cover how to serve, recording proof of service, and any
-        local filing obligations.)
-      </p>
+
+      {/* Echo of choices already captured (the user's own data). */}
+      <div className="rounded-lg border border-gray-200 px-5 py-4 space-y-2 text-sm">
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500">Service method</span>
+          <span className="font-medium text-gray-900">
+            {data.serviceMethod ? SERVICE_METHOD_LABELS[data.serviceMethod] : 'Not selected'}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500">Intended service date</span>
+          <span className="font-medium text-gray-900">
+            {serviceDateDisplay ?? 'Not set'}
+          </span>
+        </div>
+      </div>
+
+      {/* How to serve — all three methods in order so the cross-references
+          ("see substituted service above") resolve; the chosen one is badged.
+          A landlord who picks personal may still escalate if it fails. */}
+      <section className="space-y-3">
+        <h3 className="font-semibold text-gray-900">How to serve</h3>
+        <div className="space-y-4">
+          {SERVICE_GUIDANCE.map((g) => {
+            const selected = data.serviceMethod === g.method;
+            return (
+              <div
+                key={g.method}
+                className={`rounded-lg border px-5 py-4 space-y-2 ${
+                  selected ? 'border-blue-400 bg-blue-50/40' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-gray-900">{g.title}</p>
+                  {selected && (
+                    <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                      Your selected method
+                    </span>
+                  )}
+                </div>
+                <GuidanceBlocks blocks={g.blocks} />
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Complete the proof of service — Q4 revised wording (verbatim). */}
+      <section className="space-y-2">
+        <h3 className="font-semibold text-gray-900">Complete the proof of service</h3>
+        <p className="text-sm text-gray-700 leading-relaxed">
+          The proof of service is page 2 of the notice you produced. As the
+          produced notice states, it is completed and signed after you serve —
+          not before.{' '}
+          <strong className="font-semibold">
+            The person who serves the notice must be 18 or older and cannot be a
+            party to the notice (i.e., not you, if the notice is from you).
+          </strong>{' '}
+          The exact wording for each method is on the form itself.
+        </p>
+      </section>
+
+      {/* Local filing — Q5 attorney-approved generic placeholder (verbatim). */}
+      <section className="space-y-2">
+        <h3 className="font-semibold text-gray-900">Local filing — does your city require it?</h3>
+        <div className="space-y-2">
+          {LOCAL_FILING_COPY.map((para, i) => (
+            <p key={i} className="text-sm text-gray-700 leading-relaxed">
+              {renderInlineBold(para)}
+            </p>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
