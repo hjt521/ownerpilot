@@ -2,27 +2,28 @@
  * Notice template version + attorney wording sign-off.
  *
  * The v4 payment-fields change introduces new on-the-face wording (the § 1161(2)
- * payee trio, the per-branch HOW TO PAY text, the mailbox-rule sentence). Per the
- * attorney ruling of 2026-06-01, NO v4 notice may be produced until she has
- * signed off that wording in the Part-D pass.
+ * payee trio, the per-branch HOW TO PAY text, the mailbox-rule sentence). That
+ * wording was SIGNED OFF by the A1 Part D sign-off (2026-06-03) and countersign
+ * (2026-06-04); the thirteen renderer prose constants are build-locked, verbatim
+ * only (see the LOCKED comment in renderNotice.ts).
  *
- * This is the single switch that enforces that. The produce gate
+ * This is the single switch that enforces the gate. The produce gate
  * (evaluateCanProduceV4) adds a hard blocker while it is false, so the entire
  * v4 path "fails closed" — exactly like the unverified-holiday-year and
  * unverified-RTC-dataset gates elsewhere in the codebase.
  *
- * DO NOT flip this to true until the reviewing attorney has signed off the v4
- * wording in writing. Flipping it is the deliberate, reviewable act that turns
- * v4 production on.
+ * It is now true (since 2026-06-04). Flipping it back to false would block all
+ * v4 production; do not change it without a fresh attorney ruling.
  */
 
 export const NOTICE_TEMPLATE_VERSION = 'v4-2026-06-01-payment-fields';
 
 /**
- * Attorney wording sign-off for the v4 template. FALSE until signed off.
- * While false, evaluateCanProduceV4 blocks production with TEMPLATE_NOT_SIGNED_OFF.
+ * Attorney wording sign-off for the v4 template. TRUE since 2026-06-04 per the
+ * A1 Part D countersign (see renderNotice.ts LOCKED comment). While false,
+ * evaluateCanProduceV4 would block production with TEMPLATE_NOT_SIGNED_OFF.
  */
-export const V4_WORDING_SIGNED_OFF = false;
+export const V4_WORDING_SIGNED_OFF = true;
 
 /**
  * Whether address geocoding is live. While false, the § 1161(2) 5-mile

@@ -3,6 +3,7 @@ import {
   evaluateCanProduce,
 } from './gates';
 import { NoticeFlowData } from './noticeFlowState';
+import { individualLandlord } from './landlord.fixture';
 import { CA_JUDICIAL_HOLIDAYS } from '../dates/holidays';
 
 let passed = 0;
@@ -117,7 +118,7 @@ function validBaseline(): NoticeFlowData {
     baseRentOnlyConfirmed: true,
     paymentMethods: [{ kind: 'mail', mailAddress: 'PO Box 1, Fresno, CA' }],
     signerName: 'Owner Name',
-    signerRole: 'owner',
+    ...individualLandlord('owner'),
     serviceDate: '2026-06-01',
     serviceMethod: 'personal',
   };
@@ -189,7 +190,7 @@ console.log('\n8. SAFETY: hard-block city blocks production');
 console.log('\n9. Broker signer without authority evidence blocks');
 {
   const d = validBaseline();
-  d.signerRole = 'authorized_agent_broker';
+  Object.assign(d, individualLandlord('broker_or_manager'));
   d.authorityEvidenceOnFile = undefined;
   const r = evaluateCanProduce(d);
   check('broker w/o authority blocks', hasBlocker(r.blockers, 'AUTHORITY_EVIDENCE_MISSING'));

@@ -10,6 +10,7 @@ import {
   NoticeFlowData,
   createFlowState,
 } from './noticeFlowState';
+import { individualLandlord, entityLandlord } from './landlord.fixture';
 
 let passed = 0;
 let failed = 0;
@@ -26,9 +27,15 @@ function fullData(): NoticeFlowData {
     tenantNames: ['Jane Tenant'],
     rentPeriods: [{ periodStartDate: '2026-04-01', periodEndDate: '2026-04-30', amount: 2000 }],
     baseRentOnlyConfirmed: true,
-    paymentMethods: [{ kind: 'mail', mailAddress: 'PO Box 1' }],
+    paymentMethods: [], // legacy field still required by the type; unused by the v4 step
+    // v4 payment (§ 1161(2) payee trio + branch) — the PaymentInstructions step
+    // reads these, not the legacy paymentMethods array.
+    landlordContact: { name: 'Owner Name', phone: '(559) 555-0100', streetAddress: '12 Almond Ln, Fresno, CA 93650' },
+    paymentBranch: 'mail_only',
     signerName: 'Owner Name',
-    signerRole: 'owner',
+    // Stage-1 identity slice (canonical signerCapacity; signerRole removed in Defect #3).
+    ...individualLandlord('owner', { names: ['Owner Name'] }),
+    signingDate: '2026-06-01', // B1: execution date, distinct from service date
     serviceDate: '2026-06-01',
     serviceMethod: 'personal',
   };
@@ -96,10 +103,15 @@ console.log('\n6. Amount: period shape + base-rent confirm');
 
 console.log('\n7. Payment: at least one method chosen (deep validity is at Review)');
 {
-  const d = fullData(); d.paymentMethods = [];
-  check('no method fails', validateStep(FlowStep.PaymentInstructions, d).canAdvance === false);
-  // Note: an INVALID-but-present method still advances here; validity is consolidated at Review.
-  const d2 = fullData(); d2.paymentMethods = [{ kind: 'eft' }]; // invalid for produce, but present
+  const d = fullData(); d.paymentBranch = undefined;
+  check('no branch fails', validateStep(FlowStep.PaymentInstructions, d).canAdvance === false);
+  // A present, shape-complete branch that is DEEP-invalid (P.O. box on a
+  // personal-delivery branch) still advances; deep validity is consolidated at Review.
+  const d2 = fullData();
+  d2.paymentBranch = 'in_person_and_mail';
+  d2.personalDeliveryDays = 'Monday through Friday';
+  d2.personalDeliveryHours = '9:00 a.m. to 5:00 p.m.';
+  d2.landlordContact = { name: 'Owner Name', phone: '(559) 555-0100', streetAddress: 'P.O. Box 7, Fresno, CA 93701' };
   check('present-but-invalid method still advances (deferred to Review)', validateStep(FlowStep.PaymentInstructions, d2).canAdvance === true);
 }
 
@@ -108,7 +120,7 @@ console.log('\n8. Landlord: signer + role + service date/method; agent needs aut
   const ok = validateStep(FlowStep.LandlordAgentInfo, fullData());
   check('owner baseline ok', ok.canAdvance === true, JSON.stringify(ok.issues));
 
-  const d = fullData(); d.signerRole = 'authorized_agent_broker'; d.authorityEvidenceOnFile = undefined;
+  const d = fullData(); Object.assign(d, individualLandlord('broker_or_manager')); d.authorityEvidenceOnFile = undefined;
   check('agent w/o authority fails', validateStep(FlowStep.LandlordAgentInfo, d).canAdvance === false);
 
   const d2 = fullData(); d2.serviceDate = 'nope';
@@ -116,6 +128,21 @@ console.log('\n8. Landlord: signer + role + service date/method; agent needs aut
 
   const d3 = fullData(); d3.serviceMethod = undefined;
   check('missing service method fails', validateStep(FlowStep.LandlordAgentInfo, d3).canAdvance === false);
+}
+
+console.log('\n8b. Entity landlord: signerTitleRequired at intake (Defect #3 §1, LOCKED)');
+{
+  const okE = fullData();
+  Object.assign(okE, entityLandlord('officer_member_trustee')); // sets signerTitle 'Managing Member'
+  check('entity WITH title advances', validateStep(FlowStep.LandlordAgentInfo, okE).canAdvance === true,
+    JSON.stringify(validateStep(FlowStep.LandlordAgentInfo, okE).issues));
+
+  const noTitle = fullData();
+  Object.assign(noTitle, entityLandlord('officer_member_trustee'));
+  noTitle.signerTitle = '   '; // whitespace-only -> treated as blank
+  const r = validateStep(FlowStep.LandlordAgentInfo, noTitle);
+  check('entity with blank title is blocked at intake', r.canAdvance === false);
+  check('title issue surfaced', r.issues.some((i) => /title/i.test(i)));
 }
 
 console.log('\n=== advance / goBack ===');

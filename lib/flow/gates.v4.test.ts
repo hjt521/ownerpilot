@@ -1,5 +1,6 @@
 import { evaluateCanProduceV4 } from './gates';
 import type { NoticeFlowData } from './noticeFlowState';
+import { individualLandlord, entityLandlord } from './landlord.fixture';
 
 let passed = 0;
 let failed = 0;
@@ -25,7 +26,8 @@ function noManagedBlockers(r: ReturnType<typeof evaluateCanProduceV4>): boolean 
   return V4_MANAGED.every((c) => !has(r, c));
 }
 
-/** A fully valid v4 configuration EXCEPT that wording sign-off is still false. */
+/** A fully valid v4 configuration. (Wording sign-off is now LIVE, so this
+ *  produces; it no longer hangs on the sign-off gate.) */
 function validV4(): NoticeFlowData {
   return {
     dispute: { tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' },
@@ -38,7 +40,8 @@ function validV4(): NoticeFlowData {
     landlordContact: { name: 'Jack Tah', phone: '(559) 555-0142', streetAddress: '4336 Prospect Ave, Los Angeles, CA 90028' },
     paymentBranch: 'mail_only',
     signerName: 'Jack Tah',
-    signerRole: 'owner',
+    ...individualLandlord('owner', { names: ['Jack Tah'] }),
+    signingDate: '2026-06-02', // B1: execution date (<= service date)
     serviceDate: '2026-06-02',
     serviceMethod: 'personal',
   };
@@ -46,20 +49,22 @@ function validV4(): NoticeFlowData {
 
 console.log('\n=== v4 produce gate ===\n');
 
-console.log('1. Fully valid config is blocked by the wording sign-off; no v4-managed blockers');
+console.log('1. Fully valid config PRODUCES (wording sign-off is live)');
 {
   const r = evaluateCanProduceV4(validV4());
-  check('cannot produce (sign-off pending)', !r.canProduce);
-  check('TEMPLATE_NOT_SIGNED_OFF present', has(r, 'TEMPLATE_NOT_SIGNED_OFF'));
+  check('can produce', r.canProduce === true, `blockers: ${codes(r).join(', ')}`);
+  check('no TEMPLATE_NOT_SIGNED_OFF (wording signed off)', !has(r, 'TEMPLATE_NOT_SIGNED_OFF'));
   check('no v4-managed blockers on a valid config', noManagedBlockers(r), `got: ${codes(r).join(', ')}`);
   check('reports template version', r.templateVersion.startsWith('v4-'));
 }
 
-console.log('2. Sign-off gate is always present (fails closed)');
+console.log('2. Wording sign-off is live: TEMPLATE_NOT_SIGNED_OFF never blocks; broken configs still fail for their own reasons');
 {
-  // Even a broken config still carries the sign-off blocker.
   const broken = validV4(); delete broken.signerName;
-  check('sign-off blocker present even when other things fail', has(evaluateCanProduceV4(broken), 'TEMPLATE_NOT_SIGNED_OFF'));
+  const r = evaluateCanProduceV4(broken);
+  check('no sign-off blocker (wording signed off)', !has(r, 'TEMPLATE_NOT_SIGNED_OFF'));
+  check('broken config still cannot produce', !r.canProduce);
+  check('fails for the real reason (missing signer)', has(r, 'SIGNER_MISSING'));
 }
 
 console.log('3. § 1161(2) payee trio gates payment config');
@@ -87,7 +92,7 @@ console.log('4. Bank-deposit branch: 5-mile production gate (ruling C2)');
   const r2 = evaluateCanProduceV4(bank);
   check('bank with attestation clears bank gates', !has(r2, 'BANK_5_MILE_NOT_VERIFIED') && !has(r2, 'PAYMENT_CONFIG_INVALID'),
     `got: ${codes(r2).join(', ')}`);
-  check('sign-off still blocks', has(r2, 'TEMPLATE_NOT_SIGNED_OFF'));
+  check('produces once bank gates clear (sign-off live)', r2.canProduce === true, `got: ${codes(r2).join(', ')}`);
 }
 
 console.log('5. Bank-deposit without paper instrument is invalid (Decision 1)');
@@ -129,6 +134,26 @@ console.log('7. in_person_and_mail with P.O. box payee address is invalid');
   const r = evaluateCanProduceV4(d);
   check('PO box on in-person -> PAYMENT_CONFIG_INVALID', has(r, 'PAYMENT_CONFIG_INVALID'));
   check('PO box error surfaced', r.paymentErrors.some((e) => e.code === 'PERSONAL_DELIVERY_POBOX'));
+}
+
+console.log('8. Entity landlord: production OPEN (Defect #3 countersigned 2026-06-05; gate lifted)');
+{
+  const e = validV4();
+  Object.assign(e, entityLandlord('officer_member_trustee')); // entity + signerTitle 'Managing Member'
+  const r = evaluateCanProduceV4(e);
+  check('entity can produce now', r.canProduce === true, `blockers: ${codes(r).join(', ')}`);
+  check('ENTITY_LANDLORD_NOT_SUPPORTED no longer fires', !has(r, 'ENTITY_LANDLORD_NOT_SUPPORTED'));
+}
+
+console.log('9. Entity landlord without a signer title: SIGNER_TITLE_REQUIRED blocks (fail closed)');
+{
+  const e = validV4();
+  Object.assign(e, entityLandlord('officer_member_trustee'));
+  delete e.signerTitle;
+  const r = evaluateCanProduceV4(e);
+  check('blocked without entity title', r.canProduce === false);
+  check('SIGNER_TITLE_REQUIRED fires', has(r, 'SIGNER_TITLE_REQUIRED'));
+  check('ENTITY_LANDLORD_NOT_SUPPORTED still gone', !has(r, 'ENTITY_LANDLORD_NOT_SUPPORTED'));
 }
 
 console.log(`\n${'-'.repeat(40)}`);

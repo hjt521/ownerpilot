@@ -52,6 +52,7 @@ export type PaymentBranchErrorCode =
   | 'BANK_BRANCH_REQUIRED'
   | 'BANK_ACCOUNT_REQUIRED'
   | 'BANK_PAPER_INSTRUMENT_REQUIRED'
+  | 'EFT_REQUIRES_NON_EFT_PRIMARY'
   | 'EFT_NOT_PREVIOUSLY_ESTABLISHED';
 
 export type PaymentBranchWarningCode = 'BANK_5_MILE_UNVERIFIED';
@@ -86,7 +87,7 @@ export interface PaymentBranchResult {
    * Whether the § 1161(2) mailbox-rule sentence must render for this config.
    * True on every v4 branch (the listed address can receive mail), and always
    * true when the listed address looks like a P.O. box. The RENDERER consumes
-   * this; the exact sentence wording is part of the attorney Part-D sign-off.
+   * this; the exact sentence wording was locked by the 2026-06-04 A1 Part D countersign.
    */
   mailboxRuleApplies: boolean;
   /** True when the listed street address looks like a P.O. box (C1 heuristic). */
@@ -279,6 +280,25 @@ export function validatePaymentBranch(
   // EFT is never a branch; it only attaches to a valid primary branch and only
   // when previously established (§ 1161(2)). It can never be the sole method.
   if (input.eftElectionAvailable === true) {
+    // EFT is an ADD-ON only — never the sole offered method. It must attach to
+    // a valid NON-EFT primary branch (mail_only / in_person_and_mail /
+    // bank_deposit). Enforced explicitly (attorney A1 countersign, 2026-06-04)
+    // so the rule does not depend on the incidental BRANCH_REQUIRED error: a
+    // config carrying an EFT election with no valid primary branch is rejected
+    // here by name. (A bank_deposit without a confirmed paper instrument is a
+    // cash method and is already rejected by BANK_PAPER_INSTRUMENT_REQUIRED, so
+    // the only configs that survive are those with a genuine non-cash,
+    // non-EFT primary.)
+    if (branch === undefined || !VALID_BRANCHES.includes(branch)) {
+      errors.push({
+        code: 'EFT_REQUIRES_NON_EFT_PRIMARY',
+        scope: 'eft',
+        message:
+          'Electronic funds transfer cannot be the only payment method offered ' +
+          'on the notice. Add a non-EFT method — by mail, in person, or by bank ' +
+          'deposit — as the primary method. (Cal. Code Civ. Proc. § 1161(2).)',
+      });
+    }
     if (input.eftPreviouslyEstablishedConfirmed !== true) {
       errors.push({
         code: 'EFT_NOT_PREVIOUSLY_ESTABLISHED',

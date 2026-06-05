@@ -26,6 +26,7 @@ import {
   NoticeFlowData,
 } from './noticeFlowState';
 import { evaluateDisputeScreen } from './gates';
+import { validateSigningDate } from './escalation';
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -143,12 +144,31 @@ export function validateStep(
       break;
     }
 
-    case FlowStep.LandlordAgentInfo:
+    case FlowStep.LandlordAgentInfo: {
+      // Defect #1: landlord type must be chosen, branch fields complete.
+      const id = data.landlordIdentity;
+      if (!id || !data.landlordIdentityConfirmed) {
+        issues.push('Select whether the landlord is an individual or an entity.');
+      }
+      if (id?.type === 'entity') {
+        if (isBlank(id.entityLegalName)) issues.push("Enter the entity's full legal name.");
+        if (!id.entityType) issues.push('Select the entity type.');
+      }
       if (isBlank(data.signerName)) issues.push('A signer name is required.');
-      if (!data.signerRole) issues.push('Select who is signing the notice.');
+      if (!data.signerCapacity) issues.push('Select who is signing the notice.');
+      // signerTitleRequired (Defect #3 countersign 2026-06-05 §1, LOCKED): for an
+      // entity landlord the signer title is required, so the face never composes
+      // "By: [name], " with a trailing comma and blank title. Intake-layer guard;
+      // the renderer also fails closed, and the produce gate re-checks it.
+      if (id?.type === 'entity' && isBlank(data.signerTitle)) {
+        issues.push("Enter the signer's title (Managing Member, President, Trustee, etc.).");
+      }
+      // Authority evidence required when the signer is not the insider
+      // (owner for an individual, officer/member/trustee for an entity).
       if (
-        data.signerRole &&
-        data.signerRole !== 'owner' &&
+        data.signerCapacity &&
+        data.signerCapacity !== 'owner' &&
+        data.signerCapacity !== 'officer_member_trustee' &&
         data.authorityEvidenceOnFile !== true
       ) {
         issues.push(
@@ -163,7 +183,19 @@ export function validateStep(
       if (!data.serviceMethod) {
         issues.push('Select how the notice will be served.');
       }
+      // Signing (execution) date — a distinct legal fact from the service date
+      // (attorney ruling B1, 2026-06-02). It prints on the face "Dated:" line.
+      if (!validISO(data.signingDate)) {
+        issues.push('A valid signing (execution) date is required.');
+      } else {
+        // HARD error if the notice is signed AFTER the first service date. The
+        // >30-day-before case is a soft warning surfaced in the UI, NOT a block
+        // (build decision: warn, don't block).
+        const sd = validateSigningDate(data.signingDate, data.serviceDate);
+        if (!sd.ok && sd.error) issues.push(sd.error);
+      }
       break;
+    }
 
     case FlowStep.Review:
       // Review has no "own fields" — its advancement is governed entirely by

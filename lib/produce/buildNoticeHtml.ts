@@ -82,6 +82,7 @@ const STYLE = `
   .sig .line { width:3.2in; border-top:0.6pt solid var(--ink); }
   .sig .name { font-size:11pt; font-weight:600; margin-top:4px; }
   .sig .role { font-size:9pt; font-weight:500; color:var(--muted); }
+  .sig .by { font-size:10pt; margin-top:3px; color:var(--ink); }
   .sig .dated { font-size:10pt; margin-top:8px; }
   .sig .dated strong { font-weight:600; }
   .pos-intro { font-size:10pt; line-height:15pt; text-align:left; margin:0 0 12px 0; }
@@ -148,6 +149,18 @@ export function buildNoticeDocumentHtml(model: NoticeModel): string {
 
   const perjury = boldTokens(esc(POS_PROSE.perjury), ['I declare under penalty of perjury']);
 
+  // Signature identity block. Individual: name + role label. Entity (Defect #3,
+  // countersigned 2026-06-05): entity legal name, then "By: [name], [title]" —
+  // composed from the SAME build-locked constants the text face uses
+  // (entitySignatureByLabel + entitySignerTitleJoiner), byte-identical prose.
+  // This renderer only arranges/styles those strings; it authors no new wording.
+  const signatureIdentity = signature.entity
+    ? `<div class="name">${esc(signature.entity.legalName)}</div>` +
+      `<div class="by">${esc(signature.entity.byLabel)} ${esc(signature.entity.signerName)}` +
+      `${esc(NOTICE_PROSE.entitySignerTitleJoiner)}${esc(signature.entity.signerTitle)}</div>`
+    : `<div class="name">${esc(signature.name)}</div>` +
+      `<div class="role">${esc(signature.roleLabel)}</div>`;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -194,8 +207,7 @@ export function buildNoticeDocumentHtml(model: NoticeModel): string {
   <div class="sig">
     <div class="dated" style="margin:0 0 16px 0">Dated: <strong>${esc(signature.datedFormatted)}</strong></div>
     <div class="line"></div>
-    <div class="name">${esc(signature.name)}</div>
-    <div class="role">${esc(signature.roleLabel)}</div>
+    ${signatureIdentity}
   </div>
 
   <div class="footer">

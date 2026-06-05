@@ -58,10 +58,25 @@ export interface DisputeScreen {
   tenantBankruptcy?: DisputeAnswer;
 }
 
-export type SignerRole =
-  | 'owner'
-  | 'authorized_agent_broker'
-  | 'other_authorized_agent';
+// --- Defect #1 (corporate-landlord ruling 2026-06-04/05): landlord identity ---
+// Step 3 two-stage capture. `landlordIdentity` is the single source of truth for
+// "who is the landlord." `signerCapacity` is the canonical capacity field with
+// branch-specific options. (Defect #3, countersigned 2026-06-05, removed the
+// legacy derived `signerRole`: the individual face now derives its role label
+// from signerCapacity directly, and the entity face renders the entity signature
+// block. Entity production is unblocked once the gate lifts.)
+
+export type EntityType = 'llc' | 'corporation' | 'lp' | 'gp' | 'trust' | 'other';
+
+export type LandlordIdentity =
+  | { type: 'individual'; names: string[] }
+  | { type: 'entity'; entityLegalName: string; entityType: EntityType };
+
+export type SignerCapacity =
+  | 'owner' // individual branch: the natural-person owner
+  | 'officer_member_trustee' // entity branch: insider (managing member / officer / trustee)
+  | 'broker_or_manager' // both branches: licensed broker / property manager
+  | 'authorized_agent'; // both branches: other authorized agent
 
 /**
  * v4 (CCP § 1161(2) payment-fields change, per attorney ruling 2026-06-01).
@@ -86,6 +101,15 @@ export type PaymentBranch = 'mail_only' | 'in_person_and_mail' | 'bank_deposit';
  * statute lists name + telephone + address as a unitary trio; all are required.
  */
 export interface LandlordContact {
+  /**
+   * @deprecated (Defect #2, 2026-06-05) No longer the source of the § 1161(2)
+   * "Payable to:" name. The payee name is now DERIVED from `landlordIdentity`
+   * (composed owner line / entity legal name) or, when the payee is a
+   * non-landlord, from `payeeOverrideName` — see derivePayeeName() in
+   * lib/produce/renderNotice.ts. Retained as an optional field so existing
+   * reads/snapshots don't break; removed once the Step-4 UI cutover lands. Do
+   * not author new reads against this for the face.
+   */
   name?: string;
   /** Required; validated as a US phone (10 digits; formatted variants accepted). */
   phone?: string;
@@ -141,10 +165,40 @@ export interface NoticeFlowData {
   eftElectionAvailable?: boolean;
   /** Required true when eftElectionAvailable: § 1161(2) allows EFT only if previously established. */
   eftPreviouslyEstablishedConfirmed?: boolean;
+  /**
+   * UI-only: set true when the landlord dismisses the bank account-number
+   * interstitial (Part E). Sticky for the notice — the callout shows once at
+   * first bank-details entry and, once dismissed, does NOT reappear on field
+   * edits or on leaving/returning to Step 4. A new notice (fresh flow state)
+   * shows it again. Inert w.r.t. legal logic: not gated, not snapshotted, not
+   * part of staleness.
+   */
+  bankInterstitialDismissed?: boolean;
 
-  // Step 5 — landlord/agent
+  // Step 4 — non-landlord payee override (Defect #2, ruling 2026-06-05 §1/§3).
+  // Default (false/undefined): the § 1161(2) payee name is the landlord, derived
+  // from landlordIdentity. When true, rent is paid to someone other than the
+  // landlord (e.g. a property manager); the face renders
+  // "[payeeOverrideName], as agent for [landlord identity]". The "as agent for"
+  // phrasing and owner-line joiners are build-locked face constants in
+  // renderNotice.ts; composition happens only there (see derivePayeeName).
+  /** True when rent is paid to a non-landlord payee (the override checkbox). */
+  payeeIsNonLandlord?: boolean;
+  /** Required when payeeIsNonLandlord: the non-landlord payee's name. */
+  payeeOverrideName?: string;
+
+  // Step 3 — landlord identity + signer (Defect #1, ruling §1.1)
+  /** Single source of truth for who the landlord is. Set via the Stage-1 toggle. */
+  landlordIdentity?: LandlordIdentity;
+  /** True once the user has affirmatively chosen individual vs entity. Gates
+   *  production: a notice cannot produce until the landlord type is confirmed. */
+  landlordIdentityConfirmed?: boolean;
   signerName?: string;
-  signerRole?: SignerRole;
+  /** Canonical signer capacity. */
+  signerCapacity?: SignerCapacity;
+  /** Required when signerCapacity = 'officer_member_trustee' (entity insider),
+   *  and for any entity landlord (the "By: [name], [title]" face line). */
+  signerTitle?: string;
   /** For broker/other-agent signers, evidence of authority must be on file. */
   authorityEvidenceOnFile?: boolean;
 
@@ -269,7 +323,7 @@ export interface ProductionSnapshot {
   bankAccountNumber?: string;
   eftElectionAvailable?: boolean;
   signerName: string;
-  signerRole?: SignerRole;
+  signerCapacity?: SignerCapacity;
 }
 
 export interface NoticeFlowState {

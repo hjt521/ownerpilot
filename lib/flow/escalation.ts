@@ -74,7 +74,7 @@ export function captureProductionSnapshot(
     bankAccountNumber: data.bankAccountNumber,
     eftElectionAvailable: data.eftElectionAvailable,
     signerName: (data.signerName ?? '').trim(),
-    signerRole: data.signerRole,
+    signerCapacity: data.signerCapacity,
   };
 }
 
@@ -188,7 +188,7 @@ export function evaluateStaleness(
   if (differs(data.signerName ?? '', snapshot.signerName)) {
     changedFields.push('Signer name');
   }
-  if ((data.signerRole ?? '') !== (snapshot.signerRole ?? '')) {
+  if ((data.signerCapacity ?? '') !== (snapshot.signerCapacity ?? '')) {
     changedFields.push('Signer role');
   }
 

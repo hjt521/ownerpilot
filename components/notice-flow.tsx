@@ -8,12 +8,20 @@ import {
   NoticeFlowData,
   DisputeAnswer,
   RentPeriod,
-  SignerRole,
+  SignerCapacity,
+  EntityType,
   PaymentBranch,
   LandlordContact,
+  ServiceAttempt,
 } from '@/lib/flow/noticeFlowState';
 import { validateStep } from '@/lib/flow/advancement';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
+import {
+  validateSigningDate,
+  getSuccessfulAttempt,
+  captureProductionSnapshot,
+  evaluateStaleness,
+} from '@/lib/flow/escalation';
 import { renderNotice, NoticeRenderError, formatNoticeDate } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import type { ServiceMethod } from '@/lib/dates/computeCompliancePeriod';
@@ -82,9 +90,9 @@ function renderStepBody(
     case FlowStep.LandlordAgentInfo:
       return <LandlordStep data={data} update={update} />;
     case FlowStep.Review:
-      return <ReviewStep data={data} />;
+      return <ReviewStep data={data} update={update} />;
     case FlowStep.ServiceInstructions:
-      return <ServiceStep data={data} />;
+      return <ServiceStep data={data} update={update} />;
     default:
       return null;
   }
@@ -450,7 +458,7 @@ function PropertyStep({
 
 // --- Shared field helpers ---------------------------------------------------
 
-function FieldLabel({ htmlFor, children }: { htmlFor: string; children: ReactNode }) {
+function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: ReactNode }) {
   return (
     <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-700 mb-2">
       {children}
@@ -862,6 +870,113 @@ const PAYMENT_BRANCH_HELP: Record<PaymentBranch, string> = {
   bank_deposit: 'The tenant deposits a check or money order at a bank branch.',
 };
 
+// Attorney-locked operator copy (corporate-landlord ruling Round 3, 2026-06-05, §1.2(3)).
+// Build verbatim; advisory only, no legal claim. Always-visible helper beneath the
+// Step 4 "Name to receive payment" field. Mitigates the bare-name entity-shorthand
+// risk ("Ptag Prop") at the point of entry, since the interim gate is suffix-only.
+const STEP4_ENTITY_NAME_HELPER =
+  'If your property is owned by an LLC, corporation, trust, or partnership, enter ' +
+  'the entity\'s full registered legal name (e.g., "PTAG Properties, LLC" — not ' +
+  '"PTAG Prop"). Corporate-landlord support is coming soon; in the meantime, ' +
+  'please consult counsel for the three-day notice.';
+
+// Attorney-locked operator copy (Part E ruling, 2026-06-04). Build verbatim; any
+// change requires a fresh short note. This is NOT one of the thirteen face-copy
+// prose constants — it's a separate operator-copy lock for this surface. The
+// rendered text is exactly:
+//   "Heads up:" + BODY_1 + BOLD + BODY_2
+const BANK_INTERSTITIAL_BODY_1 =
+  ' State law requires the full account number to appear on a three-day notice ' +
+  'that designates a bank for payment (Cal. Code Civ. Proc. § 1161(2)). Once the ' +
+  'notice is served, it commonly ends up in tenant files, and if an unlawful ' +
+  'detainer is filed it becomes part of the court record. We recommend using a ';
+const BANK_INTERSTITIAL_BOLD = 'dedicated rent-collection account';
+const BANK_INTERSTITIAL_BODY_2 =
+  ' — not your main operating account — for the bank you list here.';
+
+/**
+ * Inline, dismissible callout shown at first entry of bank details in Step 4
+ * (Part E ruling). The dismissal is sticky (stored in flow data), so it renders
+ * once per bank entry and does NOT re-render on field edits or on leaving and
+ * returning to Step 4 (the step remounts). A new notice shows it again. Not a
+ * modal.
+ */
+function BankAccountInterstitial({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  if (data.bankInterstitialDismissed) return null;
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <p className="leading-relaxed">
+        <strong>Heads up:</strong>
+        {BANK_INTERSTITIAL_BODY_1}
+        <strong>{BANK_INTERSTITIAL_BOLD}</strong>
+        {BANK_INTERSTITIAL_BODY_2}
+      </p>
+      <button
+        type="button"
+        onClick={() => update({ bankInterstitialDismissed: true })}
+        className="mt-0.5 shrink-0 text-xs font-semibold text-amber-800 underline"
+      >
+        Got it
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The two § 1161(2) bank-deposit attestations (paper-instrument + within-five-miles).
+ * Single source of truth so the labels render identically on both the payment step
+ * and the Review step. Writes the same flow-data fields from either surface; the
+ * produce gate (evaluateCanProduceV4) reads those fields, so checking them anywhere
+ * clears the corresponding blockers. Labels are attorney-approved attestation copy —
+ * render verbatim; changes require a fresh note.
+ */
+function BankDepositAttestations({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  return (
+    <>
+      <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={data.bankDepositPaperInstrumentConfirmed === true}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            update({ bankDepositPaperInstrumentConfirmed: e.target.checked })
+          }
+          className="mt-1"
+        />
+        <span className="text-sm text-gray-800 leading-relaxed">
+          I confirm payment is made by <strong>check, money order, or
+          cashier&apos;s check</strong> deposited to the account (not cash).
+        </span>
+      </label>
+      <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={data.bankBranchWithinFiveMilesAttested === true}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            update({ bankBranchWithinFiveMilesAttested: e.target.checked })
+          }
+          className="mt-1"
+        />
+        <span className="text-sm text-amber-900 leading-relaxed">
+          I confirm this branch is <strong>within five miles</strong> of the
+          rental property (required by Cal. Code Civ. Proc. &sect; 1161(2)).
+        </span>
+      </label>
+    </>
+  );
+}
+
 function PaymentStep({
   data,
   update,
@@ -894,6 +1009,9 @@ function PaymentStep({
             placeholder="Person or company to whom rent is paid"
             className={inputClass}
           />
+          <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+            {STEP4_ENTITY_NAME_HELPER}
+          </p>
         </div>
 
         <div>
@@ -983,6 +1101,7 @@ function PaymentStep({
 
             {branch === b && b === 'bank_deposit' && (
               <div className="space-y-3 rounded-lg border border-gray-200 px-4 py-4">
+                <BankAccountInterstitial data={data} update={update} />
                 <div>
                   <FieldLabel htmlFor="bankName">Bank name<Req /></FieldLabel>
                   <input
@@ -1020,34 +1139,7 @@ function PaymentStep({
                     className={inputClass}
                   />
                 </div>
-                <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={data.bankDepositPaperInstrumentConfirmed === true}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      update({ bankDepositPaperInstrumentConfirmed: e.target.checked })
-                    }
-                    className="mt-1"
-                  />
-                  <span className="text-sm text-gray-800 leading-relaxed">
-                    I confirm payment is made by <strong>check, money order, or
-                    cashier&apos;s check</strong> deposited to the account (not cash).
-                  </span>
-                </label>
-                <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={data.bankBranchWithinFiveMilesAttested === true}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      update({ bankBranchWithinFiveMilesAttested: e.target.checked })
-                    }
-                    className="mt-1"
-                  />
-                  <span className="text-sm text-amber-900 leading-relaxed">
-                    I confirm this branch is <strong>within five miles</strong> of the
-                    rental property (required by Cal. Code Civ. Proc. &sect; 1161(2)).
-                  </span>
-                </label>
+                <BankDepositAttestations data={data} update={update} />
               </div>
             )}
           </Fragment>
@@ -1096,11 +1188,72 @@ function PaymentStep({
 
 // --- Step 5: Landlord / agent info ------------------------------------------
 
-const SIGNER_ROLE_LABELS: Record<SignerRole, string> = {
-  owner: 'The property owner',
-  authorized_agent_broker: 'A licensed broker / property manager',
-  other_authorized_agent: 'Another authorized agent',
+const LANDLORD_TYPE_LABELS: Record<'individual' | 'entity', { title: string; help: string }> = {
+  individual: {
+    title: 'An individual',
+    help: 'One or more named people own the property.',
+  },
+  entity: {
+    title: 'An entity',
+    help: 'An LLC, corporation, partnership, or trust owns the property.',
+  },
 };
+
+const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
+  llc: 'LLC',
+  corporation: 'Corporation',
+  lp: 'Limited Partnership',
+  gp: 'General Partnership',
+  trust: 'Trust',
+  other: 'Other',
+};
+
+// Signer-capacity options per branch (ruling §1.2). Individual insider = "owner";
+// entity insider = "officer/member/trustee". Broker and other-agent appear in both.
+const INDIVIDUAL_CAPACITY_LABELS: Record<'owner' | 'broker_or_manager' | 'authorized_agent', string> = {
+  owner: 'The property owner',
+  broker_or_manager: 'A licensed broker / property manager',
+  authorized_agent: 'Another authorized agent',
+};
+const ENTITY_CAPACITY_LABELS: Record<
+  'officer_member_trustee' | 'broker_or_manager' | 'authorized_agent',
+  string
+> = {
+  officer_member_trustee: 'An officer, member, or trustee of the entity',
+  broker_or_manager: 'A licensed broker or property manager retained by the entity',
+  authorized_agent: 'Another authorized agent of the entity',
+};
+
+// Attorney-approved entity-not-supported copy (corporate-landlord ruling Round 1
+// §5.2 Option A). Verbatim; operator-copy lock. Shown when the user selects "An
+// entity" while the entity branch is gated (production blocked until Defect #3).
+const ENTITY_NOT_SUPPORTED_COPY =
+  "Corporate landlords aren't supported yet. We're finishing the entity " +
+  'signature flow and expect to enable it soon. For now, this product supports ' +
+  'notices from individual landlords only. If your property is owned by an LLC, ' +
+  'corporation, or other entity, please consult counsel for the three-day notice ' +
+  'while we finalize the entity flow.';
+
+// Stage-1 toggle patch: set the landlord type (single source of truth) and mark
+// it confirmed. Preserves any already-entered branch fields when re-selecting.
+function setLandlordTypePatch(
+  type: 'individual' | 'entity',
+  data: NoticeFlowData,
+): Partial<NoticeFlowData> {
+  if (type === 'individual') {
+    const names = data.landlordIdentity?.type === 'individual' ? data.landlordIdentity.names : [];
+    return { landlordIdentity: { type: 'individual', names }, landlordIdentityConfirmed: true };
+  }
+  const prev = data.landlordIdentity?.type === 'entity' ? data.landlordIdentity : undefined;
+  return {
+    landlordIdentity: {
+      type: 'entity',
+      entityLegalName: prev?.entityLegalName ?? '',
+      entityType: prev?.entityType ?? 'llc',
+    },
+    landlordIdentityConfirmed: true,
+  };
+}
 
 const SERVICE_METHOD_LABELS: Record<ServiceMethod, string> = {
   personal: 'In person (personal service)',
@@ -1274,6 +1427,14 @@ function LandlordStep({
   data: NoticeFlowData;
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
 }) {
+  // B1: the signing (execution) date is distinct from the service date. Inline
+  // feedback — hard error if signed after service, soft warning if >30 days
+  // before. The hard error also blocks advancement (advancement.ts) and
+  // production (gates.ts); the warning does neither (build decision: warn only).
+  const signingCheck = validateSigningDate(data.signingDate, data.serviceDate);
+  const li = data.landlordIdentity;
+  const entityName = li?.type === 'entity' ? li.entityLegalName : '';
+  const entityTypeVal: EntityType = li?.type === 'entity' ? li.entityType : 'llc';
   return (
     <div className="space-y-6">
       <StepIntro>
@@ -1285,56 +1446,210 @@ function LandlordStep({
         method-specific service instructions on the next screen.
       </p>
 
+      {/* Stage 1 — who is the landlord (Defect #1, ruling §2.1) */}
       <div>
-        <FieldLabel htmlFor="signerName">Signer&apos;s full name<Req /></FieldLabel>
-        <input
-          id="signerName"
-          type="text"
-          value={data.signerName ?? ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => update({ signerName: e.target.value })}
-          placeholder="Full legal name of the person signing"
-          className={inputClass}
-        />
-      </div>
-
-      <div>
-        <FieldLabel htmlFor="signerRole">Who is signing?<Req /></FieldLabel>
+        <FieldLabel>Who is the landlord on this notice?<Req /></FieldLabel>
         <div className="space-y-2">
-          {(Object.keys(SIGNER_ROLE_LABELS) as SignerRole[]).map((role) => (
+          {(['individual', 'entity'] as const).map((t) => (
             <label
-              key={role}
-              className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                data.signerRole === role ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+              key={t}
+              className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+                li?.type === t ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
               }`}
             >
               <input
                 type="radio"
-                name="signerRole"
-                checked={data.signerRole === role}
-                onChange={() => update({ signerRole: role })}
+                name="landlordType"
+                className="mt-1"
+                checked={li?.type === t}
+                onChange={() => update(setLandlordTypePatch(t, data))}
               />
-              <span className="text-gray-900">{SIGNER_ROLE_LABELS[role]}</span>
+              <span>
+                <span className="block text-gray-900">{LANDLORD_TYPE_LABELS[t].title}</span>
+                <span className="block text-sm text-gray-500">{LANDLORD_TYPE_LABELS[t].help}</span>
+              </span>
             </label>
           ))}
         </div>
       </div>
 
-      {data.signerRole && data.signerRole !== 'owner' && (
-        <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={data.authorityEvidenceOnFile === true}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              update({ authorityEvidenceOnFile: e.target.checked })
-            }
-            className="mt-1"
-          />
-          <span className="text-sm text-amber-900 leading-relaxed">
-            I confirm written authority to sign on the owner&apos;s behalf (a
-            property management agreement or written authorization) is on file.
-          </span>
-        </label>
+      {/* Entity branch is gated until Defect #3 ships — approved interstitial */}
+      {li?.type === 'entity' && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-relaxed">
+          {ENTITY_NOT_SUPPORTED_COPY}
+        </div>
       )}
+
+      {/* Entity identity fields */}
+      {li?.type === 'entity' && (
+        <>
+          <div>
+            <FieldLabel htmlFor="entityLegalName">Entity legal name<Req /></FieldLabel>
+            <input
+              id="entityLegalName"
+              type="text"
+              value={entityName}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                update((d) =>
+                  d.landlordIdentity?.type === 'entity'
+                    ? { landlordIdentity: { ...d.landlordIdentity, entityLegalName: e.target.value } }
+                    : {},
+                )
+              }
+              placeholder={'Full registered legal name, e.g. "PTAG Properties, LLC"'}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <FieldLabel htmlFor="entityType">Entity type<Req /></FieldLabel>
+            <select
+              id="entityType"
+              value={entityTypeVal}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                update((d) =>
+                  d.landlordIdentity?.type === 'entity'
+                    ? {
+                        landlordIdentity: {
+                          ...d.landlordIdentity,
+                          entityType: e.target.value as EntityType,
+                        },
+                      }
+                    : {},
+                )
+              }
+              className={inputClass}
+            >
+              {(Object.keys(ENTITY_TYPE_LABELS) as EntityType[]).map((et) => (
+                <option key={et} value={et}>
+                  {ENTITY_TYPE_LABELS[et]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* Signer name — shown once the landlord type is chosen */}
+      {li && (
+        <div>
+          <FieldLabel htmlFor="signerName">Signer&apos;s full name<Req /></FieldLabel>
+          <input
+            id="signerName"
+            type="text"
+            value={data.signerName ?? ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => update({ signerName: e.target.value })}
+            placeholder="Full legal name of the person signing"
+            className={inputClass}
+          />
+        </div>
+      )}
+
+      {/* Capacity — individual branch */}
+      {li?.type === 'individual' && (
+        <div>
+          <FieldLabel>Who is signing?<Req /></FieldLabel>
+          <div className="space-y-2">
+            {(Object.keys(INDIVIDUAL_CAPACITY_LABELS) as (keyof typeof INDIVIDUAL_CAPACITY_LABELS)[]).map(
+              (cap) => (
+                <label
+                  key={cap}
+                  className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+                    data.signerCapacity === cap ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="signerCapacity"
+                    checked={data.signerCapacity === cap}
+                    onChange={() => update({ signerCapacity: cap })}
+                  />
+                  <span className="text-gray-900">{INDIVIDUAL_CAPACITY_LABELS[cap]}</span>
+                </label>
+              ),
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Capacity — entity branch */}
+      {li?.type === 'entity' && (
+        <div>
+          <FieldLabel>In what capacity is the signer acting for the entity?<Req /></FieldLabel>
+          <div className="space-y-2">
+            {(Object.keys(ENTITY_CAPACITY_LABELS) as (keyof typeof ENTITY_CAPACITY_LABELS)[]).map((cap) => (
+              <label
+                key={cap}
+                className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+                  data.signerCapacity === cap ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="signerCapacity"
+                  checked={data.signerCapacity === cap}
+                  onChange={() => update({ signerCapacity: cap })}
+                />
+                <span className="text-gray-900">{ENTITY_CAPACITY_LABELS[cap]}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Signer title — required for an entity insider (officer/member/trustee) */}
+      {li?.type === 'entity' && data.signerCapacity === 'officer_member_trustee' && (
+        <div>
+          <FieldLabel htmlFor="signerTitle">Signer&apos;s capacity / title<Req /></FieldLabel>
+          <input
+            id="signerTitle"
+            type="text"
+            value={data.signerTitle ?? ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => update({ signerTitle: e.target.value })}
+            placeholder="e.g. Managing Member, President, Trustee"
+            className={inputClass}
+          />
+        </div>
+      )}
+
+      {/* Authority evidence — when the signer is not the insider */}
+      {data.signerCapacity &&
+        data.signerCapacity !== 'owner' &&
+        data.signerCapacity !== 'officer_member_trustee' && (
+          <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={data.authorityEvidenceOnFile === true}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                update({ authorityEvidenceOnFile: e.target.checked })
+              }
+              className="mt-1"
+            />
+            <span className="text-sm text-amber-900 leading-relaxed">
+              I confirm written authority to sign on the owner&apos;s behalf (a
+              property management agreement or written authorization) is on file.
+            </span>
+          </label>
+        )}
+
+      <div>
+        <FieldLabel htmlFor="signingDate">Date you sign the notice<Req /></FieldLabel>
+        <p className="text-sm text-gray-600 leading-relaxed mb-2">
+          This is the &ldquo;Dated:&rdquo; line on the notice itself &mdash; the day you
+          execute it. It can be the same day you serve, or a few days before, but it
+          cannot be after the service date.
+        </p>
+        <DateField
+          id="signingDate"
+          value={data.signingDate ?? ''}
+          onChange={(v) => update({ signingDate: v })}
+        />
+        {!signingCheck.ok && signingCheck.error && (
+          <p className="mt-2 text-sm text-red-700">{signingCheck.error}</p>
+        )}
+        {signingCheck.ok && signingCheck.warning && (
+          <p className="mt-2 text-sm text-amber-700">{signingCheck.warning}</p>
+        )}
+      </div>
 
       <div>
         <FieldLabel htmlFor="serviceDate">Intended service date<Req /></FieldLabel>
@@ -1390,7 +1705,13 @@ function LandlordStep({
 
 // --- Step 6: Review ---------------------------------------------------------
 
-function ReviewStep({ data }: { data: NoticeFlowData }) {
+function ReviewStep({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
   const result = evaluateCanProduceV4(data);
 
   // When the gate says ready, render the notice from the build-locked template
@@ -1418,6 +1739,10 @@ function ReviewStep({ data }: { data: NoticeFlowData }) {
 
   const downloadPdf = () => {
     if (!docHtml) return;
+    // B1 stale-guard: record the face-determining fields at the moment of
+    // production. evaluateStaleness (in ReServePanel) later compares current
+    // data against this snapshot to detect a drifted face on re-serve.
+    update({ productionSnapshot: captureProductionSnapshot(data) });
     // Open the styled document and trigger the browser's print-to-PDF.
     // The user picks "Save as PDF" in the print dialog. No external dependency.
     const w = window.open('', '_blank');
@@ -1461,6 +1786,22 @@ function ReviewStep({ data }: { data: NoticeFlowData }) {
           </ul>
         </div>
       )}
+
+      {!result.canProduce &&
+        data.paymentBranch === 'bank_deposit' &&
+        (data.bankDepositPaperInstrumentConfirmed !== true ||
+          data.bankBranchWithinFiveMilesAttested !== true) && (
+          <div className="space-y-3 rounded-lg border border-gray-200 px-5 py-4">
+            <p className="text-sm font-semibold text-gray-900">
+              Confirm these to finish the bank-deposit method
+            </p>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              These are the same confirmations from the payment step. Check them here
+              to clear the items above without going back.
+            </p>
+            <BankDepositAttestations data={data} update={update} />
+          </div>
+        )}
 
       {renderError && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
@@ -1508,7 +1849,362 @@ function ReviewStep({ data }: { data: NoticeFlowData }) {
 // until the service-instruction copy is signed off, then drops into these
 // sections. This shell only structures the step and echoes data already captured.
 
-function ServiceStep({ data }: { data: NoticeFlowData }) {
+function newAttemptId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `att_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+/**
+ * Re-serve panel (attorney ruling B1, slice 2). Records each service attempt
+ * into serviceAttempts[]: failed attempts are the reasonable-diligence record
+ * that lets the landlord escalate to the next method; the one SUCCESS sets the
+ * 3-day clock (via deriveComplianceInputs in the produce gate). The notice FACE
+ * never changes here — only the off-face computation and the diligence record
+ * move. This panel does NOT auto-fill the rendered proof of service (that stays
+ * the attorney-locked hand-filled form) and does NOT enforce method ordering.
+ */
+function ReServePanel({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  const attempts = data.serviceAttempts ?? [];
+  const success = getSuccessfulAttempt(data);
+  const computed = evaluateCanProduceV4(data).computedDates;
+  // B1 stale-guard: compare current data against the snapshot taken at produce.
+  // Computed on the fly (not persisted — persisting stalenessReason + the
+  // re-generation audit event is the deferred D2 slice).
+  const staleness = evaluateStaleness(data);
+
+  const [method, setMethod] = useState<ServiceMethod>(data.serviceMethod ?? 'personal');
+  const [attemptDate, setAttemptDate] = useState('');
+  const [outcome, setOutcome] = useState<'SUCCESS' | 'FAILED'>('FAILED');
+  const [mailingDate, setMailingDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [serverName, setServerName] = useState('');
+  const [serverAddress, setServerAddress] = useState('');
+  const [serverIs18, setServerIs18] = useState(false);
+  const [serverNotParty, setServerNotParty] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const needsMailing = method === 'substituted' || method === 'post_and_mail';
+  const mailingRequiredNow = needsMailing && outcome === 'SUCCESS';
+
+  const resetForm = () => {
+    setAttemptDate('');
+    setMailingDate('');
+    setNotes('');
+    setServerName('');
+    setServerAddress('');
+    setServerIs18(false);
+    setServerNotParty(false);
+    setOutcome('FAILED');
+    setErrors([]);
+  };
+
+  const handleAdd = () => {
+    const errs: string[] = [];
+    if (!attemptDate) errs.push('Enter the date of the attempt.');
+    if (!serverName.trim()) errs.push('Enter the name of the person who served.');
+    if (!serverAddress.trim()) errs.push('Enter the address of the person who served.');
+    if (!serverIs18) errs.push('Confirm the person who served is 18 or older.');
+    if (!serverNotParty) errs.push('Confirm the person who served is not a party to this notice.');
+    if (mailingRequiredNow && !mailingDate) {
+      errs.push('Enter the mailing date — it sets the 3-day clock for substituted or posting-and-mailing service.');
+    }
+    setErrors(errs);
+    if (errs.length) return;
+
+    const attempt: ServiceAttempt = {
+      id: newAttemptId(),
+      attemptDate,
+      method,
+      outcome,
+      ...(notes.trim() ? { notes: notes.trim() } : {}),
+      ...(needsMailing && mailingDate ? { mailingDate } : {}),
+      server: {
+        name: serverName.trim(),
+        address: serverAddress.trim(),
+        age18Plus: serverIs18,
+        partyToNotice: !serverNotParty,
+      },
+    };
+    update((d) => {
+      const next = [...(d.serviceAttempts ?? []), attempt];
+      return outcome === 'SUCCESS'
+        ? { serviceAttempts: next, successfulServiceAttemptId: attempt.id }
+        : { serviceAttempts: next };
+    });
+    resetForm();
+  };
+
+  const handleRemove = (id: string | undefined) => {
+    update((d) => {
+      const next = (d.serviceAttempts ?? []).filter((a) => a.id !== id);
+      return d.successfulServiceAttemptId === id
+        ? { serviceAttempts: next, successfulServiceAttemptId: undefined }
+        : { serviceAttempts: next };
+    });
+  };
+
+  // B1: a stale notice is legally a NEW notice. Clear the signing date (forces a
+  // fresh re-sign), empty serviceAttempts[] (no carry-over of prior failed
+  // attempts), and drop the prior snapshot/staleness. Current face details are
+  // intentionally KEPT — they are the updated values the new notice will carry.
+  const handleStartNew = () => {
+    update({
+      signingDate: undefined,
+      serviceAttempts: [],
+      successfulServiceAttemptId: undefined,
+      productionSnapshot: undefined,
+      stalenessReason: null,
+    });
+    resetForm();
+  };
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h3 className="font-semibold text-gray-900">Record what happened when you served</h3>
+        <p className="text-sm text-gray-700 leading-relaxed mt-1">
+          Log each attempt as you make it. Failed attempts are the reasonable-diligence
+          record that lets you move to the next method; the successful attempt is what
+          starts the tenant&apos;s 3-day clock. This does not change the notice itself —
+          only the proof of service and the off-the-notice deadline.
+        </p>
+      </div>
+
+      {attempts.length > 0 && (
+        <ul className="space-y-2">
+          {attempts.map((a) => (
+            <li
+              key={a.id}
+              className="rounded-lg border border-gray-200 px-4 py-3 text-sm flex items-start justify-between gap-4"
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
+                      a.outcome === 'SUCCESS'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    {a.outcome === 'SUCCESS' ? 'Served' : 'Failed'}
+                  </span>
+                  <span className="font-medium text-gray-900">{SERVICE_METHOD_LABELS[a.method]}</span>
+                  <span className="text-gray-500">on {formatNoticeDate(a.attemptDate)}</span>
+                </div>
+                {a.mailingDate && (
+                  <div className="text-gray-600">Mailing completed {formatNoticeDate(a.mailingDate)}</div>
+                )}
+                <div className="text-gray-600">Served by {a.server.name}</div>
+                {a.notes && <div className="text-gray-500 italic">{a.notes}</div>}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRemove(a.id)}
+                className="text-xs text-gray-500 underline shrink-0"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {staleness.reason ? (
+        <div className="rounded-lg border border-amber-400 bg-amber-50 px-5 py-4 space-y-3">
+          <p className="font-semibold text-amber-900">This notice is now out of date.</p>
+          <p className="text-sm text-amber-900 leading-relaxed">
+            Since you produced it,{' '}
+            {staleness.amountChanged
+              ? 'the amount demanded changed'
+              : 'something on the notice changed'}
+            {staleness.changedFields.length > 0
+              ? ` (${staleness.changedFields.join(', ')})`
+              : ''}
+            . Because the notice changed after it was produced, this one can&apos;t be
+            re-served &mdash; you&apos;ll need a new notice with the updated details. Starting
+            a new notice keeps your current entries but clears the prior signing date and
+            service attempts, so you&apos;ll re-sign and record fresh attempts. The earlier
+            failed attempts do not carry over.
+          </p>
+          <button
+            type="button"
+            onClick={handleStartNew}
+            className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Start a new notice
+          </button>
+        </div>
+      ) : success ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4 space-y-1">
+          <p className="font-semibold text-green-900">Service recorded as complete.</p>
+          {computed ? (
+            <p className="text-sm text-green-900 leading-relaxed">
+              Counting from your successful {SERVICE_METHOD_LABELS[success.method]} above, the
+              tenant has until <strong>{formatNoticeDate(computed.expirationDate)}</strong> to pay
+              or vacate (period begins {formatNoticeDate(computed.commencementDate)}). The notice
+              face is unchanged.
+            </p>
+          ) : (
+            <p className="text-sm text-green-900 leading-relaxed">
+              The deadline can&apos;t be computed for this date yet (the holiday calendar for that
+              year may not be verified). The notice face is unchanged.
+            </p>
+          )}
+          <p className="text-xs text-green-800">
+            Need to change something? Remove the successful attempt above first.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 px-5 py-4 space-y-4">
+          <p className="text-sm font-medium text-gray-900">Add an attempt</p>
+
+          <div>
+            <FieldLabel htmlFor="reserveMethod">Method used</FieldLabel>
+            <div className="space-y-2">
+              {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((m) => (
+                <label
+                  key={m}
+                  className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${
+                    method === m ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="reserveMethod"
+                    checked={method === m}
+                    onChange={() => setMethod(m)}
+                  />
+                  <span className="text-gray-900">{SERVICE_METHOD_LABELS[m]}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="reserveDate">Date of this attempt<Req /></FieldLabel>
+            <DateField id="reserveDate" value={attemptDate} onChange={setAttemptDate} />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="reserveOutcome">What happened?<Req /></FieldLabel>
+            <div className="space-y-2">
+              {(['FAILED', 'SUCCESS'] as const).map((o) => (
+                <label
+                  key={o}
+                  className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${
+                    outcome === o ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="reserveOutcome"
+                    checked={outcome === o}
+                    onChange={() => setOutcome(o)}
+                  />
+                  <span className="text-gray-900">
+                    {o === 'SUCCESS' ? 'Service was completed' : 'Attempt failed (no one available / refused)'}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {mailingRequiredNow && (
+            <div>
+              <FieldLabel htmlFor="reserveMailing">Date mailing was completed<Req /></FieldLabel>
+              <p className="text-sm text-gray-600 leading-relaxed mb-2">
+                For substituted service and posting-and-mailing, the 3-day clock counts from
+                the day the copy was mailed.
+              </p>
+              <DateField id="reserveMailing" value={mailingDate} onChange={setMailingDate} />
+            </div>
+          )}
+
+          <div>
+            <FieldLabel htmlFor="reserveServerName">Name of person who served<Req /></FieldLabel>
+            <input
+              id="reserveServerName"
+              type="text"
+              value={serverName}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setServerName(e.target.value)}
+              placeholder="Full name"
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="reserveServerAddress">Address of person who served<Req /></FieldLabel>
+            <input
+              id="reserveServerAddress"
+              type="text"
+              value={serverAddress}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setServerAddress(e.target.value)}
+              placeholder="Street address"
+              className={inputClass}
+            />
+          </div>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={serverIs18}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setServerIs18(e.target.checked)}
+              className="mt-1"
+            />
+            <span className="text-sm text-gray-800 leading-relaxed">
+              The person who served is 18 years of age or older.
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={serverNotParty}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setServerNotParty(e.target.checked)}
+              className="mt-1"
+            />
+            <span className="text-sm text-gray-800 leading-relaxed">
+              The person who served is not a party to this notice (not the owner or landlord
+              named on it).
+            </span>
+          </label>
+
+          {errors.length > 0 && (
+            <ul className="space-y-1 text-sm text-red-700 list-disc pl-5">
+              {errors.map((er, i) => (
+                <li key={i}>{er}</li>
+              ))}
+            </ul>
+          )}
+
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Add attempt
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ServiceStep({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
   const serviceDateDisplay =
     data.serviceDate && /^\d{4}-\d{2}-\d{2}$/.test(data.serviceDate)
       ? formatNoticeDate(data.serviceDate)
@@ -1536,6 +2232,10 @@ function ServiceStep({ data }: { data: NoticeFlowData }) {
           </span>
         </div>
       </div>
+
+      {/* Re-serve / attempt recording (slice 2). Sits between the summary and
+          the attorney-verbatim guidance below; does not touch either. */}
+      <ReServePanel data={data} update={update} />
 
       {/* How to serve guidance now lives on the Step 3 method selector (expands
           under each option). Step 4 keeps proof-of-service + local filing only. */}

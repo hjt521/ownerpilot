@@ -10,10 +10,11 @@
  *    text rendering and the structured model. This module does NOT author or
  *    paraphrase legal language on its own authority.
  *  - The HOW-TO-PAY wording introduced in v4 (the § 1161(2) payee trio, the
- *    per-branch text, the mailbox-rule and EFT sentences) is PROPOSED and
- *    PENDING ATTORNEY SIGN-OFF. Production is hard-blocked by the produce gate
- *    (evaluateCanProduceV4 → TEMPLATE_NOT_SIGNED_OFF) until that sign-off. These
- *    strings are drafts that track the statute for the attorney to red-line.
+ *    per-branch text, the mailbox-rule and EFT sentences) is LOCKED per the A1
+ *    Part D sign-off (A1_part_d_attorney_signoff_2026-06-03.md) and countersign
+ *    (A1_part_d_attorney_countersign_2026-06-04.md): the thirteen renderer prose
+ *    constants are build-locked, verbatim only. Any string-level change requires
+ *    a fresh attorney review packet.
  *  - Renders entered data VERBATIM (no capitalization tidying).
  *  - Consumes commencement/expiration dates; never recomputes them.
  *  - Proof of service rendered BLANK.
@@ -32,7 +33,7 @@
 import type {
   NoticeFlowData,
   RentPeriod,
-  SignerRole,
+  SignerCapacity,
   PaymentBranch,
 } from '../flow/noticeFlowState';
 
@@ -101,6 +102,15 @@ export interface NoticeModel {
     name: string;
     roleLabel: string;
     datedFormatted: string;
+    /** Defect #3 (entity): present when landlordIdentity.type === 'entity'.
+     *  The styled-HTML renderer (buildNoticeHtml) entity layout is a follow-up;
+     *  the text face renders this block today. */
+    entity?: {
+      legalName: string;
+      byLabel: string;
+      signerName: string;
+      signerTitle: string;
+    };
   };
   proofOfService: {
     tenantNamesJoined: string;
@@ -122,8 +132,9 @@ export class NoticeRenderError extends Error {
   }
 }
 
-// --- LOCKED / PROPOSED prose ------------------------------------------------
-// Sentences marked PROPOSED are pending attorney Part-D sign-off.
+// --- LOCKED prose -----------------------------------------------------------
+// All face-prose constants are build-locked, verbatim only. The v4 HOW TO PAY
+// sentences were locked by the A1 Part D countersign (2026-06-04).
 
 export const NOTICE_PROSE = {
   recipientRest:
@@ -142,7 +153,10 @@ export const NOTICE_PROSE = {
   forfeitureElection:
     'The landlord hereby elects to declare a forfeiture of the lease or rental agreement under which you occupy the premises if the amount demanded above is not paid in full within the time stated.',
 
-  // --- v4 HOW TO PAY (PROPOSED — pending attorney Part-D sign-off) ---------
+  // --- v4 HOW TO PAY (LOCKED — A1 Part D countersign 2026-06-04; verbatim only) ---
+  // Stored without trailing ": "; appended at render time. Locked face value is
+  // "Payable to: " (attorney countersign 2026-06-05 §2). Dropping the appended
+  // ": " would be a face-text change requiring a fresh ruling.
   payableToLabel: 'Payable to',
   telephoneLabel: 'Telephone',
   mailToLabel: 'By mail to',
@@ -151,18 +165,44 @@ export const NOTICE_PROSE = {
   bankLabel: 'Bank',
   bankBranchLabel: 'Branch',
   accountNumberLabel: 'Account number',
-  /** PROPOSED — tracks § 1161(2) mailbox-rule (deemed received on date posted). */
+  /** LOCKED 2026-06-04 (A1 Part D countersign) — § 1161(2) mailbox-rule (deemed received on date posted). */
   mailboxRuleSentence:
     'If you mail your payment to the name and address above, it is conclusively presumed received on the date posted, provided you can show proof of mailing. (Cal. Code Civ. Proc. \u00A7 1161(2).)',
-  /** PROPOSED — § 1161(2) financial-institution 5-mile condition. */
+  /** LOCKED 2026-06-04 (A1 Part D countersign) — § 1161(2) financial-institution 5-mile condition. */
   fiveMileSentence:
     'The branch identified above is within five miles of the rental property, as required by Cal. Code Civ. Proc. \u00A7 1161(2).',
-  /** PROPOSED — reflects Decision 1 (paper instrument so the method is non-cash/non-EFT). */
+  /** LOCKED 2026-06-04 (A1 Part D countersign) — Decision 1 (paper instrument; non-cash/non-EFT). */
   bankPaperInstrumentSentence:
     'Payment to the account above may be made by check, money order, or cashier\u2019s check.',
-  /** PROPOSED — § 1161(2) EFT only if previously established; labeled as such. */
+  /** LOCKED 2026-06-04 (A1 Part D countersign) — § 1161(2) EFT only if previously established. */
   eftElectionSentence:
     'If you have previously established an electronic funds transfer procedure with the landlord, payment may also be made pursuant to that previously established procedure. (Cal. Code Civ. Proc. \u00A7 1161(2).)',
+
+  // --- Defect #2 payee-derivation face constants (ruling 2026-06-05, build-locked
+  //     on attorney countersign per §4). Composition glue for the "Payable to:"
+  //     line; render verbatim, no substitutions. NOTE (flag for close-out): the
+  //     ruling §1.3 lists `payableToLabel` as the constant "Payable to: " (colon +
+  //     trailing space); the shipped constant above is "Payable to" with the ": "
+  //     added inline at render, so the rendered face is byte-identical. Kept as-is
+  //     (representation detail, not a face-text change). ---
+  /** §1.3 — joiner between a non-landlord payee and the landlord identity. */
+  payeeOverrideAsAgentJoiner: ', as agent for ',
+  /** §2.3 — joiner used when the individual owner array has exactly two names. */
+  ownerLineTwoJoiner: ' and ',
+  /** §2.3 — separator between non-final entries when the array has three or more. */
+  ownerLineSerialComma: ', ',
+  /** §2.3 — terminator before the final entry when the array has three or more
+   *  (Oxford comma required per ruling §2.1). */
+  ownerLineOxfordTerminator: ', and ',
+
+  // --- Defect #3 entity signature-block constants — BUILD-LOCKED (attorney
+  //     countersign 2026-06-05 §2, approved verbatim). Structural strings for the
+  //     "[Entity legal name] / By: [signer], [title]" block. The countersign
+  //     clarified the "third lock" is a VALIDATION RULE (signerTitleRequired for
+  //     entity landlords), not a face-prose constant — enforced in advancement
+  //     intake and re-checked in evaluateCanProduceV4, not here. ---
+  entitySignatureByLabel: 'By:',
+  entitySignerTitleJoiner: ', ',
 } as const;
 
 export const POS_PROSE = {
@@ -212,16 +252,27 @@ export function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function signerRoleLabel(role: SignerRole): string {
-  switch (role) {
+/**
+ * Individual-landlord signature role label, derived directly from the canonical
+ * signerCapacity (Defect #3 removed the legacy derived `signerRole`). Entity
+ * signers render via the entity signature block, not this label.
+ */
+export function signerCapacityLabel(capacity: SignerCapacity): string {
+  switch (capacity) {
     case 'owner':
       return 'Owner';
-    case 'authorized_agent_broker':
+    case 'broker_or_manager':
       return 'Authorized Agent for Owner';
-    case 'other_authorized_agent':
+    case 'authorized_agent':
       return 'Authorized Agent for Owner';
-    default:
-      throw new NoticeRenderError(`Unknown signer role: ${role as string}`);
+    case 'officer_member_trustee':
+      throw new NoticeRenderError(
+        'Entity signer capacity has no individual role label; render the entity signature block.',
+      );
+    default: {
+      const _exhaustive: never = capacity;
+      throw new NoticeRenderError(`Unknown signer capacity: ${_exhaustive as string}`);
+    }
   }
 }
 
@@ -230,6 +281,82 @@ function requireString(v: string | undefined, field: string): string {
     throw new NoticeRenderError(`Missing required field: ${field}`);
   }
   return v.trim();
+}
+
+// --- Defect #2: § 1161(2) payee-name derivation -----------------------------
+//
+// The payee name on the "Payable to:" line is DERIVED from the Step-3 landlord
+// identity (composed owner line for individuals, entity legal name for entities)
+// and the non-landlord-payee override, NOT independently typed. This is the
+// single composition site for that face text; the UI and the escalation snapshot
+// call this helper rather than re-deriving. All joiners are build-locked face
+// constants above. (Attorney ruling 2026-06-05 §1.2, §2.1.)
+
+/** Where the derived payee name came from (audit only; never on the face). */
+export type PayeeNameSource =
+  | 'individual_owners'
+  | 'entity_legal_name'
+  | 'override_agent'
+  | 'unresolved';
+
+export interface DerivedPayeeName {
+  /** Composed § 1161(2) payee name for the face. '' when unresolvable. */
+  name: string;
+  nameSource: PayeeNameSource;
+}
+
+/**
+ * Compose the individual owner-name line from the captured names array, using
+ * the build-locked joiners (ruling §2.1/§2.3): 1 → name verbatim (no joiner);
+ * 2 → "A and B"; 3+ → serial commas with the Oxford "and" before the final
+ * entry. Blank/whitespace entries are dropped; full names are rendered as given
+ * (no surname collapsing — ruling §2.4).
+ */
+function composeOwnerLine(namesRaw: string[]): string {
+  const names = namesRaw.map((n) => n.trim()).filter(Boolean);
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) {
+    return `${names[0]}${NOTICE_PROSE.ownerLineTwoJoiner}${names[1]}`;
+  }
+  const head = names.slice(0, -1).join(NOTICE_PROSE.ownerLineSerialComma);
+  return `${head}${NOTICE_PROSE.ownerLineOxfordTerminator}${names[names.length - 1]}`;
+}
+
+/** The landlord-identity display string (entity legal name, or composed owner line). */
+function landlordIdentityDisplay(data: NoticeFlowData): string {
+  const id = data.landlordIdentity;
+  if (!id) return '';
+  if (id.type === 'entity') return (id.entityLegalName ?? '').trim();
+  return composeOwnerLine(id.names ?? []);
+}
+
+/**
+ * Derive the § 1161(2) payee name for the face.
+ *  - Default (payee = landlord): the landlord identity display string.
+ *  - Override (non-landlord payee): "[override name], as agent for [landlord]".
+ * Returns name '' / 'unresolved' when the identity (or, for the override, the
+ * override name) is missing — the produce gate and renderNotice both fail closed
+ * on an empty derived name, so a defective "Payable to:" line never ships.
+ */
+export function derivePayeeName(data: NoticeFlowData): DerivedPayeeName {
+  const landlord = landlordIdentityDisplay(data);
+  if (data.payeeIsNonLandlord === true) {
+    const override = (data.payeeOverrideName ?? '').trim();
+    if (override === '' || landlord === '') {
+      return { name: '', nameSource: 'unresolved' };
+    }
+    return {
+      name: `${override}${NOTICE_PROSE.payeeOverrideAsAgentJoiner}${landlord}`,
+      nameSource: 'override_agent',
+    };
+  }
+  if (landlord === '') return { name: '', nameSource: 'unresolved' };
+  return {
+    name: landlord,
+    nameSource:
+      data.landlordIdentity?.type === 'entity' ? 'entity_legal_name' : 'individual_owners',
+  };
 }
 
 // --- v4 HOW TO PAY section --------------------------------------------------
@@ -282,7 +409,14 @@ function buildPaySection(
       rows.push({ label: NOTICE_PROSE.accountNumberLabel, value: acct });
       sentences.push(NOTICE_PROSE.bankPaperInstrumentSentence);
       sentences.push(NOTICE_PROSE.fiveMileSentence);
-      sentences.push(NOTICE_PROSE.mailboxRuleSentence);
+      // NO mailbox-rule sentence on a standalone FINANCIAL_INSTITUTION branch
+      // (attorney A1 Part-D redline, 2026-06-03). The § 1161(2) mailbox-rule
+      // safe-harbor belongs to alternative (i) (name/telephone/address); on a
+      // sole bank-deposit branch it reads as "mail to the bank branch," which is
+      // misleading under Eshagian. It renders for MAIL_ONLY and
+      // in_person_and_mail; when multi-method ships (B3), it renders inside the
+      // "By mail" block, never the "Bank deposit" block. String itself is
+      // unchanged (and build-locked) — this is gating only.
       break;
     }
 
@@ -332,15 +466,39 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
   const totalDue = periods.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
   // v4 payee (§ 1161(2) name + telephone + address) — distinct from signer.
-  const payeeName = requireString(data.landlordContact?.name, 'payee name');
+  // Defect #2: the NAME is derived from the Step-3 landlord identity (or the
+  // non-landlord override), not read from landlordContact.name (deprecated).
+  // Telephone + street address remain on landlordContact.
+  const derivedPayee = derivePayeeName(data);
+  const payeeName = requireString(derivedPayee.name, 'payee name');
   const payeePhone = requireString(data.landlordContact?.phone, 'payee telephone');
 
-  // Signer (signature block)
+  // Signer (signature block).
+  //  - Individual: role label derived from signerCapacity (Defect #3 removed the
+  //    legacy `signerRole`).
+  //  - Entity (Defect #3, countersigned 2026-06-05): "[Entity legal name] / By:
+  //    [signer], [title]". The entity insider has no individual role label, so the
+  //    capacity→label mapping applies only to the individual branch. Entity
+  //    PRODUCTION is gated/ungated by evaluateCanProduceV4, not here.
   const signerName = requireString(data.signerName, 'signer name');
-  if (!data.signerRole) throw new NoticeRenderError('Signer role is required.');
-  const signerRole = signerRoleLabel(data.signerRole);
+  const id = data.landlordIdentity;
+  let signerRoleLabelText = '';
+  let entitySignature: { legalName: string; signerTitle: string } | undefined;
+  if (id?.type === 'entity') {
+    const legalName = requireString(id.entityLegalName, 'entity legal name');
+    const signerTitle = requireString(data.signerTitle, 'signer title (entity)');
+    entitySignature = { legalName, signerTitle };
+  } else {
+    if (!data.signerCapacity) throw new NoticeRenderError('Signer capacity is required.');
+    signerRoleLabelText = signerCapacityLabel(data.signerCapacity);
+  }
 
   const dateOfService = requireString(data.serviceDate, 'service date');
+  // B1 (attorney ruling 2026-06-02): the face "Dated:" line prints the SIGNING
+  // (execution) date, never the service date. serviceDate is retained here only
+  // for the audit variable (date_of_service) and the off-face compliance
+  // computation, which is performed upstream and passed in via `dates`.
+  const signingDate = requireString(data.signingDate, 'signing date');
   const startD = formatNoticeDate(dates.compliancePeriodStartDate);
   const endD = formatNoticeDate(dates.compliancePeriodEndDate);
 
@@ -401,11 +559,15 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     '',
     NOTICE_PROSE.forfeitureElection,
     '',
-    `Dated: ${formatNoticeDate(dateOfService)}`,
+    `Dated: ${formatNoticeDate(signingDate)}`,
     '',
     '_______________________________________',
-    signerName,
-    signerRole,
+    ...(entitySignature
+      ? [
+          entitySignature.legalName,
+          `${NOTICE_PROSE.entitySignatureByLabel} ${signerName}${NOTICE_PROSE.entitySignerTitleJoiner}${entitySignature.signerTitle}`,
+        ]
+      : [signerName, signerRoleLabelText]),
   ].join('\n');
 
   const proofOfServiceText = [
@@ -432,7 +594,21 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     demand: { periodText, totalFormatted, rows },
     compliance: { commencementFormatted: startD, expirationFormatted: endD },
     pay: { branch, payeeName, payeePhone, rows: payRows, sentences: paySentences },
-    signature: { name: signerName, roleLabel: signerRole, datedFormatted: formatNoticeDate(dateOfService) },
+    signature: {
+      name: signerName,
+      roleLabel: signerRoleLabelText,
+      datedFormatted: formatNoticeDate(signingDate),
+      ...(entitySignature
+        ? {
+            entity: {
+              legalName: entitySignature.legalName,
+              byLabel: NOTICE_PROSE.entitySignatureByLabel,
+              signerName,
+              signerTitle: entitySignature.signerTitle,
+            },
+          }
+        : {}),
+    },
     proofOfService: { tenantNamesJoined },
   };
 
@@ -445,12 +621,24 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     total_rent_due: totalFormatted,
     compliance_period_start_date: dates.compliancePeriodStartDate,
     compliance_period_end_date: dates.compliancePeriodEndDate,
+    signing_date: signingDate,
     date_of_service: dateOfService,
     payee_name: payeeName,
     payee_phone: payeePhone,
+    // Defect #2 audit (ruling §4): which branch composed the payee name.
+    // AUDIT ONLY — the face shows the composed name, never this source token.
+    payee_name_source: derivedPayee.nameSource,
     payment_branch: branch,
     signer_name: signerName,
-    signer_role: signerRole,
+    signer_role: signerRoleLabelText,
+    // Defect #1 audit (ruling §1.4): record the canonical landlord_type and
+    // signer_capacity alongside the rendered signer_role label. signer_role is
+    // the individual-face label derived from signer_capacity (Defect #3 removed
+    // the legacy signerRole field); for entity notices it is blank and the
+    // entity signature block carries the signer/title instead.
+    landlord_type: data.landlordIdentity?.type ?? '',
+    signer_capacity: data.signerCapacity ?? '',
+    signer_title: data.signerTitle ?? '',
   };
 
   return { noticeText, proofOfServiceText, model, variablesUsed };

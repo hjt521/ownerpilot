@@ -41,7 +41,7 @@ function baseData(): NoticeFlowData {
     personalDeliveryDays: 'Monday through Friday',
     personalDeliveryHours: '9:00 a.m. to 5:00 p.m.',
     signerName: 'Sam Signer',
-    signerRole: 'owner',
+    signerCapacity: 'owner',
     serviceDate: '2026-06-01',
     serviceMethod: 'personal',
   };
