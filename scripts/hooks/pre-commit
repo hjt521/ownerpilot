@@ -1,24 +1,30 @@
 #!/bin/sh
-# SYSTEM_PROMPT lock guard — pre-commit (drift ruling 2026-06-06 §4).
+# Prompt-safety guards — pre-commit (drift ruling 2026-06-06 §4; correction 2026-06-07 §3.2).
 #
-# Blocks a commit that changes the help-chatbox system prompt away from its
-# locked baseline without a deliberate re-lock. The prompt is attorney-gated;
-# this is the prompt-equivalent of the V4_WORDING_SIGNED_OFF flag.
-#
-# Runs only when the chat route is part of the commit (cheap, no noise on
-# unrelated commits). Checks the on-disk route.ts; CI re-checks the committed
-# tree and is the authoritative gate (a `--no-verify` local bypass cannot merge).
+# Two coupled guards, run only when the relevant files are part of the commit:
+#   1. SYSTEM_PROMPT hash-lock  — any prompt change must be a deliberate attorney re-lock.
+#   2. DOCUMENTS sunset tripwire — flipping the broker-workflow-live flag while the
+#      interim notice-response language is still deployed is blocked.
+# CI re-runs both and is the authoritative gate (a local --no-verify cannot merge).
 #
 # Install once:  git config core.hooksPath scripts/hooks
-# (Note: core.hooksPath replaces .git/hooks — move any existing hooks here.)
+# (core.hooksPath replaces .git/hooks — move any existing hooks here.)
 
-if git diff --cached --name-only | grep -q '^app/api/chat/route\.ts$'; then
+STAGED=$(git diff --cached --name-only)
+
+if echo "$STAGED" | grep -q '^app/api/chat/route\.ts$'; then
   node scripts/check_system_prompt_lock.mjs || {
     echo ""
-    echo "Commit blocked: app/api/chat/route.ts changes the SYSTEM_PROMPT baseline."
-    echo "If this change is attorney-reviewed, re-lock it (see the message above),"
-    echo "stage app/api/chat/system_prompt.lock.json, and commit again."
-    echo "To bypass locally (CI will still enforce): git commit --no-verify"
+    echo "Commit blocked: SYSTEM_PROMPT changed. If attorney-reviewed, re-lock and stage"
+    echo "app/api/chat/system_prompt.lock.json, then commit again (--no-verify bypasses locally; CI still enforces)."
+    exit 1
+  }
+fi
+
+if echo "$STAGED" | grep -qE '^(app/api/chat/route\.ts|lib/flow/templateVersion\.ts)$'; then
+  node scripts/check_documents_sunset.mjs || {
+    echo ""
+    echo "Commit blocked: DOCUMENTS interim-language sunset gate (see message above)."
     exit 1
   }
 fi

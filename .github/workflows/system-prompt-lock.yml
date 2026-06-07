@@ -20,3 +20,5 @@ jobs:
           node-version: '22'
       - name: Verify SYSTEM_PROMPT matches its attorney-gated lock
         run: node scripts/check_system_prompt_lock.mjs
+      - name: Verify DOCUMENTS interim-language sunset gate
+        run: node scripts/check_documents_sunset.mjs

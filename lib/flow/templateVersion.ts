@@ -33,3 +33,21 @@ export const V4_WORDING_SIGNED_OFF = true;
  * will then verify by distance instead of requiring the attestation.
  */
 export const GEOCODING_LIVE = false;
+
+/**
+ * Whether the broker-supervised notice workflow (the Step 1–7 producer) is LIVE
+ * to owners in production (not dev-only). This is sunset condition (b) for the
+ * help-chatbox DOCUMENTS interim notice-response language
+ * (system_prompt_drift_diff_attorney_correction_2026-06-07.md §3.2).
+ *
+ * While FALSE, the chatbox's DOCUMENTS interim language ("…not going to draft the
+ * actual notice here in chat… take it to your broker or attorney…") must keep
+ * running — routing owners to a workflow they cannot yet reach would be the unsafe
+ * state. When this flips to TRUE, the DOCUMENTS interim language must be revisited
+ * in an attorney-reviewed prompt revision (sunset condition (a), V4_WORDING_SIGNED_OFF,
+ * is already true). That coupling is ENFORCED by scripts/check_documents_sunset.mjs:
+ * flipping this to true while the interim language is still in the deployed prompt
+ * fails CI, so the sunset cannot be silently forgotten. Do not flip without routing
+ * the DOCUMENTS revision to the attorney of record.
+ */
+export const BROKER_WORKFLOW_PRODUCTION_LIVE = false;
