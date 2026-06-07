@@ -1,0 +1,12 @@
+{
+  "file": "app/api/chat/route.ts",
+  "constant": "SYSTEM_PROMPT",
+  "sha256": "8978a7b57024ed2445bebc53e09e2c567338180b2affb54960e822ec74234fd3",
+  "bytes": 14995,
+  "status": "PENDING_V4_1_RELOCK",
+  "approvedBy": null,
+  "approvedOn": null,
+  "sourceRevision": null,
+  "note": "Interim baseline = deployed prompt after the 2026-06-06 drift corrections (§3.2 revert + §3.3 §§1980-1991 refinement). NOT a formal approval. Awaiting Janna Taglyan's re-locked v4.1 source; on delivery re-run --write with --approved-by/--approved-on/--source-rev and --status LOCKED.",
+  "lockedAt": "2026-06-06T18:41:53.255Z"
+}
