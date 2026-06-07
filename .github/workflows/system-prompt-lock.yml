@@ -22,3 +22,5 @@ jobs:
         run: node scripts/check_system_prompt_lock.mjs
       - name: Verify DOCUMENTS interim-language sunset gate
         run: node scripts/check_documents_sunset.mjs
+      - name: Verify CLASSIFIER_PROMPT matches its attorney-gated lock
+        run: node scripts/check_classifier_prompt_lock.mjs

@@ -28,3 +28,11 @@ if echo "$STAGED" | grep -qE '^(app/api/chat/route\.ts|lib/flow/templateVersion\
     exit 1
   }
 fi
+
+if echo "$STAGED" | grep -qE '^lib/chat/(classifier_prompt\.json|classifierPrompt\.ts)$'; then
+  node scripts/check_classifier_prompt_lock.mjs || {
+    echo ""
+    echo "Commit blocked: CLASSIFIER_PROMPT changed. Attorney re-review required (see message above)."
+    exit 1
+  }
+fi

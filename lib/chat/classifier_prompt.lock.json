@@ -1,0 +1,12 @@
+{
+  "file": "lib/chat/classifier_prompt.json",
+  "constant": "CLASSIFIER_PROMPT",
+  "sha256": "3f901f548d1b766b99fa35447d51ff26af113b6babce3458c47b8b6fb3394090",
+  "bytes": 5752,
+  "status": "LOCKED",
+  "approvedBy": "Janna Taglyan, JD, SBN 269639",
+  "approvedOn": "2026-06-07",
+  "sourceRevision": "chatbox_h1_classifier_attorney_ruling_2026-06-07.md",
+  "note": "Verbatim classifier prompt locked per chatbox_h1_classifier_attorney_ruling_2026-06-07.md §3. Any change requires attorney re-review (§A.4 loop).",
+  "lockedAt": "2026-06-07T22:25:43.629Z"
+}
