@@ -8,8 +8,18 @@ import {
   INPUT_REFUSAL,
   OUTPUT_REFUSAL,
 } from '@/lib/chat/guards'
+import {
+  checkRateLimit,
+  recordRequest,
+  recordTokens,
+  emptyRateState,
+} from '@/lib/chat/rateLimit'
+import { getRateLimitStore } from '@/lib/chat/rateLimitStore'
+import { SESSION_COOKIE, newSessionId, parseSessionId, sessionCookie } from '@/lib/chat/session'
 
-// Prototype chat endpoint. No auth / persistence / rate limiting by design.
+// Chat endpoint. Pseudonymous product-session gate + per-session rate limits
+// (H2, chatbox #4). No login/PII; counters only, never transcripts. The in-memory
+// rate-limit store is DEV-ONLY — see rateLimitStore.ts before production.
 export const runtime = 'nodejs'
 
 const MODEL = 'claude-haiku-4-5-20251001'
@@ -232,23 +242,44 @@ export async function POST(req: Request) {
     )
   }
 
+  // Product-session gate (H2): pseudonymous session id from an HttpOnly cookie,
+  // issued silently on first contact. No login, no PII — just a stable thing to
+  // count rate limits against. Set-Cookie is attached to every response below.
+  const existingSid = parseSessionId(req.headers.get('cookie'))
+  const sid = existingSid ?? newSessionId()
+  const setCookie = existingSid ? null : sessionCookie(sid)
+  const baseHeaders = (extra: Record<string, string> = {}): Record<string, string> => {
+    const h: Record<string, string> = { 'Content-Type': 'text/plain; charset=utf-8', ...extra }
+    if (setCookie) h['Set-Cookie'] = setCookie
+    return h
+  }
+
   // H3 (ruling §5): caller-controlled history must stay within the locked caps.
   // Reject with the attorney-authored generic decline; do NOT echo the cap value.
   if (!withinHistoryLimits(messages)) {
+    return new Response(GENERIC_DECLINE, { status: 200, headers: baseHeaders() })
+  }
+
+  // H2 rate limits: burst + daily request caps + per-session monthly token cap.
+  // Counts every request (incl. refusals) to also throttle guard-probing. Counters
+  // only — never transcripts (persistence lock 2026-06-06).
+  const store = getRateLimitStore()
+  const now = Date.now()
+  const rlState = (await store.get(sid)) ?? emptyRateState()
+  const decision = checkRateLimit(rlState, now)
+  if (!decision.allowed) {
     return new Response(GENERIC_DECLINE, {
-      status: 200,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      status: 429,
+      headers: baseHeaders({ 'Retry-After': String(Math.ceil(decision.retryAfterMs / 1000)) }),
     })
   }
+  await store.set(sid, recordRequest(rlState, now))
 
   // H1 input pre-check (ruling §3): if the latest user turn hits a HARD-RULES
   // trigger, skip the model entirely and return the handoff. INERT until the
   // attorney delivers TRIGGERS_PENDING_ATTORNEY_REVIEW after the §2 diff.
   if (inputTriggersHandoff(latestUserText(messages))) {
-    return new Response(INPUT_REFUSAL, {
-      status: 200,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
+    return new Response(INPUT_REFUSAL, { status: 200, headers: baseHeaders() })
   }
 
   const client = new Anthropic({ apiKey })
@@ -270,8 +301,14 @@ export async function POST(req: Request) {
         })
 
         let acc = ''
+        let inTok = 0
+        let outTok = 0
         for await (const event of anthropicStream) {
-          if (
+          if (event.type === 'message_start') {
+            inTok = event.message?.usage?.input_tokens ?? 0
+          } else if (event.type === 'message_delta') {
+            outTok = event.usage?.output_tokens ?? outTok
+          } else if (
             event.type === 'content_block_delta' &&
             event.delta.type === 'text_delta'
           ) {
@@ -283,6 +320,17 @@ export async function POST(req: Request) {
         // INERT until the attorney delivers OUTPUT_PATTERNS_PENDING_ATTORNEY_REVIEW.
         const out = outputViolates(acc) ? OUTPUT_REFUSAL : acc
         controller.enqueue(encoder.encode(out))
+
+        // H2: record actual token usage against the per-session monthly cap
+        // (best-effort; falls back to a length estimate if usage is unavailable).
+        // Counter only — no message content is stored.
+        try {
+          const used = inTok + outTok || Math.ceil((JSON.stringify(messages).length + acc.length) / 4)
+          const cur = (await store.get(sid)) ?? rlState
+          await store.set(sid, recordTokens(cur, now, used))
+        } catch {
+          /* never let counter I/O affect the user response */
+        }
       } catch {
         // M2 (ruling §6): never surface raw error text. Generic message only.
         controller.enqueue(
@@ -297,9 +345,6 @@ export async function POST(req: Request) {
   })
 
   return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-    },
+    headers: baseHeaders({ 'Cache-Control': 'no-cache, no-transform' }),
   })
 }
