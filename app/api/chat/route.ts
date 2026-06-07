@@ -5,7 +5,8 @@ import {
   outputViolates,
   latestUserText,
   GENERIC_DECLINE,
-  HANDOFF_PENDING_ATTORNEY_REVIEW,
+  INPUT_REFUSAL,
+  OUTPUT_REFUSAL,
 } from '@/lib/chat/guards'
 
 // Prototype chat endpoint. No auth / persistence / rate limiting by design.
@@ -244,7 +245,7 @@ export async function POST(req: Request) {
   // trigger, skip the model entirely and return the handoff. INERT until the
   // attorney delivers TRIGGERS_PENDING_ATTORNEY_REVIEW after the §2 diff.
   if (inputTriggersHandoff(latestUserText(messages))) {
-    return new Response(HANDOFF_PENDING_ATTORNEY_REVIEW, {
+    return new Response(INPUT_REFUSAL, {
       status: 200,
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
@@ -280,7 +281,7 @@ export async function POST(req: Request) {
 
         // Substitute the handoff if the completed response hits a blocked pattern.
         // INERT until the attorney delivers OUTPUT_PATTERNS_PENDING_ATTORNEY_REVIEW.
-        const out = outputViolates(acc) ? HANDOFF_PENDING_ATTORNEY_REVIEW : acc
+        const out = outputViolates(acc) ? OUTPUT_REFUSAL : acc
         controller.enqueue(encoder.encode(out))
       } catch {
         // M2 (ruling §6): never surface raw error text. Generic message only.

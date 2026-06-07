@@ -22,7 +22,7 @@ import {
   captureProductionSnapshot,
   evaluateStaleness,
 } from '@/lib/flow/escalation';
-import { renderNotice, NoticeRenderError, formatNoticeDate } from '@/lib/produce/renderNotice';
+import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import type { ServiceMethod } from '@/lib/dates/computeCompliancePeriod';
 
@@ -870,15 +870,15 @@ const PAYMENT_BRANCH_HELP: Record<PaymentBranch, string> = {
   bank_deposit: 'The tenant deposits a check or money order at a bank branch.',
 };
 
-// Attorney-locked operator copy (corporate-landlord ruling Round 3, 2026-06-05, §1.2(3)).
-// Build verbatim; advisory only, no legal claim. Always-visible helper beneath the
-// Step 4 "Name to receive payment" field. Mitigates the bare-name entity-shorthand
-// risk ("Ptag Prop") at the point of entry, since the interim gate is suffix-only.
-const STEP4_ENTITY_NAME_HELPER =
-  'If your property is owned by an LLC, corporation, trust, or partnership, enter ' +
-  'the entity\'s full registered legal name (e.g., "PTAG Properties, LLC" — not ' +
-  '"PTAG Prop"). Corporate-landlord support is coming soon; in the meantime, ' +
-  'please consult counsel for the three-day notice.';
+// Attorney-locked operator copy for the Step-4 non-landlord payee override
+// (Defect #2 cutover; ruling 2026-06-05 §3.1/§3.2/§3.3). Build VERBATIM; any
+// wording change requires a one-line note to the attorney, not an edit.
+const PAYEE_OVERRIDE_CHECKBOX_LABEL =
+  'Rent is paid to someone other than the landlord (e.g., a property manager or agent).';
+const PAYEE_OVERRIDE_CHECKED_HELPER =
+  'Enter the name of the person or company that receives rent. The notice will show that they are acting as agent for the landlord identified on Step 3.';
+const PAYEE_OVERRIDE_UNCHECKED_HELPER =
+  'Leave this unchecked if rent is paid directly to the landlord. The payee name on the notice will match the landlord identified on Step 3.';
 
 // Attorney-locked operator copy (Part E ruling, 2026-06-04). Build verbatim; any
 // change requires a fresh short note. This is NOT one of the thirteen face-copy
@@ -988,6 +988,9 @@ function PaymentStep({
   const setContact = (patch: Partial<LandlordContact>) =>
     update({ landlordContact: { ...c, ...patch } });
   const branch = data.paymentBranch;
+  // Defect #2 cutover: the § 1161(2) payee NAME is derived from the Step-3
+  // landlord identity (or the non-landlord override), never typed here.
+  const derivedPayee = derivePayeeName(data);
 
   return (
     <div className="space-y-8">
@@ -1004,14 +1007,47 @@ function PaymentStep({
           <input
             id="payeeName"
             type="text"
-            value={c.name ?? ''}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setContact({ name: e.target.value })}
-            placeholder="Person or company to whom rent is paid"
-            className={inputClass}
+            value={derivedPayee.name}
+            readOnly
+            placeholder="Set from the landlord identified on Step 3"
+            className={`${inputClass} bg-gray-50 text-gray-700`}
           />
-          <p className="mt-1 text-xs text-gray-500 leading-relaxed">
-            {STEP4_ENTITY_NAME_HELPER}
-          </p>
+
+          <label className="mt-3 flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={data.payeeIsNonLandlord === true}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                update({ payeeIsNonLandlord: e.target.checked })
+              }
+              className="mt-1"
+            />
+            <span className="text-sm text-gray-800 leading-relaxed">
+              {PAYEE_OVERRIDE_CHECKBOX_LABEL}
+            </span>
+          </label>
+
+          {data.payeeIsNonLandlord ? (
+            <div className="mt-3">
+              <input
+                id="payeeOverrideName"
+                type="text"
+                value={data.payeeOverrideName ?? ''}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  update({ payeeOverrideName: e.target.value })
+                }
+                placeholder="Name of the person or company that receives rent"
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+                {PAYEE_OVERRIDE_CHECKED_HELPER}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+              {PAYEE_OVERRIDE_UNCHECKED_HELPER}
+            </p>
+          )}
         </div>
 
         <div>
@@ -1224,15 +1260,12 @@ const ENTITY_CAPACITY_LABELS: Record<
   authorized_agent: 'Another authorized agent of the entity',
 };
 
-// Attorney-approved entity-not-supported copy (corporate-landlord ruling Round 1
-// §5.2 Option A). Verbatim; operator-copy lock. Shown when the user selects "An
-// entity" while the entity branch is gated (production blocked until Defect #3).
-const ENTITY_NOT_SUPPORTED_COPY =
-  "Corporate landlords aren't supported yet. We're finishing the entity " +
-  'signature flow and expect to enable it soon. For now, this product supports ' +
-  'notices from individual landlords only. If your property is owned by an LLC, ' +
-  'corporation, or other entity, please consult counsel for the three-day notice ' +
-  'while we finalize the entity flow.';
+// Attorney-locked operator copy (Step-4 helper-disposition ruling §2). Build
+// VERBATIM; rendered under the entity legal-name input on Step 3. Replaces the
+// retired entity-not-supported interstitial now that entity production is
+// open (Defect #3 countersign 2026-06-05).
+const entityLegalNameHelper =
+  `Enter the entity's full registered legal name as it appears on the deed or Secretary of State filing (e.g., 'PTAG Properties, LLC' — not 'PTAG Prop'). Using a shorthand or DBA on a three-day notice can be challenged in an unlawful-detainer action.`;
 
 // Stage-1 toggle patch: set the landlord type (single source of truth) and mark
 // it confirmed. Preserves any already-entered branch fields when re-selecting.
@@ -1473,13 +1506,6 @@ function LandlordStep({
         </div>
       </div>
 
-      {/* Entity branch is gated until Defect #3 ships — approved interstitial */}
-      {li?.type === 'entity' && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-relaxed">
-          {ENTITY_NOT_SUPPORTED_COPY}
-        </div>
-      )}
-
       {/* Entity identity fields */}
       {li?.type === 'entity' && (
         <>
@@ -1499,6 +1525,9 @@ function LandlordStep({
               placeholder={'Full registered legal name, e.g. "PTAG Properties, LLC"'}
               className={inputClass}
             />
+            <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+              {entityLegalNameHelper}
+            </p>
           </div>
           <div>
             <FieldLabel htmlFor="entityType">Entity type<Req /></FieldLabel>
