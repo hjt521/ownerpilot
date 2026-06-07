@@ -3,10 +3,10 @@
   "constant": "SYSTEM_PROMPT",
   "sha256": "fff12c9434a2d4553bb691c4b39b02fae7509909dfc3242c689e81f75c676d31",
   "bytes": 15086,
-  "status": "PENDING_V4_1_RELOCK",
-  "approvedBy": null,
-  "approvedOn": null,
-  "sourceRevision": null,
-  "note": "Baseline = the 2026-06-02 attorney-signed prompt (v4 base + Round-2 SELF-HELP section, CITATION-HONESTY exception, and DOCUMENTS interim paragraph). The 2026-06-06 drift finding was RETRACTED 2026-06-07; no drift. Byte-identical to ownerpilot_deployed_system_prompt_extracted_2026-06-06_1.md. On delivery of Janna's v4.1 canonical file (due 2026-06-07), re-run --write with --approved-by/--approved-on/--source-rev and --status LOCKED.",
-  "lockedAt": "2026-06-07T17:39:17.984Z"
+  "status": "LOCKED",
+  "approvedBy": "Janna Taglyan, JD, SBN 269639",
+  "approvedOn": "2026-06-07",
+  "sourceRevision": "ownerpilot_system_prompt_v4_1_attorney_signoff_2026-06-07.md",
+  "note": "Canonical source-of-record: ownerpilot_system_prompt_v4_1_attorney_signoff_2026-06-07.md (v4-final + the three 2026-06-02 Round-2 amendments). Body byte-identical to that file's BEGIN/END VERBATIM markers. The 2026-06-06 drift finding was retracted 2026-06-07 (no drift).",
+  "lockedAt": "2026-06-07T18:02:20.972Z"
 }

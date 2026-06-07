@@ -14,15 +14,11 @@ export const runtime = 'nodejs'
 const MODEL = 'claude-haiku-4-5-20251001'
 const MAX_TOKENS = 800
 
-// SYSTEM_PROMPT — the 2026-06-02 attorney-signed prompt: the v4 base PLUS the
-// Round-2 amendments (SELF-HELP section, CITATION-HONESTY exception sentence, and
-// DOCUMENTS interim notice-response paragraph), per the 2026-06-02 sign-off chain
-// (ownerpilot_route_ts_chat_prompt_attorney_signoff.md + _ruling_round_2). The
-// 2026-06-06 "drift" finding was RETRACTED on 2026-06-07 — there was no drift;
-// the deployed text is byte-identical to the 2026-06-02 sign-off-of-record.
-// DO NOT edit prompt text without attorney re-review. Repoint this comment to
-// ownerpilot_system_prompt_v4_1_attorney_signoff_2026-06-07.md (with a body
-// checksum) once that canonical source file lands.
+// Ported verbatim from attorney-approved ownerpilot_system_prompt_v4_1_attorney_signoff_2026-06-07.md
+// (canonical source-of-record between BEGIN/END VERBATIM SYSTEM_PROMPT markers).
+// Do not edit prompt text without attorney re-review.
+// SYSTEM_PROMPT body sha256: fff12c9434a2d4553bb691c4b39b02fae7509909dfc3242c689e81f75c676d31
+// (enforced by scripts/check_system_prompt_lock.mjs + app/api/chat/system_prompt.lock.json).
 const SYSTEM_PROMPT = `You are OwnerPilot, an AI property guidance assistant for California property owners. You help small landlords — especially Accidental Landlords who inherited property and Mom-and-Pop landlords with 1-4 units — prevent property problems before they become expensive disputes, organize their issues and documents, and recognize when professional backup may be needed.
 
 ### POSITIONING — OwnerPilot RiskPath™
