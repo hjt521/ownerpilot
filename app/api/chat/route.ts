@@ -8,12 +8,7 @@ import {
   INPUT_REFUSAL,
   OUTPUT_REFUSAL,
 } from '@/lib/chat/guards'
-import {
-  checkRateLimit,
-  recordRequest,
-  recordTokens,
-  emptyRateState,
-} from '@/lib/chat/rateLimit'
+import { decideFromCounts } from '@/lib/chat/rateLimit'
 import { getRateLimitStore } from '@/lib/chat/rateLimitStore'
 import { SESSION_COOKIE, newSessionId, parseSessionId, sessionCookie } from '@/lib/chat/session'
 import { runClassifier, classifierDecision, isUnsure } from '@/lib/chat/classifier'
@@ -278,15 +273,14 @@ export async function POST(req: Request) {
   // only — never transcripts (persistence lock 2026-06-06).
   const store = getRateLimitStore()
   const now = Date.now()
-  const rlState = (await store.get(sid)) ?? emptyRateState()
-  const decision = checkRateLimit(rlState, now)
+  const counts = await store.registerRequest(sid, now)
+  const decision = decideFromCounts(counts, now)
   if (!decision.allowed) {
     return new Response(GENERIC_DECLINE, {
       status: 429,
       headers: baseHeaders({ 'Retry-After': String(Math.ceil(decision.retryAfterMs / 1000)) }),
     })
   }
-  await store.set(sid, recordRequest(rlState, now))
 
   // H1 input pre-check (ruling §3): if the latest user turn hits a HARD-RULES
   // trigger, skip the model entirely and return the handoff.
@@ -308,8 +302,7 @@ export async function POST(req: Request) {
     recordClassifierCall({ side: 'input', ok: res.ok, unsure: isUnsure(res), reason: res.ok ? undefined : res.error })
     if (classifierDecision(res, CLASSIFIER_FAIL_CLOSED)) {
       try {
-        const cur = (await store.get(sid)) ?? rlState
-        await store.set(sid, recordTokens(cur, now, classifierTokens))
+        await store.addTokens(sid, now, classifierTokens)
       } catch {
         /* never let counter I/O affect the user response */
       }
@@ -369,8 +362,7 @@ export async function POST(req: Request) {
         // Classifier tokens (§3.4) are added on top. Counter only — no content stored.
         try {
           const chatUsed = inTok + outTok || Math.ceil((JSON.stringify(messages).length + acc.length) / 4)
-          const cur = (await store.get(sid)) ?? rlState
-          await store.set(sid, recordTokens(cur, now, chatUsed + classifierTokens))
+          await store.addTokens(sid, now, chatUsed + classifierTokens)
         } catch {
           /* never let counter I/O affect the user response */
         }

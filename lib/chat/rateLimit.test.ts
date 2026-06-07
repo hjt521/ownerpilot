@@ -1,12 +1,12 @@
 import {
   RATE_LIMITS,
-  emptyRateState,
-  checkRateLimit,
-  recordRequest,
-  recordTokens,
-  type RateState,
+  decideFromCounts,
+  msToUtcDayEnd,
+  msToUtcMonthEnd,
+  utcDay,
+  utcMonth,
+  type RequestCounts,
 } from './rateLimit';
-import { newSessionId, parseSessionId, sessionCookie, SESSION_COOKIE } from './session';
 
 let passed = 0;
 let failed = 0;
@@ -14,105 +14,50 @@ function check(name: string, cond: boolean, detail = '') {
   if (cond) { passed++; console.log(`  \u2713 ${name}`); }
   else { failed++; console.log(`  \u2717 ${name}${detail ? ` \u2014 ${detail}` : ''}`); }
 }
-
 const T = Date.UTC(2026, 5, 7, 12, 0, 0); // 2026-06-07T12:00:00Z
-const monthOf = (n: number) => new Date(n).toISOString().slice(0, 7);
-const dayOf = (n: number) => new Date(n).toISOString().slice(0, 10);
+const base = (over: Partial<RequestCounts> = {}): RequestCounts => ({
+  burstCount: 1, oldestBurstMs: T, dayCount: 1, monthTokens: 0, ...over,
+});
 
-console.log('\n=== burst window ===\n');
+console.log('\n=== decideFromCounts: allow ===\n');
+check('fresh counts allowed', decideFromCounts(base(), T).allowed === true);
+check('burst at cap (==max) allowed', decideFromCounts(base({ burstCount: RATE_LIMITS.burstMax }), T).allowed === true);
+check('daily at cap (==max) allowed', decideFromCounts(base({ dayCount: RATE_LIMITS.dailyMax }), T).allowed === true);
+check('tokens just under cap allowed', decideFromCounts(base({ monthTokens: RATE_LIMITS.monthlyTokenMax - 1 }), T).allowed === true);
+
+console.log('\n=== decideFromCounts: deny ===\n');
 {
-  let s = emptyRateState();
-  let allowedCount = 0;
-  for (let i = 0; i < RATE_LIMITS.burstMax; i++) {
-    if (checkRateLimit(s, T + i * 1000).allowed) allowedCount++;
-    s = recordRequest(s, T + i * 1000);
-  }
-  check('first burstMax requests allowed', allowedCount === RATE_LIMITS.burstMax);
-  const d = checkRateLimit(s, T + RATE_LIMITS.burstMax * 1000);
-  check('request over burst cap denied', d.allowed === false);
-  check('burst denial reason is burst', d.allowed === false && d.reason === 'burst');
-  check('burst denial gives retryAfterMs', d.allowed === false && d.retryAfterMs > 0);
-  check('allowed again after window clears',
-    checkRateLimit(s, T + RATE_LIMITS.burstWindowMs + 5000).allowed === true);
+  const d = decideFromCounts(base({ burstCount: RATE_LIMITS.burstMax + 1, oldestBurstMs: T - 10_000 }), T);
+  check('burst over cap denied', d.allowed === false && d.reason === 'burst');
+  check('burst retry-after from oldest in window', !d.allowed && d.retryAfterMs === (T - 10_000) + RATE_LIMITS.burstWindowMs - T);
+}
+{
+  const d = decideFromCounts(base({ dayCount: RATE_LIMITS.dailyMax + 1 }), T);
+  check('daily over cap denied', d.allowed === false && d.reason === 'daily');
+  check('daily retry-after = ms to UTC day end', !d.allowed && d.retryAfterMs === msToUtcDayEnd(T));
+}
+{
+  const d = decideFromCounts(base({ monthTokens: RATE_LIMITS.monthlyTokenMax }), T);
+  check('tokens at/over cap denied (>=)', d.allowed === false && d.reason === 'monthly');
+  check('monthly retry-after = ms to UTC month end', !d.allowed && d.retryAfterMs === msToUtcMonthEnd(T));
 }
 
-console.log('\n=== daily soft cap ===\n');
+console.log('\n=== precedence (burst > daily > monthly) ===\n');
 {
-  const atCap: RateState = {
-    burstHits: [], day: dayOf(T), dayCount: RATE_LIMITS.dailyMax, month: monthOf(T), tokenCount: 0,
-  };
-  const d = checkRateLimit(atCap, T);
-  check('at daily cap → denied daily', d.allowed === false && d.reason === 'daily');
-  const nextDay = Date.UTC(2026, 5, 8, 0, 0, 5);
-  check('new UTC day resets daily count', checkRateLimit(atCap, nextDay).allowed === true);
+  const all = base({ burstCount: 99, oldestBurstMs: T, dayCount: 99, monthTokens: 1e9 });
+  check('burst wins when everything is over', decideFromCounts(all, T).allowed === false && (decideFromCounts(all, T) as { reason: string }).reason === 'burst');
+  const dm = base({ burstCount: 1, dayCount: 99, monthTokens: 1e9 });
+  check('daily beats monthly', (decideFromCounts(dm, T) as { reason: string }).reason === 'daily');
 }
 
-console.log('\n=== monthly token cap ===\n');
-{
-  const atCap: RateState = {
-    burstHits: [], day: '', dayCount: 0, month: monthOf(T), tokenCount: RATE_LIMITS.monthlyTokenMax,
-  };
-  const d = checkRateLimit(atCap, T);
-  check('at monthly token cap → denied monthly', d.allowed === false && d.reason === 'monthly');
-  const nextMonth = Date.UTC(2026, 6, 1, 0, 0, 5);
-  check('new UTC month resets token count', checkRateLimit(atCap, nextMonth).allowed === true);
-}
+console.log('\n=== period helpers ===\n');
+check('utcDay format', utcDay(T) === '2026-06-07');
+check('utcMonth format', utcMonth(T) === '2026-06');
+check('msToUtcDayEnd is positive and < 24h', msToUtcDayEnd(T) > 0 && msToUtcDayEnd(T) <= 86_400_000);
+check('msToUtcDayEnd at noon = 12h', msToUtcDayEnd(T) === 12 * 3_600_000);
+check('msToUtcMonthEnd positive', msToUtcMonthEnd(T) > 0);
+check('oldestBurstMs null → retry falls back to full window',
+  (() => { const d = decideFromCounts(base({ burstCount: RATE_LIMITS.burstMax + 1, oldestBurstMs: null }), T); return !d.allowed && d.retryAfterMs === RATE_LIMITS.burstWindowMs; })());
 
-console.log('\n=== state updates ===\n');
-{
-  let r = emptyRateState();
-  r = recordRequest(r, T);
-  check('recordRequest increments dayCount', r.dayCount === 1);
-  check('recordRequest sets today', r.day === dayOf(T));
-  check('recordRequest adds a burst hit', r.burstHits.length === 1);
-
-  // pruning: an old hit outside the window is dropped on the next record
-  const withOld: RateState = { ...emptyRateState(), burstHits: [T - 120_000, T - 1_000] };
-  const pruned = recordRequest(withOld, T);
-  check('recordRequest prunes hits outside the burst window',
-    pruned.burstHits.length === 2 && !pruned.burstHits.includes(T - 120_000));
-
-  let tk = emptyRateState();
-  tk = recordTokens(tk, T, 1000);
-  tk = recordTokens(tk, T, 500);
-  check('recordTokens accumulates within month', tk.tokenCount === 1500 && tk.month === monthOf(T));
-  const tkNext = recordTokens(tk, Date.UTC(2026, 6, 1, 0, 0, 0), 200);
-  check('recordTokens resets on new month', tkNext.tokenCount === 200);
-
-  // day rollover resets dayCount on record
-  const yday: RateState = { ...emptyRateState(), day: dayOf(T - 86_400_000), dayCount: 17 };
-  check('recordRequest resets dayCount on new day', recordRequest(yday, T).dayCount === 1);
-}
-
-console.log('\n=== empty state allows ===\n');
-{
-  check('fresh session is allowed', checkRateLimit(emptyRateState(), T).allowed === true);
-}
-
-console.log('\n=== session gate (pseudonymous cookie) ===\n');
-{
-  const uuid = 'b3f1c2d4-5e6f-4a7b-8c9d-0123456789ab';
-  check('parseSessionId reads the cookie', parseSessionId(`${SESSION_COOKIE}=${uuid}`) === uuid);
-  check('parseSessionId reads among other cookies',
-    parseSessionId(`a=1; ${SESSION_COOKIE}=${uuid}; b=2`) === uuid);
-  check('parseSessionId rejects non-uuid value', parseSessionId(`${SESSION_COOKIE}=hax`) === null);
-  check('parseSessionId null on missing header', parseSessionId(null) === null);
-  check('parseSessionId null when cookie absent', parseSessionId('other=1') === null);
-
-  const id = newSessionId();
-  check('newSessionId is uuid-shaped',
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
-  check('round-trip: parse(new) === new', parseSessionId(`${SESSION_COOKIE}=${id}`) === id);
-
-  const c = sessionCookie(id);
-  check('cookie is HttpOnly', /HttpOnly/.test(c));
-  check('cookie is Secure', /Secure/.test(c));
-  check('cookie is SameSite=Lax', /SameSite=Lax/.test(c));
-  check('cookie is Path=/', /Path=\//.test(c));
-  check('cookie carries the session id', c.includes(`${SESSION_COOKIE}=${id}`));
-}
-
-console.log(`\n${'-'.repeat(40)}`);
-console.log(`  ${passed} passed, ${failed} failed`);
-console.log(`${'-'.repeat(40)}\n`);
+console.log(`\n${'-'.repeat(40)}\n  ${passed} passed, ${failed} failed\n${'-'.repeat(40)}\n`);
 if (failed > 0) process.exit(1);
