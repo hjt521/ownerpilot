@@ -5,6 +5,7 @@ import {
   runClassifier,
   classifierBlocks,
   isUnsure,
+  classifierDecision,
   INPUT_CATEGORIES,
   OUTPUT_CATEGORIES,
   type CompleteFn,
@@ -90,6 +91,16 @@ console.log('\n=== runClassifier + fail-open-to-regex-floor ===\n');
 
   const outOnInput = await runClassifier('input', 'x', '', stub('{"flagged": true, "categories": ["litigation_strategy"]}'));
   check('out-of-side category does not block (defensive)', classifierBlocks(outOnInput) === false);
+
+  console.log('\n=== §4.2 fail-closed composition ===\n');
+  const flaggedOk = await runClassifier('output', 'x', '', stub('{"flagged": true, "categories": ["legal_conclusion"]}'));
+  const cleanOk = await runClassifier('output', 'x', '', stub('{"flagged": false, "categories": []}'));
+  const errored = await runClassifier('output', 'x', '', throwing);
+  check('flagged verdict blocks regardless of flag (fail-open)', classifierDecision(flaggedOk, false) === true);
+  check('flagged verdict blocks regardless of flag (fail-closed)', classifierDecision(flaggedOk, true) === true);
+  check('clean verdict never blocks', classifierDecision(cleanOk, false) === false && classifierDecision(cleanOk, true) === false);
+  check('error + fail-open → does NOT block (degrade to regex floor)', classifierDecision(errored, false) === false);
+  check('error + fail-closed → blocks (ops sustained-outage escalation)', classifierDecision(errored, true) === true);
 
   console.log('\n=== locked prompt wired ===\n');
   check('CLASSIFIER_PROMPT is the verbatim attorney text', CLASSIFIER_PROMPT.includes('You are a safety classifier for OwnerPilot'));

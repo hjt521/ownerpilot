@@ -16,6 +16,10 @@ import {
 } from '@/lib/chat/rateLimit'
 import { getRateLimitStore } from '@/lib/chat/rateLimitStore'
 import { SESSION_COOKIE, newSessionId, parseSessionId, sessionCookie } from '@/lib/chat/session'
+import { runClassifier, classifierDecision, isUnsure } from '@/lib/chat/classifier'
+import { makeGatewayComplete } from '@/lib/chat/classifierClient'
+import { recordClassifierCall } from '@/lib/chat/classifierTelemetry'
+import { CLASSIFIER_LIVE, CLASSIFIER_FAIL_CLOSED } from '@/lib/chat/classifierConfig'
 
 // Chat endpoint. Pseudonymous product-session gate + per-session rate limits
 // (H2, chatbox #4). No login/PII; counters only, never transcripts. The in-memory
@@ -215,6 +219,15 @@ function isValidMessages(value: unknown): value is ChatMessage[] {
   )
 }
 
+// Recent turns passed to the classifier as context (the locked prompt asks for it).
+// Request-scoped and in-memory only — never written to any store (persistence lock).
+function recentContext(messages: ChatMessage[], maxTurns = 6): string {
+  return messages
+    .slice(-maxTurns)
+    .map((m) => `${m.role}: ${m.content}`)
+    .join('\n')
+}
+
 export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -276,10 +289,32 @@ export async function POST(req: Request) {
   await store.set(sid, recordRequest(rlState, now))
 
   // H1 input pre-check (ruling §3): if the latest user turn hits a HARD-RULES
-  // trigger, skip the model entirely and return the handoff. INERT until the
-  // attorney delivers TRIGGERS_PENDING_ATTORNEY_REVIEW after the §2 diff.
+  // trigger, skip the model entirely and return the handoff.
   if (inputTriggersHandoff(latestUserText(messages))) {
     return new Response(INPUT_REFUSAL, { status: 200, headers: baseHeaders() })
+  }
+
+  // H1 classifier (ruling §4 + §3 nod): runs on the RESIDUAL — only reached when the
+  // regex floor above is clean. Catches the paraphrase cases regex can't (A.1.3/A.2.2
+  // + oblique A.1.4/A.1.5/A.2.1/A.2.3). Sequential before the model (§3.3 latency
+  // accepted). Tokens count toward the session cap (§3.4). Routed through Vercel AI
+  // Gateway (§4.1). Fail-open to the regex floor on error, unless ops flipped
+  // fail-closed (§4.2). Inert until CLASSIFIER_LIVE — default off pending validation.
+  const gatewayComplete = CLASSIFIER_LIVE ? makeGatewayComplete() : null
+  let classifierTokens = 0
+  if (gatewayComplete) {
+    const res = await runClassifier('input', latestUserText(messages), recentContext(messages), gatewayComplete)
+    if (res.ok) classifierTokens += res.tokens
+    recordClassifierCall({ side: 'input', ok: res.ok, unsure: isUnsure(res), reason: res.ok ? undefined : res.error })
+    if (classifierDecision(res, CLASSIFIER_FAIL_CLOSED)) {
+      try {
+        const cur = (await store.get(sid)) ?? rlState
+        await store.set(sid, recordTokens(cur, now, classifierTokens))
+      } catch {
+        /* never let counter I/O affect the user response */
+      }
+      return new Response(INPUT_REFUSAL, { status: 200, headers: baseHeaders() })
+    }
   }
 
   const client = new Anthropic({ apiKey })
@@ -316,18 +351,26 @@ export async function POST(req: Request) {
           }
         }
 
-        // Substitute the handoff if the completed response hits a blocked pattern.
-        // INERT until the attorney delivers OUTPUT_PATTERNS_PENDING_ATTORNEY_REVIEW.
-        const out = outputViolates(acc) ? OUTPUT_REFUSAL : acc
+        // Substitute the handoff if the completed response hits a blocked regex
+        // pattern. Then, on the RESIDUAL (regex clean) and only when live, run the
+        // output classifier (catches paraphrased notice_draft / legal_conclusion /
+        // litigation_strategy). Fail-open unless ops flipped fail-closed (§4.2).
+        let out = outputViolates(acc) ? OUTPUT_REFUSAL : acc
+        if (out === acc && gatewayComplete) {
+          const res = await runClassifier('output', acc, recentContext(messages), gatewayComplete)
+          if (res.ok) classifierTokens += res.tokens
+          recordClassifierCall({ side: 'output', ok: res.ok, unsure: isUnsure(res), reason: res.ok ? undefined : res.error })
+          if (classifierDecision(res, CLASSIFIER_FAIL_CLOSED)) out = OUTPUT_REFUSAL
+        }
         controller.enqueue(encoder.encode(out))
 
         // H2: record actual token usage against the per-session monthly cap
         // (best-effort; falls back to a length estimate if usage is unavailable).
-        // Counter only — no message content is stored.
+        // Classifier tokens (§3.4) are added on top. Counter only — no content stored.
         try {
-          const used = inTok + outTok || Math.ceil((JSON.stringify(messages).length + acc.length) / 4)
+          const chatUsed = inTok + outTok || Math.ceil((JSON.stringify(messages).length + acc.length) / 4)
           const cur = (await store.get(sid)) ?? rlState
-          await store.set(sid, recordTokens(cur, now, used))
+          await store.set(sid, recordTokens(cur, now, chatUsed + classifierTokens))
         } catch {
           /* never let counter I/O affect the user response */
         }

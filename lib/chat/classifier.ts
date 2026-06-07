@@ -100,3 +100,13 @@ export function classifierBlocks(result: ClassifierResult): boolean {
 export function isUnsure(result: ClassifierResult): boolean {
   return result.ok && result.categories.includes(UNSURE);
 }
+
+/**
+ * The final block decision, honoring the §4.2 fail-closed flag.
+ *  - success  → block iff flagged (recall-favoring; `unsure` counts as flagged).
+ *  - error    → block only if ops has flipped CLASSIFIER_FAIL_CLOSED on a sustained
+ *               outage; otherwise FAIL-OPEN to the regex floor (default).
+ */
+export function classifierDecision(result: ClassifierResult, failClosed: boolean): boolean {
+  return result.ok ? classifierBlocks(result) : failClosed;
+}
