@@ -1,4 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
+import {
+  withinHistoryLimits,
+  inputTriggersHandoff,
+  outputViolates,
+  latestUserText,
+  GENERIC_DECLINE,
+  HANDOFF_PENDING_ATTORNEY_REVIEW,
+} from '@/lib/chat/guards'
 
 // Prototype chat endpoint. No auth / persistence / rate limiting by design.
 export const runtime = 'nodejs'
@@ -6,8 +14,15 @@ export const runtime = 'nodejs'
 const MODEL = 'claude-haiku-4-5-20251001'
 const MAX_TOKENS = 800
 
-// Ported verbatim from attorney-approved ownerpilot_system_prompt_v4_final.md
-// ("Full v4 Prompt" section). Do not edit prompt text without attorney re-review.
+// SYSTEM_PROMPT — the 2026-06-02 attorney-signed prompt: the v4 base PLUS the
+// Round-2 amendments (SELF-HELP section, CITATION-HONESTY exception sentence, and
+// DOCUMENTS interim notice-response paragraph), per the 2026-06-02 sign-off chain
+// (ownerpilot_route_ts_chat_prompt_attorney_signoff.md + _ruling_round_2). The
+// 2026-06-06 "drift" finding was RETRACTED on 2026-06-07 — there was no drift;
+// the deployed text is byte-identical to the 2026-06-02 sign-off-of-record.
+// DO NOT edit prompt text without attorney re-review. Repoint this comment to
+// ownerpilot_system_prompt_v4_1_attorney_signoff_2026-06-07.md (with a body
+// checksum) once that canonical source file lands.
 const SYSTEM_PROMPT = `You are OwnerPilot, an AI property guidance assistant for California property owners. You help small landlords — especially Accidental Landlords who inherited property and Mom-and-Pop landlords with 1-4 units — prevent property problems before they become expensive disputes, organize their issues and documents, and recognize when professional backup may be needed.
 
 ### POSITIONING — OwnerPilot RiskPath™
@@ -220,12 +235,35 @@ export async function POST(req: Request) {
     )
   }
 
+  // H3 (ruling §5): caller-controlled history must stay within the locked caps.
+  // Reject with the attorney-authored generic decline; do NOT echo the cap value.
+  if (!withinHistoryLimits(messages)) {
+    return new Response(GENERIC_DECLINE, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
+  }
+
+  // H1 input pre-check (ruling §3): if the latest user turn hits a HARD-RULES
+  // trigger, skip the model entirely and return the handoff. INERT until the
+  // attorney delivers TRIGGERS_PENDING_ATTORNEY_REVIEW after the §2 diff.
+  if (inputTriggersHandoff(latestUserText(messages))) {
+    return new Response(HANDOFF_PENDING_ATTORNEY_REVIEW, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
+  }
+
   const client = new Anthropic({ apiKey })
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
+        // H1 output guard (ruling §3): BUFFER the full response, run the guard,
+        // THEN emit. The attorney ruled buffered-then-streamed over a streaming-tee
+        // — a partial-disclosure-then-retraction is worse than a slightly delayed
+        // clean response on a legal-adjacent surface. We accept the UX hit.
         const anthropicStream = await client.messages.create({
           model: MODEL,
           max_tokens: MAX_TOKENS,
@@ -234,20 +272,26 @@ export async function POST(req: Request) {
           stream: true,
         })
 
+        let acc = ''
         for await (const event of anthropicStream) {
           if (
             event.type === 'content_block_delta' &&
             event.delta.type === 'text_delta'
           ) {
-            controller.enqueue(encoder.encode(event.delta.text))
+            acc += event.delta.text
           }
         }
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Unknown error from the AI service.'
-        // Surface the error inline so the client can show it in the stream.
+
+        // Substitute the handoff if the completed response hits a blocked pattern.
+        // INERT until the attorney delivers OUTPUT_PATTERNS_PENDING_ATTORNEY_REVIEW.
+        const out = outputViolates(acc) ? HANDOFF_PENDING_ATTORNEY_REVIEW : acc
+        controller.enqueue(encoder.encode(out))
+      } catch {
+        // M2 (ruling §6): never surface raw error text. Generic message only.
         controller.enqueue(
-          encoder.encode(`\n\n[Sorry — something went wrong: ${message}]`)
+          encoder.encode(
+            'The service is temporarily unavailable. Please try again in a moment.'
+          )
         )
       } finally {
         controller.close()
