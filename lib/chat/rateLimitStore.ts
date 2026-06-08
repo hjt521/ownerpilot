@@ -27,6 +27,7 @@ import {
   msToUtcMonthEnd,
   type RequestCounts,
 } from './rateLimit';
+import { Redis } from '@upstash/redis';
 
 export interface RateLimitStore {
   /** Atomically register one request and return the post-increment counts. */
@@ -210,6 +211,23 @@ export function setRateLimitStore(s: RateLimitStore): void {
  *  warning if nothing was injected — which on serverless means limits do not bind. */
 export function getRateLimitStore(): RateLimitStore {
   if (store) return store;
+
+  // Lazily self-initialize the production Redis store from env, in THIS module
+  // instance, so correctness does not depend on a cross-module setRateLimitStore()
+  // call from instrumentation.ts. Next 16 bundles instrumentation and route handlers
+  // into separate module graphs, so a boot-time singleton set there is not visible
+  // here, which is why the route was falling through to the in-memory store.
+  const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (process.env.NEXT_RUNTIME === 'nodejs' && url && token) {
+    const client = new Redis({ url, token });
+    const adapter: RedisLike = {
+      eval: (script, keys, args) => client.eval(script, keys, args),
+    };
+    store = new RedisRateLimitStore(adapter);
+    return store;
+  }
+
   if (!warned) {
     warned = true;
     // eslint-disable-next-line no-console
