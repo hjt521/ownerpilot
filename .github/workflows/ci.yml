@@ -1,0 +1,27 @@
+name: ci
+
+# Test suites + typecheck for the whole repo. Separate steps so a red run names
+# which failed (tests vs types). The typecheck step runs even if tests fail
+# (if: !cancelled()) so every run reports both signals. Lock/sunset gates live in
+# their own workflow (system-prompt-lock.yml).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Run test suites
+        run: npm test
+      - name: Typecheck
+        if: ${{ !cancelled() }}
+        run: npx tsc --noEmit

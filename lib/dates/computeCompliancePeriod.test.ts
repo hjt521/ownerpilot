@@ -116,8 +116,8 @@ console.log('\n6. Substituted service raises the mailing flag (no added days)');
   check('mailing flag set', sub.mailingExtensionFlag === true);
   eq('expiration identical to personal (no silent +days)', sub.expirationDate, personal.expirationDate);
   check(
-    'hedge note present',
-    sub.notes.some((n) => n.includes('UNSETTLED')),
+    'note documents the filing-stage buffer is off the face',
+    sub.notes.some((n) => n.includes('filing buffer') && n.includes('No days were added')),
   );
 }
 
