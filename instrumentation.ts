@@ -1,39 +1,51 @@
 /**
  * Next.js instrumentation hook — runs once at server bootstrap (register()).
  *
- * Injects the production (Vercel KV) rate-limit store so H2 limits BIND on
- * serverless. Without this, getRateLimitStore() falls back to the DEV-ONLY
- * in-memory store (counters not shared across instances / reset on cold start),
- * which on serverless means limits do not bind at all. See lib/chat/rateLimitStore.ts
- * and the attorney rate-limit sign-off §2.2 gate.
+ * Injects the production (Upstash Redis) rate-limit store so H2 limits BIND on
+ * serverless. Without injection, getRateLimitStore() falls back to the DEV-ONLY
+ * in-memory store, which on serverless means limits do not bind at all. See
+ * lib/chat/rateLimitStore.ts and the attorney rate-limit sign-off §2.2 gate.
  *
- * Prereqs (Jack / Vercel, see handoff §6B):
- *   - Vercel KV provisioned (sets KV_REST_API_URL / KV_REST_API_TOKEN env vars).
- *   - Redeploy after the env vars exist.
+ * Client: @upstash/redis (Vercel KV / @vercel/kv was deprecated Dec 2024 and
+ * migrated to Upstash Redis). The store only needs eval(script, keys, args),
+ * which @upstash/redis exposes in the same array form RedisLike requires.
  *
- * Runtime note: register() can fire in both the edge and nodejs runtimes. The KV
- * store + @vercel/kv belong in the nodejs runtime, so we gate on NEXT_RUNTIME.
- * (import type is erased at compile time, so it adds no edge-runtime load.)
+ * Env vars: the Upstash Marketplace integration injects REST credentials, but
+ * the names vary — newer installs use KV_REST_API_URL / KV_REST_API_TOKEN,
+ * Upstash-native naming is UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN.
+ * We accept either and fail loud (warn + no-inject) if neither is present, so a
+ * misconfigured deploy is obvious rather than silently unprotected.
+ *
+ * Runtime note: register() can fire in edge and nodejs runtimes; the Redis store
+ * belongs in nodejs, so we gate on NEXT_RUNTIME. (import type is erased, no
+ * edge-runtime load.)
  */
 import type { RedisLike } from '@/lib/chat/rateLimitStore';
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
 
-  const { kv } = await import('@vercel/kv');
+  const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[rateLimit] Upstash REST credentials not found (looked for KV_REST_API_URL/' +
+        'TOKEN and UPSTASH_REDIS_REST_URL/TOKEN). Rate-limit store NOT injected; ' +
+        'falling back to DEV-ONLY in-memory store. Provision the Upstash integration ' +
+        'and redeploy.'
+    );
+    return;
+  }
+
+  const { Redis } = await import('@upstash/redis');
   const { RedisRateLimitStore, setRateLimitStore } = await import(
     '@/lib/chat/rateLimitStore'
   );
 
-  // kv (VercelKV) is Upstash-backed and exposes eval(script, keys, args), which
-  // structurally satisfies RedisLike. We wrap it in a thin adapter rather than
-  // passing kv directly: the adapter always typechecks as long as kv.eval exists,
-  // independent of @upstash/redis's generic signature for eval in the installed
-  // version. If the assignability probe in the handoff notes confirms that
-  // `const _p: RedisLike = kv` compiles, you may simplify to
-  // `new RedisRateLimitStore(kv)` and drop the adapter.
+  const client = new Redis({ url, token });
   const adapter: RedisLike = {
-    eval: (script, keys, args) => kv.eval(script, keys, args),
+    eval: (script, keys, args) => client.eval(script, keys, args),
   };
 
   setRateLimitStore(new RedisRateLimitStore(adapter));
