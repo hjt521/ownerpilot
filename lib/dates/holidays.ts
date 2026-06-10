@@ -97,7 +97,7 @@ export const CA_JUDICIAL_HOLIDAYS: Record<number, HolidayYear> = {
       '2026-12-25', // Christmas Day
     ],
     verified: true,
-    verifiedBy: 'Janna Taglyan, JD, SBN 269639',
+    verifiedBy: 'Jack Taglyan, Broker, CalDRE #B9445457',
     verifiedOn: '2026-05-31',
     source:
       'Judicial Branch of CA 2026 Court Holiday Schedule, ' +
@@ -142,7 +142,7 @@ export const CA_JUDICIAL_HOLIDAYS: Record<number, HolidayYear> = {
       '2027-12-31', // NYD-2028 observed early (Jan 1 2028 = Sat → preceding Fri, CRC 1.11)
     ],
     verified: true,
-    verifiedBy: 'Janna Taglyan, JD, SBN 269639',
+    verifiedBy: 'Jack Taglyan, Broker, CalDRE #B9445457',
     verifiedOn: '2026-06-05',
     source:
       'Judicial Branch of CA Court Holiday Schedule, ' +

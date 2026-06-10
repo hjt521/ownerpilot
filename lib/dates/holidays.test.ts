@@ -31,7 +31,7 @@ console.log('\n=== 2027 table is verified with the 15-entry / dual Jan+Dec shape
   // verifiedBy is now the reviewing attorney of record. Asserting the exact
   // string keeps a silent edit to the attribution from passing unnoticed.
   check('2027 verifiedBy = reviewing attorney name + SBN',
-    e?.verifiedBy === 'Janna Taglyan, JD, SBN 269639');
+    e?.verifiedBy === 'Jack Taglyan, Broker, CalDRE #B9445457');
 }
 {
   const set = getVerifiedHolidaySet(2027); // must NOT throw now
