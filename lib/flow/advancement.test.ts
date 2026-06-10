@@ -220,6 +220,74 @@ console.log('\n13. Full walk: preflight -> ... -> Review advances each step');
   check('reached Review or beyond', visited.includes(FlowStep.Review), visited.join(' -> '));
 }
 
+console.log('\n=== FIX 1: LLC management type gating at LandlordIdentity ===');
+
+type MgmtType = 'member-managed' | 'manager-managed' | 'not-sure';
+
+function llcData(mgmt?: MgmtType): NoticeFlowData {
+  const d = fullData();
+  Object.assign(d, entityLandlord('officer_member_trustee'));
+  if (d.landlordIdentity?.type === 'entity') {
+    d.landlordIdentity = { ...d.landlordIdentity, managementType: mgmt };
+  }
+  return d;
+}
+
+console.log('\n14. LLC with no management type is blocked');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, llcData(undefined));
+  check('blocked', v.canAdvance === false);
+  check('issue names the field', v.issues.some((i) => /how this LLC is managed/i.test(i)));
+}
+
+console.log('\n15. Member-managed LLC advances');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, llcData('member-managed'));
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n16. Manager-managed LLC advances (warning is non-gating, on the signer step)');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, llcData('manager-managed'));
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n17. "Not sure" advances (banner 1.3 is non-gating)');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, llcData('not-sure'));
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n18. Non-LLC entity does not require a management type');
+{
+  const d = fullData();
+  Object.assign(d, entityLandlord('officer_member_trustee', { entityType: 'corporation', entityLegalName: 'PTAG Holdings, Inc.' }));
+  const v = validateStep(FlowStep.LandlordIdentity, d);
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n19. Individual landlord does not require a management type');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, fullData());
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n20. Unconfirmed identity still blocks (regression)');
+{
+  const d = llcData('member-managed');
+  d.landlordIdentityConfirmed = false;
+  check('blocked', validateStep(FlowStep.LandlordIdentity, d).canAdvance === false);
+}
+
+console.log('\n21. Blank entity legal name still blocks (regression)');
+{
+  const d = llcData('member-managed');
+  if (d.landlordIdentity?.type === 'entity') {
+    d.landlordIdentity = { ...d.landlordIdentity, entityLegalName: '   ' };
+  }
+  check('blocked', validateStep(FlowStep.LandlordIdentity, d).canAdvance === false);
+}
+
 console.log(`\n${'-'.repeat(40)}`);
 console.log(`  ${passed} passed, ${failed} failed`);
 console.log(`${'-'.repeat(40)}\n`);

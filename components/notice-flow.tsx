@@ -15,6 +15,14 @@ import {
   ServiceAttempt,
   LlcManagementType,
 } from '@/lib/flow/noticeFlowState';
+import {
+  LLC_MGMT_FIELD_LABEL,
+  LLC_MGMT_FIELD_HELPER,
+  LLC_MGMT_OPTIONS,
+  LLC_NOT_SURE_BANNER,
+  LLC_MANAGER_WARNING_BANNER,
+  shouldShowSignerAuthorityWarning,
+} from '@/lib/flow/llcCopy';
 import { validateStep } from '@/lib/flow/advancement';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import {
@@ -1466,25 +1474,9 @@ function GuidanceBlocks({ blocks }: { blocks: GuidanceBlock[] }) {
 // are built against these placeholders so they fail loudly when real copy
 // lands. Do NOT add attorney attribution.
 
-const LLC_MGMT_FIELD_LABEL = 'How is this LLC managed?';
-const LLC_MGMT_FIELD_HELPER =
-  '[PLACEHOLDER — where to verify member- vs manager-managed. Final wording pending.]';
-const LLC_MGMT_OPTIONS: { value: LlcManagementType; label: string; helper: string }[] = [
-  { value: 'member-managed', label: 'Member-managed', helper: '[PLACEHOLDER — member-managed description. Pending.]' },
-  { value: 'manager-managed', label: 'Manager-managed', helper: '[PLACEHOLDER — manager-managed description. Pending.]' },
-  { value: 'not-sure', label: "I'm not sure", helper: '' },
-];
-// Banner 1.3 (management-type unconfirmed) body — PLACEHOLDER, non-gating.
-const LLC_NOT_SURE_BANNER =
-  '[PLACEHOLDER — management-type-unconfirmed notice body. Final wording pending.]';
-// Banner 1.2 (manager-managed + non-manager signer) body — PLACEHOLDER.
-const LLC_MANAGER_WARNING_BANNER =
-  '[PLACEHOLDER — signer-authority warning body. Final wording pending.]';
-
-// Title is a manager role if it mentions a manager / managing member.
-function signerTitleLooksLikeManager(title: string | undefined): boolean {
-  return /manager|managing\s+member/i.test(title ?? '');
-}
+// FIX 1 copy constants + the Banner 1.2 trigger predicate now live in
+// lib/flow/llcCopy.ts (a pure module the tsx test suites can import without
+// pulling in this client component). Imported above.
 
 /** LLC management-type radio (Field 1.1) + the not-sure banner (1.3). Renders
     only for an LLC landlord. Required selection is gated in advancement.ts. */
@@ -1547,13 +1539,7 @@ function SignerAuthorityWarning({
   data: NoticeFlowData;
 }) {
   const [dismissed, setDismissed] = useState(false);
-  const li = data.landlordIdentity;
-  const triggered =
-    li?.type === 'entity' &&
-    li.entityType === 'llc' &&
-    li.managementType === 'manager-managed' &&
-    data.signerCapacity === 'officer_member_trustee' &&
-    !signerTitleLooksLikeManager(data.signerTitle);
+  const triggered = shouldShowSignerAuthorityWarning(data);
   if (!triggered || dismissed) return null;
   const focusTitle = () => {
     const el = typeof document !== 'undefined' ? document.getElementById('signerTitle') : null;
