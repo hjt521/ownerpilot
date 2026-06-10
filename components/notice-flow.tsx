@@ -13,6 +13,7 @@ import {
   PaymentBranch,
   LandlordContact,
   ServiceAttempt,
+  LlcManagementType,
 } from '@/lib/flow/noticeFlowState';
 import { validateStep } from '@/lib/flow/advancement';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
@@ -1456,6 +1457,136 @@ function GuidanceBlocks({ blocks }: { blocks: GuidanceBlock[] }) {
   );
 }
 
+// --- FIX 1: LLC management-type intake + signer-authority warning ----------
+//
+// TODO(broker): the banner BODY copy and the management-option helper text
+// below are NON-LEGAL PLACEHOLDERS. Replace verbatim with reviewed wording
+// before this ships to users. The structural labels (field/question text and
+// option names) are product copy, not legal determinations. Logic and tests
+// are built against these placeholders so they fail loudly when real copy
+// lands. Do NOT add attorney attribution.
+
+const LLC_MGMT_FIELD_LABEL = 'How is this LLC managed?';
+const LLC_MGMT_FIELD_HELPER =
+  '[PLACEHOLDER — where to verify member- vs manager-managed. Final wording pending.]';
+const LLC_MGMT_OPTIONS: { value: LlcManagementType; label: string; helper: string }[] = [
+  { value: 'member-managed', label: 'Member-managed', helper: '[PLACEHOLDER — member-managed description. Pending.]' },
+  { value: 'manager-managed', label: 'Manager-managed', helper: '[PLACEHOLDER — manager-managed description. Pending.]' },
+  { value: 'not-sure', label: "I'm not sure", helper: '' },
+];
+// Banner 1.3 (management-type unconfirmed) body — PLACEHOLDER, non-gating.
+const LLC_NOT_SURE_BANNER =
+  '[PLACEHOLDER — management-type-unconfirmed notice body. Final wording pending.]';
+// Banner 1.2 (manager-managed + non-manager signer) body — PLACEHOLDER.
+const LLC_MANAGER_WARNING_BANNER =
+  '[PLACEHOLDER — signer-authority warning body. Final wording pending.]';
+
+// Title is a manager role if it mentions a manager / managing member.
+function signerTitleLooksLikeManager(title: string | undefined): boolean {
+  return /manager|managing\s+member/i.test(title ?? '');
+}
+
+/** LLC management-type radio (Field 1.1) + the not-sure banner (1.3). Renders
+    only for an LLC landlord. Required selection is gated in advancement.ts. */
+function LlcManagementTypeField({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  const li = data.landlordIdentity;
+  if (li?.type !== 'entity' || li.entityType !== 'llc') return null;
+  const current = li.managementType;
+  const setMgmt = (v: LlcManagementType) =>
+    update((d) =>
+      d.landlordIdentity?.type === 'entity'
+        ? { landlordIdentity: { ...d.landlordIdentity, managementType: v } }
+        : {},
+    );
+  return (
+    <div>
+      <FieldLabel>{LLC_MGMT_FIELD_LABEL}<Req /></FieldLabel>
+      <p className="mb-2 text-xs text-gray-500 leading-relaxed">{LLC_MGMT_FIELD_HELPER}</p>
+      <div className="space-y-2">
+        {LLC_MGMT_OPTIONS.map((opt) => (
+          <label
+            key={opt.value}
+            className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+              current === opt.value ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+            }`}
+          >
+            <input
+              type="radio"
+              name="llcManagementType"
+              className="mt-1"
+              checked={current === opt.value}
+              onChange={() => setMgmt(opt.value)}
+            />
+            <span>
+              <span className="block text-gray-900">{opt.label}</span>
+              {opt.helper && <span className="block text-sm text-gray-500">{opt.helper}</span>}
+            </span>
+          </label>
+        ))}
+      </div>
+      {current === 'not-sure' && (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-relaxed">
+          <strong>Heads up:</strong> {LLC_NOT_SURE_BANNER}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Banner 1.2: manager-managed LLC + entity-insider capacity + a signer title
+    that doesn't look like a manager role. Non-gating; dismissible. */
+function SignerAuthorityWarning({
+  data,
+}: {
+  data: NoticeFlowData;
+}) {
+  const [dismissed, setDismissed] = useState(false);
+  const li = data.landlordIdentity;
+  const triggered =
+    li?.type === 'entity' &&
+    li.entityType === 'llc' &&
+    li.managementType === 'manager-managed' &&
+    data.signerCapacity === 'officer_member_trustee' &&
+    !signerTitleLooksLikeManager(data.signerTitle);
+  if (!triggered || dismissed) return null;
+  const focusTitle = () => {
+    const el = typeof document !== 'undefined' ? document.getElementById('signerTitle') : null;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (el as HTMLInputElement).focus();
+    }
+  };
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-relaxed">
+      <p>
+        <strong>Heads up:</strong> {LLC_MANAGER_WARNING_BANNER}
+      </p>
+      <div className="mt-3 flex gap-3">
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          className="text-xs font-semibold text-amber-800 underline"
+        >
+          Got it
+        </button>
+        <button
+          type="button"
+          onClick={focusTitle}
+          className="text-xs font-semibold text-amber-800 underline"
+        >
+          I need to fix the signer
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LandlordIdentityStep({
   data,
   update,
@@ -1550,6 +1681,9 @@ function LandlordIdentityStep({
               ))}
             </select>
           </div>
+
+          {/* FIX 1.1 — LLC management type (member- vs manager-managed) + 1.3 banner */}
+          <LlcManagementTypeField data={data} update={update} />
         </>
       )}
     </div>
@@ -1661,6 +1795,9 @@ function LandlordStep({
           />
         </div>
       )}
+
+      {/* FIX 1.2 — signer-authority warning (manager-managed LLC + non-manager title) */}
+      <SignerAuthorityWarning data={data} />
 
       {/* Authority evidence — when the signer is not the insider */}
       {data.signerCapacity &&

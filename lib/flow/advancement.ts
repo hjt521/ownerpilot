@@ -102,6 +102,12 @@ export function validateStep(
       if (id?.type === 'entity') {
         if (isBlank(id.entityLegalName)) issues.push("Enter the entity's full legal name.");
         if (!id.entityType) issues.push('Select the entity type.');
+        // FIX 1: a California LLC must declare member- vs manager-managed; it
+        // drives the signer-authority warning on the signer step. Required to
+        // advance. (manager-managed members may lack authority to bind.)
+        if (id.entityType === 'llc' && !id.managementType) {
+          issues.push('Select how this LLC is managed.');
+        }
       }
       break;
     }

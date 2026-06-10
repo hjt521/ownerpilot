@@ -72,9 +72,20 @@ export interface DisputeScreen {
 
 export type EntityType = 'llc' | 'corporation' | 'lp' | 'gp' | 'trust' | 'other';
 
+export type LlcManagementType = 'member-managed' | 'manager-managed' | 'not-sure';
+
 export type LandlordIdentity =
   | { type: 'individual'; names: string[] }
-  | { type: 'entity'; entityLegalName: string; entityType: EntityType };
+  | {
+      type: 'entity';
+      entityLegalName: string;
+      entityType: EntityType;
+      /** FIX 1: California LLC management structure. Member-managed: any
+       *  member may bind the LLC. Manager-managed: only designated managers
+       *  may. Drives the signer-authority warning; required to advance when
+       *  entityType === 'llc'. Unset for non-LLC entity types. */
+      managementType?: LlcManagementType;
+    };
 
 export type SignerCapacity =
   | 'owner' // individual branch: the natural-person owner
