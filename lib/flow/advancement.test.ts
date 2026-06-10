@@ -115,6 +115,25 @@ console.log('\n7. Payment: at least one method chosen (deep validity is at Revie
   check('present-but-invalid method still advances (deferred to Review)', validateStep(FlowStep.PaymentInstructions, d2).canAdvance === true);
 }
 
+console.log('\n7b. Payment: typed name retired; override name required when override on (Defect #2)');
+{
+  // Missing typed landlordContact.name no longer blocks the payment step.
+  const dNoName = fullData();
+  dNoName.landlordContact = { phone: '(559) 555-0100', streetAddress: '12 Almond Ln, Fresno, CA 93650' };
+  check('missing typed name advances', validateStep(FlowStep.PaymentInstructions, dNoName).canAdvance === true,
+    JSON.stringify(validateStep(FlowStep.PaymentInstructions, dNoName).issues));
+
+  // Override ON with a blank override name blocks.
+  const dBlank = fullData(); dBlank.payeeIsNonLandlord = true; dBlank.payeeOverrideName = '  ';
+  const vBlank = validateStep(FlowStep.PaymentInstructions, dBlank);
+  check('override on + blank name blocks', vBlank.canAdvance === false);
+  check('override name issue surfaced', vBlank.issues.some((i) => /payee who receives rent/i.test(i)));
+
+  // Override ON with a name advances.
+  const dOk = fullData(); dOk.payeeIsNonLandlord = true; dOk.payeeOverrideName = 'Westside Property Management, Inc.';
+  check('override on + name advances', validateStep(FlowStep.PaymentInstructions, dOk).canAdvance === true);
+}
+
 console.log('\n8. Landlord: signer + role + service date/method; agent needs authority');
 {
   const ok = validateStep(FlowStep.LandlordAgentInfo, fullData());

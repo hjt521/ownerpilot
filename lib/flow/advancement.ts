@@ -122,7 +122,13 @@ export function validateStep(
       // EFT-previously-established, wording sign-off) is surfaced by
       // validatePaymentBranch and consolidated at Review by evaluateCanProduceV4.
       const c = data.landlordContact;
-      if (isBlank(c?.name)) issues.push('A name to receive payment is required.');
+      // Defect #2 cutover: the payee NAME is derived from the Step-3 identity,
+      // not typed here. Validate only the non-landlord override name when the
+      // override is on; the derived name is consolidated at Review
+      // (evaluateCanProduceV4 / PAYEE_NAME_UNRESOLVED).
+      if (data.payeeIsNonLandlord && isBlank(data.payeeOverrideName)) {
+        issues.push('Enter the name of the payee who receives rent.');
+      }
       if (isBlank(c?.phone)) issues.push('A telephone number for payment is required.');
       if (isBlank(c?.streetAddress)) {
         issues.push('A street address to receive payment is required.');
