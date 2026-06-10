@@ -22,6 +22,8 @@ import {
   LLC_NOT_SURE_BANNER,
   LLC_MANAGER_WARNING_BANNER,
   shouldShowSignerAuthorityWarning,
+  LLC_NOT_SURE_BANNER_TITLE,
+  LLC_MANAGER_WARNING_BANNER_TITLE,
 } from '@/lib/flow/llcCopy';
 import { validateStep } from '@/lib/flow/advancement';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
@@ -1524,7 +1526,7 @@ function LlcManagementTypeField({
       </div>
       {current === 'not-sure' && (
         <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-relaxed">
-          <strong>Heads up:</strong> {LLC_NOT_SURE_BANNER}
+          <strong>{LLC_NOT_SURE_BANNER_TITLE}</strong> {LLC_NOT_SURE_BANNER}
         </div>
       )}
     </div>
@@ -1551,7 +1553,7 @@ function SignerAuthorityWarning({
   return (
     <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-relaxed">
       <p>
-        <strong>Heads up:</strong> {LLC_MANAGER_WARNING_BANNER}
+        <strong>{LLC_MANAGER_WARNING_BANNER_TITLE}</strong> {LLC_MANAGER_WARNING_BANNER}
       </p>
       <div className="mt-3 flex gap-3">
         <button
