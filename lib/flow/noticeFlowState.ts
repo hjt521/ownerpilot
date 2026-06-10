@@ -24,6 +24,10 @@ export enum FlowStep {
   PreflightDispute = 'preflight_dispute',
   PropertyIdentification = 'step1_property',
   Tenants = 'step2_tenants',
+  // Landlord identity (who the landlord is) is captured BEFORE payment,
+  // because the (S) 1161(2) payee name is derived from it (derivePayeeName).
+  // The signer/service questions stay on LandlordAgentInfo, later in the flow.
+  LandlordIdentity = 'step3_landlord_identity',
   AmountOwed = 'step3_amount',
   PaymentInstructions = 'step4_payment',
   LandlordAgentInfo = 'step5_landlord',

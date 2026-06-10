@@ -54,6 +54,7 @@ const PAGES: { label: string; steps: FlowStep[] }[] = [
     steps: [
       FlowStep.PropertyIdentification,
       FlowStep.Tenants,
+      FlowStep.LandlordIdentity,
       FlowStep.AmountOwed,
       FlowStep.PaymentInstructions,
     ],
@@ -83,6 +84,8 @@ function renderStepBody(
       return <PropertyStep data={data} update={update} />;
     case FlowStep.Tenants:
       return <TenantsStep data={data} update={update} />;
+    case FlowStep.LandlordIdentity:
+      return <LandlordIdentityStep data={data} update={update} />;
     case FlowStep.AmountOwed:
       return <AmountStep data={data} update={update} />;
     case FlowStep.PaymentInstructions:
@@ -1453,33 +1456,25 @@ function GuidanceBlocks({ blocks }: { blocks: GuidanceBlock[] }) {
   );
 }
 
-function LandlordStep({
+function LandlordIdentityStep({
   data,
   update,
 }: {
   data: NoticeFlowData;
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
 }) {
-  // B1: the signing (execution) date is distinct from the service date. Inline
-  // feedback — hard error if signed after service, soft warning if >30 days
-  // before. The hard error also blocks advancement (advancement.ts) and
-  // production (gates.ts); the warning does neither (build decision: warn only).
-  const signingCheck = validateSigningDate(data.signingDate, data.serviceDate);
   const li = data.landlordIdentity;
   const entityName = li?.type === 'entity' ? li.entityLegalName : '';
   const entityTypeVal: EntityType = li?.type === 'entity' ? li.entityType : 'llc';
   return (
     <div className="space-y-6">
       <StepIntro>
-        Who is signing and serving the notice, and when?
+        Who is the landlord on this notice? This determines whose name appears
+        as the party the notice is from, and (unless you say otherwise on the
+        payment step) who rent is payable to.
       </StepIntro>
-      <p className="text-sm text-gray-600 leading-relaxed -mt-2">
-        This is the last step before producing the notice. Tell us who will sign
-        it, and how and when you plan to serve it. You&apos;ll get
-        method-specific service instructions on the next screen.
-      </p>
 
-      {/* Stage 1 — who is the landlord (Defect #1, ruling §2.1) */}
+      {/* Stage 1 - who is the landlord (Defect #1, ruling 2.1) */}
       <div>
         <FieldLabel>Who is the landlord on this notice?<Req /></FieldLabel>
         <div className="space-y-2">
@@ -1557,6 +1552,33 @@ function LandlordStep({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function LandlordStep({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  // B1: the signing (execution) date is distinct from the service date. Inline
+  // feedback — hard error if signed after service, soft warning if >30 days
+  // before. The hard error also blocks advancement (advancement.ts) and
+  // production (gates.ts); the warning does neither (build decision: warn only).
+  const signingCheck = validateSigningDate(data.signingDate, data.serviceDate);
+  const li = data.landlordIdentity;
+  return (
+    <div className="space-y-6">
+      <StepIntro>
+        Who is signing and serving the notice, and when?
+      </StepIntro>
+      <p className="text-sm text-gray-600 leading-relaxed -mt-2">
+        This is the last step before producing the notice. Tell us who will sign
+        it, and how and when you plan to serve it. You&apos;ll get
+        method-specific service instructions on the next screen.
+      </p>
 
       {/* Signer name — shown once the landlord type is chosen */}
       {li && (

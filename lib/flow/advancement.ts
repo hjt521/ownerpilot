@@ -90,6 +90,22 @@ export function validateStep(
       }
       break;
 
+    case FlowStep.LandlordIdentity: {
+      // Defect #1: landlord type must be chosen and confirmed; entity branch
+      // fields complete. Captured BEFORE payment so the derived (S) 1161(2)
+      // payee name is available there. SIGNER fields + service/signing dates
+      // are validated on LandlordAgentInfo, NOT here.
+      const id = data.landlordIdentity;
+      if (!id || !data.landlordIdentityConfirmed) {
+        issues.push('Select whether the landlord is an individual or an entity.');
+      }
+      if (id?.type === 'entity') {
+        if (isBlank(id.entityLegalName)) issues.push("Enter the entity's full legal name.");
+        if (!id.entityType) issues.push('Select the entity type.');
+      }
+      break;
+    }
+
     case FlowStep.AmountOwed:
       if (!data.rentPeriods || data.rentPeriods.length === 0) {
         issues.push('Add at least one rent period.');
@@ -151,15 +167,10 @@ export function validateStep(
     }
 
     case FlowStep.LandlordAgentInfo: {
-      // Defect #1: landlord type must be chosen, branch fields complete.
+      // Signer + execution/service. Landlord IDENTITY is validated on the
+      // LandlordIdentity step (earlier); the entity-title rule below still
+      // keys off id.type, which is already set by the time the user is here.
       const id = data.landlordIdentity;
-      if (!id || !data.landlordIdentityConfirmed) {
-        issues.push('Select whether the landlord is an individual or an entity.');
-      }
-      if (id?.type === 'entity') {
-        if (isBlank(id.entityLegalName)) issues.push("Enter the entity's full legal name.");
-        if (!id.entityType) issues.push('Select the entity type.');
-      }
       if (isBlank(data.signerName)) issues.push('A signer name is required.');
       if (!data.signerCapacity) issues.push('Select who is signing the notice.');
       // signerTitleRequired (Defect #3 countersign 2026-06-05 §1, LOCKED): for an
@@ -227,6 +238,7 @@ export const STEP_ORDER: FlowStep[] = [
   FlowStep.PreflightDispute,
   FlowStep.PropertyIdentification,
   FlowStep.Tenants,
+  FlowStep.LandlordIdentity,
   FlowStep.AmountOwed,
   FlowStep.PaymentInstructions,
   FlowStep.LandlordAgentInfo,
