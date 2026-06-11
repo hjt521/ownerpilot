@@ -90,6 +90,28 @@ export function validateStep(
       }
       break;
 
+    case FlowStep.LandlordIdentity: {
+      // Defect #1: landlord type must be chosen and confirmed; entity branch
+      // fields complete. Captured BEFORE payment so the derived (S) 1161(2)
+      // payee name is available there. SIGNER fields + service/signing dates
+      // are validated on LandlordAgentInfo, NOT here.
+      const id = data.landlordIdentity;
+      if (!id || !data.landlordIdentityConfirmed) {
+        issues.push('Select whether the landlord is an individual or an entity.');
+      }
+      if (id?.type === 'entity') {
+        if (isBlank(id.entityLegalName)) issues.push("Enter the entity's full legal name.");
+        if (!id.entityType) issues.push('Select the entity type.');
+        // FIX 1: a California LLC must declare member- vs manager-managed; it
+        // drives the signer-authority warning on the signer step. Required to
+        // advance. (manager-managed members may lack authority to bind.)
+        if (id.entityType === 'llc' && !id.managementType) {
+          issues.push('Select how this LLC is managed.');
+        }
+      }
+      break;
+    }
+
     case FlowStep.AmountOwed:
       if (!data.rentPeriods || data.rentPeriods.length === 0) {
         issues.push('Add at least one rent period.');
@@ -122,7 +144,13 @@ export function validateStep(
       // EFT-previously-established, wording sign-off) is surfaced by
       // validatePaymentBranch and consolidated at Review by evaluateCanProduceV4.
       const c = data.landlordContact;
-      if (isBlank(c?.name)) issues.push('A name to receive payment is required.');
+      // Defect #2 cutover: the payee NAME is derived from the Step-3 identity,
+      // not typed here. Validate only the non-landlord override name when the
+      // override is on; the derived name is consolidated at Review
+      // (evaluateCanProduceV4 / PAYEE_NAME_UNRESOLVED).
+      if (data.payeeIsNonLandlord && isBlank(data.payeeOverrideName)) {
+        issues.push('Enter the name of the payee who receives rent.');
+      }
       if (isBlank(c?.phone)) issues.push('A telephone number for payment is required.');
       if (isBlank(c?.streetAddress)) {
         issues.push('A street address to receive payment is required.');
@@ -145,15 +173,10 @@ export function validateStep(
     }
 
     case FlowStep.LandlordAgentInfo: {
-      // Defect #1: landlord type must be chosen, branch fields complete.
+      // Signer + execution/service. Landlord IDENTITY is validated on the
+      // LandlordIdentity step (earlier); the entity-title rule below still
+      // keys off id.type, which is already set by the time the user is here.
       const id = data.landlordIdentity;
-      if (!id || !data.landlordIdentityConfirmed) {
-        issues.push('Select whether the landlord is an individual or an entity.');
-      }
-      if (id?.type === 'entity') {
-        if (isBlank(id.entityLegalName)) issues.push("Enter the entity's full legal name.");
-        if (!id.entityType) issues.push('Select the entity type.');
-      }
       if (isBlank(data.signerName)) issues.push('A signer name is required.');
       if (!data.signerCapacity) issues.push('Select who is signing the notice.');
       // signerTitleRequired (Defect #3 countersign 2026-06-05 §1, LOCKED): for an
@@ -221,6 +244,7 @@ export const STEP_ORDER: FlowStep[] = [
   FlowStep.PreflightDispute,
   FlowStep.PropertyIdentification,
   FlowStep.Tenants,
+  FlowStep.LandlordIdentity,
   FlowStep.AmountOwed,
   FlowStep.PaymentInstructions,
   FlowStep.LandlordAgentInfo,

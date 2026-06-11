@@ -86,10 +86,19 @@ console.log('4. Test 2 (spec): mail_only without street address rejected');
   const d = mailOnly(); d.landlordContact = { name: contact.name, phone: contact.phone };
   check('missing address invalid', hasError(validatePaymentBranch(d), 'CONTACT_ADDRESS_REQUIRED'));
 }
-console.log('5. Missing name rejected');
+console.log('5. Payee name is derived; only the override name is validated here (Defect #2)');
 {
+  // Typed landlordContact.name is retired — its absence is no longer an error.
   const d = mailOnly(); d.landlordContact = { phone: contact.phone, streetAddress: contact.streetAddress };
-  check('missing name', hasError(validatePaymentBranch(d), 'CONTACT_NAME_REQUIRED'));
+  check('missing typed name is NOT an error', !hasError(validatePaymentBranch(d), 'PAYEE_OVERRIDE_NAME_REQUIRED'));
+  check('config without typed name still valid', validatePaymentBranch(d).valid);
+
+  // With the non-landlord override ON, the override name must be present.
+  const blank = mailOnly(); blank.payeeIsNonLandlord = true; blank.payeeOverrideName = '   ';
+  check('override on + blank override name rejected', hasError(validatePaymentBranch(blank), 'PAYEE_OVERRIDE_NAME_REQUIRED'));
+  const ok = mailOnly(); ok.payeeIsNonLandlord = true; ok.payeeOverrideName = 'Westside Property Management, Inc.';
+  check('override on + present override name ok',
+    !hasError(validatePaymentBranch(ok), 'PAYEE_OVERRIDE_NAME_REQUIRED') && validatePaymentBranch(ok).valid);
 }
 
 console.log('\n=== in_person_and_mail branch ===\n');

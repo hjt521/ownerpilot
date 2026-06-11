@@ -24,6 +24,10 @@ export enum FlowStep {
   PreflightDispute = 'preflight_dispute',
   PropertyIdentification = 'step1_property',
   Tenants = 'step2_tenants',
+  // Landlord identity (who the landlord is) is captured BEFORE payment,
+  // because the (S) 1161(2) payee name is derived from it (derivePayeeName).
+  // The signer/service questions stay on LandlordAgentInfo, later in the flow.
+  LandlordIdentity = 'step3_landlord_identity',
   AmountOwed = 'step3_amount',
   PaymentInstructions = 'step4_payment',
   LandlordAgentInfo = 'step5_landlord',
@@ -68,9 +72,20 @@ export interface DisputeScreen {
 
 export type EntityType = 'llc' | 'corporation' | 'lp' | 'gp' | 'trust' | 'other';
 
+export type LlcManagementType = 'member-managed' | 'manager-managed' | 'not-sure';
+
 export type LandlordIdentity =
   | { type: 'individual'; names: string[] }
-  | { type: 'entity'; entityLegalName: string; entityType: EntityType };
+  | {
+      type: 'entity';
+      entityLegalName: string;
+      entityType: EntityType;
+      /** FIX 1: California LLC management structure. Member-managed: any
+       *  member may bind the LLC. Manager-managed: only designated managers
+       *  may. Drives the signer-authority warning; required to advance when
+       *  entityType === 'llc'. Unset for non-LLC entity types. */
+      managementType?: LlcManagementType;
+    };
 
 export type SignerCapacity =
   | 'owner' // individual branch: the natural-person owner

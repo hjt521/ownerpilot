@@ -32,6 +32,7 @@ import type {
   StalenessReason,
 } from './noticeFlowState';
 import type { ServiceMethod } from '../dates/computeCompliancePeriod';
+import { derivePayeeName } from '../produce/renderNotice';
 
 /** Sum of base-rent amounts demanded. */
 function totalAmount(data: NoticeFlowData): number {
@@ -63,7 +64,7 @@ export function captureProductionSnapshot(
         end: p.periodEndDate,
         amount: p.amount,
       })),
-    payeeName: (c.name ?? '').trim(),
+    payeeName: derivePayeeName(data).name,
     payeePhone: (c.phone ?? '').trim(),
     payeeStreetAddress: (c.streetAddress ?? '').trim(),
     paymentBranch: data.paymentBranch,
@@ -151,7 +152,7 @@ export function evaluateStaleness(
     changedFields.push('Tenant names');
   }
 
-  if (differs(c.name ?? '', snapshot.payeeName)) changedFields.push('Payee name');
+  if (differs(derivePayeeName(data).name, snapshot.payeeName)) changedFields.push('Payee name');
   if (differs(c.phone ?? '', snapshot.payeePhone)) changedFields.push('Payee telephone');
   if (differs(c.streetAddress ?? '', snapshot.payeeStreetAddress)) {
     changedFields.push('Payee address');

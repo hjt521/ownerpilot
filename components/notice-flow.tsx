@@ -13,7 +13,18 @@ import {
   PaymentBranch,
   LandlordContact,
   ServiceAttempt,
+  LlcManagementType,
 } from '@/lib/flow/noticeFlowState';
+import {
+  LLC_MGMT_FIELD_LABEL,
+  LLC_MGMT_FIELD_HELPER,
+  LLC_MGMT_OPTIONS,
+  LLC_NOT_SURE_BANNER,
+  LLC_MANAGER_WARNING_BANNER,
+  shouldShowSignerAuthorityWarning,
+  LLC_NOT_SURE_BANNER_TITLE,
+  LLC_MANAGER_WARNING_BANNER_TITLE,
+} from '@/lib/flow/llcCopy';
 import { validateStep } from '@/lib/flow/advancement';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import {
@@ -54,6 +65,7 @@ const PAGES: { label: string; steps: FlowStep[] }[] = [
     steps: [
       FlowStep.PropertyIdentification,
       FlowStep.Tenants,
+      FlowStep.LandlordIdentity,
       FlowStep.AmountOwed,
       FlowStep.PaymentInstructions,
     ],
@@ -83,6 +95,8 @@ function renderStepBody(
       return <PropertyStep data={data} update={update} />;
     case FlowStep.Tenants:
       return <TenantsStep data={data} update={update} />;
+    case FlowStep.LandlordIdentity:
+      return <LandlordIdentityStep data={data} update={update} />;
     case FlowStep.AmountOwed:
       return <AmountStep data={data} update={update} />;
     case FlowStep.PaymentInstructions:
@@ -1453,33 +1467,133 @@ function GuidanceBlocks({ blocks }: { blocks: GuidanceBlock[] }) {
   );
 }
 
-function LandlordStep({
+// --- FIX 1: LLC management-type intake + signer-authority warning ----------
+//
+// TODO(broker): the banner BODY copy and the management-option helper text
+// below are NON-LEGAL PLACEHOLDERS. Replace verbatim with reviewed wording
+// before this ships to users. The structural labels (field/question text and
+// option names) are product copy, not legal determinations. Logic and tests
+// are built against these placeholders so they fail loudly when real copy
+// lands. Do NOT add attorney attribution.
+
+// FIX 1 copy constants + the Banner 1.2 trigger predicate now live in
+// lib/flow/llcCopy.ts (a pure module the tsx test suites can import without
+// pulling in this client component). Imported above.
+
+/** LLC management-type radio (Field 1.1) + the not-sure banner (1.3). Renders
+    only for an LLC landlord. Required selection is gated in advancement.ts. */
+function LlcManagementTypeField({
   data,
   update,
 }: {
   data: NoticeFlowData;
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
 }) {
-  // B1: the signing (execution) date is distinct from the service date. Inline
-  // feedback — hard error if signed after service, soft warning if >30 days
-  // before. The hard error also blocks advancement (advancement.ts) and
-  // production (gates.ts); the warning does neither (build decision: warn only).
-  const signingCheck = validateSigningDate(data.signingDate, data.serviceDate);
+  const li = data.landlordIdentity;
+  if (li?.type !== 'entity' || li.entityType !== 'llc') return null;
+  const current = li.managementType;
+  const setMgmt = (v: LlcManagementType) =>
+    update((d) =>
+      d.landlordIdentity?.type === 'entity'
+        ? { landlordIdentity: { ...d.landlordIdentity, managementType: v } }
+        : {},
+    );
+  return (
+    <div>
+      <FieldLabel>{LLC_MGMT_FIELD_LABEL}<Req /></FieldLabel>
+      <p className="mb-2 text-xs text-gray-500 leading-relaxed">{LLC_MGMT_FIELD_HELPER}</p>
+      <div className="space-y-2">
+        {LLC_MGMT_OPTIONS.map((opt) => (
+          <label
+            key={opt.value}
+            className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+              current === opt.value ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+            }`}
+          >
+            <input
+              type="radio"
+              name="llcManagementType"
+              className="mt-1"
+              checked={current === opt.value}
+              onChange={() => setMgmt(opt.value)}
+            />
+            <span>
+              <span className="block text-gray-900">{opt.label}</span>
+              {opt.helper && <span className="block text-sm text-gray-500">{opt.helper}</span>}
+            </span>
+          </label>
+        ))}
+      </div>
+      {current === 'not-sure' && (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-relaxed">
+          <strong>{LLC_NOT_SURE_BANNER_TITLE}</strong> {LLC_NOT_SURE_BANNER}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Banner 1.2: manager-managed LLC + entity-insider capacity + a signer title
+    that doesn't look like a manager role. Non-gating; dismissible. */
+function SignerAuthorityWarning({
+  data,
+}: {
+  data: NoticeFlowData;
+}) {
+  const [dismissed, setDismissed] = useState(false);
+  const triggered = shouldShowSignerAuthorityWarning(data);
+  if (!triggered || dismissed) return null;
+  const focusTitle = () => {
+    const el = typeof document !== 'undefined' ? document.getElementById('signerTitle') : null;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (el as HTMLInputElement).focus();
+    }
+  };
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-relaxed">
+      <p>
+        <strong>{LLC_MANAGER_WARNING_BANNER_TITLE}</strong> {LLC_MANAGER_WARNING_BANNER}
+      </p>
+      <div className="mt-3 flex gap-3">
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          className="text-xs font-semibold text-amber-800 underline"
+        >
+          Got it
+        </button>
+        <button
+          type="button"
+          onClick={focusTitle}
+          className="text-xs font-semibold text-amber-800 underline"
+        >
+          I need to fix the signer
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LandlordIdentityStep({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
   const li = data.landlordIdentity;
   const entityName = li?.type === 'entity' ? li.entityLegalName : '';
   const entityTypeVal: EntityType = li?.type === 'entity' ? li.entityType : 'llc';
   return (
     <div className="space-y-6">
       <StepIntro>
-        Who is signing and serving the notice, and when?
+        Who is the landlord on this notice? This determines whose name appears
+        as the party the notice is from, and (unless you say otherwise on the
+        payment step) who rent is payable to.
       </StepIntro>
-      <p className="text-sm text-gray-600 leading-relaxed -mt-2">
-        This is the last step before producing the notice. Tell us who will sign
-        it, and how and when you plan to serve it. You&apos;ll get
-        method-specific service instructions on the next screen.
-      </p>
 
-      {/* Stage 1 — who is the landlord (Defect #1, ruling §2.1) */}
+      {/* Stage 1 - who is the landlord (Defect #1, ruling 2.1) */}
       <div>
         <FieldLabel>Who is the landlord on this notice?<Req /></FieldLabel>
         <div className="space-y-2">
@@ -1555,8 +1669,38 @@ function LandlordStep({
               ))}
             </select>
           </div>
+
+          {/* FIX 1.1 — LLC management type (member- vs manager-managed) + 1.3 banner */}
+          <LlcManagementTypeField data={data} update={update} />
         </>
       )}
+    </div>
+  );
+}
+
+function LandlordStep({
+  data,
+  update,
+}: {
+  data: NoticeFlowData;
+  update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+}) {
+  // B1: the signing (execution) date is distinct from the service date. Inline
+  // feedback — hard error if signed after service, soft warning if >30 days
+  // before. The hard error also blocks advancement (advancement.ts) and
+  // production (gates.ts); the warning does neither (build decision: warn only).
+  const signingCheck = validateSigningDate(data.signingDate, data.serviceDate);
+  const li = data.landlordIdentity;
+  return (
+    <div className="space-y-6">
+      <StepIntro>
+        Who is signing and serving the notice, and when?
+      </StepIntro>
+      <p className="text-sm text-gray-600 leading-relaxed -mt-2">
+        This is the last step before producing the notice. Tell us who will sign
+        it, and how and when you plan to serve it. You&apos;ll get
+        method-specific service instructions on the next screen.
+      </p>
 
       {/* Signer name — shown once the landlord type is chosen */}
       {li && (
@@ -1639,6 +1783,9 @@ function LandlordStep({
           />
         </div>
       )}
+
+      {/* FIX 1.2 — signer-authority warning (manager-managed LLC + non-manager title) */}
+      <SignerAuthorityWarning data={data} />
 
       {/* Authority evidence — when the signer is not the insider */}
       {data.signerCapacity &&

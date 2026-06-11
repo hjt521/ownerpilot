@@ -39,7 +39,7 @@ import type {
 } from '../flow/noticeFlowState';
 
 export type PaymentBranchErrorCode =
-  | 'CONTACT_NAME_REQUIRED'
+  | 'PAYEE_OVERRIDE_NAME_REQUIRED'
   | 'CONTACT_PHONE_REQUIRED'
   | 'CONTACT_PHONE_FORMAT'
   | 'CONTACT_ADDRESS_REQUIRED'
@@ -108,6 +108,8 @@ export type PaymentBranchInput = Pick<
   | 'bankBranchWithinFiveMilesAttested'
   | 'eftElectionAvailable'
   | 'eftPreviouslyEstablishedConfirmed'
+  | 'payeeIsNonLandlord'
+  | 'payeeOverrideName'
 >;
 
 const VALID_BRANCHES: PaymentBranch[] = [
@@ -144,13 +146,15 @@ export function validatePaymentBranch(
 
   // --- § 1161(2) payee trio: name + telephone + street address ------------
   const contact = input.landlordContact ?? {};
-  if (isBlank(contact.name)) {
+  // Defect #2 cutover: the payee NAME is no longer typed here. It is derived
+  // from the Step-3 landlord identity (validated on Step 3 and by the produce
+  // gate's PAYEE_NAME_UNRESOLVED check). The only name this validator now owns
+  // is the non-landlord override name: when the override is on, it must be set.
+  if (input.payeeIsNonLandlord === true && isBlank(input.payeeOverrideName)) {
     errors.push({
-      code: 'CONTACT_NAME_REQUIRED',
+      code: 'PAYEE_OVERRIDE_NAME_REQUIRED',
       scope: 'contact',
-      message:
-        'The name of the person to whom rent is paid is required ' +
-        '(Cal. Code Civ. Proc. § 1161(2)).',
+      message: 'Enter the name of the payee who receives rent.',
     });
   }
   if (isBlank(contact.phone)) {

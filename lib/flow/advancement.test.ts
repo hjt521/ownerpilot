@@ -115,6 +115,25 @@ console.log('\n7. Payment: at least one method chosen (deep validity is at Revie
   check('present-but-invalid method still advances (deferred to Review)', validateStep(FlowStep.PaymentInstructions, d2).canAdvance === true);
 }
 
+console.log('\n7b. Payment: typed name retired; override name required when override on (Defect #2)');
+{
+  // Missing typed landlordContact.name no longer blocks the payment step.
+  const dNoName = fullData();
+  dNoName.landlordContact = { phone: '(559) 555-0100', streetAddress: '12 Almond Ln, Fresno, CA 93650' };
+  check('missing typed name advances', validateStep(FlowStep.PaymentInstructions, dNoName).canAdvance === true,
+    JSON.stringify(validateStep(FlowStep.PaymentInstructions, dNoName).issues));
+
+  // Override ON with a blank override name blocks.
+  const dBlank = fullData(); dBlank.payeeIsNonLandlord = true; dBlank.payeeOverrideName = '  ';
+  const vBlank = validateStep(FlowStep.PaymentInstructions, dBlank);
+  check('override on + blank name blocks', vBlank.canAdvance === false);
+  check('override name issue surfaced', vBlank.issues.some((i) => /payee who receives rent/i.test(i)));
+
+  // Override ON with a name advances.
+  const dOk = fullData(); dOk.payeeIsNonLandlord = true; dOk.payeeOverrideName = 'Westside Property Management, Inc.';
+  check('override on + name advances', validateStep(FlowStep.PaymentInstructions, dOk).canAdvance === true);
+}
+
 console.log('\n8. Landlord: signer + role + service date/method; agent needs authority');
 {
   const ok = validateStep(FlowStep.LandlordAgentInfo, fullData());
@@ -199,6 +218,74 @@ console.log('\n13. Full walk: preflight -> ... -> Review advances each step');
   }
   // Should reach at least Review (Review->ServiceInstructions also allowed since Review has no own-field gate)
   check('reached Review or beyond', visited.includes(FlowStep.Review), visited.join(' -> '));
+}
+
+console.log('\n=== FIX 1: LLC management type gating at LandlordIdentity ===');
+
+type MgmtType = 'member-managed' | 'manager-managed' | 'not-sure';
+
+function llcData(mgmt?: MgmtType): NoticeFlowData {
+  const d = fullData();
+  Object.assign(d, entityLandlord('officer_member_trustee'));
+  if (d.landlordIdentity?.type === 'entity') {
+    d.landlordIdentity = { ...d.landlordIdentity, managementType: mgmt };
+  }
+  return d;
+}
+
+console.log('\n14. LLC with no management type is blocked');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, llcData(undefined));
+  check('blocked', v.canAdvance === false);
+  check('issue names the field', v.issues.some((i) => /how this LLC is managed/i.test(i)));
+}
+
+console.log('\n15. Member-managed LLC advances');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, llcData('member-managed'));
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n16. Manager-managed LLC advances (warning is non-gating, on the signer step)');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, llcData('manager-managed'));
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n17. "Not sure" advances (banner 1.3 is non-gating)');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, llcData('not-sure'));
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n18. Non-LLC entity does not require a management type');
+{
+  const d = fullData();
+  Object.assign(d, entityLandlord('officer_member_trustee', { entityType: 'corporation', entityLegalName: 'PTAG Holdings, Inc.' }));
+  const v = validateStep(FlowStep.LandlordIdentity, d);
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n19. Individual landlord does not require a management type');
+{
+  const v = validateStep(FlowStep.LandlordIdentity, fullData());
+  check('advances', v.canAdvance === true, JSON.stringify(v.issues));
+}
+
+console.log('\n20. Unconfirmed identity still blocks (regression)');
+{
+  const d = llcData('member-managed');
+  d.landlordIdentityConfirmed = false;
+  check('blocked', validateStep(FlowStep.LandlordIdentity, d).canAdvance === false);
+}
+
+console.log('\n21. Blank entity legal name still blocks (regression)');
+{
+  const d = llcData('member-managed');
+  if (d.landlordIdentity?.type === 'entity') {
+    d.landlordIdentity = { ...d.landlordIdentity, entityLegalName: '   ' };
+  }
+  check('blocked', validateStep(FlowStep.LandlordIdentity, d).canAdvance === false);
 }
 
 console.log(`\n${'-'.repeat(40)}`);

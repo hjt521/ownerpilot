@@ -119,6 +119,31 @@ console.log('\n=== Tenant change ===\n');
   check('14. tenant change => names "Tenant names"', r.changedFields.includes('Tenant names'));
 }
 
+console.log('\n=== Payee name tracks the DERIVED name (Defect #2 cutover) ===\n');
+{
+  const data = baseData();
+  data.landlordIdentity = { type: 'individual', names: ['Maria Lopez'] };
+  data.landlordIdentityConfirmed = true;
+  data.productionSnapshot = captureProductionSnapshot(data);
+  // Turning on the non-landlord override changes the DERIVED payee name.
+  data.payeeIsNonLandlord = true;
+  data.payeeOverrideName = 'Westside Property Management, Inc.';
+  const r = evaluateStaleness(data);
+  check('D2-1. override flips derived payee name => stale', r.stale === true, r.changedFields.join(', '));
+  check('D2-2. => names "Payee name"', r.changedFields.includes('Payee name'));
+}
+{
+  // The typed (deprecated) landlordContact.name no longer drives staleness.
+  const data = baseData();
+  data.landlordIdentity = { type: 'individual', names: ['Maria Lopez'] };
+  data.landlordIdentityConfirmed = true;
+  data.productionSnapshot = captureProductionSnapshot(data);
+  data.landlordContact = { ...data.landlordContact!, name: 'Totally Different Name' };
+  const r = evaluateStaleness(data);
+  check('D2-3. typed landlordContact.name change alone => no "Payee name" change',
+    !r.changedFields.includes('Payee name'));
+}
+
 console.log('\n=== stalenessReason enum (B1) ===\n');
 {
   const data = baseData();
