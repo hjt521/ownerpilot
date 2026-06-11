@@ -87,6 +87,7 @@ function renderStepBody(
   step: FlowStep,
   data: NoticeFlowData,
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void,
+  goToPage?: (pageIndex: number) => void,
 ): ReactNode {
   switch (step) {
     case FlowStep.PreflightDispute:
@@ -104,7 +105,7 @@ function renderStepBody(
     case FlowStep.LandlordAgentInfo:
       return <LandlordStep data={data} update={update} />;
     case FlowStep.Review:
-      return <ReviewStep data={data} update={update} />;
+      return <ReviewStep data={data} update={update} goToPage={goToPage} />;
     case FlowStep.ServiceInstructions:
       return <ServiceStep data={data} update={update} />;
     default:
@@ -153,6 +154,17 @@ export function NoticeFlow() {
   const onBack = () => {
     setPageIndex((i) => Math.max(i - 1, 0));
     setShowIssues(false);
+  };
+
+  // Jump directly to a page (used by the Review blockers' "Go to this"
+  // buttons). Clamped; scrolls to the top so the landed page reads from
+  // its heading.
+  const goToPage = (i: number) => {
+    setPageIndex(Math.max(0, Math.min(i, totalPages - 1)));
+    setShowIssues(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // Enter advances the flow, scoped to avoid hijacking other Enter behaviors:
@@ -211,7 +223,7 @@ export function NoticeFlow() {
               key={step}
               className={idx > 0 ? 'pt-4 mt-4 border-t border-gray-200' : ''}
             >
-              {renderStepBody(step, state.data, update)}
+              {renderStepBody(step, state.data, update, goToPage)}
             </div>
           ))}
         </section>
@@ -1881,12 +1893,44 @@ function LandlordStep({
 
 // --- Step 6: Review ---------------------------------------------------------
 
+// Maps a produce-gate blocker code (gates.ts, evaluateCanProduceV4) to the
+// wizard PAGE that owns the fields behind it, for the "Go to this" jump.
+// JURISDICTION_* codes are handled by prefix in pageForBlocker.
+// TEMPLATE_NOT_SIGNED_OFF is a system gate with no owning page - no button.
+const BLOCKER_PAGE: Record<string, number> = {
+  DISPUTE_NOT_CLEARED: 0,
+  PROPERTY_ADDRESS_MISSING: 1,
+  NO_TENANT: 1,
+  NO_RENT_PERIODS: 1,
+  BASE_RENT_NOT_CONFIRMED: 1,
+  PAYMENT_CONFIG_INVALID: 1,
+  BANK_5_MILE_NOT_VERIFIED: 1,
+  PAYEE_NAME_UNRESOLVED: 1,
+  LANDLORD_TYPE_UNCONFIRMED: 1,
+  SIGNER_MISSING: 2,
+  SIGNER_ROLE_MISSING: 2,
+  AUTHORITY_EVIDENCE_MISSING: 2,
+  SIGNER_TITLE_REQUIRED: 2,
+  SERVICE_DATE_OR_METHOD_MISSING: 2,
+  SIGNING_DATE_MISSING: 2,
+  SIGNING_AFTER_SERVICE: 2,
+  SERVICE_ATTEMPT_INCOMPLETE: 2,
+  DATES_NOT_COMPUTABLE: 2,
+};
+
+function pageForBlocker(code: string): number | null {
+  if (code.startsWith('JURISDICTION_')) return 1;
+  return code in BLOCKER_PAGE ? BLOCKER_PAGE[code] : null;
+}
+
 function ReviewStep({
   data,
   update,
+  goToPage,
 }: {
   data: NoticeFlowData;
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
+  goToPage?: (pageIndex: number) => void;
 }) {
   const result = evaluateCanProduceV4(data);
 
@@ -1955,10 +1999,31 @@ function ReviewStep({
             Not ready yet — {result.blockers.length}{' '}
             {result.blockers.length === 1 ? 'item needs' : 'items need'} attention:
           </p>
-          <ul className="space-y-1 text-sm text-amber-900 list-disc pl-5">
-            {result.blockers.map((b) => (
-              <li key={b.code}>{b.message}</li>
-            ))}
+          <ul className="space-y-2 text-sm text-amber-900 list-disc pl-5">
+            {result.blockers.map((b) => {
+              const targetPage = pageForBlocker(b.code);
+              return (
+                <li key={b.code}>
+                  <span>{b.message}</span>
+                  {targetPage !== null && goToPage && (
+                    <button
+                      type="button"
+                      onClick={() => goToPage(targetPage)}
+                      className="ml-2 align-baseline text-xs font-semibold text-amber-800 underline whitespace-nowrap"
+                    >
+                      Go to this &rarr;
+                    </button>
+                  )}
+                  {b.code === 'PAYMENT_CONFIG_INVALID' && result.paymentErrors.length > 0 && (
+                    <ul className="mt-1 space-y-0.5 pl-5 list-disc">
+                      {result.paymentErrors.map((pe) => (
+                        <li key={pe.code}>{pe.message}</li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

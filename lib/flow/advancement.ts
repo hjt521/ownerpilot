@@ -27,6 +27,7 @@ import {
 } from './noticeFlowState';
 import { evaluateDisputeScreen } from './gates';
 import { validateSigningDate } from './escalation';
+import { isUsPhone } from '../payments/validatePaymentBranch';
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -151,7 +152,11 @@ export function validateStep(
       if (data.payeeIsNonLandlord && isBlank(data.payeeOverrideName)) {
         issues.push('Enter the name of the payee who receives rent.');
       }
-      if (isBlank(c?.phone)) issues.push('A telephone number for payment is required.');
+      if (isBlank(c?.phone)) {
+        issues.push('A telephone number for payment is required.');
+      } else if (!isUsPhone(c?.phone)) {
+        issues.push('Enter a valid US telephone number (10 digits).');
+      }
       if (isBlank(c?.streetAddress)) {
         issues.push('A street address to receive payment is required.');
       }
