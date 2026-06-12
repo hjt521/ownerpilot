@@ -34,7 +34,9 @@ import {
   evaluateStaleness,
 } from '@/lib/flow/escalation';
 import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName } from '@/lib/produce/renderNotice';
+import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
+import { PacketPrintOptions } from './packet-print-options';
 import type { ServiceMethod } from '@/lib/dates/computeCompliancePeriod';
 
 /**
@@ -1938,6 +1940,7 @@ function ReviewStep({
   // and build the styled document. The renderer fails closed; wrap it so any
   // unexpected gap surfaces as a clear message rather than a crash.
   let docHtml: string | null = null;
+  let renderedModel: NoticeModel | null = null;
   let renderError: string | null = null;
   if (result.canProduce && result.computedDates) {
     try {
@@ -1949,6 +1952,7 @@ function ReviewStep({
         },
       });
       docHtml = buildNoticeDocumentHtml(rendered.model);
+      renderedModel = rendered.model;
     } catch (e) {
       renderError =
         e instanceof NoticeRenderError
@@ -1957,20 +1961,12 @@ function ReviewStep({
     }
   }
 
-  const downloadPdf = () => {
-    if (!docHtml) return;
-    // B1 stale-guard: record the face-determining fields at the moment of
-    // production. evaluateStaleness (in ReServePanel) later compares current
-    // data against this snapshot to detect a drifted face on re-serve.
+  // B1 stale-guard: record the face-determining fields at the moment of
+  // production. evaluateStaleness (in ReServePanel) later compares current
+  // data against this snapshot to detect a drifted face on re-serve. Called
+  // by PacketPrintOptions whenever any packet document is printed.
+  const onProduced = () => {
     update({ productionSnapshot: captureProductionSnapshot(data) });
-    // Open the styled document and trigger the browser's print-to-PDF.
-    // The user picks "Save as PDF" in the print dialog. No external dependency.
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(docHtml);
-    w.document.close();
-    w.focus();
-    w.print();
   };
 
   return (
@@ -2050,35 +2046,13 @@ function ReviewStep({
         </div>
       )}
 
-      {docHtml && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Notice preview</h2>
-            <button
-              type="button"
-              onClick={downloadPdf}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Download PDF
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            This is a broker-prepared draft for your review. Sign it in ink before
-            serving, and serve it on the date shown. The proof of service is
-            completed after you serve — not before.
-          </p>
-          <iframe
-            title="Notice preview"
-            srcDoc={docHtml}
-            className="w-full rounded-lg border border-gray-300 bg-white"
-            style={{ height: '40rem' }}
-          />
-        </div>
+      {docHtml && renderedModel && (
+        <PacketPrintOptions
+          model={renderedModel}
+          data={data}
+          noticeDocHtml={docHtml}
+          onProduced={onProduced}
+        />
       )}
     </div>
   );
