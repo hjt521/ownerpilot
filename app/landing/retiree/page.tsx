@@ -4,7 +4,7 @@ import { LandingVariant } from '@/components/landing-variant'
 export const metadata: Metadata = {
   title: 'Stress-Free Property Management for Retirees | OwnerPilot AI',
   description:
-    'Own California rental property in retirement? OwnerPilot AI gives you clear answers, backed by a licensed attorney and real estate broker.',
+    'Own California rental property in retirement? OwnerPilot AI gives you clear answers, prepared under California Licensed Real Estate Broker supervision.',
 }
 
 export default function RetireeLandingPage() {
