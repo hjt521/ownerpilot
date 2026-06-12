@@ -480,7 +480,7 @@ function PropertyStep({
             update({ propertyAddress: e.target.value })
           }
           placeholder="123 Main St, City, CA 90000"
-          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+          className={inputClass}
         />
         <p className="text-xs text-gray-500 mt-2">
           Note: properties in the City of Los Angeles and several other cities
@@ -503,7 +503,7 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: ReactNo
 }
 
 const inputClass =
-  'w-full rounded-lg border border-rule bg-white px-4 py-3 text-gray-900 focus:border-brand focus:ring-1 focus:ring-brand outline-none';
+  'w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none';
 
 /**
  * A reliable date field with an optional calendar picker.
@@ -636,7 +636,7 @@ function DateField({
           type="button"
           aria-label="Open calendar"
           onClick={() => setOpen((o) => !o)}
-          className="rounded-lg rounded-l-none border border-l-0 border-rule bg-white px-3 text-gray-600 hover:bg-tint hover:text-brand focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+          className="rounded-lg rounded-l-none border border-l-0 border-gray-300 bg-white px-3 text-gray-600 shadow-sm hover:bg-tint hover:text-brand focus:border-brand focus:ring-1 focus:ring-brand outline-none"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="3" y="4" width="18" height="18" rx="2" />
