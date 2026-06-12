@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Fragment, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useState, useEffect, useRef, Fragment, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   createFlowState,
   FlowStep,
@@ -26,6 +26,7 @@ import {
   LLC_MANAGER_WARNING_BANNER_TITLE,
 } from '@/lib/flow/llcCopy';
 import { validateStep } from '@/lib/flow/advancement';
+import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import {
   validateSigningDate,
@@ -120,6 +121,39 @@ export function NoticeFlow() {
   const [state, setState] = useState<NoticeFlowState>(createFlowState);
   const [pageIndex, setPageIndex] = useState(0);
   const [showIssues, setShowIssues] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // R2a draft persistence. Restore runs in a mount effect (not a lazy
+  // initializer) so server HTML and the client's first paint agree; the
+  // banner and any restored values appear in the post-hydration render.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft) {
+      setState((s) => ({ ...s, data: draft.data }));
+      setPageIndex(Math.max(0, Math.min(draft.pageIndex, PAGES.length - 1)));
+      setDraftRestored(true);
+    }
+    hydratedRef.current = true;
+  }, []);
+  // Debounced autosave; the cleanup cancels superseded saves (including the
+  // pristine pre-restore state on first mount).
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const t = setTimeout(() => saveDraft(pageIndex, state.data), 500);
+    return () => clearTimeout(t);
+  }, [state.data, pageIndex]);
+
+  const startOver = () => {
+    clearDraft();
+    setState(createFlowState());
+    setPageIndex(0);
+    setShowIssues(false);
+    setDraftRestored(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const update = (
     patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>),
@@ -220,6 +254,28 @@ export function NoticeFlow() {
           )}
         </header>
 
+        {/* R2a: draft restored from this browser's localStorage. */}
+        {draftRestored && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-sm">
+            <p className="text-sm text-gray-700">
+              We restored your in-progress notice from this browser.
+            </p>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={startOver}
+                className="text-sm font-medium text-brand hover:underline"
+              >
+                Start over
+              </button>
+              <button
+                onClick={() => setDraftRestored(false)}
+                className="text-sm text-gray-500 hover:text-gray-900"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
         {/* Step body — every step in the current page, divided */}
         <section className="mb-10">
           {page.steps.map((step, idx) => (
