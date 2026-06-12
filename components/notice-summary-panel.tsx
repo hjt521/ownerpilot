@@ -1,0 +1,75 @@
+import type { NoticeFlowData } from '@/lib/flow/noticeFlowState';
+import { derivePayeeName } from '@/lib/produce/renderNotice';
+
+/**
+ * NoticeSummaryPanel — R1b (Concept #1). Live, read-only mirror of the flow
+ * data for the wizard's right column. Derivations reuse the SAME helpers the
+ * renderer uses (derivePayeeName); nothing here feeds the document. The
+ * compliance badge cites California Code of Civil Procedure § 1161(2),
+ * matching the locked notice meta (the concept mock's "Civil Code" was
+ * corrected — wrong code).
+ */
+
+const EM_DASH = '\u2014';
+
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-medium text-muted">{k}</dt>
+      <dd className="mt-0.5 text-sm text-ink">{v || EM_DASH}</dd>
+    </div>
+  );
+}
+
+export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
+  const tenants = (data.tenantNames ?? [])
+    .map((t: string) => t.trim())
+    .filter(Boolean)
+    .join(', ');
+  const periods = (data.rentPeriods ?? []).filter(
+    (p) => p.periodStartDate && p.periodEndDate,
+  );
+  const total = periods.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const totalText =
+    total > 0
+      ? `$${total.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+      : '';
+  const payee = derivePayeeName(data).name;
+
+  return (
+    <div className="space-y-4">
+      <section className="rounded-lg border border-rule bg-white p-5">
+        <h2 className="font-serif text-base font-bold text-brand">Notice Summary</h2>
+        <dl className="mt-3 space-y-3">
+          <Row k="Type of Notice" v="3-Day Notice to Pay Rent or Quit" />
+          <Row k="Purpose" v="Non-payment of rent" />
+          <Row k="Property" v={data.propertyAddress ?? ''} />
+          <Row k="Tenant(s)" v={tenants} />
+          <Row k="Total Demanded" v={totalText} />
+          <Row k="Payable To" v={payee} />
+        </dl>
+        <div className="mt-4 rounded-md bg-tint px-3 py-2.5">
+          <p className="text-xs font-semibold text-brand">California Compliant</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted">
+            Broker-prepared workflow based on California Code of Civil
+            Procedure § 1161(2).
+          </p>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-rule bg-white p-5">
+        <h2 className="font-serif text-base font-bold text-brand">
+          Next: Serve &amp; Track
+        </h2>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          After generating your notice, you can use OwnerPilot AI to track
+          service attempts and create a Proof of Service. Service logs and
+          proof of service are separate follow-up tools.
+        </p>
+      </section>
+    </div>
+  );
+}
