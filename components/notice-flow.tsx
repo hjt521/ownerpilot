@@ -1302,7 +1302,8 @@ function setLandlordTypePatch(
   data: NoticeFlowData,
 ): Partial<NoticeFlowData> {
   if (type === 'individual') {
-    const names = data.landlordIdentity?.type === 'individual' ? data.landlordIdentity.names : [];
+    const prevNames = data.landlordIdentity?.type === 'individual' ? data.landlordIdentity.names : [];
+    const names = prevNames.length > 0 ? prevNames : [''];
     return { landlordIdentity: { type: 'individual', names }, landlordIdentityConfirmed: true };
   }
   const prev = data.landlordIdentity?.type === 'entity' ? data.landlordIdentity : undefined;
@@ -1311,6 +1312,7 @@ function setLandlordTypePatch(
       type: 'entity',
       entityLegalName: prev?.entityLegalName ?? '',
       entityType: prev?.entityType ?? 'llc',
+      ...(prev?.managementType ? { managementType: prev.managementType } : {}),
     },
     landlordIdentityConfirmed: true,
   };
@@ -1599,6 +1601,32 @@ function LandlordIdentityStep({
   const li = data.landlordIdentity;
   const entityName = li?.type === 'entity' ? li.entityLegalName : '';
   const entityTypeVal: EntityType = li?.type === 'entity' ? li.entityType : 'llc';
+  // Toggle-stash: switching landlord type REPLACES landlordIdentity, which
+  // used to destroy the other branch's entered fields (entity legal name,
+  // entity type, LLC managementType; individual owner names). Stash the
+  // branch being left and restore it when the user toggles back.
+  type EntityIdentity = Extract<
+    NonNullable<NoticeFlowData['landlordIdentity']>,
+    { type: 'entity' }
+  >;
+  const [entityStash, setEntityStash] = useState<EntityIdentity | null>(null);
+  const [namesStash, setNamesStash] = useState<string[] | null>(null);
+  const selectType = (t: 'individual' | 'entity') => {
+    const cur = data.landlordIdentity;
+    if (cur?.type === 'entity') setEntityStash(cur);
+    else if (cur?.type === 'individual') setNamesStash(cur.names);
+    const restored =
+      t === 'entity'
+        ? cur?.type === 'entity'
+          ? cur
+          : entityStash ?? cur
+        : cur?.type === 'individual'
+          ? cur
+          : namesStash
+            ? { type: 'individual' as const, names: namesStash }
+            : cur;
+    update(setLandlordTypePatch(t, { ...data, landlordIdentity: restored }));
+  };
   return (
     <div className="space-y-6">
       <StepIntro>
@@ -1623,7 +1651,7 @@ function LandlordIdentityStep({
                 name="landlordType"
                 className="mt-1"
                 checked={li?.type === t}
-                onChange={() => update(setLandlordTypePatch(t, data))}
+                onChange={() => selectType(t)}
               />
               <span>
                 <span className="block text-gray-900">{LANDLORD_TYPE_LABELS[t].title}</span>
@@ -1633,6 +1661,79 @@ function LandlordIdentityStep({
           ))}
         </div>
       </div>
+
+      {/* Individual owner names — feeds derivePayeeName's composed owner line
+          (1 name verbatim; 2 → "A and B"; 3+ → Oxford comma). The renderer and
+          gate fail closed on an empty list; this intake was missing. */}
+      {li?.type === 'individual' && (
+        <div>
+          <FieldLabel>Owner name(s)<Req /></FieldLabel>
+          <p className="mb-2 text-xs text-gray-500 leading-relaxed">
+            Enter each owner&apos;s full name as it appears on the deed or title.
+            Every owner listed here is named on the notice, and (unless you say
+            otherwise on the payment step) rent is payable to them.
+          </p>
+          <div className="space-y-2">
+            {(li.names.length > 0 ? li.names : ['']).map((name, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    update((d) => {
+                      if (d.landlordIdentity?.type !== 'individual') return {};
+                      const names =
+                        d.landlordIdentity.names.length > 0
+                          ? [...d.landlordIdentity.names]
+                          : [''];
+                      names[i] = e.target.value;
+                      return { landlordIdentity: { ...d.landlordIdentity, names } };
+                    })
+                  }
+                  placeholder="Full name, e.g. Jane Q. Owner"
+                  className={inputClass}
+                />
+                {li.names.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update((d) => {
+                        if (d.landlordIdentity?.type !== 'individual') return {};
+                        const kept = d.landlordIdentity.names.filter((_, j) => j !== i);
+                        return {
+                          landlordIdentity: {
+                            ...d.landlordIdentity,
+                            names: kept.length > 0 ? kept : [''],
+                          },
+                        };
+                      })
+                    }
+                    className="text-sm text-gray-500 hover:text-red-600"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              update((d) => {
+                if (d.landlordIdentity?.type !== 'individual') return {};
+                const names =
+                  d.landlordIdentity.names.length > 0
+                    ? [...d.landlordIdentity.names, '']
+                    : ['', ''];
+                return { landlordIdentity: { ...d.landlordIdentity, names } };
+              })
+            }
+            className="mt-2 text-sm font-medium text-blue-700 hover:text-blue-800"
+          >
+            + Add another owner
+          </button>
+        </div>
+      )}
 
       {/* Entity identity fields */}
       {li?.type === 'entity' && (

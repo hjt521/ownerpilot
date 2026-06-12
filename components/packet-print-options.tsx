@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import type { NoticeFlowData } from '@/lib/flow/noticeFlowState';
 import {
@@ -125,12 +125,7 @@ export function PacketPrintOptions({
           serving, and serve it on the date shown. The proof of service is
           completed after you serve — not before.
         </p>
-        <iframe
-          title="Notice preview"
-          srcDoc={noticeDocHtml}
-          className="w-full rounded-lg border border-gray-300 bg-white"
-          style={{ height: '40rem' }}
-        />
+        <ScaledNoticePreview html={noticeDocHtml} />
       </div>
 
       {/* Full Packet confirmation modal */}
@@ -161,6 +156,57 @@ export function PacketPrintOptions({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// --- Scale-to-fit notice preview ---------------------------------------------
+// The produced document is letter width (8.5in = 816px at CSS 96dpi), which is
+// wider than the wizard column. Render it at true width inside the iframe and
+// scale the iframe down to the available column width, like a PDF thumbnail.
+const PREVIEW_PAGE_WIDTH_PX = 816;
+const PREVIEW_VIEWPORT_HEIGHT_PX = 640;
+
+function ScaledNoticePreview({ html }: { html: string }) {
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      if (w > 0) setScale(Math.min(1, w / PREVIEW_PAGE_WIDTH_PX));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div className="rounded-lg border border-gray-300 bg-gray-100 p-4">
+      <div ref={measureRef} className="w-full">
+        <div
+          className="mx-auto overflow-hidden"
+          style={{
+            width: PREVIEW_PAGE_WIDTH_PX * scale,
+            height: PREVIEW_VIEWPORT_HEIGHT_PX,
+          }}
+        >
+          <iframe
+            title="Notice preview"
+            srcDoc={html}
+            className="border border-gray-200 bg-white shadow-sm"
+            style={{
+              width: PREVIEW_PAGE_WIDTH_PX,
+              height: PREVIEW_VIEWPORT_HEIGHT_PX / scale,
+              transform: `scale(${scale})`,
+              transformOrigin: 'top left',
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
