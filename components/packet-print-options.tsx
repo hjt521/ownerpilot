@@ -103,7 +103,7 @@ export function PacketPrintOptions({
             key={c.key}
             type="button"
             onClick={c.onClick}
-            className="rounded-lg border border-gray-200 px-4 py-3 text-left hover:border-blue-400 hover:bg-blue-50 transition-colors"
+            className="rounded-lg border border-rule bg-white px-4 py-3 text-left shadow-sm transition-colors hover:border-brand hover:bg-tint"
           >
             <span className="block font-semibold text-gray-900">{c.title}</span>
             <span className="block text-sm text-gray-500">{c.description}</span>

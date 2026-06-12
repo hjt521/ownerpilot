@@ -37,6 +37,7 @@ import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName } fr
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import { PacketPrintOptions } from './packet-print-options';
+import { NoticeSummaryPanel } from './notice-summary-panel';
 import type { ServiceMethod } from '@/lib/dates/computeCompliancePeriod';
 
 /**
@@ -188,11 +189,12 @@ export function NoticeFlow() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
-      <article className="mx-auto max-w-2xl px-6 py-12 md:py-16" onKeyDown={onKeyDown}>
+    <main className="min-h-screen bg-ivory">
+      <div className="mx-auto flex max-w-6xl items-start gap-10 px-6 py-12 md:py-16">
+      <article className="mx-auto w-full max-w-2xl lg:mx-0" onKeyDown={onKeyDown}>
         {/* Progress eyebrow */}
         <header className="mb-8">
-          <p className="text-sm font-semibold uppercase tracking-wider text-blue-700 mb-3">
+          <p className="text-sm font-semibold uppercase tracking-[0.15em] text-gold mb-3">
             3-Day Notice to Pay Rent or Quit
           </p>
           <div className="flex items-center gap-2 mb-4" aria-hidden>
@@ -200,12 +202,12 @@ export function NoticeFlow() {
               <div
                 key={p.label}
                 className={`h-1 flex-1 rounded-full ${
-                  i <= pageIndex ? 'bg-blue-700' : 'bg-gray-200'
+                  i <= pageIndex ? 'bg-brand' : 'bg-rule'
                 }`}
               />
             ))}
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+          <h1 className="font-serif text-3xl md:text-4xl font-bold text-brand leading-tight">
             {page.label}
           </h1>
           <p className="text-sm text-gray-500 mt-2">
@@ -253,7 +255,7 @@ export function NoticeFlow() {
           {pageIndex < totalPages - 1 && (
             <button
               onClick={onNext}
-              className="inline-flex items-center px-6 py-3 bg-blue-700 text-white font-semibold rounded-lg hover:bg-blue-800 transition-colors"
+              className="inline-flex items-center px-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-bar transition-colors"
             >
               Continue →
             </button>
@@ -270,6 +272,12 @@ export function NoticeFlow() {
           </p>
         </footer>
       </article>
+      <aside className="hidden w-80 shrink-0 lg:block">
+        <div className="sticky top-8">
+          <NoticeSummaryPanel data={state.data} />
+        </div>
+      </aside>
+      </div>
     </main>
   );
 }
@@ -495,7 +503,7 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: ReactNo
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none';
+  'w-full rounded-lg border border-rule bg-white px-4 py-3 text-gray-900 focus:border-brand focus:ring-1 focus:ring-brand outline-none';
 
 /**
  * A reliable date field with an optional calendar picker.
@@ -628,7 +636,7 @@ function DateField({
           type="button"
           aria-label="Open calendar"
           onClick={() => setOpen((o) => !o)}
-          className="rounded-lg rounded-l-none border border-l-0 border-gray-300 px-3 text-gray-600 hover:bg-gray-50 hover:text-blue-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+          className="rounded-lg rounded-l-none border border-l-0 border-rule bg-white px-3 text-gray-600 hover:bg-tint hover:text-brand focus:border-brand focus:ring-1 focus:ring-brand outline-none"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -973,7 +981,7 @@ function BankDepositAttestations({
 }) {
   return (
     <>
-      <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
+      <label className="flex items-start gap-3 rounded-lg border border-rule bg-white px-4 py-3 cursor-pointer">
         <input
           type="checkbox"
           checked={data.bankDepositPaperInstrumentConfirmed === true}
@@ -1038,7 +1046,7 @@ function PaymentStep({
             value={derivedPayee.name}
             readOnly
             placeholder="Set from the landlord identified on Step 3"
-            className={`${inputClass} bg-gray-50 text-gray-700`}
+            className={`${inputClass} !bg-tint text-gray-700`}
           />
 
           <label className="mt-3 flex items-start gap-3 cursor-pointer">
@@ -1114,7 +1122,7 @@ function PaymentStep({
           <Fragment key={b}>
             <label
               className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                branch === b ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                branch === b ? 'border-brand bg-tint' : 'border-rule bg-white'
               }`}
             >
               <input
@@ -1210,7 +1218,7 @@ function PaymentStep({
         ))}
         {/* Optional EFT election (add-on only) — last row in the same group so
             its spacing matches the option boxes above. */}
-        <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer">
+        <label className="flex items-start gap-3 rounded-lg border border-rule bg-white px-4 py-3 cursor-pointer">
           <input
             type="checkbox"
             checked={data.eftElectionAvailable === true}
@@ -1523,7 +1531,7 @@ function LlcManagementTypeField({
           <label
             key={opt.value}
             className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-              current === opt.value ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+              current === opt.value ? 'border-brand bg-tint' : 'border-rule bg-white'
             }`}
           >
             <input
@@ -1643,7 +1651,7 @@ function LandlordIdentityStep({
             <label
               key={t}
               className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                li?.type === t ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                li?.type === t ? 'border-brand bg-tint' : 'border-rule bg-white'
               }`}
             >
               <input
@@ -1842,7 +1850,7 @@ function LandlordStep({
                 <label
                   key={cap}
                   className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                    data.signerCapacity === cap ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                    data.signerCapacity === cap ? 'border-brand bg-tint' : 'border-rule bg-white'
                   }`}
                 >
                   <input
@@ -1868,7 +1876,7 @@ function LandlordStep({
               <label
                 key={cap}
                 className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                  data.signerCapacity === cap ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                  data.signerCapacity === cap ? 'border-brand bg-tint' : 'border-rule bg-white'
                 }`}
               >
                 <input
@@ -1964,7 +1972,7 @@ function LandlordStep({
               <Fragment key={method}>
                 <label
                   className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                    selected ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                    selected ? 'border-brand bg-tint' : 'border-rule bg-white'
                   }`}
                 >
                   <input
@@ -1986,7 +1994,7 @@ function LandlordStep({
             );
           })}
         </div>
-        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-5 py-4 space-y-2">
+        <div className="mt-3 rounded-lg border border-rule bg-white px-5 py-4 space-y-2">
           <GuidanceBlocks blocks={SERVICE_ESCALATION} />
         </div>
       </div>
@@ -2389,7 +2397,7 @@ function ReServePanel({
                 <label
                   key={m}
                   className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${
-                    method === m ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                    method === m ? 'border-brand bg-tint' : 'border-rule bg-white'
                   }`}
                 >
                   <input
@@ -2416,7 +2424,7 @@ function ReServePanel({
                 <label
                   key={o}
                   className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${
-                    outcome === o ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                    outcome === o ? 'border-brand bg-tint' : 'border-rule bg-white'
                   }`}
                 >
                   <input
