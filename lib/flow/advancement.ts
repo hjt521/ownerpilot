@@ -208,9 +208,10 @@ export function validateStep(
       if (!validISO(data.serviceDate)) {
         issues.push('A valid intended service date is required.');
       }
-      if (!data.serviceMethod) {
-        issues.push('Select how the notice will be served.');
-      }
+      // Service method is no longer captured here. It is recorded at serve
+      // time on Serve & Track, where the successful attempt's method is the
+      // operative record (broker determination 2026-06-12). The face deadline
+      // is method-independent, so production does not require it.
       // Signing (execution) date — a distinct legal fact from the service date
       // (attorney ruling B1, 2026-06-02). It prints on the face "Dated:" line.
       if (!validISO(data.signingDate)) {

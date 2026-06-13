@@ -314,18 +314,20 @@ export function evaluateCanProduce(data: NoticeFlowData): CanProduceResult {
   //     against a VERIFIED holiday year. A missing/unverified year blocks
   //     (the engine throws by design) rather than proceeding.
   let computedDates: CanProduceResult['computedDates'];
-  if (!data.serviceDate || !data.serviceMethod) {
+  if (!data.serviceDate) {
     blockers.push({
       code: 'SERVICE_DATE_OR_METHOD_MISSING',
-      message: 'A service date and service method are required.',
+      message: 'A service date is required.',
     });
   } else {
     try {
       const year = Number(data.serviceDate.slice(0, 4));
       const holidays = getVerifiedHolidaySet(year);
+      // Face deadline is method-independent (engine invariant; broker
+      // determination 2026-06-12). Method is captured at serve time.
       const period = computeCompliancePeriod({
         serviceDate: data.serviceDate,
-        serviceMethod: data.serviceMethod,
+        serviceMethod: data.serviceMethod ?? 'personal',
         holidays,
       });
       computedDates = {
@@ -552,20 +554,20 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
   } else {
     effServiceDate = data.serviceDate;
     effServiceMethod = data.serviceMethod;
-    if (!effServiceDate || !effServiceMethod) {
+    if (!effServiceDate) {
       blockers.push({
         code: 'SERVICE_DATE_OR_METHOD_MISSING',
-        message: 'A service date and service method are required.',
+        message: 'A service date is required.',
       });
     }
   }
-  if (effServiceDate && effServiceMethod) {
+  if (effServiceDate) {
     try {
       const year = Number(effServiceDate.slice(0, 4));
       const holidays = getVerifiedHolidaySet(year);
       const period = computeCompliancePeriod({
         serviceDate: effServiceDate,
-        serviceMethod: effServiceMethod,
+        serviceMethod: effServiceMethod ?? 'personal',
         holidays,
       });
       computedDates = { commencementDate: period.commencementDate, expirationDate: period.expirationDate };

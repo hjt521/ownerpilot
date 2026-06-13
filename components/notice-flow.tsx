@@ -2083,32 +2083,12 @@ function LandlordStep({
           onChange={(v) => update({ serviceDate: v })}
         />
         <DeadlinePreview data={data} />
+        <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+          You&apos;ll pick your service method on the Serve &amp; Track page, after the
+          notice is produced.
+        </p>
       </div>
 
-      <div>
-        <FieldLabel htmlFor="serviceMethod">How will the notice be served?<Req /></FieldLabel>
-        <div className="space-y-2">
-          {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((method) => {
-            const selected = data.serviceMethod === method;
-            return (
-              <label
-                key={method}
-                className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                  selected ? 'border-brand bg-tint' : 'border-rule bg-white'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="serviceMethod"
-                  checked={selected}
-                  onChange={() => update({ serviceMethod: method })}
-                />
-                <span className="text-gray-900">{SERVICE_METHOD_LABELS[method]}</span>
-              </label>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
@@ -2725,12 +2705,6 @@ export function ServiceStep({
 
       {/* Echo of choices already captured (the user's own data). */}
       <div className="rounded-lg border border-gray-200 px-5 py-4 space-y-2 text-sm">
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500">Service method</span>
-          <span className="font-medium text-gray-900">
-            {data.serviceMethod ? SERVICE_METHOD_LABELS[data.serviceMethod] : 'Not selected'}
-          </span>
-        </div>
         <div className="flex justify-between gap-4">
           <span className="text-gray-500">Intended service date</span>
           <span className="font-medium text-gray-900">
