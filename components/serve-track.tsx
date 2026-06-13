@@ -53,6 +53,12 @@ export function ServeTrack() {
   return (
     <div className="min-h-screen bg-ivory">
       <div className="mx-auto max-w-3xl px-6 py-12">
+        <a
+          href="/notice/3-day"
+          className="inline-block text-sm font-medium text-gray-600 hover:text-gray-900 mb-4"
+        >
+          &larr; Back to notice
+        </a>
         <p className="text-sm font-semibold uppercase tracking-[0.15em] text-gold mb-3">
           3-Day Notice to Pay Rent or Quit
         </p>
