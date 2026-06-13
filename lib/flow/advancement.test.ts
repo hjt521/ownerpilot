@@ -146,7 +146,8 @@ console.log('\n8. Landlord: signer + role + service date/method; agent needs aut
   check('bad service date fails', validateStep(FlowStep.LandlordAgentInfo, d2).canAdvance === false);
 
   const d3 = fullData(); d3.serviceMethod = undefined;
-  check('missing service method fails', validateStep(FlowStep.LandlordAgentInfo, d3).canAdvance === false);
+  check('missing service method still advances (captured at serve time, determination 2026-06-12)',
+    validateStep(FlowStep.LandlordAgentInfo, d3).canAdvance === true);
 }
 
 console.log('\n8b. Entity landlord: signerTitleRequired at intake (Defect #3 §1, LOCKED)');
