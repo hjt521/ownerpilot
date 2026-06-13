@@ -28,6 +28,7 @@ import {
 import { validateStep } from '@/lib/flow/advancement';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
+import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import {
   validateSigningDate,
   getSuccessfulAttempt,
@@ -39,7 +40,11 @@ import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import { PacketPrintOptions } from './packet-print-options';
 import { NoticeSummaryPanel } from './notice-summary-panel';
-import type { ServiceMethod } from '@/lib/dates/computeCompliancePeriod';
+import {
+  computeCompliancePeriod,
+  type ServiceMethod,
+  type CompliancePeriodResult,
+} from '@/lib/dates/computeCompliancePeriod';
 
 /**
  * NoticeFlow — the field-collection UI for the 3-Day Notice to Pay Rent or Quit.
@@ -75,7 +80,7 @@ const PAGES: { label: string; steps: FlowStep[] }[] = [
     ],
   },
   { label: 'Who is signing', steps: [FlowStep.LandlordAgentInfo] },
-  { label: 'Review & serve', steps: [FlowStep.Review, FlowStep.ServiceInstructions] },
+  { label: 'Review & produce', steps: [FlowStep.Review] },
 ];
 
 /** Required-field marker. */
@@ -110,8 +115,6 @@ function renderStepBody(
       return <LandlordStep data={data} update={update} />;
     case FlowStep.Review:
       return <ReviewStep data={data} update={update} goToPage={goToPage} />;
-    case FlowStep.ServiceInstructions:
-      return <ServiceStep data={data} update={update} />;
     default:
       return null;
   }
@@ -1857,6 +1860,72 @@ function LandlordIdentityStep({
   );
 }
 
+/**
+ * Live deadline preview (JT request 2026-06-12). Renders the SAME computation
+ * the produce gate and Review use - computeCompliancePeriod over the verified
+ * holiday set (single-year, mirroring gates.ts) - so the customer can watch
+ * the commencement/expiration dates arise as they pick a method and date.
+ * The engine never extends the face deadline for mailing methods; the
+ * filing-stage +5 guidance (A2(b), mailingExtensionFlag) is a separate,
+ * attorney-copy-gated follow-up. No date math is authored here.
+ */
+function DeadlinePreview({ data }: { data: NoticeFlowData }) {
+  if (!data.serviceDate || !/^\d{4}-\d{2}-\d{2}$/.test(data.serviceDate)) {
+    return null;
+  }
+  let period: CompliancePeriodResult | null = null;
+  try {
+    const year = Number(data.serviceDate.slice(0, 4));
+    const holidays = getVerifiedHolidaySet(year);
+    period = computeCompliancePeriod({
+      serviceDate: data.serviceDate,
+      // Face deadline is method-independent (engine invariant; the +5 mailing
+      // buffer is filing-stage only and never appears on the face), so the
+      // preview may run before a method is chosen.
+      serviceMethod: data.serviceMethod ?? 'personal',
+      holidays,
+    });
+  } catch {
+    period = null;
+  }
+  if (!period) {
+    return (
+      <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        The deadline can&apos;t be computed for this date yet (the holiday calendar for
+        that year may not be verified). Computed dates will appear on the Review step.
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-sm text-sm space-y-1.5">
+      <p className="font-semibold text-gray-900">Deadline preview</p>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-500">3-day period begins</span>
+        <span className="font-medium text-gray-900">
+          {formatNoticeDate(period.commencementDate)}
+        </span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-500">Pay or vacate by end of</span>
+        <span className="font-medium text-gray-900">
+          {formatNoticeDate(period.expirationDate)}
+        </span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-500">Days counted</span>
+        <span className="font-medium text-gray-900 text-right">
+          {period.countedDays.map((d) => formatNoticeDate(d)).join(', ')}
+        </span>
+      </div>
+      <p className="text-xs text-gray-500 leading-relaxed pt-1">
+        The count skips the day of service, Saturdays, Sundays, and California judicial
+        holidays &mdash; so the deadline can land more than three calendar days after
+        service. These are the same dates that will print on the notice.
+      </p>
+    </div>
+  );
+}
+
 function LandlordStep({
   data,
   update,
@@ -2013,45 +2082,31 @@ function LandlordStep({
           value={data.serviceDate ?? ''}
           onChange={(v) => update({ serviceDate: v })}
         />
+        <DeadlinePreview data={data} />
       </div>
 
       <div>
         <FieldLabel htmlFor="serviceMethod">How will the notice be served?<Req /></FieldLabel>
-        <p className="text-sm text-gray-600 leading-relaxed mb-3">
-          {renderInlineBold(`California recognizes three service methods, and they aren't interchangeable. Start with **personal service** — handing the notice directly to the tenant. If that doesn't work after reasonable, repeated attempts, **substituted service** becomes available. Only if substituted service can't be completed either does **posting and mailing** become available. Pick the method you plan to use first. If a method fails, you'll come back here and select the next one — keep reading for how that works.`)}
-        </p>
         <div className="space-y-2">
           {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((method) => {
             const selected = data.serviceMethod === method;
-            const guide = SERVICE_GUIDANCE.find((g) => g.method === method);
             return (
-              <Fragment key={method}>
-                <label
-                  className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                    selected ? 'border-brand bg-tint' : 'border-rule bg-white'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="serviceMethod"
-                    checked={selected}
-                    onChange={() => update({ serviceMethod: method })}
-                  />
-                  <span className="text-gray-900">{SERVICE_METHOD_LABELS[method]}</span>
-                </label>
-
-                {selected && guide && (
-                  <div className="rounded-lg border border-gray-200 px-5 py-4 space-y-2">
-                    <p className="font-semibold text-gray-900">{guide.title}</p>
-                    <GuidanceBlocks blocks={guide.blocks} />
-                  </div>
-                )}
-              </Fragment>
+              <label
+                key={method}
+                className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+                  selected ? 'border-brand bg-tint' : 'border-rule bg-white'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="serviceMethod"
+                  checked={selected}
+                  onChange={() => update({ serviceMethod: method })}
+                />
+                <span className="text-gray-900">{SERVICE_METHOD_LABELS[method]}</span>
+              </label>
             );
           })}
-        </div>
-        <div className="mt-3 rounded-lg border border-rule bg-white px-5 py-4 space-y-2">
-          <GuidanceBlocks blocks={SERVICE_ESCALATION} />
         </div>
       </div>
     </div>
@@ -2219,6 +2274,23 @@ function ReviewStep({
           onProduced={onProduced}
         />
       )}
+
+      {/* R2b: service tracking lives on its own page. */}
+      {result.canProduce && (
+        <div className="rounded-lg border border-rule bg-white px-5 py-4 shadow-sm">
+          <h3 className="font-semibold text-gray-900 mb-1">Next: serve &amp; track</h3>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3">
+            Once you print and serve the notice, record your service attempts and
+            complete the proof of service on the Serve &amp; Track page.
+          </p>
+          <a
+            href="/notice/3-day/serve"
+            className="text-sm font-semibold text-brand hover:underline"
+          >
+            Go to Serve &amp; Track &rarr;
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -2270,6 +2342,8 @@ function ReServePanel({
   const [serverIs18, setServerIs18] = useState(false);
   const [serverNotParty, setServerNotParty] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [recordedFlash, setRecordedFlash] = useState(false);
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
 
   const needsMailing = method === 'substituted' || method === 'post_and_mail';
   const mailingRequiredNow = needsMailing && outcome === 'SUCCESS';
@@ -2289,8 +2363,10 @@ function ReServePanel({
   const handleAdd = () => {
     const errs: string[] = [];
     if (!attemptDate) errs.push('Enter the date of the attempt.');
-    if (!serverName.trim()) errs.push('Enter the name of the person who served.');
-    if (!serverAddress.trim()) errs.push('Enter the address of the person who served.');
+    // Server identity is required when service was COMPLETED (it backs the
+    // proof of service). Optional on a failed attempt (JT, 2026-06-12).
+    if (outcome === 'SUCCESS' && !serverName.trim()) errs.push('Enter the name of the person who served.');
+    if (outcome === 'SUCCESS' && !serverAddress.trim()) errs.push('Enter the address of the person who served.');
     if (!serverIs18) errs.push('Confirm the person who served is 18 or older.');
     if (!serverNotParty) errs.push('Confirm the person who served is not a party to this notice.');
     if (mailingRequiredNow && !mailingDate) {
@@ -2320,6 +2396,14 @@ function ReServePanel({
         : { serviceAttempts: next };
     });
     resetForm();
+    setRecordedFlash(true);
+    setLastAddedId(attempt.id ?? null);
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        setRecordedFlash(false);
+        setLastAddedId(null);
+      }, 6000);
+    }
   };
 
   const handleRemove = (id: string | undefined) => {
@@ -2358,12 +2442,20 @@ function ReServePanel({
         </p>
       </div>
 
+      {recordedFlash && (
+        <p className="rounded-lg border border-green-300 bg-green-50 px-4 py-2.5 text-sm font-medium text-green-900">
+          Attempt recorded &mdash; added to the log below.
+        </p>
+      )}
+
       {attempts.length > 0 && (
         <ul className="space-y-2">
           {attempts.map((a) => (
             <li
               key={a.id}
-              className="rounded-lg border border-gray-200 px-4 py-3 text-sm flex items-start justify-between gap-4"
+              className={`rounded-lg border px-4 py-3 text-sm flex items-start justify-between gap-4 ${
+                a.id === lastAddedId ? 'border-green-400 bg-green-50' : 'border-rule bg-white'
+              }`}
             >
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
@@ -2382,7 +2474,11 @@ function ReServePanel({
                 {a.mailingDate && (
                   <div className="text-gray-600">Mailing completed {formatNoticeDate(a.mailingDate)}</div>
                 )}
-                <div className="text-gray-600">Served by {a.server.name}</div>
+                {a.server.name && (
+                  <div className="text-gray-600">
+                    {a.outcome === 'SUCCESS' ? 'Served by' : 'Attempted by'} {a.server.name}
+                  </div>
+                )}
                 {a.notes && <div className="text-gray-500 italic">{a.notes}</div>}
               </div>
               <button
@@ -2448,23 +2544,39 @@ function ReServePanel({
 
           <div>
             <FieldLabel htmlFor="reserveMethod">Method used</FieldLabel>
+            <p className="text-sm text-gray-600 leading-relaxed mb-3">
+              {renderInlineBold(`California recognizes three service methods, and they aren't interchangeable. Start with **personal service** — handing the notice directly to the tenant. If that doesn't work after reasonable, repeated attempts, **substituted service** becomes available. Only if substituted service can't be completed either does **posting and mailing** become available. Pick the method you plan to use first. If a method fails, you'll come back here and select the next one — keep reading for how that works.`)}
+            </p>
             <div className="space-y-2">
-              {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((m) => (
-                <label
-                  key={m}
-                  className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${
-                    method === m ? 'border-brand bg-tint' : 'border-rule bg-white'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="reserveMethod"
-                    checked={method === m}
-                    onChange={() => setMethod(m)}
-                  />
-                  <span className="text-gray-900">{SERVICE_METHOD_LABELS[m]}</span>
-                </label>
-              ))}
+              {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((m) => {
+                const guide = SERVICE_GUIDANCE.find((g) => g.method === m);
+                return (
+                  <Fragment key={m}>
+                    <label
+                      className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${
+                        method === m ? 'border-brand bg-tint' : 'border-rule bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="reserveMethod"
+                        checked={method === m}
+                        onChange={() => setMethod(m)}
+                      />
+                      <span className="text-gray-900">{SERVICE_METHOD_LABELS[m]}</span>
+                    </label>
+                    {method === m && guide && (
+                      <div className="rounded-lg border border-rule bg-white px-5 py-4 space-y-2">
+                        <p className="font-semibold text-gray-900">{guide.title}</p>
+                        <GuidanceBlocks blocks={guide.blocks} />
+                      </div>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </div>
+            <div className="mt-3 rounded-lg border border-rule bg-white px-5 py-4 space-y-2">
+              <GuidanceBlocks blocks={SERVICE_ESCALATION} />
             </div>
           </div>
 
@@ -2509,7 +2621,14 @@ function ReServePanel({
           )}
 
           <div>
-            <FieldLabel htmlFor="reserveServerName">Name of person who served<Req /></FieldLabel>
+            <FieldLabel htmlFor="reserveServerName">
+              Name of person who served
+              {outcome === 'SUCCESS' ? (
+                <Req />
+              ) : (
+                <span className="ml-1 text-xs font-normal text-gray-500">(optional for a failed attempt)</span>
+              )}
+            </FieldLabel>
             <input
               id="reserveServerName"
               type="text"
@@ -2521,7 +2640,14 @@ function ReServePanel({
           </div>
 
           <div>
-            <FieldLabel htmlFor="reserveServerAddress">Address of person who served<Req /></FieldLabel>
+            <FieldLabel htmlFor="reserveServerAddress">
+              Address of person who served
+              {outcome === 'SUCCESS' ? (
+                <Req />
+              ) : (
+                <span className="ml-1 text-xs font-normal text-gray-500">(optional for a failed attempt)</span>
+              )}
+            </FieldLabel>
             <input
               id="reserveServerAddress"
               type="text"
@@ -2578,7 +2704,7 @@ function ReServePanel({
   );
 }
 
-function ServiceStep({
+export function ServiceStep({
   data,
   update,
 }: {
