@@ -2255,21 +2255,21 @@ function ReviewStep({
         />
       )}
 
-      {/* R2b: service tracking lives on its own page. */}
+      {/* R2b: service tracking lives on its own page. Whole card is clickable. */}
       {result.canProduce && (
-        <div className="rounded-lg border border-rule bg-white px-5 py-4 shadow-sm">
+        <a
+          href="/notice/3-day/serve"
+          className="block rounded-lg border border-rule bg-white px-5 py-4 shadow-sm transition-colors hover:border-brand hover:bg-tint"
+        >
           <h3 className="font-semibold text-gray-900 mb-1">Next: serve &amp; track</h3>
           <p className="text-sm text-gray-700 leading-relaxed mb-3">
             Once you print and serve the notice, record your service attempts and
             complete the proof of service on the Serve &amp; Track page.
           </p>
-          <a
-            href="/notice/3-day/serve"
-            className="text-sm font-semibold text-brand hover:underline"
-          >
+          <span className="text-sm font-semibold text-brand">
             Go to Serve &amp; Track &rarr;
-          </a>
-        </div>
+          </span>
+        </a>
       )}
     </div>
   );
