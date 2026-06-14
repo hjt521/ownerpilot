@@ -67,20 +67,31 @@ import {
  * The dispute hard-block is its own page (page 1), so the attorney handoff
  * fires before any data is collected.
  */
-const PAGES: { label: string; steps: FlowStep[] }[] = [
-  { label: 'Before we start', steps: [FlowStep.PreflightDispute] },
+const PAGES: { label: string; subhead?: string; steps: FlowStep[] }[] = [
   {
-    label: 'The notice',
+    label: 'Before we start — a few quick checks',
+    subhead:
+      'A few quick questions to confirm a routine 3-day notice is the right tool for this situation. If anything here applies, the routine workflow pauses and we point you to a better next step.',
+    steps: [FlowStep.PreflightDispute],
+  },
+  {
+    label: 'Property, Tenant & Rent',
     steps: [
       FlowStep.PropertyIdentification,
       FlowStep.Tenants,
       FlowStep.AmountOwed,
-      FlowStep.LandlordIdentity,
-      FlowStep.PaymentInstructions,
     ],
   },
-  { label: 'Who is signing', steps: [FlowStep.LandlordAgentInfo] },
-  { label: 'Review & produce', steps: [FlowStep.Review] },
+  {
+    label: 'Landlord, Payee & Signer',
+    subhead: 'Who the notice is from, where rent is paid, and who signs.',
+    steps: [
+      FlowStep.LandlordIdentity,
+      FlowStep.PaymentInstructions,
+      FlowStep.LandlordAgentInfo,
+    ],
+  },
+  { label: 'Review & Produce', steps: [FlowStep.Review] },
 ];
 
 /** Required-field marker. */
@@ -253,6 +264,11 @@ export function NoticeFlow() {
           <h1 className="font-serif text-3xl md:text-4xl font-bold text-brand leading-tight">
             {page.label}
           </h1>
+          {page.subhead && (
+            <p className="text-base text-gray-600 leading-relaxed mt-2">
+              {page.subhead}
+            </p>
+          )}
           <p className="text-sm text-gray-500 mt-2">
             Step {pageIndex + 1} of {totalPages}
           </p>
