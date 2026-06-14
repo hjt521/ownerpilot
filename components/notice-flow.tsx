@@ -334,10 +334,7 @@ export function NoticeFlow() {
         {/* Persistent disclaimer (matches our-approach footer tone) */}
         <footer className="mt-12 pt-6 border-t border-gray-200">
           <p className="text-xs text-gray-500 leading-relaxed">
-            OwnerPilot AI is not a law firm and does not provide legal advice.
-            This is a broker-prepared notice produced under California Licensed
-            Real Estate Broker supervision. For legal matters, consult a
-            California licensed attorney of your choosing.
+            OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.
           </p>
         </footer>
       </article>

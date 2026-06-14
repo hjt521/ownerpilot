@@ -73,11 +73,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             About Our Approach → How OwnerPilot keeps its platform independent
           </Link>
           <p className="mx-auto max-w-3xl text-sm leading-relaxed text-white/75">
-            OwnerPilot AI is not a law firm and does not provide legal advice.
-            OwnerPilot provides guidance and document support under California
-            Licensed Real Estate Broker supervision (CalDRE License #B9445457).
-            For legal matters, consult a California licensed attorney of your
-            choosing.
+            OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.
           </p>
           <p className="text-xs text-white/50">
             © {new Date().getFullYear()} OwnerPilot AI. All rights reserved.
