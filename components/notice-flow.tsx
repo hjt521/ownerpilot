@@ -631,6 +631,24 @@ function DateField({
   };
 
   const [display, setDisplay] = useState(isoToDisplay(value));
+  // Sync display when `value` changes EXTERNALLY (e.g. the parent calls a
+  // resetForm that sets value back to ''). Without this, display keeps showing
+  // a stale date after a reset while the parent state is already empty - a
+  // phantom that makes validators see no date. Mid-typing partials (value ''
+  // while display has fewer than 8 digits) are left untouched so we don't
+  // clobber in-progress entry.
+  useEffect(() => {
+    const valueDisplay = isoToDisplay(value);
+    if (value && valueDisplay && valueDisplay !== display) {
+      setDisplay(valueDisplay);
+      return;
+    }
+    if (!value) {
+      const digits = display.replace(/\D/g, '');
+      if (digits.length === 8) setDisplay('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   const handleType = (raw: string) => {
     const formatted = formatDisplay(raw);
