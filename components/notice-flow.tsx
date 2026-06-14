@@ -74,8 +74,8 @@ const PAGES: { label: string; steps: FlowStep[] }[] = [
     steps: [
       FlowStep.PropertyIdentification,
       FlowStep.Tenants,
-      FlowStep.LandlordIdentity,
       FlowStep.AmountOwed,
+      FlowStep.LandlordIdentity,
       FlowStep.PaymentInstructions,
     ],
   },
@@ -157,6 +157,12 @@ export function NoticeFlow() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
+  // Restored-draft toast auto-dismisses after 8s if the user doesn't act.
+  useEffect(() => {
+    if (!draftRestored) return;
+    const t = setTimeout(() => setDraftRestored(false), 8000);
+    return () => clearTimeout(t);
+  }, [draftRestored]);
 
   const update = (
     patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>),
@@ -257,9 +263,13 @@ export function NoticeFlow() {
           )}
         </header>
 
-        {/* R2a: draft restored from this browser's localStorage. */}
+        {/* R2a: draft restored from this browser's localStorage. Toast. */}
         {draftRestored && (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-sm">
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed top-4 right-4 z-50 w-[calc(100%-2rem)] max-w-sm flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-lg sm:w-auto"
+          >
             <p className="text-sm text-gray-700">
               We restored your in-progress notice from this browser.
             </p>
@@ -521,9 +531,13 @@ function PropertyStep({
 }) {
   return (
     <div className="space-y-6">
-      <p className="text-lg text-gray-800 leading-relaxed">
+      <SectionHeader
+        title="The property"
+        subhead="Where is the rental unit located?"
+      />
+      <LearnMore>
         Where is the rental property? This determines which local rules apply.
-      </p>
+      </LearnMore>
       <div>
         <label
           htmlFor="propertyAddress"
@@ -764,6 +778,30 @@ function DateField({
 function StepIntro({ children }: { children: ReactNode }) {
   return <p className="text-lg text-gray-800 leading-relaxed">{children}</p>;
 }
+// Section header + one-line subhead. Used to group Step 2 into named sections
+// (JT spec, 2026-06-13). Presentation only.
+function SectionHeader({ title, subhead }: { title: string; subhead: string }) {
+  return (
+    <div className="space-y-1">
+      <h2 className="font-serif text-xl font-bold text-brand leading-tight">{title}</h2>
+      <p className="text-sm text-gray-600 leading-relaxed">{subhead}</p>
+    </div>
+  );
+}
+// Collapsible "Learn more" disclosure. Native details/summary - accessible,
+// no JS, no dependency. Holds the longer explanatory paragraphs that used to
+// be always-visible body text.
+function LearnMore({ children }: { children: ReactNode }) {
+  return (
+    <details className="group">
+      <summary className="cursor-pointer list-none text-sm font-medium text-blue-700 hover:text-blue-800 transition-colors">
+        <span className="group-open:hidden">Learn more</span>
+        <span className="hidden group-open:inline">Show less</span>
+      </summary>
+      <div className="mt-2 text-sm text-gray-600 leading-relaxed">{children}</div>
+    </details>
+  );
+}
 
 // --- Step 2: Tenants --------------------------------------------------------
 
@@ -787,10 +825,14 @@ function TenantsStep({
 
   return (
     <div className="space-y-6">
-      <StepIntro>
+      <SectionHeader
+        title="Tenants on the notice"
+        subhead="List every adult tenant named on the lease."
+      />
+      <LearnMore>
         Who is the notice directed to? List every adult tenant named on the
         lease. The notice must name each tenant you intend to hold responsible.
-      </StepIntro>
+      </LearnMore>
       <div className="space-y-3">
         <span className="block text-sm font-semibold text-gray-700">
           Tenant name(s)<Req />
@@ -856,11 +898,14 @@ function AmountStep({
 
   return (
     <div className="space-y-6">
-      <StepIntro>
-        What rent is past due? Enter each rent period the tenant owes. Include
-        only <strong>base rent</strong> — not late fees, utilities, or other
-        charges.
-      </StepIntro>
+      <SectionHeader
+        title="What rent is past due."
+        subhead="Enter each rent period the tenant owes."
+      />
+      <p className="text-sm text-gray-700 leading-relaxed">
+        Enter base rent only — not late fees, utilities, or other charges.
+        California law requires this notice to demand only rent.
+      </p>
 
       <div className="space-y-4">
         {periods.map((p, i) => (
@@ -1091,11 +1136,15 @@ function PaymentStep({
     <div className="space-y-8">
       {/* Section 1 — person to receive payment (§ 1161(2) name/phone/address) */}
       <div className="space-y-4">
-        <StepIntro>
+        <SectionHeader
+          title="Where rent is paid."
+          subhead="California law requires the notice to name a person, a telephone number, and a street address."
+        />
+        <LearnMore>
           California law requires the notice to name the person to receive
           payment, with a telephone number and a street address. This can be the
           owner or an agent, and need not be the same person who signs.
-        </StepIntro>
+        </LearnMore>
 
         <div>
           <FieldLabel htmlFor="payeeName">Name to receive payment<Req /></FieldLabel>
@@ -1696,11 +1745,15 @@ function LandlordIdentityStep({
   };
   return (
     <div className="space-y-6">
-      <StepIntro>
+      <SectionHeader
+        title="Landlord (the party serving this notice)."
+        subhead="Who is the landlord on this notice?"
+      />
+      <LearnMore>
         Who is the landlord on this notice? This determines whose name appears
         as the party the notice is from, and (unless you say otherwise on the
         payment step) who rent is payable to.
-      </StepIntro>
+      </LearnMore>
 
       {/* Stage 1 - who is the landlord (Defect #1, ruling 2.1) */}
       <div>
