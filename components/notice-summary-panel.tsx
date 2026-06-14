@@ -1,5 +1,5 @@
 import type { NoticeFlowData } from '@/lib/flow/noticeFlowState';
-import { derivePayeeName, formatNoticeDate } from '@/lib/produce/renderNotice';
+import { derivePayeeName, formatNoticeDate, formatPropertyLine } from '@/lib/produce/renderNotice';
 import { computeCompliancePeriod } from '@/lib/dates/computeCompliancePeriod';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import { getSuccessfulAttempt } from '@/lib/flow/escalation';
@@ -83,7 +83,7 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
         <dl className="mt-3 space-y-3">
           <Row k="Type of Notice" v="3-Day Notice to Pay Rent or Quit" />
           <Row k="Purpose" v="Non-payment of rent" />
-          <Row k="Property" v={data.propertyAddress ?? ''} />
+          <Row k="Property" v={formatPropertyLine(data.propertyAddress ?? '', data.propertyUnit)} />
           <Row k="Tenant(s)" v={tenants} />
           <Row k="Total Demanded" v={totalText} />
           <Row k="Payable To" v={payee} />

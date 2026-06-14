@@ -78,6 +78,7 @@ export interface NoticeModel {
   recipient: {
     tenantNamesJoined: string;
     propertyAddress: string;
+    propertyUnit?: string;
     propertyCounty?: string;
   };
   demand: {
@@ -441,6 +442,19 @@ function buildPaySection(
 
 // --- The renderer -----------------------------------------------------------
 
+/**
+ * Compose the property line for DISPLAY: "address, unit" when a unit is present,
+ * else the raw address. Used by the face address block, the summary panel, and
+ * the owner-record packet so all three render the unit consistently. The model
+ * keeps raw `propertyAddress` + optional `propertyUnit`; composition happens at
+ * each display site via this helper (no double-compose).
+ */
+export function formatPropertyLine(address: string, unit?: string): string {
+  const u = (unit ?? '').trim();
+  const a = (address ?? '').trim();
+  return u ? `${a}, ${u}` : a;
+}
+
 export function renderNotice(input: RenderNoticeInput): RenderedNotice {
   const { data, dates } = input;
 
@@ -451,6 +465,7 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
 
   // Property — verbatim.
   const propertyAddress = requireString(data.propertyAddress, 'property address');
+  const propertyUnit = (data.propertyUnit ?? '').trim();
   const propertyCounty = (data.propertyCounty ?? '').trim();
 
   // Rent periods + totals
@@ -516,9 +531,10 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
   if (!branch) throw new NoticeRenderError('Missing required field: payment branch');
   const { rows: payRows, sentences: paySentences } = buildPaySection(data);
 
+  const propertyLine = formatPropertyLine(propertyAddress, propertyUnit);
   const addressBlock = propertyCounty
-    ? `${propertyAddress}\nCounty of ${propertyCounty}, California`
-    : propertyAddress;
+    ? `${propertyLine}\nCounty of ${propertyCounty}, California`
+    : propertyLine;
 
   const payTextLines = [
     `${NOTICE_PROSE.payableToLabel}: ${payeeName}`,
@@ -589,6 +605,7 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     recipient: {
       tenantNamesJoined,
       propertyAddress,
+      ...(propertyUnit ? { propertyUnit } : {}),
       ...(propertyCounty ? { propertyCounty } : {}),
     },
     demand: { periodText, totalFormatted, rows },

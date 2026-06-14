@@ -18,6 +18,7 @@
  */
 
 import type { NoticeModel } from './renderNotice';
+import { formatPropertyLine } from './renderNotice';
 import { buildNoticeDocumentHtml } from './buildNoticeHtml';
 import type { NoticeFlowData } from '../flow/noticeFlowState';
 import {
@@ -227,7 +228,7 @@ function ownerDetailsPage(model: NoticeModel, data: NoticeFlowData): string {
     `<h1 class="pk-h1">Owner Record Details</h1>` +
     `<p class="pk-sub">For your records only. Do not serve this page.</p>` +
     kvRows([
-      ['Property', model.recipient.propertyAddress],
+      ['Property', formatPropertyLine(model.recipient.propertyAddress, model.recipient.propertyUnit)],
       ['Tenant(s)', model.recipient.tenantNamesJoined],
       ['Total demanded', `$${model.demand.totalFormatted}`],
       ['Payable to', model.pay.payeeName],

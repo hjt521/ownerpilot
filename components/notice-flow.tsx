@@ -544,6 +544,13 @@ function PropertyStep({
 }) {
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+        <p className="text-sm text-amber-900 leading-relaxed">
+          This workflow produces a 3-day notice for nonpayment of rent only. It
+          is not the right tool for lease violations, nuisance, or
+          month-to-month terminations.
+        </p>
+      </div>
       <SectionHeader
         title="The property"
         subhead="Where is the rental unit located?"
@@ -572,6 +579,28 @@ function PropertyStep({
           Note: properties in the City of Los Angeles and several other cities
           have additional local requirements. OwnerPilot will tell you if your
           property needs steps it doesn&apos;t yet fully support.
+        </p>
+      </div>
+      <div>
+        <label
+          htmlFor="propertyUnit"
+          className="block text-sm font-semibold text-gray-700 mb-2"
+        >
+          Unit if applicable
+        </label>
+        <input
+          id="propertyUnit"
+          type="text"
+          value={data.propertyUnit ?? ''}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            update({ propertyUnit: e.target.value })
+          }
+          placeholder="Apt 4, Unit B, Suite 200"
+          className={inputClass}
+        />
+        <p className="text-xs text-gray-500 mt-2">
+          If your property has a unit number, apartment letter, or suite
+          designation, enter it here.
         </p>
       </div>
     </div>

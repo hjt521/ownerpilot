@@ -138,6 +138,10 @@ export interface NoticeFlowData {
 
   // Step 1 — property
   propertyAddress?: string;
+  /** Optional unit/apt/suite designation (det. 2026-06-14). Composed onto the
+   *  property line at display via formatPropertyLine; not statutorily required
+   *  but material to the property description for multi-unit buildings. */
+  propertyUnit?: string;
   propertyCity?: string;
   propertyCounty?: string;
 
