@@ -16,7 +16,7 @@
  */
 
 import type { NoticeModel } from './renderNotice';
-import { POS_PROSE, NOTICE_PROSE } from './renderNotice';
+import { POS_PROSE, NOTICE_PROSE, formatPropertyLine } from './renderNotice';
 import { LETTERHEAD_DATA_URI, MARK_DATA_URI } from './noticeAssets';
 
 function esc(s: string): string {
@@ -180,7 +180,7 @@ export function buildNoticeDocumentHtml(model: NoticeModel): string {
 
   <div class="recipient">
     <p class="to">${recipientLine}</p>
-    <div class="addr">${esc(recipient.propertyAddress)}</div>
+    <div class="addr">${esc(formatPropertyLine(recipient.propertyAddress, recipient.propertyUnit))}</div>
     ${countyLine}
   </div>
 
