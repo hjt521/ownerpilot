@@ -29,12 +29,16 @@ export function PacketPrintOptions({
   data,
   noticeDocHtml,
   onProduced,
+  disabledKeys,
 }: {
   model: NoticeModel;
   data: NoticeFlowData;
   noticeDocHtml: string;
   onProduced: () => void;
+  /** Card keys to render grayed/non-clickable (e.g. 'serviceLog' before serving). */
+  disabledKeys?: string[];
 }) {
+  const disabled = new Set(disabledKeys ?? []);
   const [showFullModal, setShowFullModal] = useState(false);
   const [packetError, setPacketError] = useState<string | null>(null);
 
@@ -98,17 +102,31 @@ export function PacketPrintOptions({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {cards.map((c) => (
-          <button
-            key={c.key}
-            type="button"
-            onClick={c.onClick}
-            className="rounded-lg border border-rule bg-white px-4 py-3 text-left shadow-sm transition-colors hover:border-brand hover:bg-tint"
-          >
-            <span className="block font-semibold text-gray-900">{c.title}</span>
-            <span className="block text-sm text-gray-500">{c.description}</span>
-          </button>
-        ))}
+        {cards.map((c) =>
+          disabled.has(c.key) ? (
+            <div
+              key={c.key}
+              aria-disabled="true"
+              className="rounded-lg border border-rule bg-tint px-4 py-3 text-left opacity-60 cursor-not-allowed"
+            >
+              <span className="block font-semibold text-gray-900">{c.title}</span>
+              <span className="block text-sm text-gray-500">{c.description}</span>
+              <span className="mt-1 block text-xs font-medium text-gray-500">
+                Available after you serve &mdash; use the Serve &amp; Track page.
+              </span>
+            </div>
+          ) : (
+            <button
+              key={c.key}
+              type="button"
+              onClick={c.onClick}
+              className="rounded-lg border border-rule bg-white px-4 py-3 text-left shadow-sm transition-colors hover:border-brand hover:bg-tint"
+            >
+              <span className="block font-semibold text-gray-900">{c.title}</span>
+              <span className="block text-sm text-gray-500">{c.description}</span>
+            </button>
+          ),
+        )}
       </div>
 
       {packetError && (

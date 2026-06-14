@@ -2,6 +2,7 @@ import type { NoticeFlowData } from '@/lib/flow/noticeFlowState';
 import { derivePayeeName, formatNoticeDate } from '@/lib/produce/renderNotice';
 import { computeCompliancePeriod } from '@/lib/dates/computeCompliancePeriod';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
+import { getSuccessfulAttempt } from '@/lib/flow/escalation';
 
 /**
  * NoticeSummaryPanel — R1b (Concept #1). Live, read-only mirror of the flow
@@ -60,6 +61,20 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
       deadlineText = '';
     }
   }
+  // Service attempts summary: None yet / N logged / Served {date}.
+  const attempts = data.serviceAttempts ?? [];
+  const success = getSuccessfulAttempt(data);
+  let attemptsText = 'None yet';
+  if (success) {
+    const servedISO =
+      success.method === 'personal' ? success.attemptDate : success.mailingDate;
+    attemptsText =
+      servedISO && /^\d{4}-\d{2}-\d{2}$/.test(servedISO)
+        ? `Served ${formatNoticeDate(servedISO)}`
+        : 'Served';
+  } else if (attempts.length > 0) {
+    attemptsText = `${attempts.length} attempt${attempts.length === 1 ? '' : 's'} logged`;
+  }
 
   return (
     <div className="space-y-4">
@@ -74,6 +89,7 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
           <Row k="Payable To" v={payee} />
           <Row k="Intended Service Date" v={serviceDateText} />
           <Row k="Pay or Vacate By" v={deadlineText} />
+          <Row k="Service Attempts" v={attemptsText} />
         </dl>
         <div className="mt-4 rounded-md bg-tint px-3 py-2.5">
           <p className="text-xs font-semibold text-brand">California Compliant</p>
