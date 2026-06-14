@@ -2252,6 +2252,7 @@ function ReviewStep({
           data={data}
           noticeDocHtml={docHtml}
           onProduced={onProduced}
+          disabledKeys={['serviceLog']}
         />
       )}
 
