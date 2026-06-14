@@ -106,7 +106,7 @@ export default function OurApproachPage() {
 
         <footer className="mt-16 pt-8 border-t border-gray-200">
           <p className="text-sm text-gray-600 leading-relaxed">
-            OwnerPilot AI is not a law firm and does not provide legal advice. For legal matters, consult a California licensed attorney of your choosing.
+            OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.
           </p>
         </footer>
       </article>

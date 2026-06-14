@@ -92,10 +92,10 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
           <Row k="Service Attempts" v={attemptsText} />
         </dl>
         <div className="mt-4 rounded-md bg-tint px-3 py-2.5">
-          <p className="text-xs font-semibold text-brand">California Compliant</p>
+          <p className="text-xs font-semibold text-brand">California 3-Day Notice Workflow</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted">
-            Broker-prepared workflow based on California Code of Civil
-            Procedure § 1161(2).
+            Built around California Code of Civil Procedure § 1161(2) and § 1162.
+            Broker-prepared. Not legal advice.
           </p>
         </div>
       </section>
