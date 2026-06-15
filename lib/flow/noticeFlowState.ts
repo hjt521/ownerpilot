@@ -161,6 +161,10 @@ export interface NoticeFlowData {
     userAgent?: string;
     /** Not available client-side; reserved for a server-side enhancement. */
     ipHash?: string;
+    /** Which version of the override-modal copy the user saw (det. 2026-06-15). */
+    modalCopyVersion?: string;
+    /** True when the bankruptcy-specific enhanced modal was the one shown. */
+    enhancedModalShown?: boolean;
   };
 
   // Step 1 — property

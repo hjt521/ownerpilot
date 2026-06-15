@@ -229,6 +229,8 @@ export function NoticeFlow() {
         flaggedAnswers,
         acceptedAt: new Date().toISOString(),
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        modalCopyVersion: 'v1',
+        enhancedModalShown: disp.tenantBankruptcy === 'yes',
       },
     });
     setOverrideModalOpen(false);
@@ -297,6 +299,7 @@ export function NoticeFlow() {
     <main className="min-h-screen bg-ivory">
       {overrideModalOpen && (
         <SafetyOverrideModal
+          bankruptcy={disp.tenantBankruptcy === 'yes'}
           onPause={() => setOverrideModalOpen(false)}
           onProceed={proceedThroughOverride}
         />
@@ -3008,12 +3011,20 @@ export function ServiceStep({
 // --- Attorney handoff (dispute hard-block) ----------------------------------
 
 function SafetyOverrideModal({
+  bankruptcy = false,
   onPause,
   onProceed,
 }: {
+  bankruptcy?: boolean;
   onPause: () => void;
   onProceed: () => void;
 }) {
+  const heading = bankruptcy
+    ? 'Before you continue — bankruptcy situations require special handling'
+    : 'Before you continue';
+  const body = bankruptcy
+    ? 'You indicated the tenant has filed for bankruptcy or is about to. Bankruptcy triggers an automatic stay under federal law (11 U.S.C. § 362). Serving a 3-day notice during the stay can expose you to sanctions in bankruptcy court — even if the notice would otherwise be valid under California law. We strongly recommend talking to a bankruptcy attorney before proceeding. If you want to continue anyway, we’ll log your decision.'
+    : 'One or more of your answers suggests this situation may be outside the routine workflow’s scope. The 3-day notice may not be the right tool here, and serving it without legal guidance can create problems. We recommend pausing to talk to a California licensed attorney before proceeding. If you want to continue anyway, we’ll log your decision.';
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
@@ -3021,10 +3032,8 @@ function SafetyOverrideModal({
       aria-modal="true"
     >
       <div className="w-full max-w-md rounded-xl border border-rule bg-white p-6 shadow-xl space-y-4">
-        <h2 className="font-serif text-xl font-bold text-brand">Before you continue</h2>
-        <p className="text-sm text-gray-700 leading-relaxed">
-          You're proceeding despite a flagged answer. The routine workflow may not be appropriate for your situation. Consider talking to a California licensed attorney.
-        </p>
+        <h2 className="font-serif text-xl font-bold text-brand">{heading}</h2>
+        <p className="text-sm text-gray-700 leading-relaxed">{body}</p>
         <div className="flex flex-wrap justify-end gap-3 pt-2">
           <button
             type="button"
