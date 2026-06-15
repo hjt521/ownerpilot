@@ -31,21 +31,6 @@ const RESOURCES: Resource[] = [
       + 'offer a reduced-fee or free initial consultation and are in good '
       + 'standing with the State Bar.',
   },
-  {
-    name: 'Tenants Together',
-    href: 'https://www.tenantstogether.org/',
-    blurb:
-      'California\'s statewide renters\' rights nonprofit. '
-      + 'Tenant-focused, but a useful plain-language reference for the tenant '
-      + 'protections that may bear on your situation.',
-  },
-  {
-    name: 'Stay Housed LA',
-    href: 'https://www.stayhousedla.org/',
-    blurb:
-      'A Los Angeles County and City tenant-assistance program. Tenant-focused; '
-      + 'relevant context if your rental property is in Los Angeles.',
-  },
 ];
 
 export default function OptionsPage() {
@@ -62,16 +47,12 @@ export default function OptionsPage() {
           </h1>
           <div className="space-y-4 text-base text-gray-700 leading-relaxed mb-10">
             <p>
-              OwnerPilot is a broker-prepared document tool, not a law firm, and
-              does not provide legal advice. The organizations below are
-              independent; we don&rsquo;t control or endorse them, and listing
-              them isn&rsquo;t a recommendation of any particular one.
-            </p>
-            <p>
-              If a tenant has raised a dispute or complaint in writing, asserted
-              a legal claim, or filed for bankruptcy, talking to a California
-              licensed attorney of your choosing before serving any notice is
-              the safest path.
+              OwnerPilot AI is not a law firm and does not provide legal advice.
+              The resources below are provided for informational purposes only.
+              OwnerPilot does not endorse any specific resource and has no
+              affiliation with the organizations listed. For legal matters
+              specific to your situation, consult a California licensed attorney
+              of your choosing.
             </p>
           </div>
           <ul className="space-y-4">
