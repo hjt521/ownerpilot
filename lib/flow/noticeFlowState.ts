@@ -257,6 +257,11 @@ export interface NoticeFlowData {
   signerTitle?: string;
   /** For broker/other-agent signers, evidence of authority must be on file. */
   authorityEvidenceOnFile?: boolean;
+  /** C7b (det. 2026-06-14, Step 3 item 3): the landlord's mailing/correspondence
+   *  address. Plain intake; not a face constant and not gated. Used as the
+   *  default source for the payee street-address prefill on the payment step
+   *  (non-destructive: it only seeds an empty payee address, never overwrites). */
+  mailingAddress?: string;
 
   // --- Notice execution + service dates (attorney ruling B1, 2026-06-02) ----
   // BINDING: the signing date (the "Dated:" line) and the service date(s) are
