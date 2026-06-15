@@ -421,10 +421,6 @@ function DisputeStep({
   ].some((a) => a === 'yes' || a === 'unknown');
   return (
     <div className="space-y-4">
-      <p className="text-lg text-gray-800 leading-relaxed">
-        Before we start, a few quick checks. These help confirm a routine 3-day
-        notice is the right tool for your situation.
-      </p>
 
       <TriQuestion
         question="Has the tenant filed a court case, complaint with a fair housing agency, or code-enforcement complaint that names you or this rental property?"
@@ -2483,7 +2479,7 @@ function ReviewStep({
       {docHtml && renderedModel && (
         <div className="rounded-lg border border-rule bg-white px-5 py-4">
           <p className="text-xs text-gray-500 leading-relaxed">
-            OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared notice produced under California Licensed Real Estate Broker supervision. For legal matters, consult a California licensed attorney of your choosing.
+            OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.
           </p>
         </div>
       )}
