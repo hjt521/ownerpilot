@@ -137,6 +137,10 @@ export function NoticeFlow() {
   const [pageIndex, setPageIndex] = useState(0);
   const [showIssues, setShowIssues] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
+  // C5 soft mode: the safety-override confirmation modal.
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  // Hard mode: lets the user escape the attorney handoff to edit Step 1.
+  const [reviewingDispute, setReviewingDispute] = useState(false);
 
   // R2a draft persistence. Restore runs in a mount effect (not a lazy
   // initializer) so server HTML and the client's first paint agree; the
@@ -200,13 +204,49 @@ export function NoticeFlow() {
   }
   const canAdvance = issues.length === 0;
 
+  // C5 soft mode: is the current page the dispute screen with a flagged answer
+  // (yes/unknown) and no override logged yet? If so, advancing routes through
+  // the confirmation modal that logs the override.
+  const softMode = isSafetyCheckSoftMode();
+  const disp = state.data.dispute;
+  const disputeFlagged =
+    softMode &&
+    page.steps.includes(FlowStep.PreflightDispute) &&
+    [disp.tenantFiledComplaint, disp.tenantWrittenWithholding, disp.tenantBankruptcy].some(
+      (a) => a === 'yes' || a === 'unknown',
+    ) &&
+    !state.data.safetyCheckOverride;
+  const proceedThroughOverride = () => {
+    const flaggedAnswers: { question: keyof typeof disp; answer: 'yes' | 'no' | 'unknown' }[] = [];
+    (['tenantFiledComplaint', 'tenantWrittenWithholding', 'tenantBankruptcy'] as const).forEach(
+      (q) => {
+        const a = disp[q];
+        if (a === 'yes' || a === 'unknown') flaggedAnswers.push({ question: q, answer: a });
+      },
+    );
+    update({
+      safetyCheckOverride: {
+        flaggedAnswers,
+        acceptedAt: new Date().toISOString(),
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+      },
+    });
+    setOverrideModalOpen(false);
+    setPageIndex((i) => Math.min(i + 1, totalPages - 1));
+    setShowIssues(false);
+  };
   const onNext = () => {
-    if (canAdvance) {
-      setPageIndex((i) => Math.min(i + 1, totalPages - 1));
-      setShowIssues(false);
-    } else {
+    if (!canAdvance) {
       setShowIssues(true);
+      return;
     }
+    if (disputeFlagged) {
+      setOverrideModalOpen(true);
+      return;
+    }
+    setReviewingDispute(false);
+    setPageIndex((i) => Math.min(i + 1, totalPages - 1));
+    setShowIssues(false);
   };
 
   const onBack = () => {
@@ -238,13 +278,29 @@ export function NoticeFlow() {
     onNext();
   };
 
-  // Hard-block to attorney handoff (dispute screen, any "yes").
-  if (hardBlocked) {
-    return <AttorneyHandoff />;
+  // Hard-block to attorney handoff (dispute screen, any "yes"). The user can
+  // escape via onReview to edit their Step 1 answers (otherwise navigating back
+  // would trap them here with no recovery).
+  if (hardBlocked && !reviewingDispute) {
+    return (
+      <AttorneyHandoff
+        onReview={() => {
+          setReviewingDispute(true);
+          setPageIndex(0);
+          setShowIssues(false);
+        }}
+      />
+    );
   }
 
   return (
     <main className="min-h-screen bg-ivory">
+      {overrideModalOpen && (
+        <SafetyOverrideModal
+          onPause={() => setOverrideModalOpen(false)}
+          onProceed={proceedThroughOverride}
+        />
+      )}
       <div className="mx-auto flex max-w-6xl items-start gap-10 px-6 py-12 md:py-16">
       <article className="mx-auto w-full max-w-2xl lg:mx-0" onKeyDown={onKeyDown}>
         {/* Progress eyebrow */}
@@ -2951,10 +3007,58 @@ export function ServiceStep({
 
 // --- Attorney handoff (dispute hard-block) ----------------------------------
 
-function AttorneyHandoff() {
+function SafetyOverrideModal({
+  onPause,
+  onProceed,
+}: {
+  onPause: () => void;
+  onProceed: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-md rounded-xl border border-rule bg-white p-6 shadow-xl space-y-4">
+        <h2 className="font-serif text-xl font-bold text-brand">Before you continue</h2>
+        <p className="text-sm text-gray-700 leading-relaxed">
+          You're proceeding despite a flagged answer. The routine workflow may not be appropriate for your situation. Consider talking to a California licensed attorney.
+        </p>
+        <div className="flex flex-wrap justify-end gap-3 pt-2">
+          <button
+            type="button"
+            autoFocus
+            onClick={onPause}
+            className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand/90"
+          >
+            Pause
+          </button>
+          <button
+            type="button"
+            onClick={onProceed}
+            className="rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Proceed anyway
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function AttorneyHandoff({ onReview }: { onReview?: () => void }) {
   return (
     <main className="min-h-screen bg-white">
       <article className="mx-auto max-w-2xl px-6 py-16 md:py-24">
+        {onReview && (
+          <button
+            type="button"
+            onClick={onReview}
+            className="mb-6 text-sm font-semibold text-brand underline"
+          >
+            &larr; Let me review my answers
+          </button>
+        )}
         <p className="text-sm font-semibold uppercase tracking-wider text-amber-700 mb-3">
           Talk to an attorney first
         </p>
