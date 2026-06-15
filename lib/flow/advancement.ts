@@ -26,7 +26,6 @@ import {
   NoticeFlowData,
 } from './noticeFlowState';
 import { evaluateDisputeScreen } from './gates';
-import { isSafetyCheckSoftMode } from './featureFlags';
 import { validateSigningDate } from './escalation';
 import { isUsPhone } from '../payments/validatePaymentBranch';
 
@@ -37,12 +36,6 @@ export interface StepValidation {
   canAdvance: boolean;
   /** Field-level issues for THIS step (presence/shape only). */
   issues: string[];
-  /**
-   * Only set for the dispute step: if true, the user is hard-blocked to the
-   * attorney handoff rather than advancing. Distinct from ordinary
-   * incompleteness.
-   */
-  hardBlocked?: boolean;
 }
 
 function isBlank(s: string | undefined): boolean {
@@ -65,22 +58,16 @@ export function validateStep(
   switch (step) {
     case FlowStep.PreflightDispute: {
       // Special: advancement = cleared, not merely complete.
-      // C5 soft mode: no hard-block to attorney; a 'yes'/'unknown' flags the
-      // screen but is data-advanceable (the override modal at the navigation
-      // layer is what actually gates proceeding). Only an UNANSWERED question
-      // blocks in soft mode. Hard mode is unchanged.
-      const softMode = isSafetyCheckSoftMode();
-      const d = evaluateDisputeScreen(data.dispute, softMode);
+      // Soft-recommend (det. 2026-06-15, flag retired): a 'yes'/'unknown'
+      // flags the screen but is data-advanceable (the override modal at the
+      // navigation layer gates proceeding). Only an UNANSWERED question blocks.
+      const d = evaluateDisputeScreen(data.dispute);
       if (d.cleared) {
-        return { canAdvance: true, issues: [], hardBlocked: false };
+        return { canAdvance: true, issues: [] };
       }
-      // 'yes' => hard-block to attorney (hard mode only). 'unknown'/unanswered
-      // => block as a "go check" state. An 'unknown' is NEVER allowed to
-      // advance as if it were 'no'.
       return {
         canAdvance: false,
         issues: d.reasons,
-        hardBlocked: d.hardBlocked,
       };
     }
 
@@ -277,7 +264,6 @@ export interface AdvanceResult {
 /**
  * Attempt to advance to the next step. Returns a NEW state (immutably) and
  * whether the move happened. Refuses if the current step does not validate.
- * The dispute step's hard-block surfaces via validation.hardBlocked.
  */
 export function advance(state: NoticeFlowState): AdvanceResult {
   const validation = validateStep(state.step, state.data);

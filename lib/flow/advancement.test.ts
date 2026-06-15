@@ -41,30 +41,26 @@ function fullData(): NoticeFlowData {
   };
 }
 
-console.log('\n=== Dispute step: cleared / unanswered / hard-blocked ===');
+console.log('\n=== Dispute step: cleared / unanswered / flagged (soft-recommend) ===');
 
-console.log('\n1. All "no" -> can advance, not hard-blocked');
+console.log('\n1. All "no" -> can advance');
 {
   const v = validateStep(FlowStep.PreflightDispute, fullData());
   check('canAdvance', v.canAdvance === true);
-  check('not hardBlocked', v.hardBlocked === false);
 }
 
-console.log('\n2. Unanswered -> cannot advance, NOT hard-blocked (just incomplete)');
+console.log('\n2. Unanswered -> cannot advance (incomplete)');
 {
   const d = fullData(); d.dispute = { tenantFiledComplaint: 'no' };
   const v = validateStep(FlowStep.PreflightDispute, d);
   check('cannot advance', v.canAdvance === false);
-  check('not hardBlocked (incomplete)', v.hardBlocked === false);
 }
 
-console.log('\n3. A "yes" -> cannot advance AND hard-blocked (attorney handoff)');
+console.log('\n3. A "yes" -> CAN advance (soft-recommend; override modal gates at UI layer)');
 {
   const d = fullData(); d.dispute = { tenantFiledComplaint: 'yes', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' };
   const v = validateStep(FlowStep.PreflightDispute, d);
-  check('cannot advance', v.canAdvance === false);
-  check('hardBlocked', v.hardBlocked === true);
-  check('has reason', v.issues.length > 0);
+  check('can advance (data-clears)', v.canAdvance === true);
 }
 
 console.log('\n=== Per-step field validation ===');
@@ -196,14 +192,13 @@ console.log('\n11. goBack moves back, never before first step');
   check('cannot go before first', goBack(first).step === FlowStep.PreflightDispute);
 }
 
-console.log('\n12. Dispute hard-block stops advance into the flow');
+console.log('\n12. Dispute "yes" advances at the data layer (override modal is the UI-layer gate)');
 {
   const d = fullData(); d.dispute = { tenantBankruptcy: 'yes', tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no' };
   const s: NoticeFlowState = { step: FlowStep.PreflightDispute, data: d };
   const r = advance(s);
-  check('did not move', r.moved === false);
-  check('hardBlocked surfaced', r.validation.hardBlocked === true);
-  check('still at preflight', r.state.step === FlowStep.PreflightDispute);
+  check('moved (flagged but data-clears)', r.moved === true);
+  check('advanced past preflight', r.state.step !== FlowStep.PreflightDispute);
 }
 
 console.log('\n13. Full walk: preflight -> ... -> Review advances each step');
