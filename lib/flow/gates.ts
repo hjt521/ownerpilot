@@ -13,7 +13,6 @@
  * Not legal advice; product workflow logic.
  */
 
-import { isSafetyCheckSoftMode } from './featureFlags';
 import {
   NoticeFlowData,
   DisputeScreen,
@@ -71,11 +70,6 @@ export interface DisputeBlockResult {
   /** True when the screen may advance (all 'yes' absent; all blocking-unknowns resolved). */
   cleared: boolean;
   /**
-   * True when an answer is 'yes' — route to attorney handoff. Distinct from a
-   * mere 'unknown'/unanswered.
-   */
-  hardBlocked: boolean;
-  /**
    * True when blocked solely because a BLOCKING question is 'unknown' or
    * unanswered (no 'yes'). UI shows "confirm before serving" guidance.
    */
@@ -91,9 +85,8 @@ export interface DisputeBlockResult {
   >;
   reasons: string[];
   /**
-   * C5 soft mode: true when any answer is 'yes' or 'unknown' (i.e. the routing
-   * copy should show and the user must pass the override modal to produce).
-   * Always false in hard mode. Independent of `blocked`.
+   * True when any answer is 'yes' or 'unknown': the routing copy shows and the
+   * user must pass the override modal to produce. Independent of `blocked`.
    */
   flagged: boolean;
 }
@@ -106,7 +99,6 @@ export interface DisputeBlockResult {
  */
 export function evaluateDisputeScreen(
   dispute: DisputeScreen,
-  softMode = false,
 ): DisputeBlockResult {
   const reasons: string[] = [];
   const { tenantFiledComplaint, tenantWrittenWithholding, tenantBankruptcy } =
@@ -169,18 +161,13 @@ export function evaluateDisputeScreen(
     tenantFiledComplaint === undefined ||
     tenantWrittenWithholding === undefined ||
     tenantBankruptcy === undefined;
-  const flagged = softMode && (anyYes || anyUnknown);
-
-  // Hard mode (default): unchanged gatekeeper behavior.
-  // Soft mode: cleared unless a question is UNANSWERED; 'yes'/'unknown' are
-  // flagged (handled by the override flow at the call site), not blocking.
-  const cleared = softMode
-    ? !anyUnanswered
-    : !anyYes && !anyBlockingUnknownOrUnanswered;
-  const hardBlocked = softMode ? false : anyYes;
-  const needsCheck = softMode
-    ? anyUnanswered
-    : !anyYes && anyBlockingUnknownOrUnanswered;
+  // Soft-recommend is unconditional (det. 2026-06-15, flag retired): any
+  // 'yes'/'unknown' FLAGS the screen (routing copy + override modal) but does
+  // not block. Only an UNANSWERED question blocks - we never route or produce
+  // on an unanswered safety question.
+  const flagged = anyYes || anyUnknown;
+  const cleared = !anyUnanswered;
+  const needsCheck = anyUnanswered;
   const blocked = !cleared;
 
   // Reason messages for blocking states (bankruptcy gets the detailed box in UI).
@@ -206,7 +193,6 @@ export function evaluateDisputeScreen(
   return {
     blocked,
     cleared,
-    hardBlocked,
     needsCheck,
     bankruptcyUnknown,
     perQuestion,
@@ -248,13 +234,11 @@ export interface CanProduceResult {
 export function evaluateCanProduce(data: NoticeFlowData): CanProduceResult {
   const blockers: ProduceBlocker[] = [];
 
-  // (a) Dispute screen must be cleared. C5 soft mode: a flagged screen is
-  // clearable once the override has been logged (the user passed the modal).
-  const softMode = isSafetyCheckSoftMode();
-  const dispute = evaluateDisputeScreen(data.dispute, softMode);
-  const disputeProducible = softMode
-    ? dispute.cleared && (!dispute.flagged || !!data.safetyCheckOverride)
-    : dispute.cleared;
+  // (a) Dispute screen must be cleared. A flagged screen is clearable once the
+  // override has been logged (the user passed the modal).
+  const dispute = evaluateDisputeScreen(data.dispute);
+  const disputeProducible =
+    dispute.cleared && (!dispute.flagged || !!data.safetyCheckOverride);
   if (!disputeProducible) {
     blockers.push({
       code: 'DISPUTE_NOT_CLEARED',
@@ -415,13 +399,11 @@ export interface CanProduceResultV4 {
 export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
   const blockers: ProduceBlocker[] = [];
 
-  // (a) Dispute screen must be cleared (shared logic). C5 soft mode: flagged
-  // screen clearable once the override is logged.
-  const softMode = isSafetyCheckSoftMode();
-  const dispute = evaluateDisputeScreen(data.dispute, softMode);
-  const disputeProducible = softMode
-    ? dispute.cleared && (!dispute.flagged || !!data.safetyCheckOverride)
-    : dispute.cleared;
+  // (a) Dispute screen must be cleared (shared logic). Flagged screen clearable
+  // once the override is logged.
+  const dispute = evaluateDisputeScreen(data.dispute);
+  const disputeProducible =
+    dispute.cleared && (!dispute.flagged || !!data.safetyCheckOverride);
   if (!disputeProducible) {
     blockers.push({
       code: 'DISPUTE_NOT_CLEARED',

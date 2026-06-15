@@ -47,41 +47,31 @@ console.log('\n3. Empty screen -> blocked');
   check('not cleared', r.cleared === false);
 }
 
-console.log('\n4. Each "yes" blocks');
+console.log('\n4. Each "yes" clears and is flagged (soft-recommend; no hard block)');
 {
   const a = evaluateDisputeScreen({ tenantFiledComplaint: 'yes', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' });
   const b = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'yes', tenantBankruptcy: 'no' });
   const c = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'yes' });
-  check('complaint yes blocks', a.blocked && !a.cleared);
-  check('withholding yes blocks', b.blocked && !b.cleared);
-  check('bankruptcy yes blocks', c.blocked && !c.cleared);
-  check('yes is hardBlocked', a.hardBlocked && b.hardBlocked && c.hardBlocked);
+  check('complaint yes clears', a.cleared === true && a.blocked === false);
+  check('withholding yes clears', b.cleared === true && b.blocked === false);
+  check('bankruptcy yes clears', c.cleared === true && c.blocked === false);
+  check('each yes is flagged', a.flagged && b.flagged && c.flagged);
 }
 
-console.log('\n4b. Per-question "I don\u2019t know" policy (complaint proceeds; withholding/bankruptcy block)');
+console.log('\n4b. "I don\u2019t know" clears and flags (soft-recommend); only unanswered blocks');
 {
-  // Complaint unknown PROCEEDS (lower stakes) when others are 'no'.
   const cu = evaluateDisputeScreen({ tenantFiledComplaint: 'unknown', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' });
-  check('complaint-unknown CLEARS (proceeds)', cu.cleared === true);
-  check('complaint-unknown not hardBlocked', cu.hardBlocked === false);
-  check('complaint-unknown flagged proceed_warning', cu.perQuestion.tenantFiledComplaint === 'proceed_warning');
+  check('complaint-unknown CLEARS', cu.cleared === true);
+  check('complaint-unknown flagged', cu.flagged === true);
 
-  // Withholding unknown BLOCKS (habitability defense risk).
   const wu = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'unknown', tenantBankruptcy: 'no' });
-  check('withholding-unknown does NOT clear', wu.cleared === false);
-  check('withholding-unknown blocks', wu.blocked === true);
-  check('withholding-unknown flagged blocking', wu.perQuestion.tenantWrittenWithholding === 'blocking');
-  check('withholding-unknown not hardBlocked', wu.hardBlocked === false);
+  check('withholding-unknown CLEARS', wu.cleared === true);
+  check('withholding-unknown flagged', wu.flagged === true);
 
-  // Bankruptcy unknown BLOCKS with the automatic-stay flag.
   const bu = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'unknown' });
-  check('bankruptcy-unknown does NOT clear', bu.cleared === false);
-  check('bankruptcy-unknown flagged', bu.bankruptcyUnknown === true);
-  check('bankruptcy-unknown flagged blocking', bu.perQuestion.tenantBankruptcy === 'blocking');
-
-  // The critical invariant: blocking-unknown is NEVER treated as 'no'.
-  check('withholding-unknown never clears', wu.cleared === false);
-  check('bankruptcy-unknown never clears', bu.cleared === false);
+  check('bankruptcy-unknown CLEARS', bu.cleared === true);
+  check('bankruptcy-unknown flagged', bu.flagged === true);
+  check('bankruptcy-unknown internal set', bu.bankruptcyUnknown === true);
 }
 
 console.log('\n4b-2. Unanswered ALWAYS blocks, even on the proceed-policy question');
@@ -92,11 +82,11 @@ console.log('\n4b-2. Unanswered ALWAYS blocks, even on the proceed-policy questi
   check('unanswered complaint flagged blocking', r.perQuestion.tenantFiledComplaint === 'blocking');
 }
 
-console.log('\n4c. yes + unknown together still hard-blocks (yes dominates)');
+console.log('\n4c. yes + unknown together clears and flags (soft-recommend)');
 {
   const r = evaluateDisputeScreen({ tenantFiledComplaint: 'yes', tenantWrittenWithholding: 'no', tenantBankruptcy: 'unknown' });
-  check('hardBlocked when a yes present', r.hardBlocked === true);
-  check('not cleared', r.cleared === false);
+  check('flagged when a yes present', r.flagged === true);
+  check('clears (only unanswered blocks)', r.cleared === true);
 }
 
 console.log('\n=== Review gate (evaluateCanProduce) ===');
@@ -223,23 +213,16 @@ console.log(`${'-'.repeat(40)}\n`);
 if (failed > 0) process.exit(1);
 
 
-// --- C5 soft-mode safety screen (flag ON) ----------------------------------
-console.log('\nC5. Safety screen soft mode');
+// --- C5 soft-recommend safety screen (flag retired, soft is unconditional) --
+console.log('\nC5. Safety screen soft-recommend (unconditional)');
 {
   const base: DisputeScreen = { tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' };
-  // Hard mode unchanged: a 'yes' hard-blocks.
-  const hardYes = evaluateDisputeScreen({ ...base, tenantBankruptcy: 'yes' });
-  check('hard mode: bankruptcy yes blocks', hardYes.cleared === false && hardYes.hardBlocked === true);
-  // Soft mode: a 'yes' flags but does NOT hard-block; screen is cleared.
-  const softYes = evaluateDisputeScreen({ ...base, tenantBankruptcy: 'yes' }, true);
-  check('soft mode: bankruptcy yes flagged not hard-blocked', softYes.flagged === true && softYes.hardBlocked === false && softYes.cleared === true);
-  // Soft mode: an 'unknown' flags + cleared.
-  const softUnk = evaluateDisputeScreen({ ...base, tenantWrittenWithholding: 'unknown' }, true);
-  check('soft mode: unknown flags + cleared', softUnk.flagged === true && softUnk.cleared === true);
-  // Soft mode: an UNANSWERED question still blocks (needsCheck).
-  const softUnanswered = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no' }, true);
-  check('soft mode: unanswered blocks', softUnanswered.cleared === false && softUnanswered.needsCheck === true);
-  // Soft mode: all 'no' -> not flagged, cleared.
-  const softClean = evaluateDisputeScreen({ ...base }, true);
-  check('soft mode: all no -> clean', softClean.flagged === false && softClean.cleared === true);
+  const softYes = evaluateDisputeScreen({ ...base, tenantBankruptcy: 'yes' });
+  check('bankruptcy yes flagged + cleared', softYes.flagged === true && softYes.cleared === true);
+  const softUnk = evaluateDisputeScreen({ ...base, tenantWrittenWithholding: 'unknown' });
+  check('unknown flags + cleared', softUnk.flagged === true && softUnk.cleared === true);
+  const softUnanswered = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no' });
+  check('unanswered blocks', softUnanswered.cleared === false);
+  const softClean = evaluateDisputeScreen({ ...base });
+  check('all no -> clean', softClean.flagged === false && softClean.cleared === true);
 }

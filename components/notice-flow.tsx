@@ -28,7 +28,6 @@ import {
 import { validateStep } from '@/lib/flow/advancement';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
-import { isSafetyCheckSoftMode } from '@/lib/flow/featureFlags';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import {
   validateSigningDate,
@@ -140,7 +139,6 @@ export function NoticeFlow() {
   // C5 soft mode: the safety-override confirmation modal.
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   // Hard mode: lets the user escape the attorney handoff to edit Step 1.
-  const [reviewingDispute, setReviewingDispute] = useState(false);
 
   // R2a draft persistence. Restore runs in a mount effect (not a lazy
   // initializer) so server HTML and the client's first paint agree; the
@@ -193,24 +191,19 @@ export function NoticeFlow() {
   const page = PAGES[pageIndex];
   const totalPages = PAGES.length;
 
-  // A page is advanceable only when every step it contains validates. The
-  // dispute step can also hard-block (attorney handoff) — only page 1 has it.
-  let hardBlocked = false;
+  // A page is advanceable only when every step it contains validates.
   const issues: string[] = [];
   for (const step of page.steps) {
     const v = validateStep(step, state.data);
-    if (v.hardBlocked) hardBlocked = true;
     for (const it of v.issues) issues.push(it);
   }
   const canAdvance = issues.length === 0;
 
-  // C5 soft mode: is the current page the dispute screen with a flagged answer
-  // (yes/unknown) and no override logged yet? If so, advancing routes through
-  // the confirmation modal that logs the override.
-  const softMode = isSafetyCheckSoftMode();
+  // Is the current page the dispute screen with a flagged answer (yes/unknown)
+  // and no override logged yet? If so, advancing routes through the
+  // confirmation modal that logs the override.
   const disp = state.data.dispute;
   const disputeFlagged =
-    softMode &&
     page.steps.includes(FlowStep.PreflightDispute) &&
     [disp.tenantFiledComplaint, disp.tenantWrittenWithholding, disp.tenantBankruptcy].some(
       (a) => a === 'yes' || a === 'unknown',
@@ -229,6 +222,8 @@ export function NoticeFlow() {
         flaggedAnswers,
         acceptedAt: new Date().toISOString(),
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        modalCopyVersion: 'v1',
+        enhancedModalShown: disp.tenantBankruptcy === 'yes',
       },
     });
     setOverrideModalOpen(false);
@@ -244,7 +239,6 @@ export function NoticeFlow() {
       setOverrideModalOpen(true);
       return;
     }
-    setReviewingDispute(false);
     setPageIndex((i) => Math.min(i + 1, totalPages - 1));
     setShowIssues(false);
   };
@@ -278,25 +272,11 @@ export function NoticeFlow() {
     onNext();
   };
 
-  // Hard-block to attorney handoff (dispute screen, any "yes"). The user can
-  // escape via onReview to edit their Step 1 answers (otherwise navigating back
-  // would trap them here with no recovery).
-  if (hardBlocked && !reviewingDispute) {
-    return (
-      <AttorneyHandoff
-        onReview={() => {
-          setReviewingDispute(true);
-          setPageIndex(0);
-          setShowIssues(false);
-        }}
-      />
-    );
-  }
-
   return (
     <main className="min-h-screen bg-ivory">
       {overrideModalOpen && (
         <SafetyOverrideModal
+          bankruptcy={disp.tenantBankruptcy === 'yes'}
           onPause={() => setOverrideModalOpen(false)}
           onProceed={proceedThroughOverride}
         />
@@ -434,25 +414,23 @@ function DisputeStep({
   const set = (key: keyof typeof d, value: DisputeAnswer) =>
     update({ dispute: { ...d, [key]: value } });
 
-  const softMode = isSafetyCheckSoftMode();
-  const flagged =
-    softMode &&
-    [d.tenantFiledComplaint, d.tenantWrittenWithholding, d.tenantBankruptcy].some(
-      (a) => a === 'yes' || a === 'unknown',
-    );
+  const flagged = [
+    d.tenantFiledComplaint,
+    d.tenantWrittenWithholding,
+    d.tenantBankruptcy,
+  ].some((a) => a === 'yes' || a === 'unknown');
   return (
     <div className="space-y-4">
       <p className="text-lg text-gray-800 leading-relaxed">
-        {softMode
-          ? 'Before we start, a few quick checks. These help confirm a routine 3-day notice is the right tool for your situation.'
-          : 'Before you start: this notice is appropriate for routine non-payment situations. A few questions first — if any apply, this is past where a broker-prepared notice is the right move.'}
+        Before we start, a few quick checks. These help confirm a routine 3-day
+        notice is the right tool for your situation.
       </p>
 
       <TriQuestion
         question="Has the tenant filed a court case, complaint with a fair housing agency, or code-enforcement complaint that names you or this rental property?"
         value={d.tenantFiledComplaint}
         onChange={(v) => set('tenantFiledComplaint', v)}
-        suppressNote={softMode}
+        suppressNote
         unknownNote={{
           tone: 'proceed',
           body: 'You can continue without confirming this — a tenant complaint doesn’t by itself prevent a routine 3-day notice. We’ll note on the record that it wasn’t confirmed. If you can, it’s still worth checking.',
@@ -462,7 +440,7 @@ function DisputeStep({
         question="Has the tenant given you anything in writing saying they are withholding rent because of repair problems, habitability issues, or another dispute?"
         value={d.tenantWrittenWithholding}
         onChange={(v) => set('tenantWrittenWithholding', v)}
-        suppressNote={softMode}
+        suppressNote
         unknownNote={{
           tone: 'block',
           body: 'Please confirm this before serving. A written habitability or repair dispute can become a defense to an eviction, so this one needs a clear Yes or No. Check your messages and notices from the tenant, then come back.',
@@ -472,7 +450,7 @@ function DisputeStep({
         question="Has the tenant filed for bankruptcy, or told you they are about to?"
         value={d.tenantBankruptcy}
         onChange={(v) => set('tenantBankruptcy', v)}
-        suppressNote={softMode}
+        suppressNote
         unknownNote={{ tone: 'bankruptcy' }}
       />
       {flagged && (
@@ -3008,12 +2986,20 @@ export function ServiceStep({
 // --- Attorney handoff (dispute hard-block) ----------------------------------
 
 function SafetyOverrideModal({
+  bankruptcy = false,
   onPause,
   onProceed,
 }: {
+  bankruptcy?: boolean;
   onPause: () => void;
   onProceed: () => void;
 }) {
+  const heading = bankruptcy
+    ? 'Before you continue — bankruptcy situations require special handling'
+    : 'Before you continue';
+  const body = bankruptcy
+    ? 'You indicated the tenant has filed for bankruptcy or is about to. Bankruptcy triggers an automatic stay under federal law (11 U.S.C. § 362). Serving a 3-day notice during the stay can expose you to sanctions in bankruptcy court — even if the notice would otherwise be valid under California law. We strongly recommend talking to a bankruptcy attorney before proceeding. If you want to continue anyway, we’ll log your decision.'
+    : 'One or more of your answers suggests this situation may be outside the routine workflow’s scope. The 3-day notice may not be the right tool here, and serving it without legal guidance can create problems. We recommend pausing to talk to a California licensed attorney before proceeding. If you want to continue anyway, we’ll log your decision.';
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
@@ -3021,10 +3007,8 @@ function SafetyOverrideModal({
       aria-modal="true"
     >
       <div className="w-full max-w-md rounded-xl border border-rule bg-white p-6 shadow-xl space-y-4">
-        <h2 className="font-serif text-xl font-bold text-brand">Before you continue</h2>
-        <p className="text-sm text-gray-700 leading-relaxed">
-          You're proceeding despite a flagged answer. The routine workflow may not be appropriate for your situation. Consider talking to a California licensed attorney.
-        </p>
+        <h2 className="font-serif text-xl font-bold text-brand">{heading}</h2>
+        <p className="text-sm text-gray-700 leading-relaxed">{body}</p>
         <div className="flex flex-wrap justify-end gap-3 pt-2">
           <button
             type="button"
@@ -3044,45 +3028,5 @@ function SafetyOverrideModal({
         </div>
       </div>
     </div>
-  );
-}
-function AttorneyHandoff({ onReview }: { onReview?: () => void }) {
-  return (
-    <main className="min-h-screen bg-white">
-      <article className="mx-auto max-w-2xl px-6 py-16 md:py-24">
-        {onReview && (
-          <button
-            type="button"
-            onClick={onReview}
-            className="mb-6 text-sm font-semibold text-brand underline"
-          >
-            &larr; Let me review my answers
-          </button>
-        )}
-        <p className="text-sm font-semibold uppercase tracking-wider text-amber-700 mb-3">
-          Talk to an attorney first
-        </p>
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-6">
-          This is past where a broker-prepared notice is the right move.
-        </h1>
-        <div className="space-y-4 text-lg text-gray-800 leading-relaxed">
-          <p>
-            Based on what you told us, your situation involves more than a
-            routine non-payment. When a tenant has asserted a legal claim,
-            disputed rent in writing, or filed for bankruptcy, serving a notice
-            without legal guidance can create real problems.
-          </p>
-          <p>
-            Talk to a California licensed attorney before serving any notice.
-            You can read about why OwnerPilot keeps attorney services separate
-            on our{' '}
-            <a href="/our-approach" className="text-blue-700 underline">
-              approach page
-            </a>
-            .
-          </p>
-        </div>
-      </article>
-    </main>
   );
 }
