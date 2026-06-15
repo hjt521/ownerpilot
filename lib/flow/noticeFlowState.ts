@@ -152,10 +152,14 @@ export interface NoticeFlowData {
    * screen is production-clearable only when this is present.
    */
   safetyCheckOverride?: {
-    question: keyof DisputeScreen;
-    answer: DisputeAnswer;
+    /**
+     * All flagged answers the user overrode (JT 2026-06-14: array, not a single
+     * question - fuller audit of exactly what was flagged at override time).
+     */
+    flaggedAnswers: { question: keyof DisputeScreen; answer: DisputeAnswer }[];
     acceptedAt: string;
     userAgent?: string;
+    /** Not available client-side; reserved for a server-side enhancement. */
     ipHash?: string;
   };
 
