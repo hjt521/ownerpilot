@@ -133,9 +133,8 @@ export function validateStep(
           }
         });
       }
-      if (data.baseRentOnlyConfirmed !== true) {
-        issues.push('You must confirm the amount is base rent only.');
-      }
+      // Base-rent-only confirmation moved to the Step 4 produce-gate
+      // attestation (C6, det. 2026-06-14). Step 2 no longer gates on it.
       break;
 
     case FlowStep.PaymentInstructions: {

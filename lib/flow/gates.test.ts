@@ -115,7 +115,7 @@ function validBaseline(): NoticeFlowData {
     propertyCounty: 'Fresno',
     tenantNames: ['Jane Tenant'],
     rentPeriods: [{ periodStartDate: '2026-04-01', periodEndDate: '2026-04-30', amount: 2000 }],
-    baseRentOnlyConfirmed: true,
+    produceAttestationConfirmed: true,
     paymentMethods: [{ kind: 'mail', mailAddress: 'PO Box 1, Fresno, CA' }],
     signerName: 'Owner Name',
     ...individualLandlord('owner'),
@@ -152,8 +152,8 @@ console.log('\n6. Each removed condition blocks (one at a time)');
   check('no rent periods blocks', hasBlocker(evaluateCanProduce(d).blockers, 'NO_RENT_PERIODS'));
 
   // base rent not confirmed
-  d = validBaseline(); d.baseRentOnlyConfirmed = false;
-  check('base rent not confirmed blocks', hasBlocker(evaluateCanProduce(d).blockers, 'BASE_RENT_NOT_CONFIRMED'));
+  d = validBaseline(); d.produceAttestationConfirmed = false;
+  check('produce attestation not confirmed blocks', hasBlocker(evaluateCanProduce(d).blockers, 'PRODUCE_ATTESTATION_MISSING'));
 
   // invalid payment (empty)
   d = validBaseline(); d.paymentMethods = [];
@@ -212,7 +212,7 @@ console.log('\n11. Multiple missing conditions all surface together');
   const d = validBaseline();
   d.tenantNames = [];
   d.paymentMethods = [];
-  d.baseRentOnlyConfirmed = false;
+  d.produceAttestationConfirmed = false;
   const r = evaluateCanProduce(d);
   check('3+ blockers', r.blockers.length >= 3, `got ${r.blockers.length}`);
 }

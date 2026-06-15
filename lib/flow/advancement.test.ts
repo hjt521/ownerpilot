@@ -89,7 +89,7 @@ console.log('\n6. Amount: period shape + base-rent confirm');
   check('valid period ok', ok.canAdvance === true, JSON.stringify(ok.issues));
 
   const d1 = fullData(); d1.baseRentOnlyConfirmed = false;
-  check('unconfirmed base rent fails', validateStep(FlowStep.AmountOwed, d1).canAdvance === false);
+  check('Step 2 advances regardless of base-rent confirm (moved to Step 4 attestation)', validateStep(FlowStep.AmountOwed, d1).canAdvance === true);
 
   const d2 = fullData(); d2.rentPeriods = [{ periodStartDate: '2026-04-30', periodEndDate: '2026-04-01', amount: 2000 }];
   check('end-before-start fails', validateStep(FlowStep.AmountOwed, d2).canAdvance === false);

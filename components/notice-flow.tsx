@@ -1034,24 +1034,6 @@ function AmountStep({
         </span>
       </div>
 
-      <label className="flex items-start gap-2 cursor-pointer pt-1">
-        <input
-          type="checkbox"
-          checked={data.baseRentOnlyConfirmed === true}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            update({ baseRentOnlyConfirmed: e.target.checked })
-          }
-          className="mt-1"
-        />
-        <span className="text-sm text-gray-700 leading-relaxed">
-          I confirm this is{' '}
-          <strong className="font-semibold">base rent only</strong> — no late
-          fees, utilities, or other charges.
-          <span className="block text-xs text-gray-400 mt-0.5">
-            California law requires a 3-day notice to demand only rent.
-          </span>
-        </span>
-      </label>
     </div>
   );
 }
@@ -2217,7 +2199,6 @@ const BLOCKER_PAGE: Record<string, number> = {
   PROPERTY_ADDRESS_MISSING: 1,
   NO_TENANT: 1,
   NO_RENT_PERIODS: 1,
-  BASE_RENT_NOT_CONFIRMED: 1,
   PAYMENT_CONFIG_INVALID: 1,
   BANK_5_MILE_NOT_VERIFIED: 1,
   PAYEE_NAME_UNRESOLVED: 1,
@@ -2255,7 +2236,16 @@ function ReviewStep({
   let docHtml: string | null = null;
   let renderedModel: NoticeModel | null = null;
   let renderError: string | null = null;
-  if (result.canProduce && result.computedDates) {
+  // C6: render the face as soon as the notice is DATA-complete (every
+  // blocker cleared except the produce attestation), so the user can READ
+  // the face before attesting (Eshagian v. Cepeda). The attestation gates
+  // PRINTING, not previewing.
+  const onlyAttestationLeft =
+    result.blockers.length === 0 ||
+    (result.blockers.length === 1 &&
+      result.blockers[0].code === 'PRODUCE_ATTESTATION_MISSING');
+  const isRenderable = onlyAttestationLeft && !!result.computedDates;
+  if (isRenderable && result.computedDates) {
     try {
       const rendered = renderNotice({
         data,
@@ -2304,10 +2294,13 @@ function ReviewStep({
         </div>
       ) : (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4">
+          {!onlyAttestationLeft && (
           <p className="font-semibold text-amber-900 mb-2">
             Not ready yet — {result.blockers.length}{' '}
             {result.blockers.length === 1 ? 'item needs' : 'items need'} attention:
           </p>
+          )}
+          {!onlyAttestationLeft && (
           <ul className="space-y-2 text-sm text-amber-900 list-disc pl-5">
             {result.blockers.map((b) => {
               const targetPage = pageForBlocker(b.code);
@@ -2334,6 +2327,42 @@ function ReviewStep({
               );
             })}
           </ul>
+          )}
+          {onlyAttestationLeft && (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-amber-900">
+                California law requires you to confirm the following before
+                producing this notice:
+              </p>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={data.produceAttestationConfirmed === true}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    update({
+                      produceAttestationConfirmed: e.target.checked,
+                      ...(e.target.checked
+                        ? { produceAttestationAcceptedAt: new Date().toISOString() }
+                        : { produceAttestationAcceptedAt: undefined }),
+                    })
+                  }
+                  className="mt-1"
+                />
+                <span className="text-sm text-amber-900 leading-relaxed">
+                  By producing this notice, I confirm: the amounts entered are base rent only (no late fees, utilities, or other charges); the tenants and landlord(s) named are correct; and the signer is authorized.
+                </span>
+              </label>
+              {goToPage && (
+                <button
+                  type="button"
+                  onClick={() => goToPage(1)}
+                  className="text-xs font-semibold text-amber-800 underline"
+                >
+                  &larr; Back to rent amount
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -2365,8 +2394,19 @@ function ReviewStep({
           data={data}
           noticeDocHtml={docHtml}
           onProduced={onProduced}
-          disabledKeys={['serviceLog']}
+          disabledKeys={
+            result.canProduce ? ['serviceLog'] : ['tenant', 'owner', 'serviceLog', 'full']
+          }
         />
+      )}
+
+      {/* C6: posture line (locked) on the produce screen. */}
+      {docHtml && renderedModel && (
+        <div className="rounded-lg border border-rule bg-white px-5 py-4">
+          <p className="text-xs text-gray-500 leading-relaxed">
+            OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared notice produced under California Licensed Real Estate Broker supervision. For legal matters, consult a California licensed attorney of your choosing.
+          </p>
+        </div>
       )}
 
       {/* R2b: service tracking lives on its own page. Whole card is clickable. */}
