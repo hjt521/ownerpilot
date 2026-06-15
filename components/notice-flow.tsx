@@ -2199,10 +2199,10 @@ const BLOCKER_PAGE: Record<string, number> = {
   PROPERTY_ADDRESS_MISSING: 1,
   NO_TENANT: 1,
   NO_RENT_PERIODS: 1,
-  PAYMENT_CONFIG_INVALID: 1,
-  BANK_5_MILE_NOT_VERIFIED: 1,
-  PAYEE_NAME_UNRESOLVED: 1,
-  LANDLORD_TYPE_UNCONFIRMED: 1,
+  PAYMENT_CONFIG_INVALID: 2,
+  BANK_5_MILE_NOT_VERIFIED: 2,
+  PAYEE_NAME_UNRESOLVED: 2,
+  LANDLORD_TYPE_UNCONFIRMED: 2,
   SIGNER_MISSING: 2,
   SIGNER_ROLE_MISSING: 2,
   AUTHORITY_EVIDENCE_MISSING: 2,
@@ -2245,6 +2245,12 @@ function ReviewStep({
     (result.blockers.length === 1 &&
       result.blockers[0].code === 'PRODUCE_ATTESTATION_MISSING');
   const isRenderable = onlyAttestationLeft && !!result.computedDates;
+  // The produce attestation surfaces only as the green confirm-step (when it is
+  // the SOLE remaining blocker), never as a bullet alongside real blockers - the
+  // checkbox it points to isn't shown in the multi-blocker state.
+  const visibleBlockers = result.blockers.filter(
+    (b) => b.code !== 'PRODUCE_ATTESTATION_MISSING',
+  );
   if (isRenderable && result.computedDates) {
     try {
       const rendered = renderNotice({
@@ -2302,13 +2308,13 @@ function ReviewStep({
         >
           {!onlyAttestationLeft && (
           <p className="font-semibold text-amber-900 mb-2">
-            Not ready yet — {result.blockers.length}{' '}
-            {result.blockers.length === 1 ? 'item needs' : 'items need'} attention:
+            Not ready yet — {visibleBlockers.length}{' '}
+            {visibleBlockers.length === 1 ? 'item needs' : 'items need'} attention:
           </p>
           )}
           {!onlyAttestationLeft && (
           <ul className="space-y-2 text-sm text-amber-900 list-disc pl-5">
-            {result.blockers.map((b) => {
+            {visibleBlockers.map((b) => {
               const targetPage = pageForBlocker(b.code);
               return (
                 <li key={b.code}>
