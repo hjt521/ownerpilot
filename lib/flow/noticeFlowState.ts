@@ -135,6 +135,29 @@ export interface LandlordContact {
 /** Everything the flow collects. All optional — the flow fills it incrementally. */
 export interface NoticeFlowData {
   dispute: DisputeScreen;
+  /**
+   * C5 (det. 2026-06-14, soft mode): audit of the Step 1 safety-check answers
+   * as last confirmed by the user. [SHOULD FIX]
+   */
+  safetyCheckAnswers?: {
+    tenantFiledComplaint?: DisputeAnswer;
+    tenantWrittenWithholding?: DisputeAnswer;
+    tenantBankruptcy?: DisputeAnswer;
+    acceptedAt?: string;
+  };
+  /**
+   * C5 (det. 2026-06-14, soft mode): logged when the user proceeds DESPITE a
+   * flagged answer, via the confirmation modal. [MUST FIX] audit trail. Absent
+   * means no override was needed or none accepted. In soft mode, a flagged
+   * screen is production-clearable only when this is present.
+   */
+  safetyCheckOverride?: {
+    question: keyof DisputeScreen;
+    answer: DisputeAnswer;
+    acceptedAt: string;
+    userAgent?: string;
+    ipHash?: string;
+  };
 
   // Step 1 — property
   propertyAddress?: string;

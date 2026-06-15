@@ -2,7 +2,7 @@ import {
   evaluateDisputeScreen,
   evaluateCanProduce,
 } from './gates';
-import { NoticeFlowData } from './noticeFlowState';
+import { NoticeFlowData, DisputeScreen } from './noticeFlowState';
 import { individualLandlord } from './landlord.fixture';
 import { CA_JUDICIAL_HOLIDAYS } from '../dates/holidays';
 
@@ -221,3 +221,25 @@ console.log(`\n${'-'.repeat(40)}`);
 console.log(`  ${passed} passed, ${failed} failed`);
 console.log(`${'-'.repeat(40)}\n`);
 if (failed > 0) process.exit(1);
+
+
+// --- C5 soft-mode safety screen (flag ON) ----------------------------------
+console.log('\nC5. Safety screen soft mode');
+{
+  const base: DisputeScreen = { tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' };
+  // Hard mode unchanged: a 'yes' hard-blocks.
+  const hardYes = evaluateDisputeScreen({ ...base, tenantBankruptcy: 'yes' });
+  check('hard mode: bankruptcy yes blocks', hardYes.cleared === false && hardYes.hardBlocked === true);
+  // Soft mode: a 'yes' flags but does NOT hard-block; screen is cleared.
+  const softYes = evaluateDisputeScreen({ ...base, tenantBankruptcy: 'yes' }, true);
+  check('soft mode: bankruptcy yes flagged not hard-blocked', softYes.flagged === true && softYes.hardBlocked === false && softYes.cleared === true);
+  // Soft mode: an 'unknown' flags + cleared.
+  const softUnk = evaluateDisputeScreen({ ...base, tenantWrittenWithholding: 'unknown' }, true);
+  check('soft mode: unknown flags + cleared', softUnk.flagged === true && softUnk.cleared === true);
+  // Soft mode: an UNANSWERED question still blocks (needsCheck).
+  const softUnanswered = evaluateDisputeScreen({ tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no' }, true);
+  check('soft mode: unanswered blocks', softUnanswered.cleared === false && softUnanswered.needsCheck === true);
+  // Soft mode: all 'no' -> not flagged, cleared.
+  const softClean = evaluateDisputeScreen({ ...base }, true);
+  check('soft mode: all no -> clean', softClean.flagged === false && softClean.cleared === true);
+}
