@@ -26,6 +26,7 @@ import {
   NoticeFlowData,
 } from './noticeFlowState';
 import { evaluateDisputeScreen } from './gates';
+import { isSafetyCheckSoftMode } from './featureFlags';
 import { validateSigningDate } from './escalation';
 import { isUsPhone } from '../payments/validatePaymentBranch';
 
@@ -64,13 +65,18 @@ export function validateStep(
   switch (step) {
     case FlowStep.PreflightDispute: {
       // Special: advancement = cleared, not merely complete.
-      const d = evaluateDisputeScreen(data.dispute);
+      // C5 soft mode: no hard-block to attorney; a 'yes'/'unknown' flags the
+      // screen but is data-advanceable (the override modal at the navigation
+      // layer is what actually gates proceeding). Only an UNANSWERED question
+      // blocks in soft mode. Hard mode is unchanged.
+      const softMode = isSafetyCheckSoftMode();
+      const d = evaluateDisputeScreen(data.dispute, softMode);
       if (d.cleared) {
         return { canAdvance: true, issues: [], hardBlocked: false };
       }
-      // 'yes' => hard-block to attorney. 'unknown'/unanswered => block as a
-      // "go check" state (hardBlocked stays false; UI shows guidance). An
-      // 'unknown' is NEVER allowed to advance as if it were 'no'.
+      // 'yes' => hard-block to attorney (hard mode only). 'unknown'/unanswered
+      // => block as a "go check" state. An 'unknown' is NEVER allowed to
+      // advance as if it were 'no'.
       return {
         canAdvance: false,
         issues: d.reasons,
