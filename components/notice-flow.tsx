@@ -28,6 +28,7 @@ import {
 import { validateStep } from '@/lib/flow/advancement';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
+import { isSafetyCheckSoftMode } from '@/lib/flow/featureFlags';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import {
   validateSigningDate,
@@ -377,38 +378,68 @@ function DisputeStep({
   const set = (key: keyof typeof d, value: DisputeAnswer) =>
     update({ dispute: { ...d, [key]: value } });
 
+  const softMode = isSafetyCheckSoftMode();
+  const flagged =
+    softMode &&
+    [d.tenantFiledComplaint, d.tenantWrittenWithholding, d.tenantBankruptcy].some(
+      (a) => a === 'yes' || a === 'unknown',
+    );
   return (
     <div className="space-y-4">
       <p className="text-lg text-gray-800 leading-relaxed">
-        Before you start: this notice is appropriate for routine non-payment
-        situations. A few questions first — if any apply, this is past where a
-        broker-prepared notice is the right move.
+        {softMode
+          ? 'Before we start, a few quick checks. These help confirm a routine 3-day notice is the right tool for your situation.'
+          : 'Before you start: this notice is appropriate for routine non-payment situations. A few questions first — if any apply, this is past where a broker-prepared notice is the right move.'}
       </p>
 
       <TriQuestion
-        question="Has your tenant filed any kind of complaint against you (court, fair housing agency, or code enforcement)?"
+        question="Has the tenant filed a court case, complaint with a fair housing agency, or code-enforcement complaint that names you or this rental property?"
         value={d.tenantFiledComplaint}
         onChange={(v) => set('tenantFiledComplaint', v)}
+        suppressNote={softMode}
         unknownNote={{
           tone: 'proceed',
           body: 'You can continue without confirming this — a tenant complaint doesn’t by itself prevent a routine 3-day notice. We’ll note on the record that it wasn’t confirmed. If you can, it’s still worth checking.',
         }}
       />
       <TriQuestion
-        question="Has your tenant told you in writing that they're withholding rent because of habitability issues, repairs, or any other dispute?"
+        question="Has the tenant given you anything in writing saying they are withholding rent because of repair problems, habitability issues, or another dispute?"
         value={d.tenantWrittenWithholding}
         onChange={(v) => set('tenantWrittenWithholding', v)}
+        suppressNote={softMode}
         unknownNote={{
           tone: 'block',
           body: 'Please confirm this before serving. A written habitability or repair dispute can become a defense to an eviction, so this one needs a clear Yes or No. Check your messages and notices from the tenant, then come back.',
         }}
       />
       <TriQuestion
-        question="Has your tenant filed for bankruptcy?"
+        question="Has the tenant filed for bankruptcy, or told you they are about to?"
         value={d.tenantBankruptcy}
         onChange={(v) => set('tenantBankruptcy', v)}
+        suppressNote={softMode}
         unknownNote={{ tone: 'bankruptcy' }}
       />
+      {flagged && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 space-y-3">
+          <p className="text-sm text-amber-900 leading-relaxed">
+            Pause here. This situation may include facts that change how a 3-day notice should be handled, or whether one should be used at all. The OwnerPilot routine workflow assumes a straightforward nonpayment situation with no active disputes or complaints. We recommend talking to a California licensed attorney before producing this notice. You can save your progress and come back.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href="/"
+              className="rounded-lg border border-amber-400 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+            >
+              Save and exit
+            </a>
+            <a
+              href="/notice/3-day/options"
+              className="rounded-lg border border-amber-400 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+            >
+              Talk to me about my options
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -423,11 +454,13 @@ function TriQuestion({
   value,
   onChange,
   unknownNote,
+  suppressNote = false,
 }: {
   question: string;
   value: DisputeAnswer | undefined;
   onChange: (v: DisputeAnswer) => void;
   unknownNote: UnknownNote;
+  suppressNote?: boolean;
 }) {
   const options: { label: string; v: DisputeAnswer }[] = [
     { label: 'No', v: 'no' },
@@ -458,7 +491,7 @@ function TriQuestion({
           </button>
         ))}
       </div>
-      {value === 'unknown' && (
+      {value === 'unknown' && !suppressNote && (
         <div className="mt-4">
           {unknownNote.tone === 'bankruptcy' ? (
             <BankruptcyCheckGuidance />
