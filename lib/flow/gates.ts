@@ -267,12 +267,11 @@ export function evaluateCanProduce(data: NoticeFlowData): CanProduceResult {
       message: 'At least one rent period (base rent) is required.',
     });
   }
-  if (data.baseRentOnlyConfirmed !== true) {
+  if (data.produceAttestationConfirmed !== true) {
     blockers.push({
-      code: 'BASE_RENT_NOT_CONFIRMED',
+      code: 'PRODUCE_ATTESTATION_MISSING',
       message:
-        'You must confirm the amount is base rent only (no late fees, ' +
-        'utilities, or other charges).',
+        'Confirm the produce-gate attestation below (base rent only; names correct; signer authorized) before producing.',
     });
   }
 
@@ -411,11 +410,11 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
   if (!data.rentPeriods || data.rentPeriods.length === 0) {
     blockers.push({ code: 'NO_RENT_PERIODS', message: 'At least one rent period (base rent) is required.' });
   }
-  if (data.baseRentOnlyConfirmed !== true) {
+  if (data.produceAttestationConfirmed !== true) {
     blockers.push({
-      code: 'BASE_RENT_NOT_CONFIRMED',
+      code: 'PRODUCE_ATTESTATION_MISSING',
       message:
-        'You must confirm the amount is base rent only (no late fees, utilities, or other charges).',
+        'Confirm the produce-gate attestation below (base rent only; names correct; signer authorized) before producing.',
     });
   }
 

@@ -473,9 +473,10 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     (p) => p.periodStartDate && p.periodEndDate,
   );
   if (periods.length === 0) throw new NoticeRenderError('At least one rent period is required.');
-  if (!data.baseRentOnlyConfirmed) {
-    throw new NoticeRenderError('Base-rent-only confirmation is required before producing.');
-  }
+  // C6 (det. 2026-06-14): no base-rent render guard. Attestation is a produce-
+  // GATE concern (evaluateCanProduceV4 blocks printing until the Step 4 combined
+  // attestation is checked), not a rendering concern - the face renders the same
+  // bytes regardless, so the user can read it before attesting.
   const earliestStart = periods.map((p) => p.periodStartDate).sort()[0];
   const latestEnd = periods.map((p) => p.periodEndDate).sort().slice(-1)[0];
   const totalDue = periods.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);

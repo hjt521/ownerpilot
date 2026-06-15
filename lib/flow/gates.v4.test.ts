@@ -19,7 +19,7 @@ function has(r: ReturnType<typeof evaluateCanProduceV4>, code: string): boolean 
 // date/holiday/jurisdiction engines on the build machine.
 const V4_MANAGED = [
   'PAYMENT_CONFIG_INVALID', 'BANK_5_MILE_NOT_VERIFIED', 'SIGNER_MISSING',
-  'SIGNER_ROLE_MISSING', 'NO_TENANT', 'NO_RENT_PERIODS', 'BASE_RENT_NOT_CONFIRMED',
+  'SIGNER_ROLE_MISSING', 'NO_TENANT', 'NO_RENT_PERIODS', 'PRODUCE_ATTESTATION_MISSING',
   'PROPERTY_ADDRESS_MISSING', 'DISPUTE_NOT_CLEARED',
 ];
 function noManagedBlockers(r: ReturnType<typeof evaluateCanProduceV4>): boolean {
@@ -35,7 +35,7 @@ function validV4(): NoticeFlowData {
     propertyCounty: 'Fresno',
     tenantNames: ['Jason Kim'],
     rentPeriods: [{ periodStartDate: '2026-05-01', periodEndDate: '2026-05-31', amount: 3000 }],
-    baseRentOnlyConfirmed: true,
+    produceAttestationConfirmed: true,
     paymentMethods: [], // legacy field unused by v4 gate
     landlordContact: { name: 'Jack Tah', phone: '(559) 555-0142', streetAddress: '4336 Prospect Ave, Los Angeles, CA 90028' },
     paymentBranch: 'mail_only',

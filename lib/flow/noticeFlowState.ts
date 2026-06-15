@@ -151,6 +151,12 @@ export interface NoticeFlowData {
   // Step 3 — amount
   rentPeriods: RentPeriod[];
   baseRentOnlyConfirmed?: boolean;
+  /** C6 (det. 2026-06-14): combined produce-gate attestation. Replaces
+   *  the Step 2 base-rent checkbox as the producibility gate. Covers base
+   *  rent only + names correct + signer authorized. */
+  produceAttestationConfirmed?: boolean;
+  /** ISO timestamp when the produce attestation was accepted (audit). */
+  produceAttestationAcceptedAt?: string;
 
   // Step 4 — payment (legacy multi-method model; superseded by the v4 branch
   // model below. Kept until the Slice-2 gate/renderer cutover removes it.)
