@@ -2293,7 +2293,13 @@ function ReviewStep({
           </p>
         </div>
       ) : (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4">
+        <div
+          className={`rounded-lg border px-5 py-4 ${
+            onlyAttestationLeft
+              ? 'border-green-300 bg-green-50'
+              : 'border-amber-300 bg-amber-50'
+          }`}
+        >
           {!onlyAttestationLeft && (
           <p className="font-semibold text-amber-900 mb-2">
             Not ready yet — {result.blockers.length}{' '}
@@ -2330,7 +2336,7 @@ function ReviewStep({
           )}
           {onlyAttestationLeft && (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-amber-900">
+              <p className="text-sm font-semibold text-green-900">
                 California law requires you to confirm the following before
                 producing this notice:
               </p>
@@ -2348,7 +2354,7 @@ function ReviewStep({
                   }
                   className="mt-1"
                 />
-                <span className="text-sm text-amber-900 leading-relaxed">
+                <span className="text-sm text-green-900 leading-relaxed">
                   By producing this notice, I confirm: the amounts entered are base rent only (no late fees, utilities, or other charges); the tenants and landlord(s) named are correct; and the signer is authorized.
                 </span>
               </label>
@@ -2356,7 +2362,7 @@ function ReviewStep({
                 <button
                   type="button"
                   onClick={() => goToPage(1)}
-                  className="text-xs font-semibold text-amber-800 underline"
+                  className="text-xs font-semibold text-green-800 underline"
                 >
                   &larr; Back to rent amount
                 </button>
