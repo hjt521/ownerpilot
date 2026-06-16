@@ -357,3 +357,54 @@ body {
   .cb-home .final-cta { padding: 44px 0; }
 }
 /* === end mobile optimization Slice M1 === */
+/* ============================================================
+   Mobile Slice M2 CSS (build, 2026-06-16) — phone-only cleanup.
+   Pairs with the landing-variant.tsx markup already shipped.
+   Scoped under .cb-home; all inside max-width: 640px except two
+   default display:none rules for the new mobile-only nodes.
+   Desktop (> 640px) is the approved Concept B and is NOT touched.
+   ============================================================ */
+
+/* New mobile-only nodes are hidden by default (so desktop never
+   shows them); the media query below turns them on for phones. */
+.cb-home .workflow-compact { display: none; }
+.cb-home .packet-heading-mobile { display: none; }
+
+@media (max-width: 640px) {
+  /* #1 Kill the hero gap: hide the decorative card stack on phones
+        so its grid row reserves no height. */
+  .cb-home .hero-visual { display: none; }
+
+  /* #4 Workflow band -> compact single-line flow. Dark band kept,
+        full 4-card grid hidden, compact line shown. */
+  .cb-home .workflow-band { padding: 20px 0; }
+  .cb-home .workflow-grid { display: none; }
+  .cb-home .workflow-compact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px 9px;
+    color: #fff;
+    font-weight: 750;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  .cb-home .workflow-compact i {
+    color: var(--gold-500);
+    font-style: normal;
+    font-weight: 900;
+  }
+
+  /* #5 "Everything you need after you print" -> compact packet list.
+        Hide the desktop copy block; show the compact mobile heading. */
+  .cb-home .split-copy { display: none; }
+  .cb-home .packet-heading-mobile {
+    display: block;
+    margin: 0 0 4px;
+    font-family: var(--font-playfair), Georgia, serif;
+    font-size: 22px;
+    letter-spacing: -.02em;
+    color: var(--green-950);
+  }
+}
+/* === end mobile Slice M2 CSS === */
