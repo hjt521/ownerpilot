@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import { LandingVariant } from '@/components/landing-variant'
 
 export const metadata: Metadata = {
-  title: 'Inherited a California Property? Start Here | OwnerPilot AI',
+  title: 'California 3-Day Notice Tool + Service Tracking | OwnerPilot AI',
   description:
-    'Inherited a home or rental in California? OwnerPilot AI walks you through what to do next, prepared under California Licensed Real Estate Broker supervision.',
+    'Create a broker-prepared California 3-Day Notice, separate tenant and owner copies, track service attempts, complete proof of service, and resume next steps with RiskPath™ Follow-Up.',
 }
 
 export default function InheritorLandingPage() {

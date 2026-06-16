@@ -3,9 +3,9 @@ import type { Metadata } from 'next'
 import { LandingVariant } from '@/components/landing-variant'
 
 export const metadata: Metadata = {
-  title: 'The AI Advantage for California Property Owners | OwnerPilot AI',
+  title: 'California 3-Day Notice Tool + Service Tracking | OwnerPilot AI',
   description:
-    'Clear, AI-guided answers for California property owners, prepared under California Licensed Real Estate Broker supervision.',
+    'Create a broker-prepared California 3-Day Notice, separate tenant and owner copies, track service attempts, complete proof of service, and resume next steps with RiskPath™ Follow-Up.',
 }
 
 export default function DefaultLandingPage() {

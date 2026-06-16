@@ -1,85 +1,236 @@
 import Link from 'next/link';
-import { TrustStrip } from './trust-strip';
-
-const TAGLINE = 'The AI Advantage for California Property Owners';
-const TRUST_BAR =
-  'Broker-Prepared Workflow \u00B7 California Licensed Real Estate Broker';
+import { SiteFooter } from './site-footer';
 
 type LandingVariantProps = {
-  /** Which persona/channel this page serves, e.g. "Crisis variant — Google Search". */
+  /** Which persona/channel this page serves, e.g. "Crisis variant — Google Search".
+      Preserved for UTM attribution + future per-variant copy. Not rendered as a
+      visible label (marketing direction, 2026-06-16); exposed only as a dev-only
+      data attribute for QA. */
   variantLabel: string;
 };
 
 /**
- * Shared shell for the UTM landing variants — R1a-2 (Concept #1 "Calm Trust").
- * Design rules preserved: 16px+ text, 48px tap target, one primary CTA, trust
- * bar above the fold (non-negotiable). Broker positioning per the redesign
- * direction: attorney-backing claims removed from marketing surfaces; the
- * standing disclaimer sentence is retained per JT (2026-06-12). The variant
- * badge is internal labeling and renders only outside production.
+ * Shared landing template for all seven UTM variants — Concept B "Action
+ * Forward" with the 2026-06-16 marketing hero revision (above-the-fold system
+ * strip; "Create a California 3-Day Notice in Minutes" headline). One shared
+ * design for now; per-persona copy (by variantLabel) is a later project.
+ * Routing and campaign labels are unchanged (see proxy.ts). Layout styles are
+ * scoped under `.cb-home` in app/globals.css.
  */
-export function LandingVariant({ variantLabel }: LandingVariantProps) {
-  const showVariantBadge = process.env.NODE_ENV !== 'production';
-  return (
-    <main className="flex min-h-screen flex-col bg-ivory text-ink">
-      {/* Trust bar — kept above the fold on every page (non-negotiable). */}
-      <div className="bg-brand px-4 py-3 text-center text-base font-medium text-white">
-        {TRUST_BAR}
-      </div>
 
-      <header className="border-b border-rule bg-white">
-        <div className="mx-auto flex max-w-6xl items-center px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/ownerpilot-mark.png" alt="OwnerPilot.AI" className="h-8 w-auto" />
-            <span className="font-serif text-lg font-bold text-brand">
-              OwnerPilot<span className="text-gold">.AI</span>
-            </span>
-          </Link>
-        </div>
+const workflowSteps = [
+  { number: '1', title: 'Ask AI', body: 'Plain-English guidance for California property owners before you act.' },
+  { number: '2', title: 'Generate Notice', body: 'Build and review a broker-prepared 3-Day Notice packet.' },
+  { number: '3', title: 'Serve & Track', body: 'Log attempts, track mailing, and keep the record moving.' },
+  { number: '4', title: 'Proof & Record', body: 'Complete proof of service and keep the packet organized.' },
+];
+
+const heroSystem = [
+  { title: 'Generate Notice', body: 'Tenant + owner copies' },
+  { title: 'Serve & Track', body: 'Log attempts and mailing' },
+  { title: 'Proof & Record', body: 'Complete after service' },
+  { title: 'Scan to Resume', body: 'Return to RiskPath\u2122' },
+];
+
+const packetItems = [
+  'Tenant Service Copy',
+  'Owner Record Copy',
+  'Proof of Service',
+  'Service Log',
+  'RiskPath\u2122 Follow-Up',
+];
+
+const chatPrompts = [
+  'My tenant is behind on rent. What should I do?',
+  'How do I create a 3-Day Notice?',
+  'What happens after I serve the notice?',
+  'How do I track a failed service attempt?',
+];
+
+function ArrowIcon() {
+  return <span aria-hidden="true" className="arrow">&rarr;</span>;
+}
+
+function CheckIcon() {
+  return <span className="check" aria-hidden="true">&#10003;</span>;
+}
+
+function QRBlock() {
+  return (
+    <div className="qr" aria-label="QR code visual placeholder">
+      <div></div><span></span><div></div>
+      <span></span><div></div><span></span>
+      <div></div><span></span><div></div>
+    </div>
+  );
+}
+
+export function LandingVariant({ variantLabel }: LandingVariantProps) {
+  // variantLabel is preserved for UTM attribution + future per-variant copy.
+  // It is intentionally NOT rendered as a visible label (marketing direction,
+  // 2026-06-16); exposed only as a dev-only data attribute for QA.
+  const devVariantAttr: Record<string, string> =
+    process.env.NODE_ENV !== 'production' ? { 'data-variant': variantLabel } : {};
+  return (
+    <div className="cb-home" {...devVariantAttr}>
+      <header className="site-header">
+        <Link className="brand" href="/" aria-label="OwnerPilot.AI home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="brand-mark" src="/ownerpilot-mark.png" alt="OwnerPilot.AI" />
+          <span className="brand-text">OwnerPilot<span>.AI</span></span>
+        </Link>
+        <nav className="nav" aria-label="Main navigation">
+          <Link href="/notice/3-day">3-Day Notice</Link>
+          <Link href="/notice/3-day/serve">Serve &amp; Track</Link>
+          <Link href="/chat">Ask OwnerPilot</Link>
+          <Link href="/our-approach">Our Approach</Link>
+        </nav>
+        <Link className="nav-cta" href="/notice/3-day">Start 3-Day Notice</Link>
       </header>
 
-      <section className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-          OwnerPilot AI
-        </p>
-        <h1 className="max-w-2xl font-serif text-4xl font-bold leading-tight text-brand sm:text-5xl">
-          {TAGLINE}
-        </h1>
-        {showVariantBadge && (
-          <span className="rounded-full bg-tint px-4 py-2 text-sm text-muted">
-            {variantLabel}
-          </span>
-        )}
-        <Link
-          href="/notice/3-day"
-          className="mt-4 flex min-h-[48px] items-center justify-center rounded-lg bg-brand px-8 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-brand-bar"
-        >
-          Create Your 3-Day Notice →
-        </Link>
-        <p className="text-xs text-muted">Your information is secure and private.</p>
-      </section>
+      <main>
+        <section id="top" className="hero shell">
+          <div className="hero-copy">
+            <p className="eyebrow">The complete 3-Day Notice workflow</p>
+            <h1>Create a California 3-Day Notice in Minutes.</h1>
+            <p className="hero-subline">Track service. Keep the record organized.</p>
+            <p className="lead">
+              Generate a broker-prepared notice packet, separate tenant and owner copies, log service attempts, complete proof of service, and return anytime with RiskPath&trade; Follow-Up.
+            </p>
 
-      <div className="border-t border-rule bg-white">
-        <TrustStrip />
-      </div>
+            <div className="hero-system" aria-label="OwnerPilot connected workflow">
+              {heroSystem.map((item) => (
+                <div className="hero-system-item" key={item.title}>
+                  <CheckIcon />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.body}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-      <footer className="bg-brand">
-        <div className="mx-auto max-w-6xl space-y-4 px-6 py-10 text-center">
-          <Link
-            href="/our-approach"
-            className="text-sm font-medium text-gold-soft underline underline-offset-4 transition-colors hover:text-white"
-          >
-            About Our Approach → How OwnerPilot keeps its platform independent
-          </Link>
-          <p className="mx-auto max-w-3xl text-sm leading-relaxed text-white/75">
-            OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.
-          </p>
-          <p className="text-xs text-white/50">
-            © {new Date().getFullYear()} OwnerPilot AI. All rights reserved.
-          </p>
-        </div>
-      </footer>
-    </main>
+            <div className="hero-actions" id="start">
+              <Link className="primary-btn" href="/notice/3-day">Start 3-Day Notice <ArrowIcon /></Link>
+              <Link className="secondary-btn" href="/chat">Ask OwnerPilot AI</Link>
+            </div>
+            <p className="hero-help">
+              Not sure what to do first? <Link href="/chat">Ask OwnerPilot AI before you start.</Link>
+            </p>
+            <div className="trust-row" aria-label="Trust points">
+              <span>CA Licensed Real Estate Broker supervision</span>
+              <span>Broker-prepared workflow</span>
+              <span>QR-powered RiskPath&trade; Follow-Up</span>
+            </div>
+          </div>
+
+          <div className="hero-visual" aria-label="OwnerPilot notice and service tracking preview">
+            <div className="paper-card notice-card">
+              <div className="doc-top">THREE-DAY NOTICE<br />TO PAY RENT OR QUIT</div>
+              <div className="doc-line thick"></div>
+              <div className="doc-grid">
+                <span>Tenant</span><strong>John Doe</strong>
+                <span>Rent owed</span><strong>$4,354.00</strong>
+                <span>Status</span><strong className="ready">Ready</strong>
+              </div>
+              <div className="doc-lines">
+                <i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+            <div className="phone-card">
+              <div className="phone-bar"></div>
+              <h3>Service Log</h3>
+              <p>Resume from your RiskPath&trade;</p>
+              <div className="log-row"><span>Attempt 1</span><strong>Failed</strong></div>
+              <div className="log-row"><span>Attempt 2</span><strong>Logged</strong></div>
+              <div className="log-row success"><span>Mailing</span><strong>Next</strong></div>
+            </div>
+            <div className="qr-card">
+              <p>Scan to continue your RiskPath&trade;</p>
+              <QRBlock />
+            </div>
+          </div>
+        </section>
+
+        <section className="workflow-band" id="approach">
+          <div className="shell workflow-grid">
+            {workflowSteps.map((step) => (
+              <article className="workflow-step" key={step.number}>
+                <div className="step-number">{step.number}</div>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="split shell" id="serve-track">
+          <div>
+            <p className="eyebrow">After the notice prints</p>
+            <h2>Everything you need after you print.</h2>
+            <p>
+              Most form tools stop at the form. OwnerPilot keeps going so you can track service attempts, complete proof of service, and return later through your dashboard or QR code.
+            </p>
+            <Link className="text-link" href="/notice/3-day">Learn how the packet works <ArrowIcon /></Link>
+          </div>
+          <div className="feature-panel">
+            {packetItems.map((item) => (
+              <div className="feature-row" key={item}>
+                <CheckIcon />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="notice-section shell" id="notice">
+          <div className="section-heading">
+            <p className="eyebrow">Built for speed and records</p>
+            <h2>Built for what happens after the notice prints.</h2>
+            <p>Start with a fast notice generator, then continue with Serve &amp; Track when service actually happens.</p>
+          </div>
+          <div className="cards-three">
+            <article className="service-card">
+              <h3>Fast 3-Day Notice</h3>
+              <p>Four guided steps: Quick Safety Check, Property/Tenant/Rent, Landlord/Payment/Signer, Review &amp; Produce.</p>
+            </article>
+            <article className="service-card featured">
+              <h3>Serve &amp; Track</h3>
+              <p>Keep service attempts, mailing steps, and notes separate from the notice itself.</p>
+            </article>
+            <article className="service-card">
+              <h3>Scan to Resume</h3>
+              <p>Return to your RiskPath&trade; from the printed packet.</p>
+            </article>
+          </div>
+        </section>
+
+        <section className="chat-section" id="ask">
+          <div className="shell chat-box">
+            <div>
+              <p className="eyebrow">RE Broker AI Assistant</p>
+              <h2>Ask OwnerPilot AI.</h2>
+              <p>
+                Get plain-English guidance for California property owners and route into the right workflow when you are ready to act.
+              </p>
+            </div>
+            <div className="prompt-box">
+              {chatPrompts.map((prompt) => (
+                <Link key={prompt} href="/chat" className="prompt-link">{prompt}</Link>
+              ))}
+              <Link className="primary-btn chat-btn" href="/chat">Ask Now <ArrowIcon /></Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="final-cta shell">
+          <h2>Start with the notice. Stay on track after printing.</h2>
+          <p>Your RiskPath&trade; stays open so you can come back and finish the service record.</p>
+          <Link className="primary-btn" href="/notice/3-day">Create Your 3-Day Notice <ArrowIcon /></Link>
+        </section>
+      </main>
+
+      <SiteFooter />
+    </div>
   );
 }

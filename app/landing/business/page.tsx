@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import { LandingVariant } from '@/components/landing-variant'
 
 export const metadata: Metadata = {
-  title: 'Run Your California Rentals Like a Business | OwnerPilot AI',
+  title: 'California 3-Day Notice Tool + Service Tracking | OwnerPilot AI',
   description:
-    'Manage your California property portfolio with confidence. OwnerPilot AI is prepared under California Licensed Real Estate Broker supervision.',
+    'Create a broker-prepared California 3-Day Notice, separate tenant and owner copies, track service attempts, complete proof of service, and resume next steps with RiskPath™ Follow-Up.',
 }
 
 export default function BusinessLandingPage() {
