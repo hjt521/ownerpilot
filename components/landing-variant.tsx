@@ -162,10 +162,16 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
               </article>
             ))}
           </div>
+          <div className="shell workflow-compact">
+            <span>Ask AI</span><i>&rarr;</i>
+            <span>Generate Notice</span><i>&rarr;</i>
+            <span>Serve &amp; Track</span><i>&rarr;</i>
+            <span>Proof &amp; Record</span>
+          </div>
         </section>
 
         <section className="split shell" id="serve-track">
-          <div>
+          <div className="split-copy">
             <p className="eyebrow">After the notice prints</p>
             <h2>Everything you need after you print.</h2>
             <p>
@@ -174,6 +180,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             <Link className="text-link" href="/notice/3-day">Learn how the packet works <ArrowIcon /></Link>
           </div>
           <div className="feature-panel">
+            <p className="packet-heading-mobile">Your packet includes:</p>
             {packetItems.map((item) => (
               <div className="feature-row" key={item}>
                 <CheckIcon />
