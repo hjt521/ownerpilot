@@ -1313,6 +1313,19 @@ function PaymentStep({
 
         <div>
           <FieldLabel htmlFor="payeeAddress">Street address to receive payment<Req /></FieldLabel>
+          {/* C7b (det. 2026-06-14, item 3): explicit, non-destructive prefill
+              from the owner mailing address. Shown only when a mailing address
+              exists and the payee street is still empty; the click writes the
+              real value (displayed == stored). */}
+          {data.mailingAddress && !(c.streetAddress ?? '').trim() && (
+            <button
+              type="button"
+              onClick={() => setContact({ streetAddress: data.mailingAddress })}
+              className="mb-2 text-sm font-medium text-blue-700 hover:text-blue-800"
+            >
+              Same as mailing address
+            </button>
+          )}
           <input
             id="payeeAddress"
             type="text"
@@ -2013,6 +2026,29 @@ function LandlordIdentityStep({
           {/* FIX 1.1 — LLC management type (member- vs manager-managed) + 1.3 banner */}
           <LlcManagementTypeField data={data} update={update} />
         </>
+      )}
+      {/* C7b (det. 2026-06-14, Step 3 item 3): owner mailing/correspondence
+          address. Shown once a landlord type is chosen; applies to both
+          branches. Seeds the payee street-address prefill on the payment step. */}
+      {li && (
+        <div>
+          <FieldLabel htmlFor="mailingAddress">Mailing address<Req /></FieldLabel>
+          <input
+            id="mailingAddress"
+            type="text"
+            value={data.mailingAddress ?? ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              update({ mailingAddress: e.target.value })
+            }
+            placeholder="123 Main St, City, CA 90000"
+            className={inputClass}
+          />
+          <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+            Where you receive mail about this notice. We&apos;ll use it to
+            prefill the payment address on the next step (you can change it
+            there).
+          </p>
+        </div>
       )}
     </div>
   );

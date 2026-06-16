@@ -103,6 +103,12 @@ export function validateStep(
           issues.push('Select how this LLC is managed.');
         }
       }
+      // C7b (broker determination 2026-06-15): owner mailing address is a
+      // required field for both individual and entity landlords, once a type
+      // is chosen. Form requirement, not face prose.
+      if ((id || data.landlordIdentityConfirmed) && isBlank(data.mailingAddress)) {
+        issues.push('Enter the landlord mailing address.');
+      }
       break;
     }
 
