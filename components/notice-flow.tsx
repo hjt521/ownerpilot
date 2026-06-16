@@ -1324,13 +1324,10 @@ function PaymentStep({
               Same as mailing address
             </button>
           )}
-          <input
+          <PropertyAddressAutocomplete
             id="payeeAddress"
-            type="text"
             value={c.streetAddress ?? ''}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              setContact({ streetAddress: e.target.value })
-            }
+            onChange={(v) => setContact({ streetAddress: v })}
             placeholder="123 Main St, City, CA 90000"
             className={inputClass}
           />
@@ -1411,13 +1408,10 @@ function PaymentStep({
                 </div>
                 <div>
                   <FieldLabel htmlFor="bankBranch">Branch street address<Req /></FieldLabel>
-                  <input
+                  <PropertyAddressAutocomplete
                     id="bankBranch"
-                    type="text"
                     value={data.bankBranchAddress ?? ''}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      update({ bankBranchAddress: e.target.value })
-                    }
+                    onChange={(v) => update({ bankBranchAddress: v })}
                     placeholder="Branch street address"
                     className={inputClass}
                   />
@@ -2031,13 +2025,10 @@ function LandlordIdentityStep({
       {li && (
         <div>
           <FieldLabel htmlFor="mailingAddress">Mailing address<Req /></FieldLabel>
-          <input
+          <PropertyAddressAutocomplete
             id="mailingAddress"
-            type="text"
             value={data.mailingAddress ?? ''}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              update({ mailingAddress: e.target.value })
-            }
+            onChange={(v) => update({ mailingAddress: v })}
             placeholder="123 Main St, City, CA 90000"
             className={inputClass}
           />
