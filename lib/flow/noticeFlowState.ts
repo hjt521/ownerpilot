@@ -376,7 +376,8 @@ export interface ProductionSnapshot {
   payeeName: string;
   payeePhone: string;
   payeeStreetAddress: string;
-  paymentBranch?: PaymentBranch;
+  /** Sorted, comma-joined offered method kinds (multi-select signature). */
+  offeredMethods?: string;
   personalDeliveryDays?: string;
   personalDeliveryHours?: string;
   bankName?: string;

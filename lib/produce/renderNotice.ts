@@ -36,6 +36,7 @@ import type {
   SignerCapacity,
   PaymentBranch,
 } from '../flow/noticeFlowState';
+import type { PaymentMethod } from '../payments/validatePaymentMethods';
 
 /** The computed dates the renderer requires (from computeCompliancePeriod). */
 export interface ComputedNoticeDates {
@@ -91,7 +92,8 @@ export interface NoticeModel {
     expirationFormatted: string;
   };
   pay: {
-    branch: PaymentBranch;
+    /** Selected payment-method atoms (C7a multi-select; replaces `branch`). */
+    offeredMethods: PaymentMethod['kind'][];
     payeeName: string;
     payeePhone: string;
     /** Address / bank rows for the grid. */
@@ -178,6 +180,25 @@ export const NOTICE_PROSE = {
   /** LOCKED 2026-06-04 (A1 Part D countersign) — § 1161(2) EFT only if previously established. */
   eftElectionSentence:
     'If you have previously established an electronic funds transfer procedure with the landlord, payment may also be made pursuant to that previously established procedure. (Cal. Code Civ. Proc. \u00A7 1161(2).)',
+  /** LOCKED 2026-06-15 (broker determination — multi-select face composition
+   *  §3.1/§8). Renders when In Person is offered and By Mail is NOT, and
+   *  Bank Deposit is NOT. Verbatim only; broker-authored. */
+  inPersonOnlySentence:
+    'Payment must be delivered in person at the address above, on the days and during the hours stated. Mail and bank-deposit payment are not offered for this notice.',
+  /** LOCKED 2026-06-15 (broker determination — multi-select face composition
+   *  §3.2/§8). Renders when In Person + Bank Deposit are offered and By Mail
+   *  is NOT. Verbatim only; broker-authored. */
+  inPersonNoMailSentence:
+    'Payment must be delivered in person at the address above, on the days and during the hours stated. Mail payment is not offered for this notice.',
+  // inPersonOnlyLabel -- authored under broker authority
+  // Source: c7a_inperson_layout_broker_determination_2026-06-15.md §1
+  // Authority: broker_blanket_authorization_2026-06-15.md
+  // CalDRE B9445457
+  /** LOCKED 2026-06-15 (broker determination, Option B) -- heads the street-
+   *  address row on in-person-without-mail notices. Verbatim only. */
+  inPersonOnlyLabel: 'In person to',
+  /** Version stamp on inPersonOnlyLabel for drift tracking (determination §7). */
+  inPersonAddressLabelVersion: 'v1',
 
   // --- Defect #2 payee-derivation face constants (ruling 2026-06-05, build-locked
   //     on attorney countersign per §4). Composition glue for the "Payable to:"
@@ -366,11 +387,30 @@ export function derivePayeeName(data: NoticeFlowData): DerivedPayeeName {
 // Fails closed if a required branch field is missing (the gate validates first;
 // this is the renderer's own guard so it never emits a defective document).
 
-function buildPaySection(
+function composeFaceText(
   data: NoticeFlowData,
 ): { rows: PayRow[]; sentences: string[] } {
-  const branch = data.paymentBranch;
-  if (!branch) throw new NoticeRenderError('Missing required field: payment branch');
+  // C7a (broker determinations 2026-06-15): the HOW TO PAY face is composed from
+  // the selected payment-method ATOMS (data.paymentMethods[].kind), per the §4
+  // combination matrix and §3.5 ordering. Detail VALUES are read from the
+  // existing top-level fields (M1: top-level is the single source of truth), so
+  // the pre-existing branches render byte-identically. Fails closed on both the
+  // §1947.3 floor and the §6 EFT-requires-Mail rule (mirrors the validator).
+  const kinds = new Set((data.paymentMethods ?? []).map((m) => m.kind));
+  const has = (k: PaymentMethod['kind']): boolean => kinds.has(k);
+
+  // Renderer-side fail-closed guards (defense-in-depth; the picker validator
+  // enforces the same rules at intake).
+  if (!has('in_person') && !has('mail')) {
+    throw new NoticeRenderError(
+      'Payment configuration omits the required in-person or mail method (§ 1947.3 floor).',
+    );
+  }
+  if (has('eft') && !has('mail')) {
+    throw new NoticeRenderError(
+      'Electronic funds transfer requires that mail payment also be offered (determination 2026-06-15 §6).',
+    );
+  }
 
   const streetAddress = requireString(
     data.landlordContact?.streetAddress,
@@ -380,61 +420,69 @@ function buildPaySection(
   const rows: PayRow[] = [];
   const sentences: string[] = [];
 
-  switch (branch) {
-    case 'mail_only':
-      rows.push({ label: NOTICE_PROSE.mailToLabel, value: streetAddress });
-      sentences.push(NOTICE_PROSE.mailboxRuleSentence);
-      break;
-
-    case 'in_person_and_mail': {
-      const days = requireString(data.personalDeliveryDays, 'personal-delivery days');
-      const hours = requireString(data.personalDeliveryHours, 'personal-delivery hours');
-      rows.push({ label: NOTICE_PROSE.inPersonOrMailLabel, value: streetAddress });
-      rows.push({ label: NOTICE_PROSE.personalDeliveryLabel, value: `${days}, ${hours}` });
-      sentences.push(NOTICE_PROSE.mailboxRuleSentence);
-      break;
-    }
-
-    case 'bank_deposit': {
-      const bankName = requireString(data.bankName, 'bank name');
-      const branchAddr = requireString(data.bankBranchAddress, 'bank branch address');
-      const acct = requireString(data.bankAccountNumber, 'bank account number');
-      if (data.bankDepositPaperInstrumentConfirmed !== true) {
-        // Decision 1: a bank deposit is a valid sole method only by paper instrument.
-        throw new NoticeRenderError(
-          'Bank deposit requires a paper-instrument confirmation before producing.',
-        );
-      }
-      rows.push({ label: NOTICE_PROSE.bankLabel, value: bankName });
-      rows.push({ label: NOTICE_PROSE.bankBranchLabel, value: branchAddr });
-      rows.push({ label: NOTICE_PROSE.accountNumberLabel, value: acct });
-      sentences.push(NOTICE_PROSE.bankPaperInstrumentSentence);
-      sentences.push(NOTICE_PROSE.fiveMileSentence);
-      // NO mailbox-rule sentence on a standalone FINANCIAL_INSTITUTION branch
-      // (attorney A1 Part-D redline, 2026-06-03). The § 1161(2) mailbox-rule
-      // safe-harbor belongs to alternative (i) (name/telephone/address); on a
-      // sole bank-deposit branch it reads as "mail to the bank branch," which is
-      // misleading under Eshagian. It renders for MAIL_ONLY and
-      // in_person_and_mail; when multi-method ships (B3), it renders inside the
-      // "By mail" block, never the "Bank deposit" block. String itself is
-      // unchanged (and build-locked) — this is gating only.
-      break;
-    }
-
-    default: {
-      const _exhaustive: never = branch;
-      throw new NoticeRenderError(`Unknown payment branch: ${_exhaustive as string}`);
-    }
+  // §3.5 ordering. Address-row label depends on the in-person/mail combination:
+  //  - in person without mail -> new locked `inPersonOnlyLabel` (Option B)
+  //  - in person with mail     -> existing combined `inPersonOrMailLabel`
+  //  - mail without in person  -> existing `mailToLabel`
+  if (has('in_person') && !has('mail')) {
+    rows.push({ label: NOTICE_PROSE.inPersonOnlyLabel, value: streetAddress });
+  } else if (has('in_person') && has('mail')) {
+    rows.push({ label: NOTICE_PROSE.inPersonOrMailLabel, value: streetAddress });
+  } else if (has('mail')) {
+    rows.push({ label: NOTICE_PROSE.mailToLabel, value: streetAddress });
   }
 
-  // EFT add-on (any branch), only when previously established.
-  if (data.eftElectionAvailable === true) {
+  // In-person schedule row (days/hours) -- existing locked label, unchanged.
+  if (has('in_person')) {
+    const days = requireString(data.personalDeliveryDays, 'personal-delivery days');
+    const hours = requireString(data.personalDeliveryHours, 'personal-delivery hours');
+    rows.push({ label: NOTICE_PROSE.personalDeliveryLabel, value: `${days}, ${hours}` });
+  }
+
+  // Mail safe-harbor sentence -- renders only when mail is offered.
+  if (has('mail')) {
+    sentences.push(NOTICE_PROSE.mailboxRuleSentence);
+  }
+
+  // Bank-deposit block + its two locked sentences.
+  if (has('bank_deposit')) {
+    const bankName = requireString(data.bankName, 'bank name');
+    const branchAddr = requireString(data.bankBranchAddress, 'bank branch address');
+    const acct = requireString(data.bankAccountNumber, 'bank account number');
+    if (data.bankDepositPaperInstrumentConfirmed !== true) {
+      // Decision 1: a bank deposit is a valid method only by paper instrument.
+      throw new NoticeRenderError(
+        'Bank deposit requires a paper-instrument confirmation before producing.',
+      );
+    }
+    rows.push({ label: NOTICE_PROSE.bankLabel, value: bankName });
+    rows.push({ label: NOTICE_PROSE.bankBranchLabel, value: branchAddr });
+    rows.push({ label: NOTICE_PROSE.accountNumberLabel, value: acct });
+    sentences.push(NOTICE_PROSE.bankPaperInstrumentSentence);
+    sentences.push(NOTICE_PROSE.fiveMileSentence);
+    // No mailbox-rule sentence is attached to the bank block (A1 Part-D redline,
+    // 2026-06-03); the mailbox sentence is owned by the mail block above.
+  }
+
+  // EFT add-on -- renders only when offered (and, per the guard above, only with
+  // mail). Requires the previously-established confirmation.
+  if (has('eft')) {
     if (data.eftPreviouslyEstablishedConfirmed !== true) {
       throw new NoticeRenderError(
         'EFT election requires a previously-established confirmation before producing.',
       );
     }
     sentences.push(NOTICE_PROSE.eftElectionSentence);
+  }
+
+  // In-person closure sentence (determination §3.1/§3.2): renders only when
+  // in person is offered and mail is NOT.
+  if (has('in_person') && !has('mail')) {
+    sentences.push(
+      has('bank_deposit')
+        ? NOTICE_PROSE.inPersonNoMailSentence
+        : NOTICE_PROSE.inPersonOnlySentence,
+    );
   }
 
   return { rows, sentences };
@@ -527,10 +575,8 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
   const periodText = `${formatNoticeDate(earliestStart)} through ${formatNoticeDate(latestEnd)}`;
   const totalFormatted = formatCurrency(totalDue);
 
-  // v4 HOW TO PAY
-  const branch = data.paymentBranch;
-  if (!branch) throw new NoticeRenderError('Missing required field: payment branch');
-  const { rows: payRows, sentences: paySentences } = buildPaySection(data);
+  // v4 HOW TO PAY (C7a multi-select: composed from data.paymentMethods[])
+  const { rows: payRows, sentences: paySentences } = composeFaceText(data);
 
   const propertyLine = formatPropertyLine(propertyAddress, propertyUnit);
   const addressBlock = propertyCounty
@@ -611,7 +657,7 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     },
     demand: { periodText, totalFormatted, rows },
     compliance: { commencementFormatted: startD, expirationFormatted: endD },
-    pay: { branch, payeeName, payeePhone, rows: payRows, sentences: paySentences },
+    pay: { offeredMethods: data.paymentMethods.map((m) => m.kind), payeeName, payeePhone, rows: payRows, sentences: paySentences },
     signature: {
       name: signerName,
       roleLabel: signerRoleLabelText,
@@ -646,7 +692,20 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     // Defect #2 audit (ruling §4): which branch composed the payee name.
     // AUDIT ONLY — the face shows the composed name, never this source token.
     payee_name_source: derivedPayee.nameSource,
-    payment_branch: branch,
+    // C7a multi-select audit (determination 2026-06-15 §9): the selected
+    // method atoms replace the legacy single `payment_branch`.
+    offered_methods: data.paymentMethods.map((m) => m.kind).join(', '),
+    in_person_closure_sentence_version:
+      paySentences.includes(NOTICE_PROSE.inPersonOnlySentence) ||
+      paySentences.includes(NOTICE_PROSE.inPersonNoMailSentence)
+        ? 'v1'
+        : '',
+    in_person_address_label_version: payRows.some(
+      (r) => r.label === NOTICE_PROSE.inPersonOnlyLabel,
+    )
+      ? NOTICE_PROSE.inPersonAddressLabelVersion
+      : '',
+    composition_determination_date: '2026-06-15',
     signer_name: signerName,
     signer_role: signerRoleLabelText,
     // Defect #1 audit (ruling §1.4): record the canonical landlord_type and

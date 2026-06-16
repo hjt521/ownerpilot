@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, Fragment, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { validatePaymentMethods } from '../lib/payments/validatePaymentMethods';
+import { syncMethods, selectedKindsOf } from '../lib/payments/syncMethods';
+import type { PaymentMethod } from '../lib/payments/validatePaymentMethods';
+type PaymentMethodKindSingle = PaymentMethod['kind'];
+type PaymentMethodKindArray = PaymentMethodKindSingle[];
 import {
   createFlowState,
   FlowStep,
@@ -1232,7 +1237,29 @@ function PaymentStep({
   const c: LandlordContact = data.landlordContact ?? {};
   const setContact = (patch: Partial<LandlordContact>) =>
     update({ landlordContact: { ...c, ...patch } });
-  const branch = data.paymentBranch;
+  // C7a multi-select: selected method kinds drive the UI; paymentMethods[]
+  // is rebuilt from the canonical top-level fields on every change (M1).
+  const kinds = new Set(selectedKindsOf(data));
+  const resync = (d: NoticeFlowData): PaymentMethodKindArray =>
+    [...new Set((d.paymentMethods ?? []).map((m) => m.kind))];
+  const updateAndSync = (
+    patch:
+      | Partial<NoticeFlowData>
+      | ((d: NoticeFlowData) => Partial<NoticeFlowData>),
+  ): void =>
+    update((d) => {
+      const applied = typeof patch === 'function' ? patch(d) : patch;
+      const next = { ...d, ...applied };
+      return { ...applied, paymentMethods: syncMethods(resync(next), next) };
+    });
+  const toggleKind = (kind: PaymentMethodKindSingle): void =>
+    update((d) => {
+      const cur = new Set((d.paymentMethods ?? []).map((m) => m.kind));
+      if (cur.has(kind)) cur.delete(kind);
+      else cur.add(kind);
+      return { paymentMethods: syncMethods([...cur], d) };
+    });
+  const payValidation = validatePaymentMethods({ methods: data.paymentMethods ?? [] });
   // Defect #2 cutover: the § 1161(2) payee NAME is derived from the Step-3
   // landlord identity (or the non-landlord override), never typed here.
   const derivedPayee = derivePayeeName(data);
@@ -1339,137 +1366,173 @@ function PaymentStep({
         </div>
       </div>
 
-      {/* Section 2 — how rent may be paid (single branch) */}
+      {/* Section 2 — how rent may be paid (C7a multi-select: all that apply) */}
       <div className="space-y-3">
         <span className="block text-sm font-semibold text-gray-700 mb-1">
-          How may rent be paid?<Req />
+          How may rent be paid? <span className="font-normal text-gray-500">(Select all that apply)</span><Req />
         </span>
-        {(Object.keys(PAYMENT_BRANCH_LABELS) as PaymentBranch[]).map((b) => (
-          <Fragment key={b}>
-            <label
-              className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                branch === b ? 'border-brand bg-tint' : 'border-rule bg-white'
-              }`}
-            >
-              <input
-                type="radio"
-                name="paymentBranch"
-                checked={branch === b}
-                onChange={() => update({ paymentBranch: b })}
-                className="mt-1"
-              />
-              <span>
-                <span className="block text-gray-900 font-medium">{PAYMENT_BRANCH_LABELS[b]}</span>
-                <span className="block text-sm text-gray-500">{PAYMENT_BRANCH_HELP[b]}</span>
-              </span>
-            </label>
 
-            {branch === b && b === 'in_person_and_mail' && (
-              <div className="rounded-lg border border-gray-200 px-4 py-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <FieldLabel htmlFor="pdDays">Days personal delivery is available<Req /></FieldLabel>
-                    <input
-                      id="pdDays"
-                      type="text"
-                      value={data.personalDeliveryDays ?? ''}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                        update({ personalDeliveryDays: e.target.value })
-                      }
-                      placeholder="Monday through Friday"
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor="pdHours">Hours personal delivery is available<Req /></FieldLabel>
-                    <input
-                      id="pdHours"
-                      type="text"
-                      value={data.personalDeliveryHours ?? ''}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                        update({ personalDeliveryHours: e.target.value })
-                      }
-                      placeholder="9:00 a.m. to 5:00 p.m."
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {branch === b && b === 'bank_deposit' && (
-              <div className="space-y-3 rounded-lg border border-gray-200 px-4 py-4">
-                <BankAccountInterstitial data={data} update={update} />
-                <div>
-                  <FieldLabel htmlFor="bankName">Bank name<Req /></FieldLabel>
-                  <input
-                    id="bankName"
-                    type="text"
-                    value={data.bankName ?? ''}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => update({ bankName: e.target.value })}
-                    placeholder="Bank name"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <FieldLabel htmlFor="bankBranch">Branch street address<Req /></FieldLabel>
-                  <input
-                    id="bankBranch"
-                    type="text"
-                    value={data.bankBranchAddress ?? ''}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      update({ bankBranchAddress: e.target.value })
-                    }
-                    placeholder="Branch street address"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <FieldLabel htmlFor="bankAcct">Account number<Req /></FieldLabel>
-                  <input
-                    id="bankAcct"
-                    type="text"
-                    value={data.bankAccountNumber ?? ''}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      update({ bankAccountNumber: e.target.value })
-                    }
-                    placeholder="Account number"
-                    className={inputClass}
-                  />
-                </div>
-                <BankDepositAttestations data={data} update={update} />
-              </div>
-            )}
-          </Fragment>
-        ))}
-        {/* Optional EFT election (add-on only) — last row in the same group so
-            its spacing matches the option boxes above. */}
-        <label className="flex items-start gap-3 rounded-lg border border-rule bg-white px-4 py-3 cursor-pointer">
+        {/* In person */}
+        <label
+          className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+            kinds.has('in_person') ? 'border-brand bg-tint' : 'border-rule bg-white'
+          }`}
+        >
           <input
             type="checkbox"
-            checked={data.eftElectionAvailable === true}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              update({ eftElectionAvailable: e.target.checked })
-            }
+            checked={kinds.has('in_person')}
+            onChange={() => toggleKind('in_person')}
             className="mt-1"
           />
           <span>
-            <span className="block text-gray-900 font-medium">
-              Also allow electronic funds transfer{' '}
-              <span className="font-normal text-gray-500">(optional)</span>
-            </span>
+            <span className="block text-gray-900 font-medium">In person</span>
             <span className="block text-sm text-gray-500">
-              Adds EFT as a payment option, in addition to the method above.
+              The tenant may hand-deliver payment during set days and hours.
             </span>
           </span>
         </label>
-        {data.eftElectionAvailable === true && (
+        {kinds.has('in_person') && (
+          <div className="rounded-lg border border-gray-200 px-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <FieldLabel htmlFor="pdDays">Days personal delivery is available<Req /></FieldLabel>
+                <input
+                  id="pdDays"
+                  type="text"
+                  value={data.personalDeliveryDays ?? ''}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    updateAndSync({ personalDeliveryDays: e.target.value })
+                  }
+                  placeholder="Monday through Friday"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="pdHours">Hours personal delivery is available<Req /></FieldLabel>
+                <input
+                  id="pdHours"
+                  type="text"
+                  value={data.personalDeliveryHours ?? ''}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    updateAndSync({ personalDeliveryHours: e.target.value })
+                  }
+                  placeholder="9:00 a.m. to 5:00 p.m."
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* By mail */}
+        <label
+          className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+            kinds.has('mail') ? 'border-brand bg-tint' : 'border-rule bg-white'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={kinds.has('mail')}
+            onChange={() => toggleKind('mail')}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-gray-900 font-medium">By mail</span>
+            <span className="block text-sm text-gray-500">
+              The tenant mails payment to the name and address above.
+            </span>
+          </span>
+        </label>
+
+        {/* Bank deposit */}
+        <label
+          className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+            kinds.has('bank_deposit') ? 'border-brand bg-tint' : 'border-rule bg-white'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={kinds.has('bank_deposit')}
+            onChange={() => toggleKind('bank_deposit')}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-gray-900 font-medium">By deposit at a financial institution</span>
+            <span className="block text-sm text-gray-500">
+              The tenant deposits a check, money order, or cashier&apos;s check at a bank branch.
+            </span>
+          </span>
+        </label>
+        {kinds.has('bank_deposit') && (
+          <div className="space-y-3 rounded-lg border border-gray-200 px-4 py-4">
+            <BankAccountInterstitial data={data} update={update} />
+            <div>
+              <FieldLabel htmlFor="bankName">Bank name<Req /></FieldLabel>
+              <input
+                id="bankName"
+                type="text"
+                value={data.bankName ?? ''}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => updateAndSync({ bankName: e.target.value })}
+                placeholder="Bank name"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="bankBranch">Branch street address<Req /></FieldLabel>
+              <input
+                id="bankBranch"
+                type="text"
+                value={data.bankBranchAddress ?? ''}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  updateAndSync({ bankBranchAddress: e.target.value })
+                }
+                placeholder="Branch street address"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="bankAcct">Account number<Req /></FieldLabel>
+              <input
+                id="bankAcct"
+                type="text"
+                value={data.bankAccountNumber ?? ''}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  updateAndSync({ bankAccountNumber: e.target.value })
+                }
+                placeholder="Account number"
+                className={inputClass}
+              />
+            </div>
+            <BankDepositAttestations data={data} update={updateAndSync} />
+          </div>
+        )}
+
+        {/* EFT */}
+        <label
+          className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
+            kinds.has('eft') ? 'border-brand bg-tint' : 'border-rule bg-white'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={kinds.has('eft')}
+            onChange={() => toggleKind('eft')}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-gray-900 font-medium">Electronic funds transfer (EFT)</span>
+            <span className="block text-sm text-gray-500">
+              Only if an EFT procedure was previously established with the tenant. Requires that mail also be offered.
+            </span>
+          </span>
+        </label>
+        {kinds.has('eft') && (
           <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
             <input
               type="checkbox"
               checked={data.eftPreviouslyEstablishedConfirmed === true}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                update({ eftPreviouslyEstablishedConfirmed: e.target.checked })
+                updateAndSync({ eftPreviouslyEstablishedConfirmed: e.target.checked })
               }
               className="mt-1"
             />
@@ -1478,6 +1541,17 @@ function PaymentStep({
               {' '}with this tenant. (EFT may only be offered if it already exists.)
             </span>
           </label>
+        )}
+
+        {/* Live validation surface */}
+        {(data.paymentMethods ?? []).length > 0 && !payValidation.valid && (
+          <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 space-y-1">
+            {payValidation.errors.map((err, i) => (
+              <p key={i} className="text-sm text-red-800 leading-relaxed">
+                {err.message}
+              </p>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -2478,7 +2552,7 @@ function ReviewStep({
       )}
 
       {!result.canProduce &&
-        data.paymentBranch === 'bank_deposit' &&
+        (data.paymentMethods ?? []).some((m) => m.kind === 'bank_deposit') &&
         (data.bankDepositPaperInstrumentConfirmed !== true ||
           data.bankBranchWithinFiveMilesAttested !== true) && (
           <div className="space-y-3 rounded-lg border border-gray-200 px-5 py-4">
@@ -2489,7 +2563,23 @@ function ReviewStep({
               These are the same confirmations from the payment step. Check them here
               to clear the items above without going back.
             </p>
-            <BankDepositAttestations data={data} update={update} />
+            <BankDepositAttestations
+              data={data}
+              update={(patch) =>
+                update((d) => {
+                  const applied =
+                    typeof patch === 'function' ? patch(d) : patch;
+                  const next = { ...d, ...applied };
+                  return {
+                    ...applied,
+                    paymentMethods: syncMethods(
+                      [...new Set((next.paymentMethods ?? []).map((m) => m.kind))],
+                      next,
+                    ),
+                  };
+                })
+              }
+            />
           </div>
         )}
 

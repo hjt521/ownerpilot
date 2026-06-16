@@ -28,6 +28,7 @@ import {
 import { evaluateDisputeScreen } from './gates';
 import { validateSigningDate } from './escalation';
 import { isUsPhone } from '../payments/validatePaymentBranch';
+import { validatePaymentMethods } from '../payments/validatePaymentMethods';
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -158,19 +159,17 @@ export function validateStep(
       if (isBlank(c?.streetAddress)) {
         issues.push('A street address to receive payment is required.');
       }
-      if (!data.paymentBranch) {
+      // C7a multi-select: validate the selected method atoms with the same
+      // rules the inline UI surface and the produce gate use (one source of
+      // truth). Presence + per-method shape + the set-level floor/EFT rules.
+      const payMethods = data.paymentMethods ?? [];
+      if (payMethods.length === 0) {
         issues.push('Choose how rent may be paid.');
-      } else if (data.paymentBranch === 'in_person_and_mail') {
-        if (isBlank(data.personalDeliveryDays)) {
-          issues.push('Enter the days personal delivery is available.');
+      } else {
+        const payResult = validatePaymentMethods({ methods: payMethods });
+        if (!payResult.valid) {
+          for (const e of payResult.errors) issues.push(e.message);
         }
-        if (isBlank(data.personalDeliveryHours)) {
-          issues.push('Enter the hours personal delivery is available.');
-        }
-      } else if (data.paymentBranch === 'bank_deposit') {
-        if (isBlank(data.bankName)) issues.push('Enter the bank name.');
-        if (isBlank(data.bankBranchAddress)) issues.push('Enter the bank branch address.');
-        if (isBlank(data.bankAccountNumber)) issues.push('Enter the account number.');
       }
       break;
     }

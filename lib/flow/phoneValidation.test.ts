@@ -30,7 +30,7 @@ function paymentData(phone: string): NoticeFlowData {
       phone,
       streetAddress: '123 Main St, City, CA 90000',
     },
-    paymentBranch: 'mail_only',
+    paymentMethods: [{ kind: 'mail', mailAddress: '123 Main St, City, CA 90000' }],
   };
 }
 

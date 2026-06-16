@@ -178,6 +178,19 @@ export function validatePaymentMethods(
         'non-cash method such as check or money order.',
     });
   }
+  // EFT-requires-Mail (broker determination 2026-06-15, §6/§7 rule 3):
+  // EFT may only be offered when By Mail is also offered. Message string is
+  // locked from the determination; code is a build-side identifier.
+  if (kinds.includes('eft') && !kinds.includes('mail')) {
+    errors.push({
+      code: 'EFT_REQUIRES_MAIL',
+      scope: 'eft',
+      message:
+        'Electronic funds transfer requires that mail payment also be ' +
+        "offered as a method. Add 'By mail' to the selected payment " +
+        'methods, or remove EFT.',
+    });
+  }
 
   // --- Per-method rules ----------------------------------------------------
 

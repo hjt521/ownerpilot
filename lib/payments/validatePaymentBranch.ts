@@ -133,9 +133,16 @@ export function isUsPhone(raw: string | undefined): boolean {
 
 /** Heuristic P.O.-box detector (C1): best-effort, not authoritative. */
 export function looksLikePoBox(raw: string | undefined): boolean {
-  if (raw === undefined) return false;
-  // Matches "PO Box", "P.O. Box", "P O Box", "Post Office Box", "POB 123".
-  return /\b(p\.?\s*o\.?\s*box|post\s+office\s+box|\bpob)\b/i.test(raw);
+  if (raw === undefined || raw === null) return false;
+  // c1_pobox_scope_multiselect_broker_determination_2026-06-15 §3: anchor to
+  // the START of the (whitespace-normalized) address line so a street named
+  // "PO Box" (e.g. "123 PO Box Street") is NOT flagged, while box forms at the
+  // start ARE. Covers PO Box / P.O. Box / P O Box / POB / P.O.B. /
+  // Post Office Box / Postal Box / Private Mail Box / PMB.
+  const s = String(raw).trim().replace(/\s+/g, ' ');
+  return /^(p\.?\s*o\.?\s*(box|b\.?)\b|post\s+office\s+box\b|postal\s+box\b|private\s+mail\s+box\b|pmb\b|pob\b)/i.test(
+    s,
+  );
 }
 
 export function validatePaymentBranch(

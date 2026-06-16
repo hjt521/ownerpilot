@@ -31,13 +31,15 @@ function baseData(): NoticeFlowData {
       { periodStartDate: '2026-05-01', periodEndDate: '2026-05-31', amount: 2000 },
     ],
     baseRentOnlyConfirmed: true,
-    paymentMethods: [],
     landlordContact: {
       name: 'Acme Property Mgmt',
       phone: '(555) 555-5555',
       streetAddress: '1 Owner Way, Los Angeles, CA 90001',
     },
-    paymentBranch: 'in_person_and_mail',
+    paymentMethods: [
+      { kind: 'in_person', daysHours: 'Monday through Friday, 9:00 a.m. to 5:00 p.m.' },
+      { kind: 'mail', mailAddress: '1 Owner Way, Los Angeles, CA 90001' },
+    ],
     personalDeliveryDays: 'Monday through Friday',
     personalDeliveryHours: '9:00 a.m. to 5:00 p.m.',
     signerName: 'Sam Signer',
@@ -100,7 +102,10 @@ console.log('\n=== Payment branch change ===\n');
 {
   const data = baseData();
   data.productionSnapshot = captureProductionSnapshot(data);
-  data.paymentBranch = 'bank_deposit';
+  data.paymentMethods = [
+    { kind: 'bank_deposit', bankName: 'First Bank', branchAddress: '5 Bank St, LA, CA 90001', accountNumber: '0001234567' },
+    { kind: 'mail', mailAddress: '1 Owner Way, Los Angeles, CA 90001' },
+  ];
   data.bankName = 'First Bank';
   data.bankBranchAddress = '5 Bank St, LA, CA 90001';
   data.bankAccountNumber = '0001234567';

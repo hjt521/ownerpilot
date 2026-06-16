@@ -18,7 +18,8 @@ function has(r: ReturnType<typeof evaluateCanProduceV4>, code: string): boolean 
 // rather than on the total count, so the test is robust to the real
 // date/holiday/jurisdiction engines on the build machine.
 const V4_MANAGED = [
-  'PAYMENT_CONFIG_INVALID', 'BANK_5_MILE_NOT_VERIFIED', 'SIGNER_MISSING',
+  'CONTACT_PHONE_REQUIRED', 'PERSONAL_DELIVERY_POBOX',
+  'BANK_PAPER_INSTRUMENT_REQUIRED', 'BANK_5_MILE_NOT_VERIFIED', 'SIGNER_MISSING',
   'SIGNER_ROLE_MISSING', 'NO_TENANT', 'NO_RENT_PERIODS', 'PRODUCE_ATTESTATION_MISSING',
   'PROPERTY_ADDRESS_MISSING', 'DISPUTE_NOT_CLEARED',
 ];
@@ -36,9 +37,8 @@ function validV4(): NoticeFlowData {
     tenantNames: ['Jason Kim'],
     rentPeriods: [{ periodStartDate: '2026-05-01', periodEndDate: '2026-05-31', amount: 3000 }],
     produceAttestationConfirmed: true,
-    paymentMethods: [], // legacy field unused by v4 gate
     landlordContact: { name: 'Jack Tah', phone: '(559) 555-0142', streetAddress: '4336 Prospect Ave, Los Angeles, CA 90028' },
-    paymentBranch: 'mail_only',
+    paymentMethods: [{ kind: 'mail', mailAddress: '4336 Prospect Ave, Los Angeles, CA 90028' }],
     signerName: 'Jack Tah',
     ...individualLandlord('owner', { names: ['Jack Tah'] }),
     signingDate: '2026-06-02', // B1: execution date (<= service date)
@@ -71,14 +71,17 @@ console.log('3. § 1161(2) payee trio gates payment config');
 {
   const noPhone = validV4(); noPhone.landlordContact = { name: 'Jack Tah', streetAddress: '4336 Prospect Ave' };
   const r = evaluateCanProduceV4(noPhone);
-  check('missing payee phone -> PAYMENT_CONFIG_INVALID', has(r, 'PAYMENT_CONFIG_INVALID'));
+  check('missing payee phone -> CONTACT_PHONE_REQUIRED', has(r, 'CONTACT_PHONE_REQUIRED'));
   check('phone error surfaced for field UI', r.paymentErrors.some((e) => e.code === 'CONTACT_PHONE_REQUIRED'));
 }
 
 console.log('4. Bank-deposit branch: 5-mile production gate (ruling C2)');
 {
   const bank = validV4();
-  bank.paymentBranch = 'bank_deposit';
+  bank.paymentMethods = [
+    { kind: 'bank_deposit', bankName: 'Bank of the West', branchAddress: '10 Bank St, Fresno, CA 93701', accountNumber: '0001234567' },
+    { kind: 'mail', mailAddress: '4336 Prospect Ave, Los Angeles, CA 90028' },
+  ];
   bank.bankName = 'Bank of the West';
   bank.bankBranchAddress = '10 Bank St, Fresno, CA 93701';
   bank.bankAccountNumber = '0001234567';
@@ -86,11 +89,10 @@ console.log('4. Bank-deposit branch: 5-mile production gate (ruling C2)');
   // No within-5-miles attestation yet:
   const r1 = evaluateCanProduceV4(bank);
   check('bank w/o 5-mile attestation blocks production', has(r1, 'BANK_5_MILE_NOT_VERIFIED'));
-  check('5-mile surfaced as intake warning too', r1.paymentWarnings.some((w) => w.code === 'BANK_5_MILE_UNVERIFIED'));
 
   bank.bankBranchWithinFiveMilesAttested = true;
   const r2 = evaluateCanProduceV4(bank);
-  check('bank with attestation clears bank gates', !has(r2, 'BANK_5_MILE_NOT_VERIFIED') && !has(r2, 'PAYMENT_CONFIG_INVALID'),
+  check('bank with attestation clears bank gates', !has(r2, 'BANK_5_MILE_NOT_VERIFIED') && !has(r2, 'BANK_PAPER_INSTRUMENT_REQUIRED'),
     `got: ${codes(r2).join(', ')}`);
   check('produces once bank gates clear (sign-off live)', r2.canProduce === true, `got: ${codes(r2).join(', ')}`);
 }
@@ -98,15 +100,17 @@ console.log('4. Bank-deposit branch: 5-mile production gate (ruling C2)');
 console.log('5. Bank-deposit without paper instrument is invalid (Decision 1)');
 {
   const bank = validV4();
-  bank.paymentBranch = 'bank_deposit';
+  bank.paymentMethods = [
+    { kind: 'bank_deposit', bankName: 'Bank of the West', branchAddress: '10 Bank St, Fresno, CA 93701', accountNumber: '0001234567' },
+    { kind: 'mail', mailAddress: '4336 Prospect Ave, Los Angeles, CA 90028' },
+  ];
   bank.bankName = 'Bank of the West';
   bank.bankBranchAddress = '10 Bank St, Fresno, CA 93701';
   bank.bankAccountNumber = '0001234567';
   bank.bankBranchWithinFiveMilesAttested = true;
   bank.bankDepositPaperInstrumentConfirmed = false; // not confirmed
   const r = evaluateCanProduceV4(bank);
-  check('no paper instrument -> PAYMENT_CONFIG_INVALID', has(r, 'PAYMENT_CONFIG_INVALID'));
-  check('paper-instrument error surfaced', r.paymentErrors.some((e) => e.code === 'BANK_PAPER_INSTRUMENT_REQUIRED'));
+  check('no paper instrument -> BANK_PAPER_INSTRUMENT_REQUIRED', has(r, 'BANK_PAPER_INSTRUMENT_REQUIRED'));
 }
 
 console.log('6. Other gates still fire under v4');
@@ -127,12 +131,15 @@ console.log('6. Other gates still fire under v4');
 console.log('7. in_person_and_mail with P.O. box payee address is invalid');
 {
   const d = validV4();
-  d.paymentBranch = 'in_person_and_mail';
+  d.paymentMethods = [
+    { kind: 'in_person', daysHours: 'Monday through Friday, 9:00 a.m. to 5:00 p.m.' },
+    { kind: 'mail', mailAddress: 'P.O. Box 55, Fresno, CA 93701' },
+  ];
   d.personalDeliveryDays = 'Monday through Friday';
   d.personalDeliveryHours = '9:00 a.m. to 5:00 p.m.';
   d.landlordContact = { name: 'Jack Tah', phone: '5595550142', streetAddress: 'P.O. Box 55, Fresno, CA 93701' };
   const r = evaluateCanProduceV4(d);
-  check('PO box on in-person -> PAYMENT_CONFIG_INVALID', has(r, 'PAYMENT_CONFIG_INVALID'));
+  check('PO box on in-person -> PERSONAL_DELIVERY_POBOX', has(r, 'PERSONAL_DELIVERY_POBOX'));
   check('PO box error surfaced', r.paymentErrors.some((e) => e.code === 'PERSONAL_DELIVERY_POBOX'));
 }
 

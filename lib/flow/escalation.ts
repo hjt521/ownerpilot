@@ -67,7 +67,11 @@ export function captureProductionSnapshot(
     payeeName: derivePayeeName(data).name,
     payeePhone: (c.phone ?? '').trim(),
     payeeStreetAddress: (c.streetAddress ?? '').trim(),
-    paymentBranch: data.paymentBranch,
+    offeredMethods: (data.paymentMethods ?? [])
+      .map((m) => m.kind)
+      .slice()
+      .sort()
+      .join(','),
     personalDeliveryDays: data.personalDeliveryDays,
     personalDeliveryHours: data.personalDeliveryHours,
     bankName: data.bankName,
@@ -158,18 +162,27 @@ export function evaluateStaleness(
     changedFields.push('Payee address');
   }
 
-  if ((data.paymentBranch ?? '') !== (snapshot.paymentBranch ?? '')) {
+  const curOffered = (data.paymentMethods ?? [])
+    .map((m) => m.kind)
+    .slice()
+    .sort()
+    .join(',');
+  if (curOffered !== (snapshot.offeredMethods ?? '')) {
     changedFields.push('Payment method');
   } else {
-    // Same branch — compare that branch's fields.
-    if (data.paymentBranch === 'in_person_and_mail') {
+    // Same set of offered methods — compare each offered leg's fields.
+    // (Multi-select: in-person and bank can both be present, so these are
+    // independent checks, not a mutually exclusive branch chain.)
+    const offers = (k: string): boolean => curOffered.split(',').includes(k);
+    if (offers('in_person')) {
       if (differs(data.personalDeliveryDays ?? '', snapshot.personalDeliveryDays ?? '')) {
         changedFields.push('Personal-delivery days');
       }
       if (differs(data.personalDeliveryHours ?? '', snapshot.personalDeliveryHours ?? '')) {
         changedFields.push('Personal-delivery hours');
       }
-    } else if (data.paymentBranch === 'bank_deposit') {
+    }
+    if (offers('bank_deposit')) {
       if (differs(data.bankName ?? '', snapshot.bankName ?? '')) {
         changedFields.push('Bank name');
       }

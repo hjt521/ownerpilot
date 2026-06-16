@@ -27,12 +27,9 @@ function fullData(): NoticeFlowData {
     tenantNames: ['Jane Tenant'],
     rentPeriods: [{ periodStartDate: '2026-04-01', periodEndDate: '2026-04-30', amount: 2000 }],
     baseRentOnlyConfirmed: true,
-    paymentMethods: [], // legacy field still required by the type; unused by the v4 step
-    // v4 payment (§ 1161(2) payee trio + branch) — the PaymentInstructions step
-    // reads these, not the legacy paymentMethods array.
     landlordContact: { name: 'Owner Name', phone: '(559) 555-0100', streetAddress: '12 Almond Ln, Fresno, CA 93650' },
     mailingAddress: '12 Almond Ln, Fresno, CA 93650',
-    paymentBranch: 'mail_only',
+    paymentMethods: [{ kind: 'mail', mailAddress: '12 Almond Ln, Fresno, CA 93650' }],
     signerName: 'Owner Name',
     // Stage-1 identity slice (canonical signerCapacity; signerRole removed in Defect #3).
     ...individualLandlord('owner', { names: ['Owner Name'] }),
@@ -100,12 +97,15 @@ console.log('\n6. Amount: period shape + base-rent confirm');
 
 console.log('\n7. Payment: at least one method chosen (deep validity is at Review)');
 {
-  const d = fullData(); d.paymentBranch = undefined;
+  const d = fullData(); d.paymentMethods = [];
   check('no branch fails', validateStep(FlowStep.PaymentInstructions, d).canAdvance === false);
   // A present, shape-complete branch that is DEEP-invalid (P.O. box on a
   // personal-delivery branch) still advances; deep validity is consolidated at Review.
   const d2 = fullData();
-  d2.paymentBranch = 'in_person_and_mail';
+  d2.paymentMethods = [
+    { kind: 'in_person', daysHours: 'Monday through Friday, 9:00 a.m. to 5:00 p.m.' },
+    { kind: 'mail', mailAddress: 'P.O. Box 7, Fresno, CA 93701' },
+  ];
   d2.personalDeliveryDays = 'Monday through Friday';
   d2.personalDeliveryHours = '9:00 a.m. to 5:00 p.m.';
   d2.landlordContact = { name: 'Owner Name', phone: '(559) 555-0100', streetAddress: 'P.O. Box 7, Fresno, CA 93701' };

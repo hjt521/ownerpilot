@@ -26,6 +26,8 @@ import { getVerifiedHolidaySet } from '../dates/holidays';
 import { computeCompliancePeriod, type ServiceMethod } from '../dates/computeCompliancePeriod';
 import {
   validatePaymentBranch,
+  looksLikePoBox,
+  isUsPhone,
   PaymentBranchError,
   PaymentBranchWarning,
 } from '../payments/validatePaymentBranch';
@@ -231,6 +233,66 @@ export interface CanProduceResult {
  * Fails closed: any unmet/unknown condition is a blocker. `canProduce` is true
  * only when `blockers` is empty.
  */
+
+/**
+ * § 1161(2) payee-trio + in-person deliverability blockers for the produce gate.
+ *
+ * Keeps the branch-INDEPENDENT checks that used to live in validatePaymentBranch
+ * (payee override name; telephone present + US format; street address present),
+ * and runs the C1 P.O.-box gate whenever in-person is among the selected payment
+ * methods (c1_pobox_scope_multiselect_broker_determination_2026-06-15 §1: the
+ * gate follows the in-person leg, not the historical in_person_and_mail branch).
+ * Method-level validity is handled separately by validatePaymentMethods.
+ */
+function validatePayeeTrioAndDelivery(
+  data: NoticeFlowData,
+): { code: string; message: string }[] {
+  const out: { code: string; message: string }[] = [];
+  const contact = data.landlordContact ?? {};
+  const blank = (s: string | undefined): boolean => (s ?? '').trim() === '';
+
+  if (data.payeeIsNonLandlord === true && blank(data.payeeOverrideName)) {
+    out.push({
+      code: 'PAYEE_OVERRIDE_NAME_REQUIRED',
+      message: 'Enter the name of the payee who receives rent.',
+    });
+  }
+  if (blank(contact.phone)) {
+    out.push({
+      code: 'CONTACT_PHONE_REQUIRED',
+      message:
+        'A telephone number for the person to whom rent is paid is required ' +
+        '(Cal. Code Civ. Proc. § 1161(2)).',
+    });
+  } else if (!isUsPhone(contact.phone)) {
+    out.push({
+      code: 'CONTACT_PHONE_FORMAT',
+      message: 'Enter a valid US telephone number (10 digits).',
+    });
+  }
+  if (blank(contact.streetAddress)) {
+    out.push({
+      code: 'CONTACT_ADDRESS_REQUIRED',
+      message:
+        'A street address for the person to whom rent is paid is required ' +
+        '(Cal. Code Civ. Proc. § 1161(2)).',
+    });
+  }
+  // C1 P.O.-box gate: fires whenever the in-person leg is offered.
+  const offersInPerson = (data.paymentMethods ?? []).some(
+    (m) => m.kind === 'in_person',
+  );
+  if (offersInPerson && looksLikePoBox(contact.streetAddress)) {
+    out.push({
+      code: 'PERSONAL_DELIVERY_POBOX',
+      message:
+        'A P.O. box cannot accept personal delivery. Enter a street address ' +
+        'where payment can be delivered in person.',
+    });
+  }
+  return out;
+}
+
 export function evaluateCanProduce(data: NoticeFlowData): CanProduceResult {
   const blockers: ProduceBlocker[] = [];
 
@@ -388,10 +450,12 @@ export interface CanProduceResultV4 {
   canProduce: boolean;
   blockers: ProduceBlocker[];
   computedDates?: { commencementDate: string; expirationDate: string };
-  /** Payment-config field errors, for field-level UI mapping. */
-  paymentErrors: PaymentBranchError[];
-  /** Payment-config advisories (e.g. 5-mile not yet attested). */
-  paymentWarnings: PaymentBranchWarning[];
+  /** Payment-config field errors, for field-level UI mapping (payee trio +
+   *  delivery + method-level validity). */
+  paymentErrors: { code: string; message: string }[];
+  /** Payment-config advisories. Empty since C7a (the 5-mile item is now a
+   *  hard produce blocker, not a soft warning). */
+  paymentWarnings: { code: string; message: string }[];
   /** The template version this decision was made against. */
   templateVersion: string;
 }
@@ -439,17 +503,29 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
     });
   }
 
-  // (e) v4 payment configuration valid (§ 1161(2) payee trio + branch + EFT).
-  const pay = validatePaymentBranch(data);
-  if (!pay.valid) {
-    blockers.push({
-      code: 'PAYMENT_CONFIG_INVALID',
-      message: 'The payment configuration is not yet complete or valid.',
-    });
-  }
+  // (e) § 1161(2) payee trio (name/phone/address) + C1 P.O.-box deliverability.
+  // Method-level field rules (bank fields, EFT, § 1947.3 floor) are enforced by
+  // validatePaymentMethods at gate (e0) above; the bank-deposit paper-instrument
+  // requirement (Decision 1) is enforced at gate (e2) below. P.O.-box scope per
+  // c1_pobox_scope_multiselect_broker_determination_2026-06-15.
+  for (const b of validatePayeeTrioAndDelivery(data)) blockers.push(b);
 
-  // (e2) 5-mile production gate for the bank-deposit branch (ruling C2).
-  if (data.paymentBranch === 'bank_deposit') {
+  // (e2) Bank-deposit production gates (Decision 1 paper instrument + C2 5-mile).
+  if ((data.paymentMethods ?? []).some((m) => m.kind === 'bank_deposit')) {
+    // Decision 1: a bank deposit satisfies the § 1947.3 floor ONLY by a paper
+    // instrument; a cash deposit is still cash. Enforced here at the produce
+    // gate (the renderer also fails closed). Wording locked from the
+    // v4_payment_fields ruling (2026-06-01) via validatePaymentBranch.
+    if (data.bankDepositPaperInstrumentConfirmed !== true) {
+      blockers.push({
+        code: 'BANK_PAPER_INSTRUMENT_REQUIRED',
+        message:
+          'Bank deposit is only a valid method when the tenant pays by a ' +
+          'paper check, money order, or cashier’s check (a cash deposit ' +
+          'is still cash under Civil Code § 1947.3). Confirm a paper ' +
+          'instrument, or choose a different method.',
+      });
+    }
     if (GEOCODING_LIVE) {
       // When geocoding lands, verify by distance here instead of attestation.
       // (Left intentionally to the geocode-dependency slice.)
@@ -632,12 +708,20 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
     });
   }
 
+  // C7a: payment field errors = payee-trio/delivery blockers + method-level
+  // validator errors. No soft warnings (5-mile is a hard blocker now).
+  const paymentFieldErrors = [
+    ...validatePayeeTrioAndDelivery(data),
+    ...validatePaymentMethods({ methods: data.paymentMethods ?? [] }).errors.map(
+      (e) => ({ code: e.code, message: e.message }),
+    ),
+  ];
   return {
     canProduce: blockers.length === 0,
     blockers,
     computedDates,
-    paymentErrors: pay.errors,
-    paymentWarnings: pay.warnings,
+    paymentErrors: paymentFieldErrors,
+    paymentWarnings: [],
     templateVersion: NOTICE_TEMPLATE_VERSION,
   };
 }
