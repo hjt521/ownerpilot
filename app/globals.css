@@ -41,3 +41,244 @@ body {
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
+
+/* ============================================================
+   Homepage — Concept B "Action Forward" (JT, 2026-06-16).
+   Every selector scoped under .cb-home so these styles do not
+   leak onto the rest of the app (wizard, /our-approach, /chat).
+   Footer is the shared <SiteFooter/>; Concept B footer CSS omitted.
+   ============================================================ */
+.cb-home {
+  --green-950: #102018;
+  --green-900: #153327;
+  --green-800: #1f3d2e;
+  --gold-600: #b48944;
+  --gold-500: #c59a52;
+  --ivory: #f8f5ef;
+  --paper: #fffdf8;
+  --cream: #f1ece2;
+  --sage: #8fae9c;
+  --ink: #16251f;
+  --muted: #63706a;
+  --line: rgba(16, 32, 24, 0.16);
+  --shadow: 0 24px 70px rgba(16, 32, 24, 0.14);
+  --radius: 22px;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  scroll-behavior: smooth;
+  color: var(--ink);
+  background: radial-gradient(circle at 18% 0%, rgba(180, 137, 68, .10), transparent 34%), var(--ivory);
+  font-family: var(--font-inter), Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.cb-home * { box-sizing: border-box; }
+.cb-home a { color: inherit; text-decoration: none; }
+.cb-home button, .cb-home input { font-family: inherit; }
+.cb-home .shell { width: min(1180px, calc(100% - 44px)); margin: 0 auto; }
+
+.cb-home .site-header {
+  position: sticky; top: 0; z-index: 20;
+  height: 82px; display: flex; align-items: center; gap: 28px;
+  padding: 0 min(5vw, 68px);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 253, 248, .86);
+  backdrop-filter: blur(18px);
+}
+.cb-home .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+.cb-home .brand-mark { height: 44px; width: auto; object-fit: contain; }
+.cb-home .brand-text { font-family: var(--font-playfair), Georgia, serif; font-size: 25px; font-weight: 700; color: var(--green-950); }
+.cb-home .brand-text span { color: var(--gold-600); }
+.cb-home .nav { display: flex; align-items: center; gap: 26px; font-size: 14px; font-weight: 650; }
+.cb-home .nav a:hover { color: var(--gold-600); }
+.cb-home .nav-cta { padding: 12px 17px; border-radius: 999px; color: white; background: var(--green-950); font-size: 14px; font-weight: 750; }
+
+.cb-home .hero { min-height: 690px; display: grid; grid-template-columns: 1fr 1.05fr; gap: 54px; align-items: center; padding: 70px 0 56px; }
+.cb-home .eyebrow { margin: 0 0 15px; color: var(--gold-600); text-transform: uppercase; letter-spacing: .17em; font-weight: 800; font-size: 13px; }
+.cb-home h1, .cb-home h2 { font-family: var(--font-playfair), Georgia, serif; color: var(--green-950); line-height: .96; margin: 0; letter-spacing: -.04em; }
+.cb-home h1 { font-size: clamp(56px, 8vw, 104px); max-width: 760px; }
+.cb-home h2 { font-size: clamp(38px, 5vw, 64px); }
+.cb-home h3 { margin: 0; color: var(--green-950); font-size: 18px; }
+.cb-home .lead { font-size: clamp(18px, 2vw, 22px); line-height: 1.55; color: #34453e; max-width: 650px; margin: 26px 0 30px; }
+.cb-home .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.cb-home .primary-btn, .cb-home .secondary-btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 15px 20px; font-weight: 800; }
+.cb-home .primary-btn { background: linear-gradient(135deg, var(--gold-600), var(--gold-500)); color: white; box-shadow: 0 10px 30px rgba(180,137,68,.25); }
+.cb-home .secondary-btn { border: 1px solid var(--line); color: var(--green-950); background: rgba(255,255,255,.52); }
+.cb-home .arrow { transition: transform .2s ease; }
+.cb-home .primary-btn:hover .arrow, .cb-home .text-link:hover .arrow { transform: translateX(4px); }
+.cb-home .trust-row { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+.cb-home .trust-row span::before { content: '\2713'; color: var(--gold-600); font-weight: 900; margin-right: 7px; }
+
+.cb-home .hero-visual { position: relative; min-height: 520px; }
+.cb-home .paper-card, .cb-home .phone-card, .cb-home .qr-card { background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.cb-home .notice-card { position: absolute; left: 10px; top: 18px; width: 360px; min-height: 465px; padding: 32px; border-radius: 18px; transform: rotate(-4deg); }
+.cb-home .doc-top { text-align: center; font-size: 15px; font-weight: 900; letter-spacing: .08em; color: var(--green-950); }
+.cb-home .doc-line { height: 8px; background: var(--green-950); margin: 24px 0; border-radius: 99px; }
+.cb-home .doc-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px 16px; font-size: 14px; }
+.cb-home .doc-grid span { color: var(--muted); }
+.cb-home .ready { color: #167b48; }
+.cb-home .doc-lines { margin-top: 28px; display: grid; gap: 14px; }
+.cb-home .doc-lines i { height: 12px; border-radius: 99px; background: #e9e0d1; }
+.cb-home .phone-card { position: absolute; right: 20px; top: 78px; width: 265px; min-height: 420px; border-radius: 34px; padding: 28px 20px; }
+.cb-home .phone-bar { height: 20px; width: 70px; margin: 0 auto 24px; border-radius: 99px; background: var(--green-950); opacity: .12; }
+.cb-home .phone-card h3 { font-family: var(--font-playfair), Georgia, serif; font-size: 32px; }
+.cb-home .phone-card p { color: var(--muted); }
+.cb-home .log-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.cb-home .log-row strong { color: var(--gold-600); }
+.cb-home .success strong { color: #167b48; }
+.cb-home .qr-card { position: absolute; left: 260px; bottom: 10px; width: 190px; border-radius: 20px; padding: 18px; background: var(--green-950); color: white; transform: rotate(2deg); }
+.cb-home .qr-card p { margin: 0 0 12px; font-weight: 750; line-height: 1.25; }
+.cb-home .qr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: white; padding: 10px; border-radius: 12px; }
+.cb-home .qr div, .cb-home .qr span { aspect-ratio: 1; border-radius: 4px; }
+.cb-home .qr div { background: var(--green-950); }
+.cb-home .qr span { background: #d8d0be; }
+
+.cb-home .workflow-band { background: var(--green-950); color: white; padding: 42px 0; }
+.cb-home .workflow-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+.cb-home .workflow-step { border-right: 1px solid rgba(255,255,255,.16); padding-right: 18px; }
+.cb-home .workflow-step:last-child { border-right: 0; }
+.cb-home .step-number { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-600); color: white; font-size: 13px; font-weight: 900; margin-bottom: 14px; }
+.cb-home .workflow-step h3 { color: white; }
+.cb-home .workflow-step p { color: rgba(255,255,255,.75); line-height: 1.5; margin: 8px 0 0; }
+
+.cb-home .split { padding: 88px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 68px; align-items: center; }
+.cb-home .split p, .cb-home .section-heading p, .cb-home .final-cta p, .cb-home .chat-box p { color: var(--muted); line-height: 1.65; font-size: 17px; }
+.cb-home .text-link { display: inline-flex; margin-top: 12px; font-weight: 850; color: var(--gold-600); }
+.cb-home .feature-panel { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: 0 16px 52px rgba(16,32,24,.08); }
+.cb-home .feature-row { display: flex; align-items: center; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--line); font-weight: 750; }
+.cb-home .feature-row:last-child { border-bottom: 0; }
+.cb-home .check { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgba(143,174,156,.24); color: var(--green-950); font-weight: 950; }
+
+.cb-home .notice-section { padding: 10px 0 86px; }
+.cb-home .section-heading { text-align: center; max-width: 780px; margin: 0 auto 34px; }
+.cb-home .cards-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.cb-home .service-card { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; min-height: 220px; box-shadow: 0 18px 52px rgba(16,32,24,.07); }
+.cb-home .service-card h3 { font-family: var(--font-playfair), Georgia, serif; font-size: 30px; }
+.cb-home .service-card p { color: var(--muted); line-height: 1.6; }
+.cb-home .service-card.featured { background: linear-gradient(135deg, var(--green-950), var(--green-800)); color: white; }
+.cb-home .service-card.featured h3, .cb-home .service-card.featured p { color: white; }
+
+.cb-home .chat-section { background: linear-gradient(135deg, var(--green-950), #0b1712); padding: 78px 0; color: white; }
+.cb-home .chat-box { display: grid; grid-template-columns: .9fr 1.1fr; gap: 48px; align-items: center; }
+.cb-home .chat-box h2 { color: white; }
+.cb-home .chat-box p { color: rgba(255,255,255,.75); }
+.cb-home .prompt-box { display: grid; gap: 12px; }
+.cb-home .prompt-box button, .cb-home .prompt-link { text-align: left; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; padding: 16px 18px; background: rgba(255,255,255,.06); color: white; font-weight: 700; cursor: pointer; }
+.cb-home .prompt-box button:hover, .cb-home .prompt-link:hover { border-color: rgba(180,137,68,.75); }
+.cb-home .chat-btn { justify-content: center; margin-top: 8px; }
+.cb-home .final-cta { text-align: center; padding: 88px 0; }
+.cb-home .final-cta h2 { max-width: 800px; margin: 0 auto; }
+
+@media (max-width: 980px) {
+  .cb-home .site-header { height: auto; padding: 14px 20px; flex-wrap: wrap; }
+  .cb-home .nav { order: 3; width: 100%; justify-content: center; gap: 16px; font-size: 13px; }
+  .cb-home .nav-cta { display: none; }
+  .cb-home .hero, .cb-home .split, .cb-home .chat-box { grid-template-columns: 1fr; }
+  .cb-home .hero { padding-top: 44px; }
+  .cb-home .hero-visual { min-height: 620px; }
+  .cb-home .workflow-grid, .cb-home .cards-three { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 640px) {
+  .cb-home .shell { width: min(100% - 28px, 1180px); }
+  .cb-home .brand-mark { height: 36px; }
+  .cb-home .brand-text { font-size: 21px; }
+  .cb-home .nav { display: none; }
+  .cb-home h1 { font-size: 54px; }
+  .cb-home .hero-actions { align-items: stretch; flex-direction: column; }
+  .cb-home .primary-btn, .cb-home .secondary-btn { justify-content: center; }
+  .cb-home .hero-visual { min-height: 560px; overflow: hidden; }
+  .cb-home .notice-card { left: -20px; width: 300px; }
+  .cb-home .phone-card { right: -24px; width: 220px; }
+  .cb-home .qr-card { left: 124px; bottom: 0; }
+  .cb-home .workflow-grid, .cb-home .cards-three { grid-template-columns: 1fr; }
+}
+/* === end Concept B homepage styles === */
+
+/* ============================================================
+   Hero above-the-fold update (marketing, 2026-06-16) — scoped
+   to .cb-home. Overrides a few hero metrics and adds the subline
+   + connected-system feature strip. Source-order overrides the
+   base .cb-home block above.
+   ============================================================ */
+.cb-home .hero { min-height: 760px; }
+.cb-home h1 { font-size: clamp(52px, 7.1vw, 92px); max-width: 840px; }
+.cb-home .lead { max-width: 680px; margin: 18px 0 24px; }
+.cb-home .hero-subline { font-family: var(--font-playfair), Georgia, serif; color: var(--green-950); font-size: clamp(28px, 3.6vw, 48px); line-height: 1; letter-spacing: -.035em; margin: 14px 0 0; }
+.cb-home .hero-system { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 680px; margin: 0 0 26px; }
+.cb-home .hero-system-item { display: flex; align-items: flex-start; gap: 10px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,253,248,.72); box-shadow: 0 10px 32px rgba(16,32,24,.055); }
+.cb-home .hero-system-item .check { width: 22px; height: 22px; flex: 0 0 22px; font-size: 13px; }
+.cb-home .hero-system-item strong { display: block; color: var(--green-950); font-size: 14px; line-height: 1.2; }
+.cb-home .hero-system-item span { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; margin-top: 2px; }
+
+@media (max-width: 980px) {
+  .cb-home .hero-system { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 640px) {
+  .cb-home h1 { font-size: 48px; }
+  .cb-home .hero-subline { font-size: 31px; }
+  .cb-home .hero-system { grid-template-columns: 1fr; }
+}
+/* === end hero above-the-fold update === */
+
+/* ============================================================
+   Hero/band refinements (marketing final review, 2026-06-16) —
+   scoped to .cb-home. Supporting line demoted from display size
+   to a calm secondary line; helper line under the CTAs; lighter
+   workflow band. Source-order overrides the blocks above.
+   ============================================================ */
+.cb-home .hero-subline { font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif; color: var(--green-950); font-size: clamp(19px, 2.1vw, 24px); font-weight: 600; line-height: 1.25; letter-spacing: -.01em; margin: 12px 0 2px; }
+.cb-home .hero-help { margin: 14px 0 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.cb-home .hero-help a { color: var(--gold-600); font-weight: 750; }
+.cb-home .hero-help a:hover { text-decoration: underline; }
+.cb-home .workflow-band { padding: 36px 0; }
+
+@media (max-width: 640px) {
+  .cb-home .hero-subline { font-size: 20px; }
+}
+/* === end hero/band refinements === */
+
+/* ============================================================
+   Hero/section polish (marketing final review pass 2,
+   2026-06-16) — scoped to .cb-home. Headline tightened toward
+   2 lines on desktop; supporting line nudged up slightly.
+   Source-order overrides the blocks above.
+   ============================================================ */
+.cb-home h1 { font-size: clamp(38px, 4.4vw, 56px); line-height: 1.04; letter-spacing: -.03em; max-width: 640px; }
+.cb-home .hero-subline { font-size: clamp(20px, 2.3vw, 26px); font-weight: 700; margin: 14px 0 2px; }
+
+@media (max-width: 640px) {
+  .cb-home h1 { font-size: 40px; }
+  .cb-home .hero-subline { font-size: 22px; }
+}
+/* === end hero/section polish === */
+
+/* ============================================================
+   Hero headline size bump (marketing polish pass 3, 2026-06-16)
+   — scoped to .cb-home. ~7% larger on desktop; same Playfair,
+   same line break behavior, still responsive. Source-order
+   overrides the h1 clamp in the blocks above.
+   ============================================================ */
+.cb-home h1 { font-size: clamp(40px, 4.7vw, 60px); }
+
+@media (max-width: 640px) {
+  .cb-home h1 { font-size: 42px; }
+}
+/* === end hero headline size bump === */
+
+/* ============================================================
+   Headline + visual rebalance (marketing polish pass 4,
+   2026-06-16) — scoped to .cb-home. Headline nudged up (capped
+   at 63px desktop); hero card stack scaled to ~95% and dropped
+   slightly for balance. Transform only — card offsets untouched.
+   ============================================================ */
+.cb-home h1 { font-size: clamp(42px, 4.9vw, 63px); }
+.cb-home .hero-visual { transform: scale(.95) translateY(14px); transform-origin: center top; }
+
+@media (max-width: 640px) {
+  .cb-home h1 { font-size: 44px; }
+  .cb-home .hero-visual { transform: none; }
+}
+/* === end headline + visual rebalance === */
+
