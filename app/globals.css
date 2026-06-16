@@ -294,14 +294,14 @@ body {
 @media (max-width: 640px) {
   /* 1. Hero: drop the forced 760px min-height, tighten vertical run
         so the headline + subline + CTAs land early. */
-  .cb-home .hero { min-height: 0; padding: 26px 0 30px; gap: 28px; }
-  .cb-home .eyebrow { margin-bottom: 10px; font-size: 12px; }
-  .cb-home .lead { font-size: 16px; line-height: 1.5; margin: 14px 0 18px; }
+  .cb-home .hero { min-height: 0; padding: 24px 0 26px; gap: 24px; }
+  .cb-home .eyebrow { margin-bottom: 9px; font-size: 12px; }
+  .cb-home .lead { font-size: 16px; line-height: 1.5; margin: 12px 0 16px; }
 
   /* 2. Hero feature cards: compact 2x2 grid, tighter padding,
         check icons + text kept. */
-  .cb-home .hero-system { grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 18px; }
-  .cb-home .hero-system-item { padding: 10px 11px; border-radius: 13px; }
+  .cb-home .hero-system { grid-template-columns: 1fr 1fr; gap: 7px; margin: 0 0 16px; }
+  .cb-home .hero-system-item { padding: 9px 10px; border-radius: 13px; }
   .cb-home .hero-system-item strong { font-size: 13px; }
   .cb-home .hero-system-item span { font-size: 11px; }
 
@@ -309,8 +309,8 @@ body {
         (Primary CTA already precedes the hero visual via source order.) */
   .cb-home .hero-actions { gap: 10px; }
   .cb-home .primary-btn, .cb-home .secondary-btn { padding: 14px 18px; }
-  .cb-home .hero-help { margin-top: 10px; }
-  .cb-home .trust-row { gap: 10px 16px; margin-top: 16px; }
+  .cb-home .hero-help { margin-top: 9px; }
+  .cb-home .trust-row { gap: 10px 16px; margin-top: 14px; }
 
   /* 4. Hero visual: ~26% smaller. Negative margin reclaims the
         layout slot the transform leaves behind so the page shortens
@@ -337,8 +337,8 @@ body {
   /* 6. "Everything you need after you print" -> compact packet list. */
   .cb-home .split { padding: 40px 0; gap: 22px; }
   .cb-home .split p { font-size: 15px; line-height: 1.55; }
-  .cb-home .feature-panel { padding: 14px 16px; }
-  .cb-home .feature-row { padding: 12px 0; gap: 12px; }
+  .cb-home .feature-panel { padding: 12px 14px; }
+  .cb-home .feature-row { padding: 10px 0; gap: 12px; }
   .cb-home .check { width: 24px; height: 24px; }
 
   /* 7. Hide the repeated "Built for what happens after the notice
@@ -348,13 +348,13 @@ body {
   .cb-home .notice-section { display: none; }
 
   /* 8. Ask OwnerPilot AI: compact padding + tighter prompt cards. */
-  .cb-home .chat-section { padding: 40px 0; }
-  .cb-home .chat-box { gap: 22px; }
-  .cb-home .prompt-box { gap: 9px; }
-  .cb-home .prompt-box .prompt-link { padding: 13px 15px; font-size: 14px; }
+  .cb-home .chat-section { padding: 34px 0; }
+  .cb-home .chat-box { gap: 18px; }
+  .cb-home .prompt-box { gap: 8px; }
+  .cb-home .prompt-box .prompt-link { padding: 11px 14px; font-size: 14px; }
 
-  /* Final CTA: compress. */
-  .cb-home .final-cta { padding: 44px 0; }
+  /* Final CTA: compress + iOS bottom safe-area so content clears Safari's bar. */
+  .cb-home .final-cta { padding: 40px 0 calc(40px + env(safe-area-inset-bottom)); }
 }
 /* === end mobile optimization Slice M1 === */
 /* ============================================================
@@ -374,6 +374,10 @@ body {
   /* #1 Kill the hero gap: hide the decorative card stack on phones
         so its grid row reserves no height. */
   .cb-home .hero-visual { display: none; }
+
+  /* Polish pass M3 (build, 2026-06-16): headline ~9% smaller on phones
+     (44px -> 40px). Playfair + wording unchanged; desktop unaffected. */
+  .cb-home h1 { font-size: 40px; }
 
   /* #4 Workflow band -> compact single-line flow. Dark band kept,
         full 4-card grid hidden, compact line shown. */
