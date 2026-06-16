@@ -281,4 +281,79 @@ body {
   .cb-home .hero-visual { transform: none; }
 }
 /* === end headline + visual rebalance === */
+/* ============================================================
+   Mobile optimization pass — Slice M1 (build, 2026-06-16).
+   Pure CSS, phone breakpoint only (max-width: 640px), all scoped
+   under .cb-home. Desktop (> 640px) is the approved Concept B and
+   is NOT touched. Goal: shorter mobile page, CTA earlier, smaller
+   hero visual, compact sections. Source-order overrides the mobile
+   rules in the blocks above.
+   Markup-dependent items (sticky CTA, workflow single-line/
+   accordion, "Your packet includes" heading swap) are Slice M2.
+   ============================================================ */
+@media (max-width: 640px) {
+  /* 1. Hero: drop the forced 760px min-height, tighten vertical run
+        so the headline + subline + CTAs land early. */
+  .cb-home .hero { min-height: 0; padding: 26px 0 30px; gap: 28px; }
+  .cb-home .eyebrow { margin-bottom: 10px; font-size: 12px; }
+  .cb-home .lead { font-size: 16px; line-height: 1.5; margin: 14px 0 18px; }
 
+  /* 2. Hero feature cards: compact 2x2 grid, tighter padding,
+        check icons + text kept. */
+  .cb-home .hero-system { grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 18px; }
+  .cb-home .hero-system-item { padding: 10px 11px; border-radius: 13px; }
+  .cb-home .hero-system-item strong { font-size: 13px; }
+  .cb-home .hero-system-item span { font-size: 11px; }
+
+  /* 3. CTAs sit directly under the feature grid; keep prominent.
+        (Primary CTA already precedes the hero visual via source order.) */
+  .cb-home .hero-actions { gap: 10px; }
+  .cb-home .primary-btn, .cb-home .secondary-btn { padding: 14px 18px; }
+  .cb-home .hero-help { margin-top: 10px; }
+  .cb-home .trust-row { gap: 10px 16px; margin-top: 16px; }
+
+  /* 4. Hero visual: ~26% smaller. Negative margin reclaims the
+        layout slot the transform leaves behind so the page shortens
+        instead of leaving a gap. No clip (unscaled box kept). */
+  .cb-home .hero-visual {
+    min-height: 560px;
+    overflow: hidden;
+    transform: scale(.74);
+    transform-origin: top center;
+    margin: 0 auto -132px;
+  }
+
+  /* 5. Workflow band: compress padding; drop the full-width
+        right-borders that look stray when steps stack. (Single-line
+        flow / accordion restructure is Slice M2 — needs markup.) */
+  .cb-home .workflow-band { padding: 26px 0; }
+  .cb-home .workflow-grid { gap: 14px; }
+  .cb-home .workflow-step { border-right: 0; padding-right: 0; }
+  .cb-home .workflow-step p { font-size: 14px; margin-top: 4px; }
+
+  /* Section headings compacted across the mobile page. */
+  .cb-home h2 { font-size: 30px; }
+
+  /* 6. "Everything you need after you print" -> compact packet list. */
+  .cb-home .split { padding: 40px 0; gap: 22px; }
+  .cb-home .split p { font-size: 15px; line-height: 1.55; }
+  .cb-home .feature-panel { padding: 14px 16px; }
+  .cb-home .feature-row { padding: 12px 0; gap: 12px; }
+  .cb-home .check { width: 24px; height: 24px; }
+
+  /* 7. Hide the repeated "Built for what happens after the notice
+        prints" three-card section on mobile (redundant with the hero
+        system + workflow band; not in the mobile page order).
+        Desktop is untouched. */
+  .cb-home .notice-section { display: none; }
+
+  /* 8. Ask OwnerPilot AI: compact padding + tighter prompt cards. */
+  .cb-home .chat-section { padding: 40px 0; }
+  .cb-home .chat-box { gap: 22px; }
+  .cb-home .prompt-box { gap: 9px; }
+  .cb-home .prompt-box .prompt-link { padding: 13px 15px; font-size: 14px; }
+
+  /* Final CTA: compress. */
+  .cb-home .final-cta { padding: 44px 0; }
+}
+/* === end mobile optimization Slice M1 === */
