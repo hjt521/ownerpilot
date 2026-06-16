@@ -31,6 +31,7 @@ function fullData(): NoticeFlowData {
     // v4 payment (§ 1161(2) payee trio + branch) — the PaymentInstructions step
     // reads these, not the legacy paymentMethods array.
     landlordContact: { name: 'Owner Name', phone: '(559) 555-0100', streetAddress: '12 Almond Ln, Fresno, CA 93650' },
+    mailingAddress: '12 Almond Ln, Fresno, CA 93650',
     paymentBranch: 'mail_only',
     signerName: 'Owner Name',
     // Stage-1 identity slice (canonical signerCapacity; signerRole removed in Defect #3).
@@ -284,6 +285,14 @@ console.log('\n21. Blank entity legal name still blocks (regression)');
   check('blocked', validateStep(FlowStep.LandlordIdentity, d).canAdvance === false);
 }
 
+console.log('\n22. Blank mailing address blocks advancement (C7b gate)');
+{
+  const d = fullData();
+  d.mailingAddress = '   ';
+  const v = validateStep(FlowStep.LandlordIdentity, d);
+  check('blocked', v.canAdvance === false);
+  check('issue names the field', v.issues.some((i) => /mailing address/i.test(i)));
+}
 console.log(`\n${'-'.repeat(40)}`);
 console.log(`  ${passed} passed, ${failed} failed`);
 console.log(`${'-'.repeat(40)}\n`);
