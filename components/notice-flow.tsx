@@ -40,6 +40,7 @@ import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import { PacketPrintOptions } from './packet-print-options';
 import { NoticeSummaryPanel } from './notice-summary-panel';
+import { PropertyAddressAutocomplete } from './places-autocomplete';
 import {
   computeCompliancePeriod,
   type ServiceMethod,
@@ -628,13 +629,10 @@ function PropertyStep({
         >
           Property street address<Req />
         </label>
-        <input
+        <PropertyAddressAutocomplete
           id="propertyAddress"
-          type="text"
           value={data.propertyAddress ?? ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            update({ propertyAddress: e.target.value })
-          }
+          onChange={(v) => update({ propertyAddress: v })}
           placeholder="123 Main St, City, CA 90000"
           className={inputClass}
         />
