@@ -132,8 +132,14 @@ export function validateStep(
           }
         });
       }
-      // Base-rent-only confirmation moved to the Step 4 produce-gate
-      // attestation (C6, det. 2026-06-14). Step 2 no longer gates on it.
+      // Base-rent-only confirmation: re-added as a Step-3 gate per broker
+      // direction (redesign 2026-06-16), reusing baseRentOnlyConfirmed.
+      // ADDITIVE to the C6 combined produce-gate attestation
+      // (produceAttestationConfirmed), which is unchanged and still binds at
+      // produce; the two coexist by design.
+      if (!data.baseRentOnlyConfirmed) {
+        issues.push('Confirm the amount entered is base rent only.');
+      }
       break;
 
     case FlowStep.PaymentInstructions: {

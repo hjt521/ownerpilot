@@ -1103,6 +1103,27 @@ function AmountStep({
         </span>
       </div>
 
+      {/* Step 3 base-rent-only confirmation. Label is broker-supplied
+          (redesign 2026-06-16), wired verbatim — [LOCKED — broker-supplied].
+          Reuses the existing baseRentOnlyConfirmed field and gates Step-3
+          advancement (advancement.ts). The C6 combined produce-gate
+          attestation (produceAttestationConfirmed) is unchanged and still
+          binds at produce; the two coexist by design. */}
+      <label className="flex items-start gap-3 rounded-lg border border-rule bg-white px-4 py-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={data.baseRentOnlyConfirmed === true}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            update({ baseRentOnlyConfirmed: e.target.checked })
+          }
+          className="mt-1"
+        />
+        <span className="text-sm text-gray-800 leading-relaxed">
+          I confirm this is base rent only &mdash; no late fees, utilities,
+          damages, repair costs, or other charges.
+        </span>
+      </label>
+
     </div>
   );
 }
