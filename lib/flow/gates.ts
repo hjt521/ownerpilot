@@ -440,17 +440,27 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
     });
   }
 
-  // (e) v4 payment configuration valid (§ 1161(2) payee trio + branch + EFT).
+  // (e) Payment configuration valid. C7a: validate the multi-select when present
+  // (via the adapter); otherwise the single-select branch.
   const pay = validatePaymentBranch(data);
-  if (!pay.valid) {
+  const payValid =
+    (data.paymentMethods?.length ?? 0) > 0
+      ? validatePaymentMethods(buildMethodsInput(data)).valid
+      : pay.valid;
+  if (!payValid) {
     blockers.push({
       code: 'PAYMENT_CONFIG_INVALID',
       message: 'The payment configuration is not yet complete or valid.',
     });
   }
 
-  // (e2) 5-mile production gate for the bank-deposit branch (ruling C2).
-  if (data.paymentBranch === 'bank_deposit') {
+  // (e2) 5-mile production gate when bank deposit is offered (ruling C2; C7a:
+  // keyed on the multi-select when present, else the single-select branch).
+  const bankOffered =
+    (data.paymentMethods?.length ?? 0) > 0
+      ? data.paymentMethods.includes('bank_deposit')
+      : data.paymentBranch === 'bank_deposit';
+  if (bankOffered) {
     if (GEOCODING_LIVE) {
       // When geocoding lands, verify by distance here instead of attestation.
       // (Left intentionally to the geocode-dependency slice.)
