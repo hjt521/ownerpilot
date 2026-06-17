@@ -27,7 +27,7 @@ import {
 } from './noticeFlowState';
 import { evaluateDisputeScreen } from './gates';
 import { validateSigningDate } from './escalation';
-import { isUsPhone } from '../payments/validatePaymentBranch';
+import { isUsPhone } from '../payments/contactValidation';
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -132,8 +132,14 @@ export function validateStep(
           }
         });
       }
-      // Base-rent-only confirmation moved to the Step 4 produce-gate
-      // attestation (C6, det. 2026-06-14). Step 2 no longer gates on it.
+      // Base-rent-only confirmation: re-added as a Step-3 gate per broker
+      // direction (redesign 2026-06-16), reusing baseRentOnlyConfirmed.
+      // ADDITIVE to the C6 combined produce-gate attestation
+      // (produceAttestationConfirmed), which is unchanged and still binds at
+      // produce; the two coexist by design.
+      if (!data.baseRentOnlyConfirmed) {
+        issues.push('Confirm the amount entered is base rent only.');
+      }
       break;
 
     case FlowStep.PaymentInstructions: {
@@ -158,7 +164,22 @@ export function validateStep(
       if (isBlank(c?.streetAddress)) {
         issues.push('A street address to receive payment is required.');
       }
-      if (!data.paymentBranch) {
+      if ((data.paymentMethods?.length ?? 0) > 0) {
+        // C7a multi-select: presence per selected method (deep validity at Review).
+        if (data.paymentMethods.includes('in_person')) {
+          if (isBlank(data.personalDeliveryDays)) {
+            issues.push('Enter the days personal delivery is available.');
+          }
+          if (isBlank(data.personalDeliveryHours)) {
+            issues.push('Enter the hours personal delivery is available.');
+          }
+        }
+        if (data.paymentMethods.includes('bank_deposit')) {
+          if (isBlank(data.bankName)) issues.push('Enter the bank name.');
+          if (isBlank(data.bankBranchAddress)) issues.push('Enter the bank branch address.');
+          if (isBlank(data.bankAccountNumber)) issues.push('Enter the account number.');
+        }
+      } else if (!data.paymentBranch) {
         issues.push('Choose how rent may be paid.');
       } else if (data.paymentBranch === 'in_person_and_mail') {
         if (isBlank(data.personalDeliveryDays)) {

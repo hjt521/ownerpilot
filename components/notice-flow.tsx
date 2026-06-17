@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Fragment, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useState, useEffect, useRef, useContext, createContext, Fragment, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   createFlowState,
   FlowStep,
@@ -11,6 +11,7 @@ import {
   SignerCapacity,
   EntityType,
   PaymentBranch,
+  OfferedMethod,
   LandlordContact,
   ServiceAttempt,
   LlcManagementType,
@@ -27,7 +28,10 @@ import {
 } from '@/lib/flow/llcCopy';
 import { validateStep } from '@/lib/flow/advancement';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
+import { saveProfile, loadProfile, clearProfile, applyProfile } from '@/lib/flow/profile';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
+import { validatePaymentMethods } from '@/lib/payments/validatePaymentMethods';
+import { buildMethodsInput } from '@/lib/flow/paymentMethodsAdapter';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import {
   validateSigningDate,
@@ -35,7 +39,7 @@ import {
   captureProductionSnapshot,
   evaluateStaleness,
 } from '@/lib/flow/escalation';
-import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName } from '@/lib/produce/renderNotice';
+import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName, formatPropertyLine } from '@/lib/produce/renderNotice';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import { PacketPrintOptions } from './packet-print-options';
@@ -145,6 +149,7 @@ export function NoticeFlow() {
   const [pageIndex, setPageIndex] = useState(0);
   const [showIssues, setShowIssues] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [profilePrefilled, setProfilePrefilled] = useState(false);
   // C5 soft mode: the safety-override confirmation modal.
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   // Hard mode: lets the user escape the attorney handoff to edit Step 1.
@@ -159,6 +164,13 @@ export function NoticeFlow() {
       setState((s) => ({ ...s, data: draft.data }));
       setPageIndex(Math.max(0, Math.min(draft.pageIndex, PAGES.length - 1)));
       setDraftRestored(true);
+    } else {
+      // No in-progress draft: prefill from a saved owner profile if one exists.
+      const profile = loadProfile();
+      if (profile) {
+        setState((s) => ({ ...s, data: applyProfile(s.data, profile) }));
+        setProfilePrefilled(true);
+      }
     }
     hydratedRef.current = true;
   }, []);
@@ -166,16 +178,30 @@ export function NoticeFlow() {
   // pristine pre-restore state on first mount).
   useEffect(() => {
     if (!hydratedRef.current) return;
-    const t = setTimeout(() => saveDraft(pageIndex, state.data), 500);
+    const t = setTimeout(() => {
+      saveDraft(pageIndex, state.data);
+      // Profile hook: keep the saved landlord/payment defaults in sync as the
+      // user edits, gated on the opt-in box. Decoupled from producing so the
+      // defaults persist even for an incomplete notice. Never includes the
+      // bank account number (see extractProfile).
+      if (state.data.saveLandlordPaymentDefaults) {
+        saveProfile(state.data);
+      } else {
+        clearProfile();
+      }
+    }, 500);
     return () => clearTimeout(t);
   }, [state.data, pageIndex]);
 
   const startOver = () => {
     clearDraft();
-    setState(createFlowState());
+    const fresh = createFlowState();
+    const profile = loadProfile();
+    setState(profile ? { ...fresh, data: applyProfile(fresh.data, profile) } : fresh);
     setPageIndex(0);
     setShowIssues(false);
     setDraftRestored(false);
+    setProfilePrefilled(!!profile);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -186,6 +212,11 @@ export function NoticeFlow() {
     const t = setTimeout(() => setDraftRestored(false), 8000);
     return () => clearTimeout(t);
   }, [draftRestored]);
+  useEffect(() => {
+    if (!profilePrefilled) return;
+    const t = setTimeout(() => setProfilePrefilled(false), 8000);
+    return () => clearTimeout(t);
+  }, [profilePrefilled]);
 
   const update = (
     patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>),
@@ -218,6 +249,19 @@ export function NoticeFlow() {
       (a) => a === 'yes' || a === 'unknown',
     ) &&
     !state.data.safetyCheckOverride;
+  const scrollToTop = () => {
+    if (typeof window === 'undefined') return;
+    // Defer past the page swap: iOS Safari drops a scroll fired synchronously
+    // while the old page is still laid out, so run it on the next frame, after
+    // React commits the new page. Hit documentElement/body too - window.scrollTo
+    // alone is unreliable on iOS.
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    });
+  };
+
   const proceedThroughOverride = () => {
     const flaggedAnswers: { question: keyof typeof disp; answer: 'yes' | 'no' | 'unknown' }[] = [];
     (['tenantFiledComplaint', 'tenantWrittenWithholding', 'tenantBankruptcy'] as const).forEach(
@@ -238,6 +282,7 @@ export function NoticeFlow() {
     setOverrideModalOpen(false);
     setPageIndex((i) => Math.min(i + 1, totalPages - 1));
     setShowIssues(false);
+    scrollToTop();
   };
   const onNext = () => {
     if (!canAdvance) {
@@ -250,22 +295,22 @@ export function NoticeFlow() {
     }
     setPageIndex((i) => Math.min(i + 1, totalPages - 1));
     setShowIssues(false);
+    scrollToTop();
   };
 
   const onBack = () => {
     setPageIndex((i) => Math.max(i - 1, 0));
     setShowIssues(false);
+    scrollToTop();
   };
 
-  // Jump directly to a page (used by the Review blockers' "Go to this"
+  // Jump directly to a page (used by the Review checklist's "Fix this"
   // buttons). Clamped; scrolls to the top so the landed page reads from
   // its heading.
   const goToPage = (i: number) => {
     setPageIndex(Math.max(0, Math.min(i, totalPages - 1)));
     setShowIssues(false);
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    scrollToTop();
   };
 
   // Enter advances the flow, scoped to avoid hijacking other Enter behaviors:
@@ -351,16 +396,46 @@ export function NoticeFlow() {
             </div>
           </div>
         )}
+        {/* Profile-prefilled toast: saved landlord/payment details were applied. */}
+        {profilePrefilled && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed top-4 right-4 z-50 w-[calc(100%-2rem)] max-w-sm flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-lg sm:w-auto"
+          >
+            <p className="text-sm text-gray-700">
+              We prefilled your saved landlord and payment details. Review and edit as needed.
+            </p>
+            <button
+              onClick={() => setProfilePrefilled(false)}
+              className="text-sm text-gray-500 hover:text-gray-900"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {/* Step body — every step in the current page, divided */}
         <section className="mb-10">
+          {/* Slice C1a: Step-4 sections share one accordion (one open at a
+              time on mobile). Provider is inert on pages with no
+              CollapsibleSection. defaultOpenId opens the first payment
+              section; 4A (LandlordIdentityStep) joins the same provider in C1b. */}
+          <AccordionProvider defaultOpenId="landlord_4a">
           {page.steps.map((step, idx) => (
             <div
               key={step}
-              className={idx > 0 ? 'pt-4 mt-4 border-t border-gray-200' : ''}
+              className={
+                idx > 0
+                  ? page.steps.includes(FlowStep.PaymentInstructions)
+                    ? 'mt-8'
+                    : 'pt-4 mt-4 border-t border-gray-200'
+                  : ''
+              }
             >
               {renderStepBody(step, state.data, update, goToPage)}
             </div>
           ))}
+          </AccordionProvider>
         </section>
 
         {/* Validation issues */}
@@ -917,6 +992,81 @@ function SectionHeader({ title, subhead }: { title: string; subhead: string }) {
     </div>
   );
 }
+
+// Slice C1a: strict one-open-at-a-time accordion for the Step-4 progressive
+// disclosure. The provider holds the single open section id; CollapsibleSection
+// reads it. On mobile only one body is shown (the open id); tapping a header
+// opens it and collapses the rest. On desktop (lg+) every body is shown via
+// lg:block and the chevron is hidden, so sections read as stacked cards.
+const AccordionContext = createContext<{
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+}>({ openId: null, setOpenId: () => {} });
+
+function AccordionProvider({
+  defaultOpenId = null,
+  children,
+}: {
+  defaultOpenId?: string | null;
+  children: ReactNode;
+}) {
+  const [openId, setOpenId] = useState<string | null>(defaultOpenId);
+  return (
+    <AccordionContext.Provider value={{ openId, setOpenId }}>
+      {children}
+    </AccordionContext.Provider>
+  );
+}
+
+function CollapsibleSection({
+  id,
+  title,
+  subhead,
+  required = false,
+  children,
+}: {
+  id: string;
+  title: string;
+  subhead?: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
+  const { openId, setOpenId } = useContext(AccordionContext);
+  const open = openId === id;
+  return (
+    <section className="rounded-lg border border-rule bg-white">
+      <button
+        type="button"
+        onClick={() => setOpenId(open ? null : id)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left lg:cursor-default"
+      >
+        <span className="font-serif text-xl font-bold text-brand leading-tight">
+          {title}
+          {required && <Req />}
+        </span>
+        <svg
+          className={`lg:hidden h-5 w-5 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.73a.75.75 0 1 1 1.06 1.06l-4.24 4.25a.75.75 0 0 1-1.06 0L5.21 8.27a.75.75 0 0 1 .02-1.06z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+      <div className={`px-4 pb-4 ${open ? 'block' : 'hidden lg:block'}`}>
+        {subhead && (
+          <p className="text-sm text-gray-600 leading-relaxed mb-3">{subhead}</p>
+        )}
+        {children}
+      </div>
+    </section>
+  );
+}
 // Collapsible "Learn more" disclosure. Native details/summary - accessible,
 // no JS, no dependency. Holds the longer explanatory paragraphs that used to
 // be always-visible body text.
@@ -1052,7 +1202,7 @@ function AmountStep({
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <div>
                 <FieldLabel htmlFor={`start-${i}`}>Period start<Req /></FieldLabel>
                 <DateField
@@ -1103,22 +1253,56 @@ function AmountStep({
         </span>
       </div>
 
+      {/* Step 3 base-rent-only confirmation. Label is broker-supplied
+          (redesign 2026-06-16), wired verbatim — [LOCKED — broker-supplied].
+          Reuses the existing baseRentOnlyConfirmed field and gates Step-3
+          advancement (advancement.ts). The C6 combined produce-gate
+          attestation (produceAttestationConfirmed) is unchanged and still
+          binds at produce; the two coexist by design. */}
+      <label className="flex items-start gap-3 rounded-lg border border-rule bg-white px-4 py-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={data.baseRentOnlyConfirmed === true}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            update({ baseRentOnlyConfirmed: e.target.checked })
+          }
+          className="mt-1"
+        />
+        <span className="text-sm text-gray-800 leading-relaxed">
+          I confirm this is base rent only &mdash; no late fees, utilities,
+          damages, repair costs, or other charges.
+        </span>
+      </label>
+
+      {/* Slice D: compact running total repeated just above the Continue
+          button on mobile only (lg:hidden). Normal flow, not sticky — never
+          covers the confirmation checkbox or the CTA. Mirrors the main Total
+          Demanded card above. */}
+      <div className="lg:hidden flex items-center justify-between rounded-lg border border-brand bg-tint px-4 py-3">
+        <span className="text-sm font-semibold text-gray-700">Total Demanded</span>
+        <span className="text-lg font-bold text-brand">
+          ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      </div>
+
     </div>
   );
 }
 
 // --- Step 4: Payment instructions (v4: § 1161(2) payee + payment branch) ----
 
-const PAYMENT_BRANCH_LABELS: Record<PaymentBranch, string> = {
-  mail_only: 'By mail only',
-  in_person_and_mail: 'In person and by mail',
+const OFFERED_METHOD_LABELS: Record<OfferedMethod, string> = {
+  in_person: 'In person',
+  by_mail: 'By mail',
   bank_deposit: 'By deposit at a financial institution',
+  eft: 'Electronic funds transfer (EFT)',
 };
 
-const PAYMENT_BRANCH_HELP: Record<PaymentBranch, string> = {
-  mail_only: 'The tenant mails payment to the address above.',
-  in_person_and_mail: 'The tenant may hand-deliver during set hours, or mail it.',
+const OFFERED_METHOD_HELP: Record<OfferedMethod, string> = {
+  in_person: 'The tenant hand-delivers payment during set days and hours.',
+  by_mail: 'The tenant mails payment to the address above.',
   bank_deposit: 'The tenant deposits a check or money order at a bank branch.',
+  eft: 'Only if an EFT procedure was previously established with the tenant. Requires By mail.',
 };
 
 // Attorney-locked operator copy for the Step-4 non-landlord payee override
@@ -1238,19 +1422,80 @@ function PaymentStep({
   const c: LandlordContact = data.landlordContact ?? {};
   const setContact = (patch: Partial<LandlordContact>) =>
     update({ landlordContact: { ...c, ...patch } });
-  const branch = data.paymentBranch;
+  const methods = data.paymentMethods ?? [];
+  const toggleMethod = (m: OfferedMethod, on: boolean) =>
+    update((d) => {
+      const cur = d.paymentMethods ?? [];
+      const next = on
+        ? (cur.includes(m) ? cur : [...cur, m])
+        : cur.filter((x) => x !== m);
+      return { paymentMethods: next };
+    });
+  // Inline config errors (floor + EFT-pairing), sourced from the validator so
+  // the rules stay single-sourced; shown once at least one method is selected.
+  const payConfigErrors =
+    methods.length > 0
+      ? validatePaymentMethods(buildMethodsInput(data)).errors.filter(
+          (er) =>
+            er.code === 'SECTION_1947_3_FLOOR' || er.code === 'EFT_REQUIRES_MAIL',
+        )
+      : [];
   // Defect #2 cutover: the § 1161(2) payee NAME is derived from the Step-3
   // landlord identity (or the non-landlord override), never typed here.
   const derivedPayee = derivePayeeName(data);
 
+  // Mirror the owner mailing address -> payee street, AND the mailing unit ->
+  // payee unit (broker direction 2026-06-16), until the user edits the payee
+  // field. One effect handles both in a single functional update so the two
+  // mirrors can't clobber each other or a concurrent change to another contact
+  // field. Debounced; KEEPS FOLLOWING mailing changes; stops per field once
+  // payeeStreetUserEdited / payeeUnitUserEdited is set (persisted).
+  const mailingForMirror = data.mailingAddress ?? '';
+  const mailingUnitForMirror = data.mailingUnit ?? '';
+  useEffect(() => {
+    if (data.payeeStreetUserEdited && data.payeeUnitUserEdited) return;
+    if (!mailingForMirror && !mailingUnitForMirror) return;
+    const t = setTimeout(() => {
+      const patch: Partial<LandlordContact> = {};
+      if (
+        !data.payeeStreetUserEdited &&
+        mailingForMirror &&
+        (data.landlordContact?.streetAddress ?? '') !== mailingForMirror
+      ) {
+        patch.streetAddress = mailingForMirror;
+      }
+      if (
+        !data.payeeUnitUserEdited &&
+        mailingUnitForMirror &&
+        (data.landlordContact?.unit ?? '') !== mailingUnitForMirror
+      ) {
+        patch.unit = mailingUnitForMirror;
+      }
+      if (Object.keys(patch).length > 0) {
+        update((d) => ({
+          landlordContact: { ...(d.landlordContact ?? {}), ...patch },
+        }));
+      }
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    mailingForMirror,
+    mailingUnitForMirror,
+    data.payeeStreetUserEdited,
+    data.payeeUnitUserEdited,
+  ]);
+
   return (
     <div className="space-y-8">
-      {/* Section 1 — person to receive payment (§ 1161(2) name/phone/address) */}
+      {/* Section 1 (4B) — person to receive payment (§ 1161(2) name/phone/address) */}
+      <CollapsibleSection
+        id="payment_4b"
+        title="Where rent is paid"
+        subhead="California law requires the notice to name a person, a telephone number, and a street address."
+        required
+      >
       <div className="space-y-4">
-        <SectionHeader
-          title="Where rent is paid."
-          subhead="California law requires the notice to name a person, a telephone number, and a street address."
-        />
         <LearnMore>
           California law requires the notice to name the person to receive
           payment, with a telephone number and a street address. This can be the
@@ -1326,7 +1571,11 @@ function PaymentStep({
           {data.mailingAddress && !(c.streetAddress ?? '').trim() && (
             <button
               type="button"
-              onClick={() => setContact({ streetAddress: data.mailingAddress })}
+              onClick={() =>
+                update({
+                  landlordContact: { ...c, streetAddress: data.mailingAddress, unit: data.mailingUnit },
+                })
+              }
               className="mb-2 text-sm font-medium text-blue-700 hover:text-blue-800"
             >
               Same as mailing address
@@ -1335,39 +1584,56 @@ function PaymentStep({
           <PropertyAddressAutocomplete
             id="payeeAddress"
             value={c.streetAddress ?? ''}
-            onChange={(v) => setContact({ streetAddress: v })}
+            onChange={(v) =>
+              update({
+                landlordContact: { ...c, streetAddress: v },
+                payeeStreetUserEdited: true,
+              })
+            }
             placeholder="123 Main St, City, CA 90000"
             className={inputClass}
           />
+          <div className="mt-3">
+            <FieldLabel htmlFor="payeeUnit">Unit / Suite # (optional)</FieldLabel>
+            <input
+              id="payeeUnit"
+              type="text"
+              value={c.unit ?? ''}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                update({ landlordContact: { ...c, unit: e.target.value }, payeeUnitUserEdited: true })
+              }
+              placeholder="Suite 200"
+              className={inputClass}
+            />
+          </div>
         </div>
       </div>
+      </CollapsibleSection>
 
-      {/* Section 2 — how rent may be paid (single branch) */}
+      {/* Section 2 (4C) — how rent may be paid (select all that apply) */}
+      <CollapsibleSection id="payment_4c" title="How may rent be paid?" required>
       <div className="space-y-3">
-        <span className="block text-sm font-semibold text-gray-700 mb-1">
-          How may rent be paid?<Req />
-        </span>
-        {(Object.keys(PAYMENT_BRANCH_LABELS) as PaymentBranch[]).map((b) => (
-          <Fragment key={b}>
+        <p className="text-sm text-gray-500">Select all that apply.</p>
+        {(['in_person', 'by_mail', 'bank_deposit', 'eft'] as OfferedMethod[]).map((m) => (
+          <Fragment key={m}>
             <label
               className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                branch === b ? 'border-brand bg-tint' : 'border-rule bg-white'
+                methods.includes(m) ? 'border-brand bg-tint' : 'border-rule bg-white'
               }`}
             >
               <input
-                type="radio"
-                name="paymentBranch"
-                checked={branch === b}
-                onChange={() => update({ paymentBranch: b })}
+                type="checkbox"
+                checked={methods.includes(m)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => toggleMethod(m, e.target.checked)}
                 className="mt-1"
               />
               <span>
-                <span className="block text-gray-900 font-medium">{PAYMENT_BRANCH_LABELS[b]}</span>
-                <span className="block text-sm text-gray-500">{PAYMENT_BRANCH_HELP[b]}</span>
+                <span className="block text-gray-900 font-medium">{OFFERED_METHOD_LABELS[m]}</span>
+                <span className="block text-sm text-gray-500">{OFFERED_METHOD_HELP[m]}</span>
               </span>
             </label>
 
-            {branch === b && b === 'in_person_and_mail' && (
+            {methods.includes(m) && m === 'in_person' && (
               <div className="rounded-lg border border-gray-200 px-4 py-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -1400,7 +1666,7 @@ function PaymentStep({
               </div>
             )}
 
-            {branch === b && b === 'bank_deposit' && (
+            {methods.includes(m) && m === 'bank_deposit' && (
               <div className="space-y-3 rounded-lg border border-gray-200 px-4 py-4">
                 <BankAccountInterstitial data={data} update={update} />
                 <div>
@@ -1440,46 +1706,61 @@ function PaymentStep({
                 <BankDepositAttestations data={data} update={update} />
               </div>
             )}
+
+            {methods.includes(m) && m === 'eft' && (
+              <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={data.eftPreviouslyEstablishedConfirmed === true}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    update({ eftPreviouslyEstablishedConfirmed: e.target.checked })
+                  }
+                  className="mt-1"
+                />
+                <span className="text-sm text-amber-900 leading-relaxed">
+                  I confirm an EFT procedure was <strong>previously established</strong>
+                  {' '}with this tenant. (EFT may only be offered if it already exists.)
+                </span>
+              </label>
+            )}
           </Fragment>
         ))}
-        {/* Optional EFT election (add-on only) — last row in the same group so
-            its spacing matches the option boxes above. */}
-        <label className="flex items-start gap-3 rounded-lg border border-rule bg-white px-4 py-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={data.eftElectionAvailable === true}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              update({ eftElectionAvailable: e.target.checked })
-            }
-            className="mt-1"
-          />
-          <span>
-            <span className="block text-gray-900 font-medium">
-              Also allow electronic funds transfer{' '}
-              <span className="font-normal text-gray-500">(optional)</span>
-            </span>
-            <span className="block text-sm text-gray-500">
-              Adds EFT as a payment option, in addition to the method above.
-            </span>
-          </span>
-        </label>
-        {data.eftElectionAvailable === true && (
-          <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={data.eftPreviouslyEstablishedConfirmed === true}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                update({ eftPreviouslyEstablishedConfirmed: e.target.checked })
-              }
-              className="mt-1"
-            />
-            <span className="text-sm text-amber-900 leading-relaxed">
-              I confirm an EFT procedure was <strong>previously established</strong>
-              {' '}with this tenant. (EFT may only be offered if it already exists.)
-            </span>
-          </label>
+
+        {payConfigErrors.length > 0 && (
+          <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 space-y-1">
+            {payConfigErrors.map((er) => (
+              <p key={er.code} className="text-sm text-red-800">{er.message}</p>
+            ))}
+          </div>
         )}
       </div>
+      </CollapsibleSection>
+
+      {/* C2b: optional "save my details" preference at the end of Step 4.
+          Records intent only; no profile storage exists yet.
+          TODO(profile-persistence): when an owner profile exists, on produce
+          persist the landlord identity + payment payee/phone/address if
+          saveLandlordPaymentDefaults is true, and prefill future notices.
+          NEVER persist data.bankAccountNumber — it is sensitive and is
+          re-entered per notice. */}
+      <label className="flex items-start gap-3 rounded-lg border border-rule bg-tint px-4 py-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={data.saveLandlordPaymentDefaults === true}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            update({ saveLandlordPaymentDefaults: e.target.checked })
+          }
+          className="mt-1"
+        />
+        <span>
+          <span className="block text-sm font-medium text-gray-900">
+            Save landlord and payment details for future notices
+          </span>
+          <span className="block text-sm text-gray-500">
+            This can make future notices faster. You can update it anytime.
+          </span>
+        </span>
+      </label>
     </div>
   );
 }
@@ -1862,11 +2143,13 @@ function LandlordIdentityStep({
     update(setLandlordTypePatch(t, { ...data, landlordIdentity: restored }));
   };
   return (
+    <CollapsibleSection
+      id="landlord_4a"
+      title="Landlord (the party serving this notice)."
+      subhead="Who is the landlord on this notice?"
+      required
+    >
     <div className="space-y-6">
-      <SectionHeader
-        title="Landlord (the party serving this notice)."
-        subhead="Who is the landlord on this notice?"
-      />
       <LearnMore>
         Who is the landlord on this notice? This determines whose name appears
         as the party the notice is from, and (unless you say otherwise on the
@@ -2040,6 +2323,17 @@ function LandlordIdentityStep({
             placeholder="123 Main St, City, CA 90000"
             className={inputClass}
           />
+          <div className="mt-3">
+            <FieldLabel htmlFor="mailingUnit">Unit / Suite # (optional)</FieldLabel>
+            <input
+              id="mailingUnit"
+              type="text"
+              value={data.mailingUnit ?? ''}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => update({ mailingUnit: e.target.value })}
+              placeholder="Suite 200"
+              className={inputClass}
+            />
+          </div>
           <p className="mt-1 text-xs text-gray-500 leading-relaxed">
             Where you receive mail about this notice. We&apos;ll use it to
             prefill the payment address on the next step (you can change it
@@ -2048,6 +2342,7 @@ function LandlordIdentityStep({
         </div>
       )}
     </div>
+    </CollapsibleSection>
   );
 }
 
@@ -2287,7 +2582,7 @@ function LandlordStep({
 // --- Step 6: Review ---------------------------------------------------------
 
 // Maps a produce-gate blocker code (gates.ts, evaluateCanProduceV4) to the
-// wizard PAGE that owns the fields behind it, for the "Go to this" jump.
+// wizard PAGE that owns the fields behind it, for the "Fix this" jump.
 // JURISDICTION_* codes are handled by prefix in pageForBlocker.
 // TEMPLATE_NOT_SIGNED_OFF is a system gate with no owning page - no button.
 const BLOCKER_PAGE: Record<string, number> = {
@@ -2315,6 +2610,132 @@ function pageForBlocker(code: string): number | null {
   return code in BLOCKER_PAGE ? BLOCKER_PAGE[code] : null;
 }
 
+// Step-5 review summary: a recap of entered values grouped by step, each with an
+// Edit jump (reuses goToPage). Echoes user input and existing UI labels only -
+// no notice-face legal text is authored here.
+function ReviewSummaryCards({
+  data,
+  result,
+  goToPage,
+}: {
+  data: NoticeFlowData;
+  result: ReturnType<typeof evaluateCanProduceV4>;
+  goToPage?: (pageIndex: number) => void;
+}) {
+  const NOT_SET = 'Not added yet';
+
+  const propertyLine = (data.propertyAddress ?? '').trim()
+    ? formatPropertyLine(data.propertyAddress ?? '', data.propertyUnit)
+    : NOT_SET;
+  const tenantLine =
+    (data.tenantNames ?? []).map((n) => (n ?? '').trim()).filter(Boolean).join(', ') || NOT_SET;
+
+  const periods = data.rentPeriods ?? [];
+  const rentTotal = periods.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const li = data.landlordIdentity;
+  let landlordLine = NOT_SET;
+  if (li?.type === 'entity' && (li.entityLegalName ?? '').trim()) {
+    landlordLine = li.entityLegalName;
+  } else if (li?.type === 'individual') {
+    const names = li.names.map((n) => (n ?? '').trim()).filter(Boolean);
+    if (names.length) landlordLine = names.join(', ');
+  }
+  let payeeName = '';
+  try {
+    payeeName = (derivePayeeName(data).name ?? '').trim();
+  } catch {
+    payeeName = '';
+  }
+  const paymentLabel = (data.paymentMethods ?? []).map((m) => OFFERED_METHOD_LABELS[m]).join(', ');
+  const payPhone = (data.landlordContact?.phone ?? '').trim();
+
+  const signerName = (data.signerName ?? '').trim();
+  const signerTitle = (data.signerTitle ?? '').trim();
+  const signerLine = signerName
+    ? signerName + (signerTitle ? `, ${signerTitle}` : '')
+    : NOT_SET;
+  const signed = data.signingDate ? formatNoticeDate(data.signingDate) : '';
+  const served = data.serviceDate ? formatNoticeDate(data.serviceDate) : '';
+  const datesLine =
+    [signed && `Signed ${signed}`, served && `Served ${served}`].filter(Boolean).join(' \u00b7 ') ||
+    'Dates not set';
+  const deadline = result.computedDates
+    ? formatNoticeDate(result.computedDates.expirationDate)
+    : '';
+
+  const cards: { title: string; page: number; lines: string[] }[] = [
+    { title: 'Property & tenant', page: 1, lines: [propertyLine, tenantLine] },
+    {
+      title: 'Rent owed',
+      page: 2,
+      lines:
+        periods.length === 0
+          ? [NOT_SET]
+          : [
+              `${periods.length} rental period${periods.length === 1 ? '' : 's'}`,
+              `Total demanded: ${rentTotal.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              })}`,
+            ],
+    },
+    {
+      title: 'Landlord & payment',
+      page: 3,
+      lines: [
+        landlordLine,
+        payeeName ? `Pay to ${payeeName}` : '',
+        [paymentLabel, payPhone].filter(Boolean).join(' \u00b7 '),
+      ].filter(Boolean),
+    },
+    {
+      title: 'Signer & dates',
+      page: 4,
+      lines: [signerLine, datesLine, deadline ? `Deadline: ${deadline}` : ''].filter(Boolean),
+    },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="font-serif text-lg font-bold text-brand">Review your details</h3>
+        <span className="text-xs text-gray-500">Edit jumps back to that step</span>
+      </div>
+      {cards.map((c) => (
+        <div
+          key={c.title}
+          className="flex items-start justify-between gap-4 rounded-lg border border-rule bg-white px-5 py-4"
+        >
+          <div className="min-w-0">
+            <p className="font-serif text-base font-bold text-brand mb-1">{c.title}</p>
+            {c.lines.map((line, i) => {
+              const muted = line === NOT_SET || line === 'Dates not set';
+              return (
+                <p
+                  key={i}
+                  className={`text-sm leading-relaxed ${muted ? 'italic text-gray-400' : 'text-gray-700'}`}
+                >
+                  {line}
+                </p>
+              );
+            })}
+          </div>
+          {goToPage && (
+            <button
+              type="button"
+              onClick={() => goToPage(c.page)}
+              className="flex-shrink-0 text-sm font-semibold text-brand underline whitespace-nowrap"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ReviewStep({
   data,
   update,
@@ -2324,7 +2745,6 @@ function ReviewStep({
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
   goToPage?: (pageIndex: number) => void;
 }) {
-  const [produceAttempted, setProduceAttempted] = useState(false);
   const result = evaluateCanProduceV4(data);
 
   // When the gate says ready, render the notice from the build-locked template
@@ -2347,6 +2767,13 @@ function ReviewStep({
   // checkbox it points to isn't shown in the multi-blocker state.
   const visibleBlockers = result.blockers.filter(
     (b) => b.code !== 'PRODUCE_ATTESTATION_MISSING',
+  );
+  // Items that require going BACK to another step to fix. Step 5's own fields
+  // (signer/dates, page index 4) are handled by their asterisks above, so they
+  // don't trigger the needs-attention box - it appears only for cross-step
+  // items. The green "ready" state still waits for ALL visible blockers.
+  const otherStepBlockers = visibleBlockers.filter(
+    (b) => pageForBlocker(b.code) !== 4,
   );
   if (isRenderable && result.computedDates) {
     try {
@@ -2375,96 +2802,47 @@ function ReviewStep({
     update({ productionSnapshot: captureProductionSnapshot(data) });
   };
 
-  // Slice A.1: don't surface the produce-gate readout (green/amber) the
-  // instant the user lands on Step 5. The signer/date fields live on this
-  // same page and are still empty on arrival, so an immediate "Not ready
-  // yet" list nags about fields the user hasn't filled. Gate the readout
-  // behind an explicit produce attempt; local state resets on each entry to
-  // Step 5, so arriving (or returning via a "Go to this" jump) starts clean.
-  // Once attempted, the checklist updates live as fields above are filled.
-  if (!produceAttempted) {
-    return (
-      <div className="space-y-6">
-        <StepIntro>
-          When the signer and dates above are filled in, produce your notice
-          packet. We&apos;ll check everything and flag anything that still
-          needs attention before it prints.
-        </StepIntro>
-        <button
-          type="button"
-          onClick={() => setProduceAttempted(true)}
-          className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-bar transition-colors"
-        >
-          Produce Notice Packet
-        </button>
-      </div>
-    );
-  }
-
+  // Slice E: always-visible calm readiness checklist near the top of Step 5.
+  // No produce-click gate - the user sees where things stand the moment they
+  // arrive, in warm/reassuring language (not an alarming error box). The
+  // "Produce Notice Packet" action stays below as the deliberate final step.
   return (
     <div className="space-y-6">
       <StepIntro>
-        Last check before producing the notice. Everything below must be clear.
+        Here&apos;s where your notice stands. Once everything below is checked
+        off, produce your packet using the button further down this step.
       </StepIntro>
 
-      {result.canProduce ? (
+      {visibleBlockers.length === 0 ? (
         <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4">
-          <p className="font-semibold text-green-900 mb-1">Ready to produce.</p>
-          <p className="text-sm text-green-900 leading-relaxed">
-            All requirements are met.
-            {result.computedDates && (
-              <>
-                {' '}The tenant will have until{' '}
-                <strong>{formatNoticeDate(result.computedDates.expirationDate)}</strong> to pay or
-                vacate (period begins {formatNoticeDate(result.computedDates.commencementDate)}).
-              </>
-            )}
-          </p>
-        </div>
-      ) : (
-        <div
-          className={`rounded-lg border px-5 py-4 ${
-            onlyAttestationLeft
-              ? 'border-green-300 bg-green-50'
-              : 'border-amber-300 bg-amber-50'
-          }`}
-        >
-          {!onlyAttestationLeft && (
-          <p className="font-semibold text-amber-900 mb-2">
-            Not ready yet — {visibleBlockers.length}{' '}
-            {visibleBlockers.length === 1 ? 'item needs' : 'items need'} attention:
-          </p>
-          )}
-          {!onlyAttestationLeft && (
-          <ul className="space-y-2 text-sm text-amber-900 list-disc pl-5">
-            {visibleBlockers.map((b) => {
-              const targetPage = pageForBlocker(b.code);
-              return (
-                <li key={b.code}>
-                  <span>{b.message}</span>
-                  {targetPage !== null && goToPage && (
-                    <button
-                      type="button"
-                      onClick={() => goToPage(targetPage)}
-                      className="ml-2 align-baseline text-xs font-semibold text-amber-800 underline whitespace-nowrap"
-                    >
-                      Go to this &rarr;
-                    </button>
-                  )}
-                  {b.code === 'PAYMENT_CONFIG_INVALID' && result.paymentErrors.length > 0 && (
-                    <ul className="mt-1 space-y-0.5 pl-5 list-disc">
-                      {result.paymentErrors.map((pe) => (
-                        <li key={pe.code}>{pe.message}</li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
+          <p className="font-semibold text-green-900 mb-3">Everything&apos;s ready.</p>
+          <ul className="space-y-2 text-sm text-green-900">
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
+              <span>Property and tenant complete</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
+              <span>Rent amount confirmed as base rent only</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
+              <span>Payment person, phone, and address complete</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
+              <span>Signer and service date complete</span>
+            </li>
           </ul>
+          {result.computedDates && (
+            <p className="mt-3 text-sm text-green-900 leading-relaxed">
+              The tenant will have until{' '}
+              <strong>{formatNoticeDate(result.computedDates.expirationDate)}</strong> to pay or
+              vacate (period begins {formatNoticeDate(result.computedDates.commencementDate)}).
+            </p>
           )}
-          {onlyAttestationLeft && (
-            <div className="space-y-3">
+          {!result.canProduce && (
+            <div className="mt-4 space-y-3 border-t border-green-200 pt-4">
               <p className="text-sm font-semibold text-green-900">
                 California law requires you to confirm the following before
                 producing this notice:
@@ -2487,22 +2865,53 @@ function ReviewStep({
                   By producing this notice, I confirm: the amounts entered are base rent only (no late fees, utilities, or other charges); the tenants and landlord(s) named are correct; and the signer is authorized.
                 </span>
               </label>
-              {goToPage && (
-                <button
-                  type="button"
-                  onClick={() => goToPage(2)}
-                  className="text-xs font-semibold text-green-800 underline"
-                >
-                  &larr; Back to rent amount
-                </button>
-              )}
             </div>
           )}
         </div>
-      )}
+      ) : otherStepBlockers.length > 0 ? (
+        <div className="rounded-lg border border-rule bg-tint px-5 py-4">
+          <p className="font-semibold text-brand mb-1">
+            Almost there — a few things to finish first.
+          </p>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3">
+            No rush. Take care of these and your packet will be ready to produce.
+          </p>
+          <ul className="space-y-2 text-sm text-gray-800">
+            {otherStepBlockers.map((b) => {
+              const targetPage = pageForBlocker(b.code);
+              return (
+                <li key={b.code} className="flex items-start gap-2">
+                  <span aria-hidden="true" className="mt-0.5 text-brand">&#9675;</span>
+                  <span>
+                    <span>{b.message}</span>
+                    {targetPage !== null && goToPage && (
+                      <button
+                        type="button"
+                        onClick={() => goToPage(targetPage)}
+                        className="ml-2 align-baseline text-xs font-semibold text-brand underline whitespace-nowrap"
+                      >
+                        Fix this &rarr;
+                      </button>
+                    )}
+                    {b.code === 'PAYMENT_CONFIG_INVALID' && result.paymentErrors.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 pl-5 list-disc text-gray-700">
+                        {result.paymentErrors.map((pe) => (
+                          <li key={pe.code}>{pe.message}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+
+      <ReviewSummaryCards data={data} result={result} goToPage={goToPage} />
 
       {!result.canProduce &&
-        data.paymentBranch === 'bank_deposit' &&
+        (data.paymentMethods ?? []).includes('bank_deposit') &&
         (data.bankDepositPaperInstrumentConfirmed !== true ||
           data.bankBranchWithinFiveMilesAttested !== true) && (
           <div className="space-y-3 rounded-lg border border-gray-200 px-5 py-4">

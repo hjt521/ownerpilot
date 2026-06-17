@@ -40,7 +40,7 @@ const data: NoticeFlowData = {
   landlordIdentity: { type: 'individual', names: ['Jane Owner'] },
   landlordIdentityConfirmed: true,
   landlordContact: { phone: '5555555555', streetAddress: '500 Oak Ave, Glendale, CA 91201' },
-  paymentBranch: 'mail_only',
+  paymentMethods: ['by_mail'],
   signerName: 'Jane Owner',
   signerCapacity: 'owner',
   signingDate: '2026-06-01',

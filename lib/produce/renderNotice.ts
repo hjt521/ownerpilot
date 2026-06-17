@@ -32,6 +32,7 @@
 
 import type {
   NoticeFlowData,
+  OfferedMethod,
   RentPeriod,
   SignerCapacity,
   PaymentBranch,
@@ -91,7 +92,7 @@ export interface NoticeModel {
     expirationFormatted: string;
   };
   pay: {
-    branch: PaymentBranch;
+    branch?: PaymentBranch;
     payeeName: string;
     payeePhone: string;
     /** Address / bank rows for the grid. */
@@ -178,6 +179,23 @@ export const NOTICE_PROSE = {
   /** LOCKED 2026-06-04 (A1 Part D countersign) — § 1161(2) EFT only if previously established. */
   eftElectionSentence:
     'If you have previously established an electronic funds transfer procedure with the landlord, payment may also be made pursuant to that previously established procedure. (Cal. Code Civ. Proc. \u00A7 1161(2).)',
+  // --- C7a multi-select new locked constants (broker-authored 2026-06-15,
+  //     verbatim only). In-person-without-mail faces. Additive only — the three
+  //     pre-migration branches render byte-identically. ---
+  /** LOCKED 2026-06-15 (c7a_inperson_layout_broker_determination_2026-06-15 §3,
+   *  Option B) — address-row label for in-person-without-mail faces (rows 1 & 6). */
+  inPersonOnlyLabel: 'In person to',
+  /** LOCKED 2026-06-15 (c7a_inperson_layout_broker_determination_2026-06-15 §4) —
+   *  version stamp for inPersonOnlyLabel; a change requires a new determination + bump. */
+  inPersonAddressLabelVersion: 'v1',
+  /** LOCKED 2026-06-15 (c7a_multiselect_face_review_broker_determination_2026-06-15 §8)
+   *  — closure for In Person only (no mail, no bank deposit). */
+  inPersonOnlySentence:
+    'Payment must be delivered in person at the address above, on the days and during the hours stated. Mail and bank-deposit payment are not offered for this notice.',
+  /** LOCKED 2026-06-15 (c7a_multiselect_face_review_broker_determination_2026-06-15 §8)
+   *  — closure for In Person + Bank Deposit (no mail). */
+  inPersonNoMailSentence:
+    'Payment must be delivered in person at the address above, on the days and during the hours stated. Mail payment is not offered for this notice.',
 
   // --- Defect #2 payee-derivation face constants (ruling 2026-06-05, build-locked
   //     on attorney countersign per §4). Composition glue for the "Payable to:"
@@ -366,75 +384,87 @@ export function derivePayeeName(data: NoticeFlowData): DerivedPayeeName {
 // Fails closed if a required branch field is missing (the gate validates first;
 // this is the renderer's own guard so it never emits a defective document).
 
-function buildPaySection(
+/**
+ * C7a multi-select HOW-TO-PAY composition (broker determinations 2026-06-15:
+ * c7a_multiselect_face_review §3.5 ordering + §4 matrix; c7a_inperson_layout §3,
+ * Option B). Returns the same { rows, sentences } shape as buildPaySection, but
+ * from a multi-method selection. Every face string is a build-locked
+ * NOTICE_PROSE constant — this function only SELECTS and ORDERS them; it authors
+ * no face text. The three pre-migration faces (by_mail only; in_person + by_mail;
+ * the bank rows) reproduce byte-identically.
+ *
+ * Disallowed combinations (no in-person/by-mail floor; EFT without by_mail)
+ * throw — the validator blocks them upstream; this is defense in depth.
+ *
+ * This is the sole face-composition path: the single-select buildPaySection
+ * was retired in C7a slice 4c.
+ */
+export function composeFaceText(
+  methods: readonly OfferedMethod[],
   data: NoticeFlowData,
 ): { rows: PayRow[]; sentences: string[] } {
-  const branch = data.paymentBranch;
-  if (!branch) throw new NoticeRenderError('Missing required field: payment branch');
+  const inPerson = methods.includes('in_person');
+  const byMail = methods.includes('by_mail');
+  const bank = methods.includes('bank_deposit');
+  const eft = methods.includes('eft');
 
-  const streetAddress = requireString(
-    data.landlordContact?.streetAddress,
-    'payee street address',
+  if (!inPerson && !byMail) {
+    throw new NoticeRenderError(
+      'Invalid payment configuration: at least one of in person or by mail must be offered.',
+    );
+  }
+  if (eft && !byMail) {
+    throw new NoticeRenderError(
+      'Invalid payment configuration: EFT requires by mail to also be offered.',
+    );
+  }
+
+  const streetAddress = formatPropertyLine(
+    requireString(data.landlordContact?.streetAddress, 'payee street address'),
+    data.landlordContact?.unit,
   );
 
   const rows: PayRow[] = [];
   const sentences: string[] = [];
 
-  switch (branch) {
-    case 'mail_only':
-      rows.push({ label: NOTICE_PROSE.mailToLabel, value: streetAddress });
-      sentences.push(NOTICE_PROSE.mailboxRuleSentence);
-      break;
+  // Payee block: address row, labeled by combination.
+  let addressLabel: string;
+  if (byMail && inPerson) addressLabel = NOTICE_PROSE.inPersonOrMailLabel;
+  else if (byMail) addressLabel = NOTICE_PROSE.mailToLabel;
+  else addressLabel = NOTICE_PROSE.inPersonOnlyLabel; // in person, no mail
+  rows.push({ label: addressLabel, value: streetAddress });
 
-    case 'in_person_and_mail': {
-      const days = requireString(data.personalDeliveryDays, 'personal-delivery days');
-      const hours = requireString(data.personalDeliveryHours, 'personal-delivery hours');
-      rows.push({ label: NOTICE_PROSE.inPersonOrMailLabel, value: streetAddress });
-      rows.push({ label: NOTICE_PROSE.personalDeliveryLabel, value: `${days}, ${hours}` });
-      sentences.push(NOTICE_PROSE.mailboxRuleSentence);
-      break;
-    }
-
-    case 'bank_deposit': {
-      const bankName = requireString(data.bankName, 'bank name');
-      const branchAddr = requireString(data.bankBranchAddress, 'bank branch address');
-      const acct = requireString(data.bankAccountNumber, 'bank account number');
-      if (data.bankDepositPaperInstrumentConfirmed !== true) {
-        // Decision 1: a bank deposit is a valid sole method only by paper instrument.
-        throw new NoticeRenderError(
-          'Bank deposit requires a paper-instrument confirmation before producing.',
-        );
-      }
-      rows.push({ label: NOTICE_PROSE.bankLabel, value: bankName });
-      rows.push({ label: NOTICE_PROSE.bankBranchLabel, value: branchAddr });
-      rows.push({ label: NOTICE_PROSE.accountNumberLabel, value: acct });
-      sentences.push(NOTICE_PROSE.bankPaperInstrumentSentence);
-      sentences.push(NOTICE_PROSE.fiveMileSentence);
-      // NO mailbox-rule sentence on a standalone FINANCIAL_INSTITUTION branch
-      // (attorney A1 Part-D redline, 2026-06-03). The § 1161(2) mailbox-rule
-      // safe-harbor belongs to alternative (i) (name/telephone/address); on a
-      // sole bank-deposit branch it reads as "mail to the bank branch," which is
-      // misleading under Eshagian. It renders for MAIL_ONLY and
-      // in_person_and_mail; when multi-method ships (B3), it renders inside the
-      // "By mail" block, never the "Bank deposit" block. String itself is
-      // unchanged (and build-locked) — this is gating only.
-      break;
-    }
-
-    default: {
-      const _exhaustive: never = branch;
-      throw new NoticeRenderError(`Unknown payment branch: ${_exhaustive as string}`);
-    }
+  // In Person block: days/hours.
+  if (inPerson) {
+    const days = requireString(data.personalDeliveryDays, 'personal-delivery days');
+    const hours = requireString(data.personalDeliveryHours, 'personal-delivery hours');
+    rows.push({ label: NOTICE_PROSE.personalDeliveryLabel, value: `${days}, ${hours}` });
   }
 
-  // EFT add-on (any branch), only when previously established.
-  if (data.eftElectionAvailable === true) {
-    if (data.eftPreviouslyEstablishedConfirmed !== true) {
-      throw new NoticeRenderError(
-        'EFT election requires a previously-established confirmation before producing.',
-      );
-    }
-    sentences.push(NOTICE_PROSE.eftElectionSentence);
+  // Bank Deposit block: name / branch / account rows.
+  if (bank) {
+    rows.push({ label: NOTICE_PROSE.bankLabel, value: requireString(data.bankName, 'bank name') });
+    rows.push({
+      label: NOTICE_PROSE.bankBranchLabel,
+      value: requireString(data.bankBranchAddress, 'bank branch address'),
+    });
+    rows.push({
+      label: NOTICE_PROSE.accountNumberLabel,
+      value: requireString(data.bankAccountNumber, 'bank account number'),
+    });
+  }
+
+  // Sentences, in locked order (§3.5): mail -> bank -> eft -> in-person closure.
+  if (byMail) sentences.push(NOTICE_PROSE.mailboxRuleSentence);
+  if (bank) {
+    sentences.push(NOTICE_PROSE.bankPaperInstrumentSentence);
+    sentences.push(NOTICE_PROSE.fiveMileSentence);
+  }
+  if (eft) sentences.push(NOTICE_PROSE.eftElectionSentence);
+  if (inPerson && !byMail) {
+    sentences.push(
+      bank ? NOTICE_PROSE.inPersonNoMailSentence : NOTICE_PROSE.inPersonOnlySentence,
+    );
   }
 
   return { rows, sentences };
@@ -452,7 +482,19 @@ function buildPaySection(
 export function formatPropertyLine(address: string, unit?: string): string {
   const u = (unit ?? '').trim();
   const a = (address ?? '').trim();
-  return u ? `${a}, ${u}` : a;
+  // JT direction 2026-06-16 (face-affecting display format): drop a trailing
+  // country segment Google Places appends ("USA" / "United States"), and place
+  // the unit right after the street rather than at the very end.
+  const parts = a.split(',').map((s) => s.trim()).filter(Boolean);
+  if (parts.length > 1) {
+    const last = parts[parts.length - 1].toLowerCase();
+    if (last === 'usa' || last === 'united states' || last === 'us') parts.pop();
+  }
+  if (!u) return parts.join(', ');
+  const unitLabel = /^(unit|apt|apartment|suite|ste|#|rm|room|fl|floor|ph|bldg|building)\b/i.test(u)
+    ? u
+    : `Unit ${u}`;
+  return parts.length >= 1 ? [parts[0], unitLabel, ...parts.slice(1)].join(', ') : unitLabel;
 }
 
 export function renderNotice(input: RenderNoticeInput): RenderedNotice {
@@ -527,10 +569,19 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
   const periodText = `${formatNoticeDate(earliestStart)} through ${formatNoticeDate(latestEnd)}`;
   const totalFormatted = formatCurrency(totalDue);
 
-  // v4 HOW TO PAY
+  // v4 HOW TO PAY. C7a: compose from the locked multi-select matrix (the only
+  // render path; the single-select buildPaySection was retired in slice 4c).
+  // model.pay.branch is audit-only (no layout consumer reads it), so it is
+  // optional and absent here; the audit records offered_methods as the
+  // authoritative record.
   const branch = data.paymentBranch;
-  if (!branch) throw new NoticeRenderError('Missing required field: payment branch');
-  const { rows: payRows, sentences: paySentences } = buildPaySection(data);
+  if ((data.paymentMethods?.length ?? 0) === 0) {
+    throw new NoticeRenderError('Missing required field: payment methods');
+  }
+  const { rows: payRows, sentences: paySentences } = composeFaceText(
+    data.paymentMethods,
+    data,
+  );
 
   const propertyLine = formatPropertyLine(propertyAddress, propertyUnit);
   const addressBlock = propertyCounty
@@ -646,7 +697,23 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     // Defect #2 audit (ruling §4): which branch composed the payee name.
     // AUDIT ONLY — the face shows the composed name, never this source token.
     payee_name_source: derivedPayee.nameSource,
-    payment_branch: branch,
+    payment_branch: branch ?? '',
+    // C7a §9 audit: the authoritative record of the offered payment methods.
+    // payment_branch above is the legacy single-select token (empty under
+    // multi-select); offered_methods carries the actual selection.
+    offered_methods: (data.paymentMethods ?? []).join(', '),
+    // C7a §9 audit (composition determination 2026-06-15): the composed face
+    // prose frozen at produce time, the closure-sentence version stamp (empty
+    // when no closure sentence rendered — the string map cannot hold null), and
+    // the determination / authorization references.
+    rendered_face_composition: paySentences.join(' '),
+    in_person_closure_sentence_version:
+      paySentences.includes(NOTICE_PROSE.inPersonOnlySentence) ||
+      paySentences.includes(NOTICE_PROSE.inPersonNoMailSentence)
+        ? 'v1'
+        : '',
+    composition_determination_date: '2026-06-15',
+    composition_authorization_ref: 'broker_blanket_authorization_2026-06-15',
     signer_name: signerName,
     signer_role: signerRoleLabelText,
     // Defect #1 audit (ruling §1.4): record the canonical landlord_type and

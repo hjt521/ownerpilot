@@ -16,7 +16,6 @@
  * Not legal advice; product workflow logic.
  */
 
-import type { PaymentMethod } from '../payments/validatePaymentMethods';
 import type { ServiceMethod } from '../dates/computeCompliancePeriod';
 
 /** The ordered steps of the flow. Pre-flight precedes Step 1. */
@@ -110,6 +109,11 @@ export type SignerCapacity =
  */
 export type PaymentBranch = 'mail_only' | 'in_person_and_mail' | 'bank_deposit';
 
+/** C7a multi-select: the offered payment-method SELECTION (Option A — the
+ *  per-method data lives in the flat fields). Canonical atom set; matches the
+ *  determination audit record and the C1 gate. */
+export type OfferedMethod = 'in_person' | 'by_mail' | 'bank_deposit' | 'eft';
+
 /**
  * The § 1161(2) payee identity — the person to whom rent is paid. Distinct from
  * the signer (a managing agent may sign while rent is paid to the owner). The
@@ -130,6 +134,9 @@ export interface LandlordContact {
   phone?: string;
   /** Required; the street address where rent is paid / mailed. */
   streetAddress?: string;
+  /** Optional unit/suite at the payee street. Rendered on the face after the
+   *  street via formatPropertyLine (e.g. "123 Main St, Suite 4, City, CA"). */
+  unit?: string;
 }
 
 /** Everything the flow collects. All optional — the flow fills it incrementally. */
@@ -189,9 +196,10 @@ export interface NoticeFlowData {
   /** ISO timestamp when the produce attestation was accepted (audit). */
   produceAttestationAcceptedAt?: string;
 
-  // Step 4 — payment (legacy multi-method model; superseded by the v4 branch
-  // model below. Kept until the Slice-2 gate/renderer cutover removes it.)
-  paymentMethods: PaymentMethod[];
+  // Step 4 — payment. C7a multi-select: the offered-method SELECTION (Option A;
+  // per-method data lives in the flat fields below). The v4 paymentBranch model
+  // is retired once the UI cutover (Slice 2b) lands.
+  paymentMethods: OfferedMethod[];
 
   // Step 4 — payment (v4 model, per attorney ruling 2026-06-01)
   /** § 1161(2) payee: name + telephone + street address (all required). */
@@ -242,6 +250,23 @@ export interface NoticeFlowData {
   payeeIsNonLandlord?: boolean;
   /** Required when payeeIsNonLandlord: the non-landlord payee's name. */
   payeeOverrideName?: string;
+  /**
+   * True once the user has manually edited the payee street address. While
+   * false, the payee street mirrors the owner mailing address (broker
+   * direction 2026-06-16). Persisted so the mirror never re-clobbers a
+   * user-set value after navigating away and back.
+   */
+  payeeStreetUserEdited?: boolean;
+  /** True once the user has edited the payee UNIT, stopping the mailing-unit
+   *  mirror (parallel to payeeStreetUserEdited). Persisted across navigation. */
+  payeeUnitUserEdited?: boolean;
+  /**
+   * Optional UI preference (C2b): the user asked to save landlord +
+   * payment details for future notices. Records intent only — no profile
+   * storage is wired yet (see TODO in PaymentStep). Not part of the
+   * notice face.
+   */
+  saveLandlordPaymentDefaults?: boolean;
 
   // Step 3 — landlord identity + signer (Defect #1, ruling §1.1)
   /** Single source of truth for who the landlord is. Set via the Stage-1 toggle. */
@@ -262,6 +287,9 @@ export interface NoticeFlowData {
    *  default source for the payee street-address prefill on the payment step
    *  (non-destructive: it only seeds an empty payee address, never overwrites). */
   mailingAddress?: string;
+  /** Optional unit/suite for the mailing address; mirrors into the payee unit
+   *  just like mailingAddress mirrors into the payee street. */
+  mailingUnit?: string;
 
   // --- Notice execution + service dates (attorney ruling B1, 2026-06-02) ----
   // BINDING: the signing date (the "Dated:" line) and the service date(s) are
@@ -401,6 +429,11 @@ export function createFlowState(): NoticeFlowState {
       tenantNames: [''],
       rentPeriods: [{ periodStartDate: '', periodEndDate: '', amount: 0 }],
       paymentMethods: [],
+      // By-mail selected by default (broker determination 2026-06-16, JT):
+      // pre-selects the mail-only payment branch on Step 4. Notice-face-
+      // affecting default among the existing locked options; the user can
+      // change it. No payment-method language is authored here.
+      paymentBranch: 'mail_only',
     },
   };
 }
