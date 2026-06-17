@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Fragment, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useState, useEffect, useRef, useContext, createContext, Fragment, type ChangeEvent, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   createFlowState,
   FlowStep,
@@ -353,6 +353,11 @@ export function NoticeFlow() {
         )}
         {/* Step body — every step in the current page, divided */}
         <section className="mb-10">
+          {/* Slice C1a: Step-4 sections share one accordion (one open at a
+              time on mobile). Provider is inert on pages with no
+              CollapsibleSection. defaultOpenId opens the first payment
+              section; 4A (LandlordIdentityStep) joins the same provider in C1b. */}
+          <AccordionProvider defaultOpenId="payment_4b">
           {page.steps.map((step, idx) => (
             <div
               key={step}
@@ -361,6 +366,7 @@ export function NoticeFlow() {
               {renderStepBody(step, state.data, update, goToPage)}
             </div>
           ))}
+          </AccordionProvider>
         </section>
 
         {/* Validation issues */}
@@ -917,6 +923,81 @@ function SectionHeader({ title, subhead }: { title: string; subhead: string }) {
     </div>
   );
 }
+
+// Slice C1a: strict one-open-at-a-time accordion for the Step-4 progressive
+// disclosure. The provider holds the single open section id; CollapsibleSection
+// reads it. On mobile only one body is shown (the open id); tapping a header
+// opens it and collapses the rest. On desktop (lg+) every body is shown via
+// lg:block and the chevron is hidden, so sections read as stacked cards.
+const AccordionContext = createContext<{
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+}>({ openId: null, setOpenId: () => {} });
+
+function AccordionProvider({
+  defaultOpenId = null,
+  children,
+}: {
+  defaultOpenId?: string | null;
+  children: ReactNode;
+}) {
+  const [openId, setOpenId] = useState<string | null>(defaultOpenId);
+  return (
+    <AccordionContext.Provider value={{ openId, setOpenId }}>
+      {children}
+    </AccordionContext.Provider>
+  );
+}
+
+function CollapsibleSection({
+  id,
+  title,
+  subhead,
+  required = false,
+  children,
+}: {
+  id: string;
+  title: string;
+  subhead?: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
+  const { openId, setOpenId } = useContext(AccordionContext);
+  const open = openId === id;
+  return (
+    <section className="rounded-lg border border-rule bg-white">
+      <button
+        type="button"
+        onClick={() => setOpenId(open ? null : id)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left lg:cursor-default"
+      >
+        <span className="font-serif text-xl font-bold text-brand leading-tight">
+          {title}
+          {required && <Req />}
+        </span>
+        <svg
+          className={`lg:hidden h-5 w-5 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.73a.75.75 0 1 1 1.06 1.06l-4.24 4.25a.75.75 0 0 1-1.06 0L5.21 8.27a.75.75 0 0 1 .02-1.06z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+      <div className={`px-4 pb-4 ${open ? 'block' : 'hidden lg:block'}`}>
+        {subhead && (
+          <p className="text-sm text-gray-600 leading-relaxed mb-3">{subhead}</p>
+        )}
+        {children}
+      </div>
+    </section>
+  );
+}
 // Collapsible "Learn more" disclosure. Native details/summary - accessible,
 // no JS, no dependency. Holds the longer explanatory paragraphs that used to
 // be always-visible body text.
@@ -1266,12 +1347,13 @@ function PaymentStep({
 
   return (
     <div className="space-y-8">
-      {/* Section 1 — person to receive payment (§ 1161(2) name/phone/address) */}
+      {/* Section 1 (4B) — person to receive payment (§ 1161(2) name/phone/address) */}
+      <CollapsibleSection
+        id="payment_4b"
+        title="Where rent is paid"
+        subhead="California law requires the notice to name a person, a telephone number, and a street address."
+      >
       <div className="space-y-4">
-        <SectionHeader
-          title="Where rent is paid."
-          subhead="California law requires the notice to name a person, a telephone number, and a street address."
-        />
         <LearnMore>
           California law requires the notice to name the person to receive
           payment, with a telephone number and a street address. This can be the
@@ -1362,12 +1444,11 @@ function PaymentStep({
           />
         </div>
       </div>
+      </CollapsibleSection>
 
-      {/* Section 2 — how rent may be paid (single branch) */}
+      {/* Section 2 (4C) — how rent may be paid (single branch) */}
+      <CollapsibleSection id="payment_4c" title="How may rent be paid?" required>
       <div className="space-y-3">
-        <span className="block text-sm font-semibold text-gray-700 mb-1">
-          How may rent be paid?<Req />
-        </span>
         {(Object.keys(PAYMENT_BRANCH_LABELS) as PaymentBranch[]).map((b) => (
           <Fragment key={b}>
             <label
@@ -1501,6 +1582,7 @@ function PaymentStep({
           </label>
         )}
       </div>
+      </CollapsibleSection>
     </div>
   );
 }
