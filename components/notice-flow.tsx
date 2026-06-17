@@ -62,7 +62,7 @@ import {
  */
 
 /**
- * The flow is presented as four PAGES, each grouping one or more underlying
+ * The flow is presented as five PAGES, each grouping one or more underlying
  * FlowSteps. Field validation still lives per-step in advancement.ts
  * (validateStep); a page is advanceable only when every step it contains is.
  * The dispute hard-block is its own page (page 1), so the attorney handoff
@@ -70,29 +70,37 @@ import {
  */
 const PAGES: { label: string; subhead?: string; steps: FlowStep[] }[] = [
   {
-    label: 'Before we start — a few quick checks',
+    label: 'Quick Safety Check',
     subhead:
       'A few quick questions to confirm a routine 3-day notice is the right tool for this situation. If anything here applies, the routine workflow pauses and we point you to a better next step.',
     steps: [FlowStep.PreflightDispute],
   },
   {
-    label: 'Property, Tenant & Rent',
+    label: 'Property & Tenant',
     steps: [
       FlowStep.PropertyIdentification,
       FlowStep.Tenants,
-      FlowStep.AmountOwed,
     ],
   },
   {
-    label: 'Landlord, Payee & Signer',
-    subhead: 'Who the notice is from, where rent is paid, and who signs.',
+    label: 'Rent Owed',
+    steps: [FlowStep.AmountOwed],
+  },
+  {
+    label: 'Landlord & Payment',
+    subhead: 'Who the notice is from and where rent can be paid.',
     steps: [
       FlowStep.LandlordIdentity,
       FlowStep.PaymentInstructions,
-      FlowStep.LandlordAgentInfo,
     ],
   },
-  { label: 'Review & Produce', steps: [FlowStep.Review] },
+  {
+    label: 'Signer, Dates & Review',
+    steps: [
+      FlowStep.LandlordAgentInfo,
+      FlowStep.Review,
+    ],
+  },
 ];
 
 /** Required-field marker. */
@@ -310,7 +318,7 @@ export function NoticeFlow() {
           <p className="text-sm text-gray-500 mt-2">
             Step {pageIndex + 1} of {totalPages}
           </p>
-          {(pageIndex === 1 || pageIndex === 2) && (
+          {!page.steps.includes(FlowStep.PreflightDispute) && (
             <p className="text-sm text-gray-500 mt-1">
               Fields marked <span className="text-red-600">*</span> are required.
             </p>
@@ -2286,20 +2294,20 @@ const BLOCKER_PAGE: Record<string, number> = {
   DISPUTE_NOT_CLEARED: 0,
   PROPERTY_ADDRESS_MISSING: 1,
   NO_TENANT: 1,
-  NO_RENT_PERIODS: 1,
-  PAYMENT_CONFIG_INVALID: 2,
-  BANK_5_MILE_NOT_VERIFIED: 2,
-  PAYEE_NAME_UNRESOLVED: 2,
-  LANDLORD_TYPE_UNCONFIRMED: 2,
-  SIGNER_MISSING: 2,
-  SIGNER_ROLE_MISSING: 2,
-  AUTHORITY_EVIDENCE_MISSING: 2,
-  SIGNER_TITLE_REQUIRED: 2,
-  SERVICE_DATE_OR_METHOD_MISSING: 2,
-  SIGNING_DATE_MISSING: 2,
-  SIGNING_AFTER_SERVICE: 2,
-  SERVICE_ATTEMPT_INCOMPLETE: 2,
-  DATES_NOT_COMPUTABLE: 2,
+  NO_RENT_PERIODS: 2,
+  PAYMENT_CONFIG_INVALID: 3,
+  BANK_5_MILE_NOT_VERIFIED: 3,
+  PAYEE_NAME_UNRESOLVED: 3,
+  LANDLORD_TYPE_UNCONFIRMED: 3,
+  SIGNER_MISSING: 4,
+  SIGNER_ROLE_MISSING: 4,
+  AUTHORITY_EVIDENCE_MISSING: 4,
+  SIGNER_TITLE_REQUIRED: 4,
+  SERVICE_DATE_OR_METHOD_MISSING: 4,
+  SIGNING_DATE_MISSING: 4,
+  SIGNING_AFTER_SERVICE: 4,
+  SERVICE_ATTEMPT_INCOMPLETE: 4,
+  DATES_NOT_COMPUTABLE: 4,
 };
 
 function pageForBlocker(code: string): number | null {
@@ -2455,7 +2463,7 @@ function ReviewStep({
               {goToPage && (
                 <button
                   type="button"
-                  onClick={() => goToPage(1)}
+                  onClick={() => goToPage(2)}
                   className="text-xs font-semibold text-green-800 underline"
                 >
                   &larr; Back to rent amount
