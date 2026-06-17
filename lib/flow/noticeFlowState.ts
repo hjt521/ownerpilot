@@ -415,6 +415,11 @@ export function createFlowState(): NoticeFlowState {
       tenantNames: [''],
       rentPeriods: [{ periodStartDate: '', periodEndDate: '', amount: 0 }],
       paymentMethods: [],
+      // By-mail selected by default (broker determination 2026-06-16, JT):
+      // pre-selects the mail-only payment branch on Step 4. Notice-face-
+      // affecting default among the existing locked options; the user can
+      // change it. No payment-method language is authored here.
+      paymentBranch: 'mail_only',
     },
   };
 }
