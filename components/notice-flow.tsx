@@ -1396,6 +1396,7 @@ function PaymentStep({
         id="payment_4b"
         title="Where rent is paid"
         subhead="California law requires the notice to name a person, a telephone number, and a street address."
+        required
       >
       <div className="space-y-4">
         <LearnMore>
@@ -2070,6 +2071,7 @@ function LandlordIdentityStep({
       id="landlord_4a"
       title="Landlord (the party serving this notice)."
       subhead="Who is the landlord on this notice?"
+      required
     >
     <div className="space-y-6">
       <LearnMore>
