@@ -27,6 +27,7 @@ import {
 } from '@/lib/flow/llcCopy';
 import { validateStep } from '@/lib/flow/advancement';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
+import { saveProfile, loadProfile, clearProfile, applyProfile } from '@/lib/flow/profile';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import {
@@ -145,6 +146,7 @@ export function NoticeFlow() {
   const [pageIndex, setPageIndex] = useState(0);
   const [showIssues, setShowIssues] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [profilePrefilled, setProfilePrefilled] = useState(false);
   // C5 soft mode: the safety-override confirmation modal.
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   // Hard mode: lets the user escape the attorney handoff to edit Step 1.
@@ -159,6 +161,13 @@ export function NoticeFlow() {
       setState((s) => ({ ...s, data: draft.data }));
       setPageIndex(Math.max(0, Math.min(draft.pageIndex, PAGES.length - 1)));
       setDraftRestored(true);
+    } else {
+      // No in-progress draft: prefill from a saved owner profile if one exists.
+      const profile = loadProfile();
+      if (profile) {
+        setState((s) => ({ ...s, data: applyProfile(s.data, profile) }));
+        setProfilePrefilled(true);
+      }
     }
     hydratedRef.current = true;
   }, []);
@@ -172,10 +181,13 @@ export function NoticeFlow() {
 
   const startOver = () => {
     clearDraft();
-    setState(createFlowState());
+    const fresh = createFlowState();
+    const profile = loadProfile();
+    setState(profile ? { ...fresh, data: applyProfile(fresh.data, profile) } : fresh);
     setPageIndex(0);
     setShowIssues(false);
     setDraftRestored(false);
+    setProfilePrefilled(!!profile);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -186,6 +198,11 @@ export function NoticeFlow() {
     const t = setTimeout(() => setDraftRestored(false), 8000);
     return () => clearTimeout(t);
   }, [draftRestored]);
+  useEffect(() => {
+    if (!profilePrefilled) return;
+    const t = setTimeout(() => setProfilePrefilled(false), 8000);
+    return () => clearTimeout(t);
+  }, [profilePrefilled]);
 
   const update = (
     patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>),
@@ -363,6 +380,24 @@ export function NoticeFlow() {
                 Dismiss
               </button>
             </div>
+          </div>
+        )}
+        {/* Profile-prefilled toast: saved landlord/payment details were applied. */}
+        {profilePrefilled && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed top-4 right-4 z-50 w-[calc(100%-2rem)] max-w-sm flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-lg sm:w-auto"
+          >
+            <p className="text-sm text-gray-700">
+              We prefilled your saved landlord and payment details. Review and edit as needed.
+            </p>
+            <button
+              onClick={() => setProfilePrefilled(false)}
+              className="text-sm text-gray-500 hover:text-gray-900"
+            >
+              Dismiss
+            </button>
           </div>
         )}
         {/* Step body — every step in the current page, divided */}
@@ -2770,6 +2805,14 @@ function ReviewStep({
   // by PacketPrintOptions whenever any packet document is printed.
   const onProduced = () => {
     update({ productionSnapshot: captureProductionSnapshot(data) });
+    // Profile hook: persist the reusable landlord/payment details on produce
+    // when the user opted in; clear them on opt-out. Never includes the bank
+    // account number (see extractProfile).
+    if (data.saveLandlordPaymentDefaults) {
+      saveProfile(data);
+    } else {
+      clearProfile();
+    }
   };
 
   // Slice E: always-visible calm readiness checklist near the top of Step 5.
