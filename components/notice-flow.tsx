@@ -257,7 +257,7 @@ export function NoticeFlow() {
     setShowIssues(false);
   };
 
-  // Jump directly to a page (used by the Review blockers' "Go to this"
+  // Jump directly to a page (used by the Review checklist's "Fix this"
   // buttons). Clamped; scrolls to the top so the landed page reads from
   // its heading.
   const goToPage = (i: number) => {
@@ -2493,7 +2493,7 @@ function LandlordStep({
 // --- Step 6: Review ---------------------------------------------------------
 
 // Maps a produce-gate blocker code (gates.ts, evaluateCanProduceV4) to the
-// wizard PAGE that owns the fields behind it, for the "Go to this" jump.
+// wizard PAGE that owns the fields behind it, for the "Fix this" jump.
 // JURISDICTION_* codes are handled by prefix in pageForBlocker.
 // TEMPLATE_NOT_SIGNED_OFF is a system gate with no owning page - no button.
 const BLOCKER_PAGE: Record<string, number> = {
@@ -2530,7 +2530,6 @@ function ReviewStep({
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
   goToPage?: (pageIndex: number) => void;
 }) {
-  const [produceAttempted, setProduceAttempted] = useState(false);
   const result = evaluateCanProduceV4(data);
 
   // When the gate says ready, render the notice from the build-locked template
@@ -2581,96 +2580,47 @@ function ReviewStep({
     update({ productionSnapshot: captureProductionSnapshot(data) });
   };
 
-  // Slice A.1: don't surface the produce-gate readout (green/amber) the
-  // instant the user lands on Step 5. The signer/date fields live on this
-  // same page and are still empty on arrival, so an immediate "Not ready
-  // yet" list nags about fields the user hasn't filled. Gate the readout
-  // behind an explicit produce attempt; local state resets on each entry to
-  // Step 5, so arriving (or returning via a "Go to this" jump) starts clean.
-  // Once attempted, the checklist updates live as fields above are filled.
-  if (!produceAttempted) {
-    return (
-      <div className="space-y-6">
-        <StepIntro>
-          When the signer and dates above are filled in, produce your notice
-          packet. We&apos;ll check everything and flag anything that still
-          needs attention before it prints.
-        </StepIntro>
-        <button
-          type="button"
-          onClick={() => setProduceAttempted(true)}
-          className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-bar transition-colors"
-        >
-          Produce Notice Packet
-        </button>
-      </div>
-    );
-  }
-
+  // Slice E: always-visible calm readiness checklist near the top of Step 5.
+  // No produce-click gate - the user sees where things stand the moment they
+  // arrive, in warm/reassuring language (not an alarming error box). The
+  // "Produce Notice Packet" action stays below as the deliberate final step.
   return (
     <div className="space-y-6">
       <StepIntro>
-        Last check before producing the notice. Everything below must be clear.
+        Here&apos;s where your notice stands. Once everything below is checked
+        off, produce your packet using the button further down this step.
       </StepIntro>
 
-      {result.canProduce ? (
+      {visibleBlockers.length === 0 ? (
         <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4">
-          <p className="font-semibold text-green-900 mb-1">Ready to produce.</p>
-          <p className="text-sm text-green-900 leading-relaxed">
-            All requirements are met.
-            {result.computedDates && (
-              <>
-                {' '}The tenant will have until{' '}
-                <strong>{formatNoticeDate(result.computedDates.expirationDate)}</strong> to pay or
-                vacate (period begins {formatNoticeDate(result.computedDates.commencementDate)}).
-              </>
-            )}
-          </p>
-        </div>
-      ) : (
-        <div
-          className={`rounded-lg border px-5 py-4 ${
-            onlyAttestationLeft
-              ? 'border-green-300 bg-green-50'
-              : 'border-amber-300 bg-amber-50'
-          }`}
-        >
-          {!onlyAttestationLeft && (
-          <p className="font-semibold text-amber-900 mb-2">
-            Not ready yet — {visibleBlockers.length}{' '}
-            {visibleBlockers.length === 1 ? 'item needs' : 'items need'} attention:
-          </p>
-          )}
-          {!onlyAttestationLeft && (
-          <ul className="space-y-2 text-sm text-amber-900 list-disc pl-5">
-            {visibleBlockers.map((b) => {
-              const targetPage = pageForBlocker(b.code);
-              return (
-                <li key={b.code}>
-                  <span>{b.message}</span>
-                  {targetPage !== null && goToPage && (
-                    <button
-                      type="button"
-                      onClick={() => goToPage(targetPage)}
-                      className="ml-2 align-baseline text-xs font-semibold text-amber-800 underline whitespace-nowrap"
-                    >
-                      Go to this &rarr;
-                    </button>
-                  )}
-                  {b.code === 'PAYMENT_CONFIG_INVALID' && result.paymentErrors.length > 0 && (
-                    <ul className="mt-1 space-y-0.5 pl-5 list-disc">
-                      {result.paymentErrors.map((pe) => (
-                        <li key={pe.code}>{pe.message}</li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
+          <p className="font-semibold text-green-900 mb-3">Everything&apos;s ready.</p>
+          <ul className="space-y-2 text-sm text-green-900">
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
+              <span>Property and tenant complete</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
+              <span>Rent amount confirmed as base rent only</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
+              <span>Payment person, phone, and address complete</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
+              <span>Signer and service date complete</span>
+            </li>
           </ul>
+          {result.computedDates && (
+            <p className="mt-3 text-sm text-green-900 leading-relaxed">
+              The tenant will have until{' '}
+              <strong>{formatNoticeDate(result.computedDates.expirationDate)}</strong> to pay or
+              vacate (period begins {formatNoticeDate(result.computedDates.commencementDate)}).
+            </p>
           )}
-          {onlyAttestationLeft && (
-            <div className="space-y-3">
+          {!result.canProduce && (
+            <div className="mt-4 space-y-3 border-t border-green-200 pt-4">
               <p className="text-sm font-semibold text-green-900">
                 California law requires you to confirm the following before
                 producing this notice:
@@ -2693,17 +2643,46 @@ function ReviewStep({
                   By producing this notice, I confirm: the amounts entered are base rent only (no late fees, utilities, or other charges); the tenants and landlord(s) named are correct; and the signer is authorized.
                 </span>
               </label>
-              {goToPage && (
-                <button
-                  type="button"
-                  onClick={() => goToPage(2)}
-                  className="text-xs font-semibold text-green-800 underline"
-                >
-                  &larr; Back to rent amount
-                </button>
-              )}
             </div>
           )}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-rule bg-tint px-5 py-4">
+          <p className="font-semibold text-brand mb-1">
+            Almost there — a few things to finish first.
+          </p>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3">
+            No rush. Take care of these and your packet will be ready to produce.
+          </p>
+          <ul className="space-y-2 text-sm text-gray-800">
+            {visibleBlockers.map((b) => {
+              const targetPage = pageForBlocker(b.code);
+              return (
+                <li key={b.code} className="flex items-start gap-2">
+                  <span aria-hidden="true" className="mt-0.5 text-brand">&#9675;</span>
+                  <span>
+                    <span>{b.message}</span>
+                    {targetPage !== null && goToPage && (
+                      <button
+                        type="button"
+                        onClick={() => goToPage(targetPage)}
+                        className="ml-2 align-baseline text-xs font-semibold text-brand underline whitespace-nowrap"
+                      >
+                        Fix this &rarr;
+                      </button>
+                    )}
+                    {b.code === 'PAYMENT_CONFIG_INVALID' && result.paymentErrors.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 pl-5 list-disc text-gray-700">
+                        {result.paymentErrors.map((pe) => (
+                          <li key={pe.code}>{pe.message}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
