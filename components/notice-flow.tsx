@@ -1506,6 +1506,17 @@ function PaymentStep({
             placeholder="123 Main St, City, CA 90000"
             className={inputClass}
           />
+          <div className="mt-3">
+            <FieldLabel htmlFor="payeeUnit">Unit / Suite # (optional)</FieldLabel>
+            <input
+              id="payeeUnit"
+              type="text"
+              value={c.unit ?? ''}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setContact({ unit: e.target.value })}
+              placeholder="Suite 200"
+              className={inputClass}
+            />
+          </div>
         </div>
       </div>
       </CollapsibleSection>

@@ -372,9 +372,9 @@ function buildPaySection(
   const branch = data.paymentBranch;
   if (!branch) throw new NoticeRenderError('Missing required field: payment branch');
 
-  const streetAddress = requireString(
-    data.landlordContact?.streetAddress,
-    'payee street address',
+  const streetAddress = formatPropertyLine(
+    requireString(data.landlordContact?.streetAddress, 'payee street address'),
+    data.landlordContact?.unit,
   );
 
   const rows: PayRow[] = [];

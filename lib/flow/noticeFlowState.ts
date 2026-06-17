@@ -130,6 +130,9 @@ export interface LandlordContact {
   phone?: string;
   /** Required; the street address where rent is paid / mailed. */
   streetAddress?: string;
+  /** Optional unit/suite at the payee street. Rendered on the face after the
+   *  street via formatPropertyLine (e.g. "123 Main St, Suite 4, City, CA"). */
+  unit?: string;
 }
 
 /** Everything the flow collects. All optional — the flow fills it incrementally. */
