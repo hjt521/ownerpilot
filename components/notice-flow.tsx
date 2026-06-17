@@ -1139,7 +1139,7 @@ function AmountStep({
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <div>
                 <FieldLabel htmlFor={`start-${i}`}>Period start<Req /></FieldLabel>
                 <DateField
@@ -1210,6 +1210,17 @@ function AmountStep({
           damages, repair costs, or other charges.
         </span>
       </label>
+
+      {/* Slice D: compact running total repeated just above the Continue
+          button on mobile only (lg:hidden). Normal flow, not sticky — never
+          covers the confirmation checkbox or the CTA. Mirrors the main Total
+          Demanded card above. */}
+      <div className="lg:hidden flex items-center justify-between rounded-lg border border-brand bg-tint px-4 py-3">
+        <span className="text-sm font-semibold text-gray-700">Total Demanded</span>
+        <span className="text-lg font-bold text-brand">
+          ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      </div>
 
     </div>
   );
