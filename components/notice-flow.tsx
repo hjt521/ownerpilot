@@ -11,6 +11,7 @@ import {
   SignerCapacity,
   EntityType,
   PaymentBranch,
+  OfferedMethod,
   LandlordContact,
   ServiceAttempt,
   LlcManagementType,
@@ -29,6 +30,8 @@ import { validateStep } from '@/lib/flow/advancement';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
 import { saveProfile, loadProfile, clearProfile, applyProfile } from '@/lib/flow/profile';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
+import { validatePaymentMethods } from '@/lib/payments/validatePaymentMethods';
+import { buildMethodsInput } from '@/lib/flow/paymentMethodsAdapter';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import {
   validateSigningDate,
@@ -1288,16 +1291,18 @@ function AmountStep({
 
 // --- Step 4: Payment instructions (v4: § 1161(2) payee + payment branch) ----
 
-const PAYMENT_BRANCH_LABELS: Record<PaymentBranch, string> = {
-  mail_only: 'By mail only',
-  in_person_and_mail: 'In person and by mail',
+const OFFERED_METHOD_LABELS: Record<OfferedMethod, string> = {
+  in_person: 'In person',
+  by_mail: 'By mail',
   bank_deposit: 'By deposit at a financial institution',
+  eft: 'Electronic funds transfer (EFT)',
 };
 
-const PAYMENT_BRANCH_HELP: Record<PaymentBranch, string> = {
-  mail_only: 'The tenant mails payment to the address above.',
-  in_person_and_mail: 'The tenant may hand-deliver during set hours, or mail it.',
+const OFFERED_METHOD_HELP: Record<OfferedMethod, string> = {
+  in_person: 'The tenant hand-delivers payment during set days and hours.',
+  by_mail: 'The tenant mails payment to the address above.',
   bank_deposit: 'The tenant deposits a check or money order at a bank branch.',
+  eft: 'Only if an EFT procedure was previously established with the tenant. Requires By mail.',
 };
 
 // Attorney-locked operator copy for the Step-4 non-landlord payee override
@@ -1417,7 +1422,24 @@ function PaymentStep({
   const c: LandlordContact = data.landlordContact ?? {};
   const setContact = (patch: Partial<LandlordContact>) =>
     update({ landlordContact: { ...c, ...patch } });
-  const branch = data.paymentBranch;
+  const methods = data.paymentMethods ?? [];
+  const toggleMethod = (m: OfferedMethod, on: boolean) =>
+    update((d) => {
+      const cur = d.paymentMethods ?? [];
+      const next = on
+        ? (cur.includes(m) ? cur : [...cur, m])
+        : cur.filter((x) => x !== m);
+      return { paymentMethods: next };
+    });
+  // Inline config errors (floor + EFT-pairing), sourced from the validator so
+  // the rules stay single-sourced; shown once at least one method is selected.
+  const payConfigErrors =
+    methods.length > 0
+      ? validatePaymentMethods(buildMethodsInput(data)).errors.filter(
+          (er) =>
+            er.code === 'SECTION_1947_3_FLOOR' || er.code === 'EFT_REQUIRES_MAIL',
+        )
+      : [];
   // Defect #2 cutover: the § 1161(2) payee NAME is derived from the Step-3
   // landlord identity (or the non-landlord override), never typed here.
   const derivedPayee = derivePayeeName(data);
@@ -1588,30 +1610,30 @@ function PaymentStep({
       </div>
       </CollapsibleSection>
 
-      {/* Section 2 (4C) — how rent may be paid (single branch) */}
+      {/* Section 2 (4C) — how rent may be paid (select all that apply) */}
       <CollapsibleSection id="payment_4c" title="How may rent be paid?" required>
       <div className="space-y-3">
-        {(Object.keys(PAYMENT_BRANCH_LABELS) as PaymentBranch[]).map((b) => (
-          <Fragment key={b}>
+        <p className="text-sm text-gray-500">Select all that apply.</p>
+        {(['in_person', 'by_mail', 'bank_deposit', 'eft'] as OfferedMethod[]).map((m) => (
+          <Fragment key={m}>
             <label
               className={`flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer ${
-                branch === b ? 'border-brand bg-tint' : 'border-rule bg-white'
+                methods.includes(m) ? 'border-brand bg-tint' : 'border-rule bg-white'
               }`}
             >
               <input
-                type="radio"
-                name="paymentBranch"
-                checked={branch === b}
-                onChange={() => update({ paymentBranch: b })}
+                type="checkbox"
+                checked={methods.includes(m)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => toggleMethod(m, e.target.checked)}
                 className="mt-1"
               />
               <span>
-                <span className="block text-gray-900 font-medium">{PAYMENT_BRANCH_LABELS[b]}</span>
-                <span className="block text-sm text-gray-500">{PAYMENT_BRANCH_HELP[b]}</span>
+                <span className="block text-gray-900 font-medium">{OFFERED_METHOD_LABELS[m]}</span>
+                <span className="block text-sm text-gray-500">{OFFERED_METHOD_HELP[m]}</span>
               </span>
             </label>
 
-            {branch === b && b === 'in_person_and_mail' && (
+            {methods.includes(m) && m === 'in_person' && (
               <div className="rounded-lg border border-gray-200 px-4 py-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -1644,7 +1666,7 @@ function PaymentStep({
               </div>
             )}
 
-            {branch === b && b === 'bank_deposit' && (
+            {methods.includes(m) && m === 'bank_deposit' && (
               <div className="space-y-3 rounded-lg border border-gray-200 px-4 py-4">
                 <BankAccountInterstitial data={data} update={update} />
                 <div>
@@ -1684,71 +1706,33 @@ function PaymentStep({
                 <BankDepositAttestations data={data} update={update} />
               </div>
             )}
+
+            {methods.includes(m) && m === 'eft' && (
+              <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={data.eftPreviouslyEstablishedConfirmed === true}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    update({ eftPreviouslyEstablishedConfirmed: e.target.checked })
+                  }
+                  className="mt-1"
+                />
+                <span className="text-sm text-amber-900 leading-relaxed">
+                  I confirm an EFT procedure was <strong>previously established</strong>
+                  {' '}with this tenant. (EFT may only be offered if it already exists.)
+                </span>
+              </label>
+            )}
           </Fragment>
         ))}
-        {/* C2a: EFT election (add-on only) lives under a "More payment
-            options" disclosure so the primary methods read cleanly. The EFT
-            label and the locked "previously established" attestation are
-            unchanged — only wrapped. */}
-        <details className="group rounded-lg border border-rule bg-white">
-          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-brand">
-            <span>
-              More payment options
-              {data.eftElectionAvailable === true && (
-                <span className="font-normal text-gray-500"> &middot; EFT enabled</span>
-              )}
-            </span>
-            <svg
-              className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.73a.75.75 0 1 1 1.06 1.06l-4.24 4.25a.75.75 0 0 1-1.06 0L5.21 8.27a.75.75 0 0 1 .02-1.06z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </summary>
-          <div className="space-y-3 px-4 pb-4">
-        <label className="flex items-start gap-3 rounded-lg border border-rule bg-white px-4 py-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={data.eftElectionAvailable === true}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              update({ eftElectionAvailable: e.target.checked })
-            }
-            className="mt-1"
-          />
-          <span>
-            <span className="block text-gray-900 font-medium">
-              Also allow electronic funds transfer{' '}
-              <span className="font-normal text-gray-500">(optional)</span>
-            </span>
-            <span className="block text-sm text-gray-500">
-              Adds EFT as a payment option, in addition to the method above.
-            </span>
-          </span>
-        </label>
-        {data.eftElectionAvailable === true && (
-          <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={data.eftPreviouslyEstablishedConfirmed === true}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                update({ eftPreviouslyEstablishedConfirmed: e.target.checked })
-              }
-              className="mt-1"
-            />
-            <span className="text-sm text-amber-900 leading-relaxed">
-              I confirm an EFT procedure was <strong>previously established</strong>
-              {' '}with this tenant. (EFT may only be offered if it already exists.)
-            </span>
-          </label>
-        )}
+
+        {payConfigErrors.length > 0 && (
+          <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 space-y-1">
+            {payConfigErrors.map((er) => (
+              <p key={er.code} className="text-sm text-red-800">{er.message}</p>
+            ))}
           </div>
-        </details>
+        )}
       </div>
       </CollapsibleSection>
 
@@ -2663,7 +2647,7 @@ function ReviewSummaryCards({
   } catch {
     payeeName = '';
   }
-  const paymentLabel = data.paymentBranch ? PAYMENT_BRANCH_LABELS[data.paymentBranch] : '';
+  const paymentLabel = (data.paymentMethods ?? []).map((m) => OFFERED_METHOD_LABELS[m]).join(', ');
   const payPhone = (data.landlordContact?.phone ?? '').trim();
 
   const signerName = (data.signerName ?? '').trim();
@@ -2927,7 +2911,7 @@ function ReviewStep({
       <ReviewSummaryCards data={data} result={result} goToPage={goToPage} />
 
       {!result.canProduce &&
-        data.paymentBranch === 'bank_deposit' &&
+        (data.paymentMethods ?? []).includes('bank_deposit') &&
         (data.bankDepositPaperInstrumentConfirmed !== true ||
           data.bankBranchWithinFiveMilesAttested !== true) && (
           <div className="space-y-3 rounded-lg border border-gray-200 px-5 py-4">
