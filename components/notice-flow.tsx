@@ -2697,6 +2697,13 @@ function ReviewStep({
   const visibleBlockers = result.blockers.filter(
     (b) => b.code !== 'PRODUCE_ATTESTATION_MISSING',
   );
+  // Items that require going BACK to another step to fix. Step 5's own fields
+  // (signer/dates, page index 4) are handled by their asterisks above, so they
+  // don't trigger the needs-attention box - it appears only for cross-step
+  // items. The green "ready" state still waits for ALL visible blockers.
+  const otherStepBlockers = visibleBlockers.filter(
+    (b) => pageForBlocker(b.code) !== 4,
+  );
   if (isRenderable && result.computedDates) {
     try {
       const rendered = renderNotice({
@@ -2790,7 +2797,7 @@ function ReviewStep({
             </div>
           )}
         </div>
-      ) : (
+      ) : otherStepBlockers.length > 0 ? (
         <div className="rounded-lg border border-rule bg-tint px-5 py-4">
           <p className="font-semibold text-brand mb-1">
             Almost there — a few things to finish first.
@@ -2799,7 +2806,7 @@ function ReviewStep({
             No rush. Take care of these and your packet will be ready to produce.
           </p>
           <ul className="space-y-2 text-sm text-gray-800">
-            {visibleBlockers.map((b) => {
+            {otherStepBlockers.map((b) => {
               const targetPage = pageForBlocker(b.code);
               return (
                 <li key={b.code} className="flex items-start gap-2">
@@ -2828,7 +2835,7 @@ function ReviewStep({
             })}
           </ul>
         </div>
-      )}
+      ) : null}
 
       <ReviewSummaryCards data={data} result={result} goToPage={goToPage} />
 
