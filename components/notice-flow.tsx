@@ -218,6 +218,12 @@ export function NoticeFlow() {
       (a) => a === 'yes' || a === 'unknown',
     ) &&
     !state.data.safetyCheckOverride;
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+    }
+  };
+
   const proceedThroughOverride = () => {
     const flaggedAnswers: { question: keyof typeof disp; answer: 'yes' | 'no' | 'unknown' }[] = [];
     (['tenantFiledComplaint', 'tenantWrittenWithholding', 'tenantBankruptcy'] as const).forEach(
@@ -238,6 +244,7 @@ export function NoticeFlow() {
     setOverrideModalOpen(false);
     setPageIndex((i) => Math.min(i + 1, totalPages - 1));
     setShowIssues(false);
+    scrollToTop();
   };
   const onNext = () => {
     if (!canAdvance) {
@@ -250,11 +257,13 @@ export function NoticeFlow() {
     }
     setPageIndex((i) => Math.min(i + 1, totalPages - 1));
     setShowIssues(false);
+    scrollToTop();
   };
 
   const onBack = () => {
     setPageIndex((i) => Math.max(i - 1, 0));
     setShowIssues(false);
+    scrollToTop();
   };
 
   // Jump directly to a page (used by the Review checklist's "Fix this"
@@ -263,9 +272,7 @@ export function NoticeFlow() {
   const goToPage = (i: number) => {
     setPageIndex(Math.max(0, Math.min(i, totalPages - 1)));
     setShowIssues(false);
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    scrollToTop();
   };
 
   // Enter advances the flow, scoped to avoid hijacking other Enter behaviors:
