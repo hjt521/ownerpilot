@@ -1582,8 +1582,32 @@ function PaymentStep({
             )}
           </Fragment>
         ))}
-        {/* Optional EFT election (add-on only) — last row in the same group so
-            its spacing matches the option boxes above. */}
+        {/* C2a: EFT election (add-on only) lives under a "More payment
+            options" disclosure so the primary methods read cleanly. The EFT
+            label and the locked "previously established" attestation are
+            unchanged — only wrapped. */}
+        <details className="group rounded-lg border border-rule bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-brand">
+            <span>
+              More payment options
+              {data.eftElectionAvailable === true && (
+                <span className="font-normal text-gray-500"> &middot; EFT enabled</span>
+              )}
+            </span>
+            <svg
+              className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.73a.75.75 0 1 1 1.06 1.06l-4.24 4.25a.75.75 0 0 1-1.06 0L5.21 8.27a.75.75 0 0 1 .02-1.06z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </summary>
+          <div className="space-y-3 px-4 pb-4">
         <label className="flex items-start gap-3 rounded-lg border border-rule bg-white px-4 py-3 cursor-pointer">
           <input
             type="checkbox"
@@ -1619,6 +1643,8 @@ function PaymentStep({
             </span>
           </label>
         )}
+          </div>
+        </details>
       </div>
       </CollapsibleSection>
     </div>
