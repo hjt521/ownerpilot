@@ -775,6 +775,18 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     // payment_branch above is the legacy single-select token (empty under
     // multi-select); offered_methods carries the actual selection.
     offered_methods: (data.paymentMethods ?? []).join(', '),
+    // C7a §9 audit (composition determination 2026-06-15): the composed face
+    // prose frozen at produce time, the closure-sentence version stamp (empty
+    // when no closure sentence rendered — the string map cannot hold null), and
+    // the determination / authorization references.
+    rendered_face_composition: paySentences.join(' '),
+    in_person_closure_sentence_version:
+      paySentences.includes(NOTICE_PROSE.inPersonOnlySentence) ||
+      paySentences.includes(NOTICE_PROSE.inPersonNoMailSentence)
+        ? 'v1'
+        : '',
+    composition_determination_date: '2026-06-15',
+    composition_authorization_ref: 'broker_blanket_authorization_2026-06-15',
     signer_name: signerName,
     signer_role: signerRoleLabelText,
     // Defect #1 audit (ruling §1.4): record the canonical landlord_type and
