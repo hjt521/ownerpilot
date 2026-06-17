@@ -22,11 +22,7 @@ import { buildMethodsInput } from './paymentMethodsAdapter';
 import { detectJurisdiction } from '../jurisdiction/detectJurisdiction';
 import { getVerifiedHolidaySet } from '../dates/holidays';
 import { computeCompliancePeriod, type ServiceMethod } from '../dates/computeCompliancePeriod';
-import {
-  validatePaymentBranch,
-  PaymentBranchError,
-  PaymentBranchWarning,
-} from '../payments/validatePaymentBranch';
+import { validatePayeeTrioAndDelivery } from '../payments/contactValidation';
 // Defect #2: the v4 produce gate fails closed if the DERIVED § 1161(2) payee
 // name (composed from the Step-3 identity / non-landlord override) is empty.
 // derivePayeeName is the single composition site; importing it here keeps the
@@ -231,9 +227,9 @@ export interface CanProduceResultV4 {
   blockers: ProduceBlocker[];
   computedDates?: { commencementDate: string; expirationDate: string };
   /** Payment-config field errors, for field-level UI mapping. */
-  paymentErrors: PaymentBranchError[];
+  paymentErrors: ProduceBlocker[];
   /** Payment-config advisories (e.g. 5-mile not yet attested). */
-  paymentWarnings: PaymentBranchWarning[];
+  paymentWarnings: ProduceBlocker[];
   /** The template version this decision was made against. */
   templateVersion: string;
 }
@@ -281,13 +277,18 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
     });
   }
 
-  // (e) Payment configuration valid. C7a: validate the multi-select when present
-  // (via the adapter); otherwise the single-select branch.
-  const pay = validatePaymentBranch(data);
-  const payValid =
-    (data.paymentMethods?.length ?? 0) > 0
-      ? validatePaymentMethods(buildMethodsInput(data)).valid
-      : pay.valid;
+  // (e) Payment configuration valid. C1 (2026-06-17): multi-select is the sole
+  // payment source (single-select validatePaymentBranch retired). Methods are
+  // validated via the adapter; the § 1161(2) payee trio + P.O.-box gate via
+  // validatePayeeTrioAndDelivery. Both feed validity and the surfaced errors.
+  const trioIssues = validatePayeeTrioAndDelivery(data);
+  const methodsResult = validatePaymentMethods(buildMethodsInput(data));
+  const paymentErrors: ProduceBlocker[] = [
+    ...trioIssues,
+    ...methodsResult.errors.map((e) => ({ code: e.code, message: e.message })),
+  ];
+  const paymentWarnings: ProduceBlocker[] = [];
+  const payValid = methodsResult.valid && trioIssues.length === 0;
   if (!payValid) {
     blockers.push({
       code: 'PAYMENT_CONFIG_INVALID',
@@ -295,12 +296,9 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
     });
   }
 
-  // (e2) 5-mile production gate when bank deposit is offered (ruling C2; C7a:
-  // keyed on the multi-select when present, else the single-select branch).
-  const bankOffered =
-    (data.paymentMethods?.length ?? 0) > 0
-      ? data.paymentMethods.includes('bank_deposit')
-      : data.paymentBranch === 'bank_deposit';
+  // (e2) 5-mile production gate when bank deposit is offered (ruling C2; C1:
+  // keyed on the multi-select selection — single-select branch retired).
+  const bankOffered = (data.paymentMethods ?? []).includes('bank_deposit');
   if (bankOffered) {
     if (GEOCODING_LIVE) {
       // When geocoding lands, verify by distance here instead of attestation.
@@ -312,6 +310,15 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
           'A notice listing a bank-deposit branch requires confirmation that the ' +
           'branch is within five miles of the rental property (Cal. Code Civ. Proc. ' +
           '§ 1161(2)). Confirm this, or choose a different payment method.',
+      });
+      // C1: surface the intake-level 5-mile advisory as a warning too (message
+      // moved byte-identical from the retired validatePaymentBranch).
+      paymentWarnings.push({
+        code: 'BANK_5_MILE_UNVERIFIED',
+        message:
+          'The branch must be within five miles of the rental property ' +
+          '(Cal. Code Civ. Proc. § 1161(2)). This will require confirmation ' +
+          'before a notice can be produced.',
       });
     }
   }
@@ -488,8 +495,8 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
     canProduce: blockers.length === 0,
     blockers,
     computedDates,
-    paymentErrors: pay.errors,
-    paymentWarnings: pay.warnings,
+    paymentErrors,
+    paymentWarnings,
     templateVersion: NOTICE_TEMPLATE_VERSION,
   };
 }
