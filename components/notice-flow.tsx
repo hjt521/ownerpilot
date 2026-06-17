@@ -1647,6 +1647,32 @@ function PaymentStep({
         </details>
       </div>
       </CollapsibleSection>
+
+      {/* C2b: optional "save my details" preference at the end of Step 4.
+          Records intent only; no profile storage exists yet.
+          TODO(profile-persistence): when an owner profile exists, on produce
+          persist the landlord identity + payment payee/phone/address if
+          saveLandlordPaymentDefaults is true, and prefill future notices.
+          NEVER persist data.bankAccountNumber — it is sensitive and is
+          re-entered per notice. */}
+      <label className="flex items-start gap-3 rounded-lg border border-rule bg-tint px-4 py-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={data.saveLandlordPaymentDefaults === true}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            update({ saveLandlordPaymentDefaults: e.target.checked })
+          }
+          className="mt-1"
+        />
+        <span>
+          <span className="block text-sm font-medium text-gray-900">
+            Save landlord and payment details for future notices
+          </span>
+          <span className="block text-sm text-gray-500">
+            This can make future notices faster. You can update it anytime.
+          </span>
+        </span>
+      </label>
     </div>
   );
 }

@@ -249,6 +249,13 @@ export interface NoticeFlowData {
    * user-set value after navigating away and back.
    */
   payeeStreetUserEdited?: boolean;
+  /**
+   * Optional UI preference (C2b): the user asked to save landlord +
+   * payment details for future notices. Records intent only — no profile
+   * storage is wired yet (see TODO in PaymentStep). Not part of the
+   * notice face.
+   */
+  saveLandlordPaymentDefaults?: boolean;
 
   // Step 3 — landlord identity + signer (Defect #1, ruling §1.1)
   /** Single source of truth for who the landlord is. Set via the Stage-1 toggle. */
