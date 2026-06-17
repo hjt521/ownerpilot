@@ -32,7 +32,7 @@
 /** The four offerable method kinds. NOTE: there is intentionally no web-portal kind. */
 export type PaymentMethodKind =
   | 'in_person'
-  | 'mail'
+  | 'by_mail'
   | 'bank_deposit'
   | 'eft'
   | 'cash';
@@ -52,7 +52,7 @@ export interface InPersonMethod {
 }
 
 export interface MailMethod {
-  kind: 'mail';
+  kind: 'by_mail';
   /** Required if mail is offered; may default to payee address with confirmation. */
   mailAddress?: string;
 }
@@ -110,7 +110,7 @@ export interface ValidationResult {
 }
 
 /** Methods that satisfy the § 1947.3 floor (non-cash AND non-EFT). */
-const SECTION_1947_3_SATISFYING: PaymentMethodKind[] = ['in_person', 'mail'];
+const SECTION_1947_3_SATISFYING: PaymentMethodKind[] = ['in_person', 'by_mail'];
 
 function isBlank(s: string | undefined): boolean {
   return s === undefined || s.trim() === '';
@@ -168,6 +168,19 @@ export function validatePaymentMethods(
     });
   }
 
+  // EFT pairing rule (c7a_multiselect_face_review_broker_determination_2026-06-15
+  // §6): EFT may only be offered alongside By Mail. In Person does not satisfy
+  // the pairing. Message locked verbatim from the determination.
+  if (kinds.includes('eft') && !kinds.includes('by_mail')) {
+    errors.push({
+      code: 'EFT_REQUIRES_MAIL',
+      scope: 'eft',
+      message:
+        "Electronic funds transfer requires that mail payment also be offered " +
+        "as a method. Add 'By mail' to the selected payment methods, or remove EFT.",
+    });
+  }
+
   // Cash may be offered but never as the sole method (§ 1947.3).
   if (kinds.length === 1 && kinds[0] === 'cash') {
     errors.push({
@@ -195,11 +208,11 @@ export function validatePaymentMethods(
         }
         break;
 
-      case 'mail':
+      case 'by_mail':
         if (isBlank(m.mailAddress)) {
           errors.push({
             code: 'MAIL_ADDRESS_REQUIRED',
-            scope: 'mail',
+            scope: 'by_mail',
             message: 'When mail payment is offered, a mailing address is required.',
           });
         }

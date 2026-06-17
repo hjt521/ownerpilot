@@ -106,7 +106,7 @@ function validBaseline(): NoticeFlowData {
     tenantNames: ['Jane Tenant'],
     rentPeriods: [{ periodStartDate: '2026-04-01', periodEndDate: '2026-04-30', amount: 2000 }],
     produceAttestationConfirmed: true,
-    paymentMethods: [{ kind: 'mail', mailAddress: 'PO Box 1, Fresno, CA' }],
+    paymentMethods: [{ kind: 'by_mail', mailAddress: 'PO Box 1, Fresno, CA' }],
     signerName: 'Owner Name',
     ...individualLandlord('owner'),
     serviceDate: '2026-06-01',

@@ -17,7 +17,7 @@ console.log('\n1. Valid: in-person (with hours) + mail — satisfies the floor')
 {
   const methods: PaymentMethod[] = [
     { kind: 'in_person', daysHours: 'Mon-Fri 9am-5pm' },
-    { kind: 'mail', mailAddress: '123 Main St, Los Angeles, CA' },
+    { kind: 'by_mail', mailAddress: '123 Main St, Los Angeles, CA' },
   ];
   const r = validatePaymentMethods({ methods });
   check('valid', r.valid, JSON.stringify(r.errors));
@@ -64,7 +64,7 @@ console.log('\n6. Cash + mail is valid (cash allowed when not sole, floor met by
   const r = validatePaymentMethods({
     methods: [
       { kind: 'cash' },
-      { kind: 'mail', mailAddress: 'PO Box 5, LA, CA' },
+      { kind: 'by_mail', mailAddress: 'PO Box 5, LA, CA' },
     ],
   });
   check('valid', r.valid, JSON.stringify(r.errors));
@@ -81,7 +81,7 @@ console.log('\n7. In-person without hours is invalid');
 console.log('\n8. Bank deposit: all fields + 5-mile confirmation required');
 {
   // Missing everything
-  const bad = validatePaymentMethods({ methods: [{ kind: 'bank_deposit' }, { kind: 'mail', mailAddress: 'x' }] });
+  const bad = validatePaymentMethods({ methods: [{ kind: 'bank_deposit' }, { kind: 'by_mail', mailAddress: 'x' }] });
   check('bank name required', hasCode(bad.errors, 'BANK_NAME_REQUIRED'));
   check('bank branch required', hasCode(bad.errors, 'BANK_BRANCH_REQUIRED'));
   check('bank account required', hasCode(bad.errors, 'BANK_ACCOUNT_REQUIRED'));
@@ -90,7 +90,7 @@ console.log('\n8. Bank deposit: all fields + 5-mile confirmation required');
   // Complete + confirmed, alongside a floor method
   const good = validatePaymentMethods({
     methods: [
-      { kind: 'mail', mailAddress: 'x' },
+      { kind: 'by_mail', mailAddress: 'x' },
       {
         kind: 'bank_deposit',
         bankName: 'Bank of X',
@@ -120,8 +120,8 @@ console.log('\n10. Duplicate method kind is flagged');
 {
   const r = validatePaymentMethods({
     methods: [
-      { kind: 'mail', mailAddress: 'a' },
-      { kind: 'mail', mailAddress: 'b' },
+      { kind: 'by_mail', mailAddress: 'a' },
+      { kind: 'by_mail', mailAddress: 'b' },
     ],
   });
   check('DUPLICATE_METHOD', hasCode(r.errors, 'DUPLICATE_METHOD'));
@@ -140,6 +140,26 @@ console.log('\n11. Multiple errors are all returned together');
   check('hours error', hasCode(r.errors, 'IN_PERSON_HOURS_REQUIRED'));
   check('eft error', hasCode(r.errors, 'EFT_NOT_PREVIOUSLY_ESTABLISHED'));
   check('no floor error (in_person satisfies floor)', !hasCode(r.errors, 'SECTION_1947_3_FLOOR'));
+}
+
+console.log('\n12. EFT requires By Mail (composition determination \u00a76)');
+{
+  const noMail = validatePaymentMethods({
+    methods: [
+      { kind: 'in_person', daysHours: 'Mon-Fri 9am-5pm' },
+      { kind: 'eft', previouslyEstablishedConfirmed: true },
+    ],
+  });
+  check('invalid without mail', !noMail.valid);
+  check('EFT_REQUIRES_MAIL', hasCode(noMail.errors, 'EFT_REQUIRES_MAIL'));
+  const withMail = validatePaymentMethods({
+    methods: [
+      { kind: 'by_mail', mailAddress: '1 A St, LA, CA' },
+      { kind: 'eft', previouslyEstablishedConfirmed: true },
+    ],
+  });
+  check('valid with mail', withMail.valid, JSON.stringify(withMail.errors));
+  check('no EFT_REQUIRES_MAIL with mail', !hasCode(withMail.errors, 'EFT_REQUIRES_MAIL'));
 }
 
 console.log(`\n${'-'.repeat(40)}`);
