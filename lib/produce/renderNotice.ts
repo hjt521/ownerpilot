@@ -178,6 +178,23 @@ export const NOTICE_PROSE = {
   /** LOCKED 2026-06-04 (A1 Part D countersign) — § 1161(2) EFT only if previously established. */
   eftElectionSentence:
     'If you have previously established an electronic funds transfer procedure with the landlord, payment may also be made pursuant to that previously established procedure. (Cal. Code Civ. Proc. \u00A7 1161(2).)',
+  // --- C7a multi-select new locked constants (broker-authored 2026-06-15,
+  //     verbatim only). In-person-without-mail faces. Additive only — the three
+  //     pre-migration branches render byte-identically. ---
+  /** LOCKED 2026-06-15 (c7a_inperson_layout_broker_determination_2026-06-15 §3,
+   *  Option B) — address-row label for in-person-without-mail faces (rows 1 & 6). */
+  inPersonOnlyLabel: 'In person to',
+  /** LOCKED 2026-06-15 (c7a_inperson_layout_broker_determination_2026-06-15 §4) —
+   *  version stamp for inPersonOnlyLabel; a change requires a new determination + bump. */
+  inPersonAddressLabelVersion: 'v1',
+  /** LOCKED 2026-06-15 (c7a_multiselect_face_review_broker_determination_2026-06-15 §8)
+   *  — closure for In Person only (no mail, no bank deposit). */
+  inPersonOnlySentence:
+    'Payment must be delivered in person at the address above, on the days and during the hours stated. Mail and bank-deposit payment are not offered for this notice.',
+  /** LOCKED 2026-06-15 (c7a_multiselect_face_review_broker_determination_2026-06-15 §8)
+   *  — closure for In Person + Bank Deposit (no mail). */
+  inPersonNoMailSentence:
+    'Payment must be delivered in person at the address above, on the days and during the hours stated. Mail payment is not offered for this notice.',
 
   // --- Defect #2 payee-derivation face constants (ruling 2026-06-05, build-locked
   //     on attorney countersign per §4). Composition glue for the "Payable to:"
@@ -435,6 +452,94 @@ function buildPaySection(
       );
     }
     sentences.push(NOTICE_PROSE.eftElectionSentence);
+  }
+
+  return { rows, sentences };
+}
+
+/**
+ * C7a multi-select HOW-TO-PAY composition (broker determinations 2026-06-15:
+ * c7a_multiselect_face_review §3.5 ordering + §4 matrix; c7a_inperson_layout §3,
+ * Option B). Returns the same { rows, sentences } shape as buildPaySection, but
+ * from a multi-method selection. Every face string is a build-locked
+ * NOTICE_PROSE constant — this function only SELECTS and ORDERS them; it authors
+ * no face text. The three pre-migration faces (by_mail only; in_person + by_mail;
+ * the bank rows) reproduce byte-identically.
+ *
+ * Disallowed combinations (no in-person/by-mail floor; EFT without by_mail)
+ * throw — the validator blocks them upstream; this is defense in depth.
+ *
+ * NOT yet wired into the live render: buildPaySection remains the entry point
+ * until the Step-4 multi-select UI cutover (next slice). Built + confirmed first.
+ */
+export type OfferedMethod = 'in_person' | 'by_mail' | 'bank_deposit' | 'eft';
+
+export function composeFaceText(
+  methods: readonly OfferedMethod[],
+  data: NoticeFlowData,
+): { rows: PayRow[]; sentences: string[] } {
+  const inPerson = methods.includes('in_person');
+  const byMail = methods.includes('by_mail');
+  const bank = methods.includes('bank_deposit');
+  const eft = methods.includes('eft');
+
+  if (!inPerson && !byMail) {
+    throw new NoticeRenderError(
+      'Invalid payment configuration: at least one of in person or by mail must be offered.',
+    );
+  }
+  if (eft && !byMail) {
+    throw new NoticeRenderError(
+      'Invalid payment configuration: EFT requires by mail to also be offered.',
+    );
+  }
+
+  const streetAddress = formatPropertyLine(
+    requireString(data.landlordContact?.streetAddress, 'payee street address'),
+    data.landlordContact?.unit,
+  );
+
+  const rows: PayRow[] = [];
+  const sentences: string[] = [];
+
+  // Payee block: address row, labeled by combination.
+  let addressLabel: string;
+  if (byMail && inPerson) addressLabel = NOTICE_PROSE.inPersonOrMailLabel;
+  else if (byMail) addressLabel = NOTICE_PROSE.mailToLabel;
+  else addressLabel = NOTICE_PROSE.inPersonOnlyLabel; // in person, no mail
+  rows.push({ label: addressLabel, value: streetAddress });
+
+  // In Person block: days/hours.
+  if (inPerson) {
+    const days = requireString(data.personalDeliveryDays, 'personal-delivery days');
+    const hours = requireString(data.personalDeliveryHours, 'personal-delivery hours');
+    rows.push({ label: NOTICE_PROSE.personalDeliveryLabel, value: `${days}, ${hours}` });
+  }
+
+  // Bank Deposit block: name / branch / account rows.
+  if (bank) {
+    rows.push({ label: NOTICE_PROSE.bankLabel, value: requireString(data.bankName, 'bank name') });
+    rows.push({
+      label: NOTICE_PROSE.bankBranchLabel,
+      value: requireString(data.bankBranchAddress, 'bank branch address'),
+    });
+    rows.push({
+      label: NOTICE_PROSE.accountNumberLabel,
+      value: requireString(data.bankAccountNumber, 'bank account number'),
+    });
+  }
+
+  // Sentences, in locked order (§3.5): mail -> bank -> eft -> in-person closure.
+  if (byMail) sentences.push(NOTICE_PROSE.mailboxRuleSentence);
+  if (bank) {
+    sentences.push(NOTICE_PROSE.bankPaperInstrumentSentence);
+    sentences.push(NOTICE_PROSE.fiveMileSentence);
+  }
+  if (eft) sentences.push(NOTICE_PROSE.eftElectionSentence);
+  if (inPerson && !byMail) {
+    sentences.push(
+      bank ? NOTICE_PROSE.inPersonNoMailSentence : NOTICE_PROSE.inPersonOnlySentence,
+    );
   }
 
   return { rows, sentences };
