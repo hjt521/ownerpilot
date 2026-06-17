@@ -175,7 +175,18 @@ export function NoticeFlow() {
   // pristine pre-restore state on first mount).
   useEffect(() => {
     if (!hydratedRef.current) return;
-    const t = setTimeout(() => saveDraft(pageIndex, state.data), 500);
+    const t = setTimeout(() => {
+      saveDraft(pageIndex, state.data);
+      // Profile hook: keep the saved landlord/payment defaults in sync as the
+      // user edits, gated on the opt-in box. Decoupled from producing so the
+      // defaults persist even for an incomplete notice. Never includes the
+      // bank account number (see extractProfile).
+      if (state.data.saveLandlordPaymentDefaults) {
+        saveProfile(state.data);
+      } else {
+        clearProfile();
+      }
+    }, 500);
     return () => clearTimeout(t);
   }, [state.data, pageIndex]);
 
@@ -2805,14 +2816,6 @@ function ReviewStep({
   // by PacketPrintOptions whenever any packet document is printed.
   const onProduced = () => {
     update({ productionSnapshot: captureProductionSnapshot(data) });
-    // Profile hook: persist the reusable landlord/payment details on produce
-    // when the user opted in; clear them on opt-out. Never includes the bank
-    // account number (see extractProfile).
-    if (data.saveLandlordPaymentDefaults) {
-      saveProfile(data);
-    } else {
-      clearProfile();
-    }
   };
 
   // Slice E: always-visible calm readiness checklist near the top of Step 5.
