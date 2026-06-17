@@ -156,6 +156,55 @@ console.log('9. Entity landlord without a signer title: SIGNER_TITLE_REQUIRED bl
   check('ENTITY_LANDLORD_NOT_SUPPORTED still gone', !has(r, 'ENTITY_LANDLORD_NOT_SUPPORTED'));
 }
 
+console.log('10. SAFETY: LA overlay address blocks production (jurisdiction confirmation)');
+{
+  const d = validV4();
+  d.propertyAddress = '456 Spring St, Los Angeles, CA 90013';
+  d.propertyCity = 'Los Angeles';
+  const r = evaluateCanProduceV4(d);
+  check('LA address blocks', !r.canProduce);
+  check('JURISDICTION_NEEDS_CONFIRMATION fires', has(r, 'JURISDICTION_NEEDS_CONFIRMATION'));
+}
+
+console.log('11. SAFETY: hard-block overlay city blocks production');
+{
+  const d = validV4();
+  d.propertyAddress = '1 Market St, San Francisco, CA 94105';
+  d.propertyCity = 'San Francisco';
+  const r = evaluateCanProduceV4(d);
+  check('SF blocks', !r.canProduce && has(r, 'JURISDICTION_BLOCK_OVERLAY_CITY'));
+}
+
+console.log('12. Broker/agent signer without authority evidence blocks; with evidence clears');
+{
+  const d = validV4();
+  Object.assign(d, individualLandlord('broker_or_manager'));
+  d.authorityEvidenceOnFile = undefined;
+  check('broker w/o authority blocks', has(evaluateCanProduceV4(d), 'AUTHORITY_EVIDENCE_MISSING'));
+
+  d.authorityEvidenceOnFile = true;
+  const r = evaluateCanProduceV4(d);
+  check('broker w/ authority can produce', r.canProduce === true, codes(r).join(', '));
+}
+
+console.log('13. Unverified-year service date blocks (date engine throws -> caught)');
+{
+  const d = validV4();
+  d.serviceDate = '2099-06-01'; // no holiday table for 2099
+  const r = evaluateCanProduceV4(d);
+  check('unverified year blocks', !r.canProduce && has(r, 'DATES_NOT_COMPUTABLE'));
+}
+
+console.log('14. Multiple missing conditions all surface together');
+{
+  const d = validV4();
+  d.tenantNames = [];
+  d.produceAttestationConfirmed = false;
+  delete d.signerName;
+  const r = evaluateCanProduceV4(d);
+  check('3+ blockers', r.blockers.length >= 3, `got ${r.blockers.length}: ${codes(r).join(', ')}`);
+}
+
 console.log(`\n${'-'.repeat(40)}`);
 console.log(`  ${passed} passed, ${failed} failed`);
 console.log(`${'-'.repeat(40)}\n`);
