@@ -384,80 +384,6 @@ export function derivePayeeName(data: NoticeFlowData): DerivedPayeeName {
 // Fails closed if a required branch field is missing (the gate validates first;
 // this is the renderer's own guard so it never emits a defective document).
 
-function buildPaySection(
-  data: NoticeFlowData,
-): { rows: PayRow[]; sentences: string[] } {
-  const branch = data.paymentBranch;
-  if (!branch) throw new NoticeRenderError('Missing required field: payment branch');
-
-  const streetAddress = formatPropertyLine(
-    requireString(data.landlordContact?.streetAddress, 'payee street address'),
-    data.landlordContact?.unit,
-  );
-
-  const rows: PayRow[] = [];
-  const sentences: string[] = [];
-
-  switch (branch) {
-    case 'mail_only':
-      rows.push({ label: NOTICE_PROSE.mailToLabel, value: streetAddress });
-      sentences.push(NOTICE_PROSE.mailboxRuleSentence);
-      break;
-
-    case 'in_person_and_mail': {
-      const days = requireString(data.personalDeliveryDays, 'personal-delivery days');
-      const hours = requireString(data.personalDeliveryHours, 'personal-delivery hours');
-      rows.push({ label: NOTICE_PROSE.inPersonOrMailLabel, value: streetAddress });
-      rows.push({ label: NOTICE_PROSE.personalDeliveryLabel, value: `${days}, ${hours}` });
-      sentences.push(NOTICE_PROSE.mailboxRuleSentence);
-      break;
-    }
-
-    case 'bank_deposit': {
-      const bankName = requireString(data.bankName, 'bank name');
-      const branchAddr = requireString(data.bankBranchAddress, 'bank branch address');
-      const acct = requireString(data.bankAccountNumber, 'bank account number');
-      if (data.bankDepositPaperInstrumentConfirmed !== true) {
-        // Decision 1: a bank deposit is a valid sole method only by paper instrument.
-        throw new NoticeRenderError(
-          'Bank deposit requires a paper-instrument confirmation before producing.',
-        );
-      }
-      rows.push({ label: NOTICE_PROSE.bankLabel, value: bankName });
-      rows.push({ label: NOTICE_PROSE.bankBranchLabel, value: branchAddr });
-      rows.push({ label: NOTICE_PROSE.accountNumberLabel, value: acct });
-      sentences.push(NOTICE_PROSE.bankPaperInstrumentSentence);
-      sentences.push(NOTICE_PROSE.fiveMileSentence);
-      // NO mailbox-rule sentence on a standalone FINANCIAL_INSTITUTION branch
-      // (attorney A1 Part-D redline, 2026-06-03). The § 1161(2) mailbox-rule
-      // safe-harbor belongs to alternative (i) (name/telephone/address); on a
-      // sole bank-deposit branch it reads as "mail to the bank branch," which is
-      // misleading under Eshagian. It renders for MAIL_ONLY and
-      // in_person_and_mail; when multi-method ships (B3), it renders inside the
-      // "By mail" block, never the "Bank deposit" block. String itself is
-      // unchanged (and build-locked) — this is gating only.
-      break;
-    }
-
-    default: {
-      const _exhaustive: never = branch;
-      throw new NoticeRenderError(`Unknown payment branch: ${_exhaustive as string}`);
-    }
-  }
-
-  // EFT add-on (any branch), only when previously established.
-  if (data.eftElectionAvailable === true) {
-    if (data.eftPreviouslyEstablishedConfirmed !== true) {
-      throw new NoticeRenderError(
-        'EFT election requires a previously-established confirmation before producing.',
-      );
-    }
-    sentences.push(NOTICE_PROSE.eftElectionSentence);
-  }
-
-  return { rows, sentences };
-}
-
 /**
  * C7a multi-select HOW-TO-PAY composition (broker determinations 2026-06-15:
  * c7a_multiselect_face_review §3.5 ordering + §4 matrix; c7a_inperson_layout §3,
@@ -470,8 +396,8 @@ function buildPaySection(
  * Disallowed combinations (no in-person/by-mail floor; EFT without by_mail)
  * throw — the validator blocks them upstream; this is defense in depth.
  *
- * NOT yet wired into the live render: buildPaySection remains the entry point
- * until the Step-4 multi-select UI cutover (next slice). Built + confirmed first.
+ * This is the sole face-composition path: the single-select buildPaySection
+ * was retired in C7a slice 4c.
  */
 export function composeFaceText(
   methods: readonly OfferedMethod[],
@@ -643,18 +569,19 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
   const periodText = `${formatNoticeDate(earliestStart)} through ${formatNoticeDate(latestEnd)}`;
   const totalFormatted = formatCurrency(totalDue);
 
-  // v4 HOW TO PAY. C7a: compose from the locked multi-select matrix when methods
-  // are present; otherwise the single-select branch. model.pay.branch is
-  // audit-only (no layout consumer reads it), so it is optional and absent under
-  // multi-select; the audit records offered_methods as the authoritative record.
+  // v4 HOW TO PAY. C7a: compose from the locked multi-select matrix (the only
+  // render path; the single-select buildPaySection was retired in slice 4c).
+  // model.pay.branch is audit-only (no layout consumer reads it), so it is
+  // optional and absent here; the audit records offered_methods as the
+  // authoritative record.
   const branch = data.paymentBranch;
-  const usingMethods = (data.paymentMethods?.length ?? 0) > 0;
-  if (!usingMethods && !branch) {
-    throw new NoticeRenderError('Missing required field: payment branch');
+  if ((data.paymentMethods?.length ?? 0) === 0) {
+    throw new NoticeRenderError('Missing required field: payment methods');
   }
-  const { rows: payRows, sentences: paySentences } = usingMethods
-    ? composeFaceText(data.paymentMethods, data)
-    : buildPaySection(data);
+  const { rows: payRows, sentences: paySentences } = composeFaceText(
+    data.paymentMethods,
+    data,
+  );
 
   const propertyLine = formatPropertyLine(propertyAddress, propertyUnit);
   const addressBlock = propertyCounty
