@@ -17,7 +17,12 @@
 import type { NoticeFlowData } from './noticeFlowState';
 
 export const DRAFT_KEY = 'op.noticeDraft.v1';
-export const DRAFT_VERSION = 1;
+// Bumped 1 -> 2 with the 5-page wizard re-partition (Slice A). A stored
+// pageIndex from the old 4-page structure points at a different page now,
+// so pre-redesign drafts are discarded on load (loadDraft's version check)
+// rather than restoring the user onto the wrong page. Envelope shape is
+// unchanged; the next autosave overwrites the same key (no orphan).
+export const DRAFT_VERSION = 2;
 
 export interface DraftEnvelope {
   v: number;
