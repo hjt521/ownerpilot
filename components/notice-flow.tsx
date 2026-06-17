@@ -2324,6 +2324,7 @@ function ReviewStep({
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
   goToPage?: (pageIndex: number) => void;
 }) {
+  const [produceAttempted, setProduceAttempted] = useState(false);
   const result = evaluateCanProduceV4(data);
 
   // When the gate says ready, render the notice from the build-locked template
@@ -2373,6 +2374,32 @@ function ReviewStep({
   const onProduced = () => {
     update({ productionSnapshot: captureProductionSnapshot(data) });
   };
+
+  // Slice A.1: don't surface the produce-gate readout (green/amber) the
+  // instant the user lands on Step 5. The signer/date fields live on this
+  // same page and are still empty on arrival, so an immediate "Not ready
+  // yet" list nags about fields the user hasn't filled. Gate the readout
+  // behind an explicit produce attempt; local state resets on each entry to
+  // Step 5, so arriving (or returning via a "Go to this" jump) starts clean.
+  // Once attempted, the checklist updates live as fields above are filled.
+  if (!produceAttempted) {
+    return (
+      <div className="space-y-6">
+        <StepIntro>
+          When the signer and dates above are filled in, produce your notice
+          packet. We&apos;ll check everything and flag anything that still
+          needs attention before it prints.
+        </StepIntro>
+        <button
+          type="button"
+          onClick={() => setProduceAttempted(true)}
+          className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-bar transition-colors"
+        >
+          Produce Notice Packet
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
