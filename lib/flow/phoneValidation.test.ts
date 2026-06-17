@@ -6,7 +6,7 @@
  */
 import { validateStep } from './advancement';
 import { FlowStep, createFlowState, NoticeFlowData } from './noticeFlowState';
-import { isUsPhone } from '../payments/validatePaymentBranch';
+import { isUsPhone } from '../payments/contactValidation';
 
 let passed = 0;
 const failures: string[] = [];

@@ -27,7 +27,7 @@ import {
 } from './noticeFlowState';
 import { evaluateDisputeScreen } from './gates';
 import { validateSigningDate } from './escalation';
-import { isUsPhone } from '../payments/validatePaymentBranch';
+import { isUsPhone } from '../payments/contactValidation';
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
