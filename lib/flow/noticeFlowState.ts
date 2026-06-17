@@ -252,6 +252,9 @@ export interface NoticeFlowData {
    * user-set value after navigating away and back.
    */
   payeeStreetUserEdited?: boolean;
+  /** True once the user has edited the payee UNIT, stopping the mailing-unit
+   *  mirror (parallel to payeeStreetUserEdited). Persisted across navigation. */
+  payeeUnitUserEdited?: boolean;
   /**
    * Optional UI preference (C2b): the user asked to save landlord +
    * payment details for future notices. Records intent only — no profile
@@ -279,6 +282,9 @@ export interface NoticeFlowData {
    *  default source for the payee street-address prefill on the payment step
    *  (non-destructive: it only seeds an empty payee address, never overwrites). */
   mailingAddress?: string;
+  /** Optional unit/suite for the mailing address; mirrors into the payee unit
+   *  just like mailingAddress mirrors into the payee street. */
+  mailingUnit?: string;
 
   // --- Notice execution + service dates (attorney ruling B1, 2026-06-02) ----
   // BINDING: the signing date (the "Dated:" line) and the service date(s) are

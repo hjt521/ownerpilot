@@ -1376,32 +1376,47 @@ function PaymentStep({
   // landlord identity (or the non-landlord override), never typed here.
   const derivedPayee = derivePayeeName(data);
 
-  // Mirror the owner mailing address into the payee street address until the
-  // user edits the payee street (broker direction 2026-06-16, superseding the
-  // C7b explicit-click prefill). Debounced so a mailing address still being
-  // typed does not flash partials; KEEPS FOLLOWING mailing changes (no
-  // one-time lock — the prior version stuck on an early value). Stops once
-  // data.payeeStreetUserEdited is set, which is persisted across navigation.
+  // Mirror the owner mailing address -> payee street, AND the mailing unit ->
+  // payee unit (broker direction 2026-06-16), until the user edits the payee
+  // field. One effect handles both in a single functional update so the two
+  // mirrors can't clobber each other or a concurrent change to another contact
+  // field. Debounced; KEEPS FOLLOWING mailing changes; stops per field once
+  // payeeStreetUserEdited / payeeUnitUserEdited is set (persisted).
   const mailingForMirror = data.mailingAddress ?? '';
+  const mailingUnitForMirror = data.mailingUnit ?? '';
   useEffect(() => {
-    if (data.payeeStreetUserEdited) return;
-    if (!mailingForMirror) return;
+    if (data.payeeStreetUserEdited && data.payeeUnitUserEdited) return;
+    if (!mailingForMirror && !mailingUnitForMirror) return;
     const t = setTimeout(() => {
+      const patch: Partial<LandlordContact> = {};
       if (
         !data.payeeStreetUserEdited &&
+        mailingForMirror &&
         (data.landlordContact?.streetAddress ?? '') !== mailingForMirror
       ) {
-        update({
-          landlordContact: {
-            ...(data.landlordContact ?? {}),
-            streetAddress: mailingForMirror,
-          },
-        });
+        patch.streetAddress = mailingForMirror;
+      }
+      if (
+        !data.payeeUnitUserEdited &&
+        mailingUnitForMirror &&
+        (data.landlordContact?.unit ?? '') !== mailingUnitForMirror
+      ) {
+        patch.unit = mailingUnitForMirror;
+      }
+      if (Object.keys(patch).length > 0) {
+        update((d) => ({
+          landlordContact: { ...(d.landlordContact ?? {}), ...patch },
+        }));
       }
     }, 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mailingForMirror, data.payeeStreetUserEdited]);
+  }, [
+    mailingForMirror,
+    mailingUnitForMirror,
+    data.payeeStreetUserEdited,
+    data.payeeUnitUserEdited,
+  ]);
 
   return (
     <div className="space-y-8">
@@ -1488,7 +1503,11 @@ function PaymentStep({
           {data.mailingAddress && !(c.streetAddress ?? '').trim() && (
             <button
               type="button"
-              onClick={() => setContact({ streetAddress: data.mailingAddress })}
+              onClick={() =>
+                update({
+                  landlordContact: { ...c, streetAddress: data.mailingAddress, unit: data.mailingUnit },
+                })
+              }
               className="mb-2 text-sm font-medium text-blue-700 hover:text-blue-800"
             >
               Same as mailing address
@@ -1512,7 +1531,9 @@ function PaymentStep({
               id="payeeUnit"
               type="text"
               value={c.unit ?? ''}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setContact({ unit: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                update({ landlordContact: { ...c, unit: e.target.value }, payeeUnitUserEdited: true })
+              }
               placeholder="Suite 200"
               className={inputClass}
             />
@@ -2272,6 +2293,17 @@ function LandlordIdentityStep({
             placeholder="123 Main St, City, CA 90000"
             className={inputClass}
           />
+          <div className="mt-3">
+            <FieldLabel htmlFor="mailingUnit">Unit / Suite # (optional)</FieldLabel>
+            <input
+              id="mailingUnit"
+              type="text"
+              value={data.mailingUnit ?? ''}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => update({ mailingUnit: e.target.value })}
+              placeholder="Suite 200"
+              className={inputClass}
+            />
+          </div>
           <p className="mt-1 text-xs text-gray-500 leading-relaxed">
             Where you receive mail about this notice. We&apos;ll use it to
             prefill the payment address on the next step (you can change it
