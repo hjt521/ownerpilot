@@ -2537,6 +2537,134 @@ function pageForBlocker(code: string): number | null {
   return code in BLOCKER_PAGE ? BLOCKER_PAGE[code] : null;
 }
 
+// Step-5 review summary: a recap of entered values grouped by step, each with an
+// Edit jump (reuses goToPage). Echoes user input and existing UI labels only -
+// no notice-face legal text is authored here.
+function ReviewSummaryCards({
+  data,
+  result,
+  goToPage,
+}: {
+  data: NoticeFlowData;
+  result: ReturnType<typeof evaluateCanProduceV4>;
+  goToPage?: (pageIndex: number) => void;
+}) {
+  const NOT_SET = 'Not added yet';
+
+  const propertyLine =
+    [data.propertyAddress, data.propertyUnit, data.propertyCity]
+      .map((s) => (s ?? '').trim())
+      .filter(Boolean)
+      .join(', ') || NOT_SET;
+  const tenantLine =
+    (data.tenantNames ?? []).map((n) => (n ?? '').trim()).filter(Boolean).join(', ') || NOT_SET;
+
+  const periods = data.rentPeriods ?? [];
+  const rentTotal = periods.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const li = data.landlordIdentity;
+  let landlordLine = NOT_SET;
+  if (li?.type === 'entity' && (li.entityLegalName ?? '').trim()) {
+    landlordLine = li.entityLegalName;
+  } else if (li?.type === 'individual') {
+    const names = li.names.map((n) => (n ?? '').trim()).filter(Boolean);
+    if (names.length) landlordLine = names.join(', ');
+  }
+  let payeeName = '';
+  try {
+    payeeName = (derivePayeeName(data).name ?? '').trim();
+  } catch {
+    payeeName = '';
+  }
+  const paymentLabel = data.paymentBranch ? PAYMENT_BRANCH_LABELS[data.paymentBranch] : '';
+  const payPhone = (data.landlordContact?.phone ?? '').trim();
+
+  const signerName = (data.signerName ?? '').trim();
+  const signerTitle = (data.signerTitle ?? '').trim();
+  const signerLine = signerName
+    ? signerName + (signerTitle ? `, ${signerTitle}` : '')
+    : NOT_SET;
+  const signed = data.signingDate ? formatNoticeDate(data.signingDate) : '';
+  const served = data.serviceDate ? formatNoticeDate(data.serviceDate) : '';
+  const datesLine =
+    [signed && `Signed ${signed}`, served && `Served ${served}`].filter(Boolean).join(' \u00b7 ') ||
+    'Dates not set';
+  const deadline = result.computedDates
+    ? formatNoticeDate(result.computedDates.expirationDate)
+    : '';
+
+  const cards: { title: string; page: number; lines: string[] }[] = [
+    { title: 'Property & tenant', page: 1, lines: [propertyLine, tenantLine] },
+    {
+      title: 'Rent owed',
+      page: 2,
+      lines:
+        periods.length === 0
+          ? [NOT_SET]
+          : [
+              `${periods.length} rental period${periods.length === 1 ? '' : 's'}`,
+              `Total demanded: ${rentTotal.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              })}`,
+            ],
+    },
+    {
+      title: 'Landlord & payment',
+      page: 3,
+      lines: [
+        landlordLine,
+        payeeName ? `Pay to ${payeeName}` : '',
+        [paymentLabel, payPhone].filter(Boolean).join(' \u00b7 '),
+      ].filter(Boolean),
+    },
+    {
+      title: 'Signer & dates',
+      page: 4,
+      lines: [signerLine, datesLine, deadline ? `Deadline: ${deadline}` : ''].filter(Boolean),
+    },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="font-serif text-lg font-bold text-brand">Review your details</h3>
+        <span className="text-xs text-gray-500">Edit jumps back to that step</span>
+      </div>
+      {cards.map((c) => (
+        <div
+          key={c.title}
+          className="flex items-start justify-between gap-4 rounded-lg border border-rule bg-white px-5 py-4"
+        >
+          <div className="min-w-0">
+            <p className="font-serif text-base font-bold text-brand mb-1">{c.title}</p>
+            {c.lines.map((line, i) => {
+              const muted = line === NOT_SET || line === 'Dates not set';
+              return (
+                <p
+                  key={i}
+                  className={`text-sm leading-relaxed ${muted ? 'italic text-gray-400' : 'text-gray-700'}`}
+                >
+                  {line}
+                </p>
+              );
+            })}
+          </div>
+          {goToPage && (
+            <button
+              type="button"
+              onClick={() => goToPage(c.page)}
+              className="flex-shrink-0 text-sm font-semibold text-brand underline whitespace-nowrap"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ReviewStep({
   data,
   update,
@@ -2701,6 +2829,8 @@ function ReviewStep({
           </ul>
         </div>
       )}
+
+      <ReviewSummaryCards data={data} result={result} goToPage={goToPage} />
 
       {!result.canProduce &&
         data.paymentBranch === 'bank_deposit' &&
