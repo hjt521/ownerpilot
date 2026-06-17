@@ -92,7 +92,7 @@ export interface NoticeModel {
     expirationFormatted: string;
   };
   pay: {
-    branch: PaymentBranch;
+    branch?: PaymentBranch;
     payeeName: string;
     payeePhone: string;
     /** Address / bank rows for the grid. */
@@ -643,10 +643,18 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
   const periodText = `${formatNoticeDate(earliestStart)} through ${formatNoticeDate(latestEnd)}`;
   const totalFormatted = formatCurrency(totalDue);
 
-  // v4 HOW TO PAY
+  // v4 HOW TO PAY. C7a: compose from the locked multi-select matrix when methods
+  // are present; otherwise the single-select branch. model.pay.branch is
+  // audit-only (no layout consumer reads it), so it is optional and absent under
+  // multi-select; the audit records offered_methods as the authoritative record.
   const branch = data.paymentBranch;
-  if (!branch) throw new NoticeRenderError('Missing required field: payment branch');
-  const { rows: payRows, sentences: paySentences } = buildPaySection(data);
+  const usingMethods = (data.paymentMethods?.length ?? 0) > 0;
+  if (!usingMethods && !branch) {
+    throw new NoticeRenderError('Missing required field: payment branch');
+  }
+  const { rows: payRows, sentences: paySentences } = usingMethods
+    ? composeFaceText(data.paymentMethods, data)
+    : buildPaySection(data);
 
   const propertyLine = formatPropertyLine(propertyAddress, propertyUnit);
   const addressBlock = propertyCounty
@@ -762,7 +770,11 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     // Defect #2 audit (ruling §4): which branch composed the payee name.
     // AUDIT ONLY — the face shows the composed name, never this source token.
     payee_name_source: derivedPayee.nameSource,
-    payment_branch: branch,
+    payment_branch: branch ?? '',
+    // C7a §9 audit: the authoritative record of the offered payment methods.
+    // payment_branch above is the legacy single-select token (empty under
+    // multi-select); offered_methods carries the actual selection.
+    offered_methods: (data.paymentMethods ?? []).join(', '),
     signer_name: signerName,
     signer_role: signerRoleLabelText,
     // Defect #1 audit (ruling §1.4): record the canonical landlord_type and
