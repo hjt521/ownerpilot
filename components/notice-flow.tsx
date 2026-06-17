@@ -219,9 +219,16 @@ export function NoticeFlow() {
     ) &&
     !state.data.safetyCheckOverride;
   const scrollToTop = () => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+    // Defer past the page swap: iOS Safari drops a scroll fired synchronously
+    // while the old page is still laid out, so run it on the next frame, after
+    // React commits the new page. Hit documentElement/body too - window.scrollTo
+    // alone is unreliable on iOS.
+    requestAnimationFrame(() => {
       window.scrollTo(0, 0);
-    }
+      document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    });
   };
 
   const proceedThroughOverride = () => {
