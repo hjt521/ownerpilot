@@ -242,6 +242,13 @@ export interface NoticeFlowData {
   payeeIsNonLandlord?: boolean;
   /** Required when payeeIsNonLandlord: the non-landlord payee's name. */
   payeeOverrideName?: string;
+  /**
+   * True once the user has manually edited the payee street address. While
+   * false, the payee street mirrors the owner mailing address (broker
+   * direction 2026-06-16). Persisted so the mirror never re-clobbers a
+   * user-set value after navigating away and back.
+   */
+  payeeStreetUserEdited?: boolean;
 
   // Step 3 — landlord identity + signer (Defect #1, ruling §1.1)
   /** Single source of truth for who the landlord is. Set via the Stage-1 toggle. */

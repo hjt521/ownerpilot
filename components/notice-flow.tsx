@@ -357,11 +357,17 @@ export function NoticeFlow() {
               time on mobile). Provider is inert on pages with no
               CollapsibleSection. defaultOpenId opens the first payment
               section; 4A (LandlordIdentityStep) joins the same provider in C1b. */}
-          <AccordionProvider defaultOpenId="payment_4b">
+          <AccordionProvider defaultOpenId="landlord_4a">
           {page.steps.map((step, idx) => (
             <div
               key={step}
-              className={idx > 0 ? 'pt-4 mt-4 border-t border-gray-200' : ''}
+              className={
+                idx > 0
+                  ? page.steps.includes(FlowStep.PaymentInstructions)
+                    ? 'mt-8'
+                    : 'pt-4 mt-4 border-t border-gray-200'
+                  : ''
+              }
             >
               {renderStepBody(step, state.data, update, goToPage)}
             </div>
@@ -1345,6 +1351,33 @@ function PaymentStep({
   // landlord identity (or the non-landlord override), never typed here.
   const derivedPayee = derivePayeeName(data);
 
+  // Mirror the owner mailing address into the payee street address until the
+  // user edits the payee street (broker direction 2026-06-16, superseding the
+  // C7b explicit-click prefill). Debounced so a mailing address still being
+  // typed does not flash partials; KEEPS FOLLOWING mailing changes (no
+  // one-time lock — the prior version stuck on an early value). Stops once
+  // data.payeeStreetUserEdited is set, which is persisted across navigation.
+  const mailingForMirror = data.mailingAddress ?? '';
+  useEffect(() => {
+    if (data.payeeStreetUserEdited) return;
+    if (!mailingForMirror) return;
+    const t = setTimeout(() => {
+      if (
+        !data.payeeStreetUserEdited &&
+        (data.landlordContact?.streetAddress ?? '') !== mailingForMirror
+      ) {
+        update({
+          landlordContact: {
+            ...(data.landlordContact ?? {}),
+            streetAddress: mailingForMirror,
+          },
+        });
+      }
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mailingForMirror, data.payeeStreetUserEdited]);
+
   return (
     <div className="space-y-8">
       {/* Section 1 (4B) — person to receive payment (§ 1161(2) name/phone/address) */}
@@ -1438,7 +1471,12 @@ function PaymentStep({
           <PropertyAddressAutocomplete
             id="payeeAddress"
             value={c.streetAddress ?? ''}
-            onChange={(v) => setContact({ streetAddress: v })}
+            onChange={(v) =>
+              update({
+                landlordContact: { ...c, streetAddress: v },
+                payeeStreetUserEdited: true,
+              })
+            }
             placeholder="123 Main St, City, CA 90000"
             className={inputClass}
           />
@@ -1965,11 +2003,12 @@ function LandlordIdentityStep({
     update(setLandlordTypePatch(t, { ...data, landlordIdentity: restored }));
   };
   return (
+    <CollapsibleSection
+      id="landlord_4a"
+      title="Landlord (the party serving this notice)."
+      subhead="Who is the landlord on this notice?"
+    >
     <div className="space-y-6">
-      <SectionHeader
-        title="Landlord (the party serving this notice)."
-        subhead="Who is the landlord on this notice?"
-      />
       <LearnMore>
         Who is the landlord on this notice? This determines whose name appears
         as the party the notice is from, and (unless you say otherwise on the
@@ -2151,6 +2190,7 @@ function LandlordIdentityStep({
         </div>
       )}
     </div>
+    </CollapsibleSection>
   );
 }
 
