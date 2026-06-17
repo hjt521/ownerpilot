@@ -16,7 +16,6 @@
  * Not legal advice; product workflow logic.
  */
 
-import type { PaymentMethod } from '../payments/validatePaymentMethods';
 import type { ServiceMethod } from '../dates/computeCompliancePeriod';
 
 /** The ordered steps of the flow. Pre-flight precedes Step 1. */
@@ -110,6 +109,11 @@ export type SignerCapacity =
  */
 export type PaymentBranch = 'mail_only' | 'in_person_and_mail' | 'bank_deposit';
 
+/** C7a multi-select: the offered payment-method SELECTION (Option A — the
+ *  per-method data lives in the flat fields). Canonical atom set; matches the
+ *  determination audit record and the C1 gate. */
+export type OfferedMethod = 'in_person' | 'by_mail' | 'bank_deposit' | 'eft';
+
 /**
  * The § 1161(2) payee identity — the person to whom rent is paid. Distinct from
  * the signer (a managing agent may sign while rent is paid to the owner). The
@@ -192,9 +196,10 @@ export interface NoticeFlowData {
   /** ISO timestamp when the produce attestation was accepted (audit). */
   produceAttestationAcceptedAt?: string;
 
-  // Step 4 — payment (legacy multi-method model; superseded by the v4 branch
-  // model below. Kept until the Slice-2 gate/renderer cutover removes it.)
-  paymentMethods: PaymentMethod[];
+  // Step 4 — payment. C7a multi-select: the offered-method SELECTION (Option A;
+  // per-method data lives in the flat fields below). The v4 paymentBranch model
+  // is retired once the UI cutover (Slice 2b) lands.
+  paymentMethods: OfferedMethod[];
 
   // Step 4 — payment (v4 model, per attorney ruling 2026-06-01)
   /** § 1161(2) payee: name + telephone + street address (all required). */

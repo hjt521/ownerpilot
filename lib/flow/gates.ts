@@ -21,6 +21,7 @@ import {
   validatePaymentMethods,
   ValidationError,
 } from '../payments/validatePaymentMethods';
+import { buildMethodsInput } from './paymentMethodsAdapter';
 import { detectJurisdiction } from '../jurisdiction/detectJurisdiction';
 import { getVerifiedHolidaySet } from '../dates/holidays';
 import { computeCompliancePeriod, type ServiceMethod } from '../dates/computeCompliancePeriod';
@@ -294,7 +295,7 @@ export function evaluateCanProduce(data: NoticeFlowData): CanProduceResult {
   }
 
   // (e) Payment methods valid (delegates to the validator).
-  const pay = validatePaymentMethods({ methods: data.paymentMethods });
+  const pay = validatePaymentMethods(buildMethodsInput(data));
   if (!pay.valid) {
     blockers.push({
       code: 'PAYMENT_METHODS_INVALID',

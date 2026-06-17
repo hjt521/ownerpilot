@@ -32,6 +32,7 @@
 
 import type {
   NoticeFlowData,
+  OfferedMethod,
   RentPeriod,
   SignerCapacity,
   PaymentBranch,
@@ -472,8 +473,6 @@ function buildPaySection(
  * NOT yet wired into the live render: buildPaySection remains the entry point
  * until the Step-4 multi-select UI cutover (next slice). Built + confirmed first.
  */
-export type OfferedMethod = 'in_person' | 'by_mail' | 'bank_deposit' | 'eft';
-
 export function composeFaceText(
   methods: readonly OfferedMethod[],
   data: NoticeFlowData,
