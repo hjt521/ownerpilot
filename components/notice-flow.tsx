@@ -35,7 +35,7 @@ import {
   captureProductionSnapshot,
   evaluateStaleness,
 } from '@/lib/flow/escalation';
-import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName } from '@/lib/produce/renderNotice';
+import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName, formatPropertyLine } from '@/lib/produce/renderNotice';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import { PacketPrintOptions } from './packet-print-options';
@@ -2551,11 +2551,9 @@ function ReviewSummaryCards({
 }) {
   const NOT_SET = 'Not added yet';
 
-  const propertyLine =
-    [data.propertyAddress, data.propertyUnit, data.propertyCity]
-      .map((s) => (s ?? '').trim())
-      .filter(Boolean)
-      .join(', ') || NOT_SET;
+  const propertyLine = (data.propertyAddress ?? '').trim()
+    ? formatPropertyLine(data.propertyAddress ?? '', data.propertyUnit)
+    : NOT_SET;
   const tenantLine =
     (data.tenantNames ?? []).map((n) => (n ?? '').trim()).filter(Boolean).join(', ') || NOT_SET;
 

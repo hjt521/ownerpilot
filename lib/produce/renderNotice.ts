@@ -452,7 +452,19 @@ function buildPaySection(
 export function formatPropertyLine(address: string, unit?: string): string {
   const u = (unit ?? '').trim();
   const a = (address ?? '').trim();
-  return u ? `${a}, ${u}` : a;
+  // JT direction 2026-06-16 (face-affecting display format): drop a trailing
+  // country segment Google Places appends ("USA" / "United States"), and place
+  // the unit right after the street rather than at the very end.
+  const parts = a.split(',').map((s) => s.trim()).filter(Boolean);
+  if (parts.length > 1) {
+    const last = parts[parts.length - 1].toLowerCase();
+    if (last === 'usa' || last === 'united states' || last === 'us') parts.pop();
+  }
+  if (!u) return parts.join(', ');
+  const unitLabel = /^(unit|apt|apartment|suite|ste|#|rm|room|fl|floor|ph|bldg|building)\b/i.test(u)
+    ? u
+    : `Unit ${u}`;
+  return parts.length >= 1 ? [parts[0], unitLabel, ...parts.slice(1)].join(', ') : unitLabel;
 }
 
 export function renderNotice(input: RenderNoticeInput): RenderedNotice {
