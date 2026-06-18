@@ -51,30 +51,30 @@ const STYLE = `
   /* Letter sheet. Generous reserved footer band (padding-bottom) keeps legal
      content above the footer; overflow is visible so legal text is NEVER
      clipped — a too-long notice continues onto a labeled continuation sheet. */
-  .page { position:relative; width:8.5in; height:11in; margin:0 auto; background:#fff; padding:0.45in 0.8in 0.95in 0.8in; overflow:visible; }
+  .page { position:relative; width:8.5in; height:11in; margin:0 auto; background:#fff; padding:0.42in 0.8in 0.7in 0.8in; overflow:visible; }
   .accent-bar { position:absolute; top:0; left:0; right:0; height:0.12in; background:var(--bar); }
   .accent-bar::after { content:""; position:absolute; left:0; right:0; bottom:-2.5pt; height:2.5pt; background:var(--gold); }
-  .footer { position:absolute; left:0; right:0; bottom:0; height:0.78in; }
-  .footer .rule { position:absolute; left:0.8in; right:0.8in; bottom:0.56in; border-top:0.5pt solid var(--rule); }
+  .footer { position:absolute; left:0; right:0; bottom:0; height:0.6in; }
+  .footer .rule { position:absolute; left:0.8in; right:0.8in; bottom:0.44in; border-top:0.5pt solid var(--rule); }
   .footer .rule::before { content:""; position:absolute; left:0; top:-0.5pt; width:0.5in; height:1pt; background:var(--gold); }
-  .footer .mark { position:absolute; left:0.8in; bottom:0.22in; height:0.24in; width:auto; opacity:.92; }
-  .footer .cite { position:absolute; left:0; right:0; bottom:0.34in; text-align:center; font-size:7.5pt; letter-spacing:.2px; color:var(--muted); }
-  .footer .pageno { position:absolute; right:0.8in; bottom:0.34in; font-size:7.5pt; color:var(--muted); }
+  .footer .mark { position:absolute; left:0.8in; bottom:0.14in; height:0.2in; width:auto; opacity:.92; }
+  .footer .cite { position:absolute; left:0; right:0; bottom:0.24in; text-align:center; font-size:7.5pt; letter-spacing:.2px; color:var(--muted); }
+  .footer .pageno { position:absolute; right:0.8in; bottom:0.24in; font-size:7.5pt; color:var(--muted); }
   .letterhead { text-align:center; }
   .letterhead img { width:0.92in; height:auto; }
   .lh-space { height:3pt; }
   .doc-title { text-align:center; text-transform:uppercase; font-weight:700; font-size:13pt; letter-spacing:1.3px; color:var(--accent); margin:0; }
   .doc-sub { text-align:center; font-size:8.5pt; font-weight:500; letter-spacing:.3px; color:var(--muted); margin:3px 0 8px 0; }
   .hr { border:0; border-top:0.5pt solid var(--rule); margin:0 0 9px 0; }
-  .recipient { background:var(--bg-tint); border-left:2.5pt solid var(--gold); border-top:0.5pt solid var(--rule); border-bottom:0.5pt solid var(--rule); border-right:0.5pt solid var(--rule); padding:8px 12px; margin-bottom:10px; }
+  .recipient { background:var(--bg-tint); border-left:2.5pt solid var(--gold); border-top:0.5pt solid var(--rule); border-bottom:0.5pt solid var(--rule); border-right:0.5pt solid var(--rule); padding:7px 11px; margin-bottom:9px; }
   .recipient .to { font-size:10pt; line-height:13.5pt; margin:0; }
   .recipient .to strong { font-weight:600; }
   .recipient .addr { font-size:11pt; font-weight:600; color:var(--accent); margin:5px 0 0 0; }
-  .label { font-size:8pt; font-weight:700; color:var(--gold); letter-spacing:1.6px; text-transform:uppercase; margin:10px 0 4px 0; }
-  p.body { font-size:10pt; line-height:13.5pt; text-align:justify; margin:0 0 6px 0; }
+  .label { font-size:8pt; font-weight:700; color:var(--gold); letter-spacing:1.6px; text-transform:uppercase; margin:8px 0 4px 0; }
+  p.body { font-size:10pt; line-height:13.5pt; text-align:justify; margin:0 0 5px 0; }
   p.body strong { font-weight:600; }
   .small { font-size:8.5pt; color:var(--muted); line-height:12pt; margin:0 0 4px 0; }
-  table.items { width:100%; border-collapse:collapse; margin:3px 0 5px 0; }
+  table.items { width:100%; border-collapse:collapse; margin:3px 0 4px 0; }
   table.items th { font-size:8pt; font-weight:700; color:var(--muted); letter-spacing:.5px; text-transform:uppercase; text-align:left; padding:0 0 4px 0; border-bottom:0.75pt solid var(--rule); }
   table.items th.amt, table.items td.amt { text-align:right; }
   table.items td { font-size:10pt; color:var(--ink); padding:5px 0; border-bottom:0.5pt solid #EDE8DC; }
@@ -82,7 +82,7 @@ const STYLE = `
   .pay-grid { display:grid; grid-template-columns:1.7in 1fr; row-gap:4px; column-gap:8px; margin:2px 0 6px 0; }
   .pay-grid .k { font-size:8pt; font-weight:700; color:var(--muted); letter-spacing:.4px; text-transform:uppercase; padding-top:1px; }
   .pay-grid .v { font-size:10pt; }
-  .pay-notes { margin:2px 0 6px 0; }
+  .pay-notes { margin:2px 0 5px 0; }
   .sig { margin-top:10px; }
   .sig .line { width:3.2in; border-top:0.75pt solid var(--ink); }
   .sig .name { font-size:11pt; font-weight:600; color:var(--accent); margin-top:4px; }

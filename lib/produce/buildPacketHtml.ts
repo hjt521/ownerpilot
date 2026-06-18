@@ -434,7 +434,7 @@ const FORFEITURE_ANCHOR =
 const FOOTER_ANCHOR = '<div class="footer">';
 
 /** Available legal-notice body height on one Letter sheet after tightening (pt). */
-const NOTICE_BODY_BUDGET_PT = 660;
+const NOTICE_BODY_BUDGET_PT = 700;
 
 /** Conservative estimated rendered height (pt) of the notice body, from the model. */
 function estimateNoticeContentPt(model: NoticeModel): number {
