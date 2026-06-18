@@ -52,7 +52,16 @@ function ArrowIcon() {
 }
 
 function CheckIcon() {
-  return <span className="check" aria-hidden="true">&#10003;</span>;
+  // Inline SVG check (centered by geometry) instead of a unicode glyph, whose
+  // font metrics left it sitting off-center in the small circle. Sized via CSS
+  // (.cb-home .check svg) so it scales for the hero (22px) and list (28px).
+  return (
+    <span className="check" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 6.5 9 17.5l-5-5" />
+      </svg>
+    </span>
+  );
 }
 
 function QRBlock() {

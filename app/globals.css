@@ -148,6 +148,7 @@ body {
 .cb-home .feature-row { display: flex; align-items: center; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--line); font-weight: 750; }
 .cb-home .feature-row:last-child { border-bottom: 0; }
 .cb-home .check { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgba(143,174,156,.24); color: var(--green-950); font-weight: 950; }
+.cb-home .check svg { width: 62%; height: 62%; display: block; }
 
 .cb-home .notice-section { padding: 10px 0 86px; }
 .cb-home .section-heading { text-align: center; max-width: 780px; margin: 0 auto 34px; }
