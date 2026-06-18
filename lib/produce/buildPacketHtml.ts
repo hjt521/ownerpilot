@@ -35,6 +35,7 @@ import {
   CHECKLIST_GROUPS,
   NEXT_STEP_ITEMS,
   OWNER_FOOTER,
+  PAYMENT_METHOD_LABELS,
   PACKET_SERVICE_METHOD_LABELS,
 } from './packetCopy';
 
@@ -252,17 +253,15 @@ function assembleDocument(title: string, style: string, pages: string[]): string
 
 // --- RiskPath owner block + footers ------------------------------------------
 
-/** Owner-facing RiskPath block with the Phase 1 placeholder QR (owner pages only). */
-function ownerRiskPathBlock(scanLine: string): string {
+/** Owner-facing RiskPath follow-up block (owner pages only; no QR placeholder). */
+function ownerRiskPathBlock(): string {
   return (
     `<div class="pk-risk">` +
     `<div class="copy">` +
     `<p class="rt">${esc(OWNER_FOOTER.title)}</p>` +
-    `<p class="rb">${esc(scanLine)}</p>` +
+    `<p class="rb">${esc(OWNER_FOOTER.body)}</p>` +
     `<p class="rf">${esc(OWNER_FOOTER.tagline)}</p>` +
     `</div>` +
-    `<div class="pk-qr"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i>` +
-    `<span class="qc">${esc(OWNER_FOOTER.qrPlaceholder)}</span></div>` +
     `</div>`
   );
 }
@@ -304,16 +303,24 @@ function detailCell(k: string, v: string, full = false): string {
 
 function ownerDetailsPage(model: NoticeModel, data: NoticeFlowData): string {
   const attempts = data.serviceAttempts ?? [];
-  const cells =
+  const noticeCells =
     detailCell('Property', formatPropertyLine(model.recipient.propertyAddress, model.recipient.propertyUnit), true) +
     detailCell('Tenant(s)', model.recipient.tenantNamesJoined) +
     detailCell('Total demanded', `$${model.demand.totalFormatted}`) +
-    detailCell('Payable to', model.pay.payeeName) +
-    detailCell('Payment phone', model.pay.payeePhone) +
     detailCell('Compliance period', `${model.compliance.commencementFormatted} \u2013 ${model.compliance.expirationFormatted}`) +
     detailCell('Dated / signed', model.signature.datedFormatted) +
     detailCell('Intended service date', safeDateDisplay(data.serviceDate)) +
     detailCell('Service attempts logged', String(attempts.length));
+
+  // Payment summary (owner-only; bank name normalized + phone formatted upstream).
+  const methods = ((data.paymentMethods ?? []) as readonly string[])
+    .map((mth) => PAYMENT_METHOD_LABELS[mth] ?? mth)
+    .join(', ');
+  const payCells =
+    detailCell('Payment method(s)', methods || '\u2014', true) +
+    detailCell('Payable to', model.pay.payeeName) +
+    detailCell('Payment phone', model.pay.payeePhone) +
+    model.pay.rows.map((r) => detailCell(r.label, r.value)).join('');
 
   const steps = NEXT_STEP_ITEMS.map(
     (it) => `<li><span class="pk-cbx"></span>${esc(it)}</li>`,
@@ -323,11 +330,13 @@ function ownerDetailsPage(model: NoticeModel, data: NoticeFlowData): string {
     `<div class="pk-mast"><div><h1 class="pk-mast-title">Owner Record Details</h1>` +
     `<p class="pk-mast-sub">For your records only. Do not serve this page.</p></div></div>` +
     `<div class="pk-section"><span class="n">1</span><span class="t">Notice Details</span><span class="r"></span></div>` +
-    `<div class="pk-card"><div class="grid">${cells}</div></div>` +
-    `<div class="pk-section"><span class="n">2</span><span class="t">Next Step</span><span class="r"></span></div>` +
+    `<div class="pk-card"><div class="grid">${noticeCells}</div></div>` +
+    `<div class="pk-section"><span class="n">2</span><span class="t">Payment Summary</span><span class="r"></span></div>` +
+    `<div class="pk-card"><div class="grid">${payCells}</div></div>` +
+    `<div class="pk-section"><span class="n">3</span><span class="t">Next Step</span><span class="r"></span></div>` +
     `<ul class="pk-steps">${steps}</ul>` +
-    `<div class="pk-section"><span class="n">3</span><span class="t">RiskPath\u2122 Connected Form</span><span class="r"></span></div>` +
-    ownerRiskPathBlock(OWNER_FOOTER.scanDetails);
+    `<div class="pk-section"><span class="n">4</span><span class="t">RiskPath\u2122 Follow-Up</span><span class="r"></span></div>` +
+    ownerRiskPathBlock();
   return packetPage(
     PAGE_LABELS.ownerDetails,
     true,
@@ -360,7 +369,7 @@ function attemptsRecordPage(data: NoticeFlowData): string {
     `<th style="width:14%">Outcome</th><th style="width:12%">Mailing date</th>` +
     `<th style="width:13%">Served by</th><th style="width:26%">Notes</th>` +
     `</tr></thead><tbody>${filled}${blanks}</tbody></table>` +
-    ownerRiskPathBlock(OWNER_FOOTER.scanAttempts);
+    ownerRiskPathBlock();
   return packetPage(
     PAGE_LABELS.serviceAttempt,
     true,
@@ -389,7 +398,7 @@ function checklistPage(): string {
     `<div class="pk-mast"><div><h1 class="pk-mast-title">${esc(CHECKLIST_TITLE)}</h1>` +
     `<p class="pk-mast-sub">Owner record. Track what still needs to be done after printing.</p></div></div>` +
     groups +
-    ownerRiskPathBlock(OWNER_FOOTER.scanChecklist);
+    ownerRiskPathBlock();
   return packetPage(
     PAGE_LABELS.checklist,
     true,

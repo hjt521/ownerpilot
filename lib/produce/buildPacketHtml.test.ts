@@ -122,6 +122,13 @@ check('cont: forfeiture text relocated (still present verbatim)',
 check('cont: page 1 no longer carries the forfeiture paragraph',
   tLong.split(PAGE_LABELS.tenantContinued)[0].includes('hereby elects to declare a forfeiture') === false);
 
+// Task 6/7: QR placeholder gone from production; owner has a payment summary.
+check('no "coming soon" in full packet', !full.includes('coming soon'));
+check('no "RiskPath QR" placeholder text', !full.includes('RiskPath QR'));
+check('owner copy has Payment Summary section', owner.includes('Payment Summary'));
+check('owner copy has RiskPath Follow-Up block', owner.includes('RiskPath\u2122 Follow-Up'));
+check('tenant copy stays clean of RiskPath follow-up', !tenant.includes('RiskPath\u2122 Follow-Up'));
+
 if (failures.length > 0) {
   throw new Error(`buildPacketHtml.test.ts: ${failures.length} check(s) failed, ${passed} passed`);
 }

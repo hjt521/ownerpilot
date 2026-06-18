@@ -122,16 +122,24 @@ export const NEXT_STEP_ITEMS = [
   'Complete Proof of Service after service',
 ] as const;
 
-// --- Owner footer (spec, verbatim; QR is a Phase 1 placeholder) --------------
+// --- Owner footer (clean RiskPath follow-up; no QR until a real QR ships) -----
+// Task 6 (broker review 2026-06-18): the dashed "RiskPath QR coming soon"
+// placeholder is removed from production. Owner pages show this follow-up text
+// instead. When a real owner-facing QR ships, replace the block — never a stub.
 export const OWNER_FOOTER = {
-  title: 'OwnerPilot RiskPath\u2122 Connected Form',
+  title: 'OwnerPilot RiskPath\u2122 Follow-Up',
+  body: 'Use OwnerPilot to resume this notice record, log service attempts, complete Proof of Service, and track next steps.',
   powered: 'Powered by OwnerPilot.AI',
   tagline: 'Every form stays connected to the next step.',
-  qrPlaceholder: 'RiskPath QR coming soon',
-  scanDetails: 'Scan to resume this notice record, service log, reminders, and next steps.',
-  scanAttempts: 'Scan to resume your service log and next steps.',
-  scanChecklist: 'Scan to continue this RiskPath\u2122. Resume your service log, reminders, and next steps.',
 } as const;
+
+// Owner-page payment-method display labels (owner summary only).
+export const PAYMENT_METHOD_LABELS: Readonly<Record<string, string>> = {
+  in_person: 'In Person',
+  by_mail: 'By Mail',
+  bank_deposit: 'Bank Deposit',
+  eft: 'Electronic Funds Transfer',
+};
 
 // --- Packet configuration -----------------------------------------------------
 export type PacketType =

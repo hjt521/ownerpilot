@@ -13,6 +13,7 @@ import {
   PAGE_LABELS,
   getPacketConfig,
 } from './packetCopy';
+import { OWNER_FOOTER, PAYMENT_METHOD_LABELS } from './packetCopy';
 
 let passed = 0;
 const failures: string[] = [];
@@ -68,6 +69,15 @@ check('config: owner includes owner metadata', owner.includeOwnerMetadata === tr
 const log = getPacketConfig('service_log');
 check('config: service log includes service log', log.includeServiceLog === true);
 check('config: service log excludes public tenant QR', log.includePublicInfoQr === false);
+
+// Task 6/7 (broker review 2026-06-18): owner RiskPath follow-up replaces the QR
+// placeholder; payment-method labels exist for the owner summary.
+check('owner footer title is follow-up', OWNER_FOOTER.title === 'OwnerPilot RiskPath\u2122 Follow-Up');
+check('owner footer has follow-up body', OWNER_FOOTER.body.includes('resume this notice record'));
+check('owner footer has no QR placeholder field', !('qrPlaceholder' in OWNER_FOOTER));
+check('owner footer has no scan-prefixed fields', !Object.keys(OWNER_FOOTER).some((k) => k.startsWith('scan')));
+check('payment-method label: bank deposit', PAYMENT_METHOD_LABELS.bank_deposit === 'Bank Deposit');
+check('payment-method label: by mail', PAYMENT_METHOD_LABELS.by_mail === 'By Mail');
 
 if (failures.length > 0) {
   throw new Error(`packetCopy.test.ts: ${failures.length} check(s) failed, ${passed} passed`);
