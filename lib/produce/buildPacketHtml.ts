@@ -420,30 +420,128 @@ function coverSheetPage(): string {
   return packetPage(null, true, COVER_SHEET.footer, inner);
 }
 
-// --- Public builders -----------------------------------------------------------
+// --- Legal-notice continuation (pages 2/3) -----------------------------------
+// When a notice is long enough that the closing forfeiture paragraph + signature
+// block would collide with the reserved footer band, those trailing blocks are
+// moved VERBATIM onto a clearly-labeled continuation sheet. No legal text is
+// authored or altered here — the tail is relocated byte-for-byte. The trigger is
+// a conservative content-size estimate (window.print + CSS cannot measure real
+// layout); it errs toward splitting early, which is the safe failure mode (a
+// clean extra sheet rather than overlap or clipped text).
 
-/** Tenant Service Copy: the served notice page, label only (§6(a)/(d)). */
-export function buildTenantServiceCopyHtml(model: NoticeModel): string {
-  const { style, noticePage } = extractNoticeDocParts(model);
-  let page = withBanner(noticePage, PAGE_LABELS.tenant, false);
-  if (TENANT_QR_FOOTER_ENABLED) {
-    // Phase 2 only — gated off (§6(d)). Placed before the page's own footer.
-    const anchor = '<div class="footer">';
-    const i = page.indexOf(anchor);
-    if (i === -1) throw new PacketRenderError('Notice page footer anchor not found.');
-    page = page.slice(0, i) + tenantQrFooterHtml() + page.slice(i);
-  }
-  return assembleDocument(`${PAGE_LABELS.tenant} \u2014 ${model.meta.title}`, style, [page]);
+const FORFEITURE_ANCHOR =
+  '<p class="body"><strong>The landlord hereby elects to declare a forfeiture</strong>';
+const FOOTER_ANCHOR = '<div class="footer">';
+
+/** Available legal-notice body height on one Letter sheet after tightening (pt). */
+const NOTICE_BODY_BUDGET_PT = 660;
+
+/** Conservative estimated rendered height (pt) of the notice body, from the model. */
+function estimateNoticeContentPt(model: NoticeModel): number {
+  const CPL = 90;     // ~chars per justified body line at 10pt
+  const LINE = 13.5;  // body line height (pt)
+  const lines = (str: string) => Math.max(1, Math.ceil(str.length / CPL));
+  let pt = 150;                                                    // letterhead/title/subtitle/hr/recipient
+  pt += 16 + lines(model.demand.periodText) * LINE + 14;          // AMOUNT DUE label + demand lead
+  pt += 16 + model.demand.rows.length * 18;                       // items header + rows
+  pt += 28;                                                       // base-rent disclaimer
+  pt += 16 + 2 * LINE + 3 * LINE;                                 // TIME TO COMPLY label + 2 paras
+  pt += 16 + (2 + model.pay.rows.length) * 16;                    // HOW TO PAY label + payee/phone + rows
+  pt += model.pay.sentences.reduce((a, str) => a + lines(str) * 12.5, 0); // pay sentences (small)
+  pt += 30 + 64;                                                  // tail: forfeiture + signature
+  return pt;
 }
 
-/** Owner Record Packet: the notice page (owner-labeled, watermarked) + owner details. */
+function noticeNeedsContinuation(model: NoticeModel): boolean {
+  return estimateNoticeContentPt(model) > NOTICE_BODY_BUDGET_PT;
+}
+
+/** Split the extracted notice page into { page1, tail } at the forfeiture
+ *  paragraph. Returns null (no split) if the anchors are absent — fail safe. */
+function splitNoticeTail(rawNoticePage: string): { page1: string; tail: string } | null {
+  const f = rawNoticePage.indexOf(FORFEITURE_ANCHOR);
+  if (f === -1) return null;
+  const foot = rawNoticePage.indexOf(FOOTER_ANCHOR, f);
+  if (foot === -1) return null;
+  return {
+    page1: rawNoticePage.slice(0, f) + rawNoticePage.slice(foot),
+    tail: rawNoticePage.slice(f, foot),
+  };
+}
+
+/** A continuation sheet carrying the relocated (verbatim) forfeiture + signature. */
+function continuationSection(tail: string, footerCite: string): string {
+  return (
+    `<section class="page">` +
+    `<div class="accent-bar"></div>` +
+    `<div class="doc-sub" style="margin-top:0.45in">(continued)</div>` +
+    `<hr class="hr">` +
+    tail +
+    `<div class="footer"><div class="rule"></div>` +
+    `<div class="cite">${esc(footerCite)}</div><div class="pageno"></div></div>` +
+    `</section>`
+  );
+}
+
+/** Build the 1-2 notice sheets for one copy (tenant or owner): banner label on
+ *  each; owner copies also get the watermark + the Do-Not-Serve footer label. */
+function noticeCopySheets(
+  rawNoticePage: string,
+  model: NoticeModel,
+  opts: { label: string; continuedLabel: string; owner: boolean; footerCite?: string },
+): string[] {
+  const decorate = (pageHtml: string, label: string): string => {
+    let p = withBanner(pageHtml, label, opts.owner);
+    if (opts.owner) p = withWatermark(p, 'OWNER RECORD ONLY');
+    if (opts.footerCite) p = setFooterCite(p, opts.footerCite);
+    return p;
+  };
+  const split = noticeNeedsContinuation(model) ? splitNoticeTail(rawNoticePage) : null;
+  if (!split) return [decorate(rawNoticePage, opts.label)];
+  const cite = opts.footerCite ?? model.meta.noticeFooterCitation;
+  return [
+    decorate(split.page1, opts.label),
+    decorate(continuationSection(split.tail, cite), opts.continuedLabel),
+  ];
+}
+
+// --- Public builders -----------------------------------------------------------
+
+/** Insert the gated (Phase 2) tenant QR footer into the first tenant sheet. */
+function applyTenantQrGate(sheets: string[]): void {
+  if (!TENANT_QR_FOOTER_ENABLED) return;
+  const i = sheets[0].indexOf(FOOTER_ANCHOR);
+  if (i === -1) throw new PacketRenderError('Notice page footer anchor not found.');
+  sheets[0] = sheets[0].slice(0, i) + tenantQrFooterHtml() + sheets[0].slice(i);
+}
+
+/** Tenant Service Copy: the served notice page, label only (§6(a)/(d)); a
+ *  continuation sheet is added only if the notice would overrun the footer. */
+export function buildTenantServiceCopyHtml(model: NoticeModel): string {
+  const { style, noticePage } = extractNoticeDocParts(model);
+  const sheets = noticeCopySheets(noticePage, model, {
+    label: PAGE_LABELS.tenant,
+    continuedLabel: PAGE_LABELS.tenantContinued,
+    owner: false,
+  });
+  applyTenantQrGate(sheets);
+  return assembleDocument(`${PAGE_LABELS.tenant} \u2014 ${model.meta.title}`, style, sheets);
+}
+
+/** Owner Record Packet: the notice page(s) (owner-labeled, watermarked) + details. */
 export function buildOwnerRecordCopyHtml(model: NoticeModel, data: NoticeFlowData): string {
   const { style, noticePage } = extractNoticeDocParts(model);
-  let ownerNotice = withBanner(noticePage, PAGE_LABELS.owner, true);
-  ownerNotice = withWatermark(ownerNotice, 'OWNER RECORD ONLY');
-  ownerNotice = setFooterCite(ownerNotice, 'Owner Record Copy \u00B7 Do Not Serve');
-  const pages = [ownerNotice, ownerDetailsPage(model, data)];
-  return assembleDocument(`${PAGE_LABELS.owner} \u2014 ${model.meta.title}`, style, pages);
+  const sheets = noticeCopySheets(noticePage, model, {
+    label: PAGE_LABELS.owner,
+    continuedLabel: PAGE_LABELS.ownerContinued,
+    owner: true,
+    footerCite: 'Owner Record Copy \u00B7 Do Not Serve',
+  });
+  return assembleDocument(
+    `${PAGE_LABELS.owner} \u2014 ${model.meta.title}`,
+    style,
+    [...sheets, ownerDetailsPage(model, data)],
+  );
 }
 
 /** Service Log: the verbatim proof-of-service page (labeled) + attempts record. */
@@ -453,24 +551,28 @@ export function buildServiceLogHtml(model: NoticeModel, data: NoticeFlowData): s
   return assembleDocument(`${PAGE_LABELS.proofOfService} \u2014 ${model.meta.title}`, style, pages);
 }
 
-/** Full packet: cover, tenant copy, owner copy, owner details, PoS, attempts, checklist. */
+/** Full packet: cover, tenant copy (+cont), owner copy (+cont), owner details,
+ *  PoS, attempts, checklist. Page numbering is dynamic — continuation sheets
+ *  grow the total beyond 7 when a notice is long. */
 export function buildFullPacketHtml(model: NoticeModel, data: NoticeFlowData): string {
   const { style, noticePage, posPage } = extractNoticeDocParts(model);
-  let tenantPage = withBanner(noticePage, PAGE_LABELS.tenant, false);
-  if (TENANT_QR_FOOTER_ENABLED) {
-    const anchor = '<div class="footer">';
-    const i = tenantPage.indexOf(anchor);
-    if (i === -1) throw new PacketRenderError('Notice page footer anchor not found.');
-    tenantPage = tenantPage.slice(0, i) + tenantQrFooterHtml() + tenantPage.slice(i);
-  }
-  let ownerNotice = withBanner(noticePage, PAGE_LABELS.owner, true);
-  ownerNotice = withWatermark(ownerNotice, 'OWNER RECORD ONLY');
-  ownerNotice = setFooterCite(ownerNotice, 'Owner Record Copy \u00B7 Do Not Serve');
+  const tenantSheets = noticeCopySheets(noticePage, model, {
+    label: PAGE_LABELS.tenant,
+    continuedLabel: PAGE_LABELS.tenantContinued,
+    owner: false,
+  });
+  applyTenantQrGate(tenantSheets);
+  const ownerSheets = noticeCopySheets(noticePage, model, {
+    label: PAGE_LABELS.owner,
+    continuedLabel: PAGE_LABELS.ownerContinued,
+    owner: true,
+    footerCite: 'Owner Record Copy \u00B7 Do Not Serve',
+  });
 
   const pages = [
     coverSheetPage(),
-    tenantPage,
-    ownerNotice,
+    ...tenantSheets,
+    ...ownerSheets,
     ownerDetailsPage(model, data),
     withBanner(posPage, PAGE_LABELS.proofOfService, true),
     attemptsRecordPage(data),

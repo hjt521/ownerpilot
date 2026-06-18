@@ -36,12 +36,21 @@ export const PAGE_LABELS = {
   serviceAttempt: 'SERVICE ATTEMPT RECORD — OWNER RECORD',
   serviceLog: 'SERVICE LOG / PROOF OF SERVICE — OWNER RECORD',
   checklist: 'OWNERPILOT SERVICE CHECKLIST — OWNER RECORD',
+  tenantContinued: 'TENANT SERVICE COPY — CONTINUED',
+  ownerContinued: 'OWNER RECORD COPY — DO NOT SERVE — CONTINUED',
 } as const;
 
 // --- Print options screen (spec, verbatim) ----------------------------------
 export const PRINT_OPTIONS_TITLE = 'Your printable packet is ready';
 export const PRINT_OPTIONS_SUBTITLE =
   'Choose what you want to print. The tenant service copy is the only copy intended for delivery to the tenant.';
+
+// Browser-print guidance (Option A) — window.print() cannot suppress the
+// browser's own header/footer; this tells the user how to get a clean PDF.
+export const PRINT_DIALOG_HINT =
+  'For a clean PDF, turn off \u201CHeaders and footers\u201D in the print dialog before saving.';
+export const PRINT_DIALOG_HINT_DETAIL =
+  'Browser print settings may add the URL, date, or page count unless headers and footers are turned off.';
 
 export const PRINT_CARDS = {
   tenant: { title: 'Print Tenant Service Copy', description: 'For delivery to the tenant.' },

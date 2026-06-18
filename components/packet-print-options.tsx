@@ -14,6 +14,8 @@ import {
   PRINT_OPTIONS_SUBTITLE,
   PRINT_CARDS,
   FULL_PACKET_MODAL,
+  PRINT_DIALOG_HINT,
+  PRINT_DIALOG_HINT_DETAIL,
 } from '@/lib/produce/packetCopy';
 
 /**
@@ -99,6 +101,13 @@ export function PacketPrintOptions({
       <div>
         <h2 className="text-lg font-semibold text-gray-900">{PRINT_OPTIONS_TITLE}</h2>
         <p className="mt-1 text-sm text-gray-600 leading-relaxed">{PRINT_OPTIONS_SUBTITLE}</p>
+      </div>
+
+      {/* Browser-print guidance (Option A): window.print() can't suppress the
+          browser's own header/footer, so tell the user how to get a clean PDF. */}
+      <div className="rounded-lg border border-rule bg-tint px-4 py-3">
+        <p className="text-sm font-medium text-gray-900">{PRINT_DIALOG_HINT}</p>
+        <p className="mt-1 text-xs text-gray-500 leading-relaxed">{PRINT_DIALOG_HINT_DETAIL}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
