@@ -46,6 +46,13 @@ import { PacketPrintOptions } from './packet-print-options';
 import { NoticeSummaryPanel } from './notice-summary-panel';
 import { PropertyAddressAutocomplete } from './places-autocomplete';
 import {
+  bankDepositMethodHelper,
+  bankDepositMethodDisclosure,
+  bankDepositMethodDisclosureExpandLabel,
+} from '@/lib/flow/bankDepositDisclosureCopy';
+import { normalizeBankName } from '@/lib/flow/bankNames';
+import { validateTenantName } from '@/lib/flow/tenantNameValidation';
+import {
   computeCompliancePeriod,
   type ServiceMethod,
   type CompliancePeriodResult,
@@ -1116,26 +1123,35 @@ function TenantsStep({
         <span className="block text-sm font-semibold text-gray-700">
           Tenant name(s)<Req />
         </span>
-        {names.map((name, i) => (
-          <div key={i} className="flex gap-2">
-            <input
-              type="text"
-              value={name}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setName(i, e.target.value)}
-              placeholder={`Tenant ${i + 1} full name`}
-              className={inputClass}
-            />
-            {names.length > 1 && (
-              <button
-                onClick={() => removeRow(i)}
-                className="px-3 text-gray-500 hover:text-gray-800 transition-colors"
-                aria-label={`Remove tenant ${i + 1}`}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        ))}
+        {names.map((name, i) => {
+          const nameCheck = validateTenantName(name);
+          const showWarn = name.trim() !== '' && nameCheck.level !== 'ok';
+          return (
+            <div key={i}>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setName(i, e.target.value)}
+                  placeholder={`Tenant ${i + 1} full name`}
+                  className={inputClass}
+                />
+                {names.length > 1 && (
+                  <button
+                    onClick={() => removeRow(i)}
+                    className="px-3 text-gray-500 hover:text-gray-800 transition-colors"
+                    aria-label={`Remove tenant ${i + 1}`}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {showWarn && (
+                <p className="mt-1 text-xs text-amber-700">{nameCheck.message}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
       <button
         onClick={addRow}
@@ -1336,6 +1352,36 @@ const BANK_INTERSTITIAL_BODY_2 =
  * returning to Step 4 (the step remounts). A new notice shows it again. Not a
  * modal.
  */
+// Task 1 (bank-deposit privacy disclosure, broker determination 2026-06-18).
+// Helper is always visible beneath the Bank Deposit option (before selection);
+// "Why is this required?" expands the long disclosure in place. Copy is LOCKED
+// verbatim in lib/flow/bankDepositDisclosureCopy — never edited at render time.
+function BankDepositDisclosure() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border border-rule bg-tint px-4 py-3">
+      <p className="text-sm leading-relaxed text-gray-700">{bankDepositMethodHelper}</p>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="mt-2 text-sm font-medium text-blue-700 hover:text-blue-800"
+      >
+        {bankDepositMethodDisclosureExpandLabel}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2 border-t border-rule pt-2">
+          {bankDepositMethodDisclosure.split('\n\n').map((para, i) => (
+            <p key={i} className="text-xs leading-relaxed text-gray-600">
+              {para}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BankAccountInterstitial({
   data,
   update,
@@ -1633,6 +1679,8 @@ function PaymentStep({
               </span>
             </label>
 
+            {m === 'bank_deposit' && <BankDepositDisclosure />}
+
             {methods.includes(m) && m === 'in_person' && (
               <div className="rounded-lg border border-gray-200 px-4 py-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1679,6 +1727,16 @@ function PaymentStep({
                     placeholder="Bank name"
                     className={inputClass}
                   />
+                  {data.bankName &&
+                    data.bankName.trim() !== '' &&
+                    normalizeBankName(data.bankName) !== data.bankName.trim() && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        We formatted this as:{' '}
+                        <span className="font-medium text-gray-700">
+                          {normalizeBankName(data.bankName)}
+                        </span>
+                      </p>
+                    )}
                 </div>
                 <div>
                   <FieldLabel htmlFor="bankBranch">Branch street address<Req /></FieldLabel>
