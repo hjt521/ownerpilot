@@ -126,7 +126,9 @@ check('cont: page 1 no longer carries the forfeiture paragraph',
 check('no "coming soon" in full packet', !full.includes('coming soon'));
 check('no "RiskPath QR" placeholder text', !full.includes('RiskPath QR'));
 check('owner copy has Payment Summary section', owner.includes('Payment Summary'));
-check('owner copy has RiskPath Follow-Up block', owner.includes('RiskPath\u2122 Follow-Up'));
+check('owner record details shows RiskPath follow-up note (not the box)', owner.includes('included in the checklist at the end'));
+check('full packet keeps the RiskPath Follow-Up block on the checklist page', full.includes('RiskPath\u2122 Follow-Up'));
+check('owner record details has no boxed RiskPath section header', !owner.includes('>RiskPath\u2122 Follow-Up<'));
 check('tenant copy stays clean of RiskPath follow-up', !tenant.includes('RiskPath\u2122 Follow-Up'));
 
 if (failures.length > 0) {

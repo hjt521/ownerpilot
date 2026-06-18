@@ -51,6 +51,8 @@ export const PRINT_DIALOG_HINT =
   'For a clean PDF, turn off \u201CHeaders and footers\u201D in the print dialog before saving.';
 export const PRINT_DIALOG_HINT_DETAIL =
   'Browser print settings may add the URL, date, or page count unless headers and footers are turned off.';
+export const PRINT_DIALOG_HINT_BACKGROUNDS =
+  'For best appearance, enable \u201CPrint backgrounds\u201D or \u201CBackground graphics\u201D if your browser offers that option. The packet stays readable either way.';
 
 export const PRINT_CARDS = {
   tenant: { title: 'Print Tenant Service Copy', description: 'For delivery to the tenant.' },
@@ -129,6 +131,10 @@ export const NEXT_STEP_ITEMS = [
 export const OWNER_FOOTER = {
   title: 'OwnerPilot RiskPath\u2122 Follow-Up',
   body: 'Use OwnerPilot to resume this notice record, log service attempts, complete Proof of Service, and track next steps.',
+  // Short non-boxed pointer used on owner pages that should not carry the full
+  // RiskPath block (Owner Record Details, Service Attempt Record) — the full
+  // checklist lives on the last packet page (broker review 2026-06-18, Task 4).
+  note: 'RiskPath\u2122 follow-up is included in the checklist at the end of this packet.',
   powered: 'Powered by OwnerPilot.AI',
   tagline: 'Every form stays connected to the next step.',
 } as const;

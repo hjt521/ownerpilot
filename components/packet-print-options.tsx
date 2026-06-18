@@ -16,6 +16,7 @@ import {
   FULL_PACKET_MODAL,
   PRINT_DIALOG_HINT,
   PRINT_DIALOG_HINT_DETAIL,
+  PRINT_DIALOG_HINT_BACKGROUNDS,
 } from '@/lib/produce/packetCopy';
 import { buildNoticePdfFilename } from '@/lib/produce/noticePdfFilename';
 
@@ -124,6 +125,7 @@ export function PacketPrintOptions({
       <div className="rounded-lg border border-rule bg-tint px-4 py-3">
         <p className="text-sm font-medium text-gray-900">{PRINT_DIALOG_HINT}</p>
         <p className="mt-1 text-xs text-gray-500 leading-relaxed">{PRINT_DIALOG_HINT_DETAIL}</p>
+        <p className="mt-1 text-xs text-gray-500 leading-relaxed">{PRINT_DIALOG_HINT_BACKGROUNDS}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -103,7 +103,23 @@ const STYLE = `
   .perjury strong { font-weight:600; }
   /* Keep a block (e.g. signature, an option box) from splitting across sheets. */
   .recipient, .sig, .opt, table.items, .pay-grid { break-inside:avoid; }
-  @media print { .page { margin:0; } .page + .page { page-break-before:always; } }
+  @media print {
+    .page { margin:0; }
+    .page + .page { page-break-before:always; }
+    /* Print readability on white paper (broker review 2026-06-18): darken pale
+       labels and faint notes; do not rely on background fills for meaning. No
+       spacing/size changes, so the one-page fit is preserved. */
+    .accent-bar, .accent-bar::after, .recipient, .footer .rule::before { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .label { color:#7A5A1E; font-weight:800; }
+    table.items th { color:#333333; border-bottom-color:#8A6A2A; }
+    .pay-grid .k { color:#5A4A28; }
+    .small { color:#333333; }
+    .doc-sub { color:#3A3A3A; }
+    .recipient { border-color:#8A6A2A; border-left-color:#8A6A2A; }
+    .hr { border-top-color:#8A6A2A; }
+    .footer .cite, .footer .pageno { color:#3A3A3A; }
+    .footer .rule { border-top-color:#8A6A2A; }
+  }
   @page { size:Letter; margin:0; }
 `;
 
@@ -227,7 +243,7 @@ export function buildNoticeDocumentHtml(model: NoticeModel): string {
 
 <section class="page">
   <div class="accent-bar"></div>
-  <h1 class="doc-title" style="margin-top:6px">${esc(POS_PROSE.header)}</h1>
+  <h1 class="doc-title" style="margin-top:0.26in">${esc(POS_PROSE.header)}</h1>
   <div class="doc-sub">${esc(POS_PROSE.faceCitation)}</div>
   <hr class="hr">
 

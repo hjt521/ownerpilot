@@ -140,6 +140,26 @@ const PACKET_STYLE = `
   .pk-tfoot .t { font-size:10.5pt; font-weight:700; color:#1A1A1A; margin:0 0 4px 0; }
   .pk-tfoot .b { font-size:9.5pt; margin:0 0 2px 0; }
   .pk-tfoot .d { font-size:8pt; color:#6B6B6B; margin-top:6px; }
+  /* Small non-boxed RiskPath pointer (Owner Record Details / Service Attempts). */
+  .pk-note { font-size:8.5pt; color:#515853; margin:6pt 0 0 0; font-style:italic; }
+  /* Print readability on white paper (broker review 2026-06-18): darken pale
+     gold/gray; ensure the dark table header reads even without background graphics. */
+  @media print {
+    .pk-mast-sub, .pk-card .k, .pk-foot, .pk-inc .id, .pk-cover-subtitle, .pk-note { color:#3A3A3A; }
+    .pk-section .n, .pk-eyebrow, .pk-risk .rf, .pk-cover-wm .w b { color:#7A5A1E; }
+    .pk-group .gn, .pk-group .gp { color:#5A4A28; }
+    .pk-mast { border-bottom-color:#8A6A2A; }
+    .pk-group .gp { border-color:#8A6A2A; }
+    .pk-risk { border-color:#8A6A2A; }
+    .pk-callout { border-color:#8A6A2A; }
+    .pk-section .r, .pk-group .gr { background:#B8B0A0; }
+    .pk-foot::before, .pk-cover-rule { background:#8A6A2A; }
+    .pk-foot .sep, .pk-callout .ct { color:#7A5A1E; }
+    .pk-inc .num { border-color:#8A6A2A; color:#102018; }
+    table.pk-table th { color:#102018; background:#EAE3D4; border-color:#8A6A2A; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    table.pk-table td { border-color:#B8B0A0; }
+    .pk-banner, .pk-banner.pk-owner, .page.pk-ivory, .pk-watermark span, .pk-callout .i, .pk-cover-wm .m { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
 `;
 
 // --- Extraction of the verbatim notice/PoS pages -----------------------------
@@ -253,6 +273,12 @@ function assembleDocument(title: string, style: string, pages: string[]): string
 
 // --- RiskPath owner block + footers ------------------------------------------
 
+/** Small non-boxed RiskPath pointer for pages that shouldn't carry the full
+ *  block (Owner Record Details, Service Attempt Record). Task 4 (2026-06-18). */
+function riskPathNote(): string {
+  return `<p class="pk-note">${esc(OWNER_FOOTER.note)}</p>`;
+}
+
 /** Owner-facing RiskPath follow-up block (owner pages only; no QR placeholder). */
 function ownerRiskPathBlock(): string {
   return (
@@ -335,8 +361,7 @@ function ownerDetailsPage(model: NoticeModel, data: NoticeFlowData): string {
     `<div class="pk-card"><div class="grid">${payCells}</div></div>` +
     `<div class="pk-section"><span class="n">3</span><span class="t">Next Step</span><span class="r"></span></div>` +
     `<ul class="pk-steps">${steps}</ul>` +
-    `<div class="pk-section"><span class="n">4</span><span class="t">RiskPath\u2122 Follow-Up</span><span class="r"></span></div>` +
-    ownerRiskPathBlock();
+    riskPathNote();
   return packetPage(
     PAGE_LABELS.ownerDetails,
     true,
@@ -369,7 +394,7 @@ function attemptsRecordPage(data: NoticeFlowData): string {
     `<th style="width:14%">Outcome</th><th style="width:12%">Mailing date</th>` +
     `<th style="width:13%">Served by</th><th style="width:26%">Notes</th>` +
     `</tr></thead><tbody>${filled}${blanks}</tbody></table>` +
-    ownerRiskPathBlock();
+    riskPathNote();
   return packetPage(
     PAGE_LABELS.serviceAttempt,
     true,
