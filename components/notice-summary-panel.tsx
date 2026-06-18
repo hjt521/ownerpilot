@@ -3,6 +3,7 @@ import { derivePayeeName, formatNoticeDate, formatPropertyLine } from '@/lib/pro
 import { computeCompliancePeriod } from '@/lib/dates/computeCompliancePeriod';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import { getSuccessfulAttempt } from '@/lib/flow/escalation';
+import { formatUsPhone } from '@/lib/flow/phoneFormat';
 
 /**
  * NoticeSummaryPanel — R1b (Concept #1). Live, read-only mirror of the flow
@@ -87,6 +88,10 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
           <Row k="Tenant(s)" v={tenants} />
           <Row k="Total Demanded" v={totalText} />
           <Row k="Payable To" v={payee} />
+          <Row
+            k="Payment Phone"
+            v={data.landlordContact?.phone ? formatUsPhone(data.landlordContact.phone) : ''}
+          />
           <Row k="Intended Service Date" v={serviceDateText} />
           <Row k="Pay or Vacate By" v={deadlineText} />
           <Row k="Service Attempts" v={attemptsText} />

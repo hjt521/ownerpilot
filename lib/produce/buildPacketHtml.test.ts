@@ -72,7 +72,8 @@ check('owner: echoes payee name', owner.includes('Jane Owner'));
 
 // --- Service Log ---
 const log = buildServiceLogHtml(model, data);
-check('log: carries service-log label', log.includes('SERVICE LOG / PROOF OF SERVICE'));
+check('log: PoS page carries PROOF OF SERVICE label', log.includes(PAGE_LABELS.proofOfService));
+check('log: attempts page carries SERVICE ATTEMPT RECORD label', log.includes(PAGE_LABELS.serviceAttempt));
 check('log: reuses verbatim PoS header', log.includes(POS_PROSE.header));
 check('log: reuses verbatim perjury sentence', log.includes('penalty of perjury'));
 check('log: includes attempts record page', log.includes('Service Attempt Record'));
@@ -90,6 +91,45 @@ check('full: QR footer GATED OFF in full packet too', !full.includes(TENANT_QR_F
 check('locked: mailboxRuleSentence byte-identical',
   NOTICE_PROSE.mailboxRuleSentence ===
     'If you mail your payment to the name and address above, it is conclusively presumed received on the date posted, provided you can show proof of mailing. (Cal. Code Civ. Proc. \u00A7 1161(2).)');
+
+// --- Continuation pages: a long notice splits its closing forfeiture +
+// signature onto a clearly-labeled continuation sheet (legal text relocated
+// verbatim, never altered); page numbering grows dynamically past 7. ---
+const longModel = JSON.parse(JSON.stringify(model));
+longModel.demand.rows = Array.from({ length: 10 }, (_unused, i) => ({
+  description: `Rent period ${i + 1}`,
+  amountFormatted: '3,000.00',
+}));
+longModel.pay.rows = [
+  { label: 'Bank', value: 'First Bank' },
+  { label: 'Branch', value: 'Glendale Branch' },
+  { label: 'Account number', value: '1234' },
+];
+longModel.pay.sentences = [
+  NOTICE_PROSE.mailboxRuleSentence,
+  NOTICE_PROSE.bankPaperInstrumentSentence,
+  NOTICE_PROSE.fiveMileSentence,
+];
+const tLong = buildTenantServiceCopyHtml(longModel);
+const fullLong = buildFullPacketHtml(longModel, data);
+check('cont: normal notice stays a single tenant page', tenant.includes('Page 1 of 1'));
+check('cont: long notice splits tenant copy to two pages', tLong.includes('Page 2 of 2'));
+check('cont: tenant continuation label present', tLong.includes(PAGE_LABELS.tenantContinued));
+check('cont: owner continuation label present in full packet', fullLong.includes(PAGE_LABELS.ownerContinued));
+check('cont: full packet grows past seven pages', fullLong.includes('Page 9 of 9'));
+check('cont: forfeiture text relocated (still present verbatim)',
+  tLong.includes('hereby elects to declare a forfeiture'));
+check('cont: page 1 no longer carries the forfeiture paragraph',
+  tLong.split(PAGE_LABELS.tenantContinued)[0].includes('hereby elects to declare a forfeiture') === false);
+
+// Task 6/7: QR placeholder gone from production; owner has a payment summary.
+check('no "coming soon" in full packet', !full.includes('coming soon'));
+check('no "RiskPath QR" placeholder text', !full.includes('RiskPath QR'));
+check('owner copy has Payment Summary section', owner.includes('Payment Summary'));
+check('owner record details shows RiskPath follow-up note (not the box)', owner.includes('included in the checklist at the end'));
+check('full packet keeps the RiskPath Follow-Up block on the checklist page', full.includes('RiskPath\u2122 Follow-Up'));
+check('owner record details has no boxed RiskPath section header', !owner.includes('>RiskPath\u2122 Follow-Up<'));
+check('tenant copy stays clean of RiskPath follow-up', !tenant.includes('RiskPath\u2122 Follow-Up'));
 
 if (failures.length > 0) {
   throw new Error(`buildPacketHtml.test.ts: ${failures.length} check(s) failed, ${passed} passed`);

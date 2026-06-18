@@ -37,6 +37,8 @@ import type {
   SignerCapacity,
   PaymentBranch,
 } from '../flow/noticeFlowState';
+import { normalizeBankName } from '../flow/bankNames';
+import { formatUsPhone } from '../flow/phoneFormat';
 
 /** The computed dates the renderer requires (from computeCompliancePeriod). */
 export interface ComputedNoticeDates {
@@ -443,7 +445,10 @@ export function composeFaceText(
 
   // Bank Deposit block: name / branch / account rows.
   if (bank) {
-    rows.push({ label: NOTICE_PROSE.bankLabel, value: requireString(data.bankName, 'bank name') });
+    rows.push({
+      label: NOTICE_PROSE.bankLabel,
+      value: normalizeBankName(requireString(data.bankName, 'bank name')),
+    });
     rows.push({
       label: NOTICE_PROSE.bankBranchLabel,
       value: requireString(data.bankBranchAddress, 'bank branch address'),
@@ -529,7 +534,7 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
   // Telephone + street address remain on landlordContact.
   const derivedPayee = derivePayeeName(data);
   const payeeName = requireString(derivedPayee.name, 'payee name');
-  const payeePhone = requireString(data.landlordContact?.phone, 'payee telephone');
+  const payeePhone = formatUsPhone(requireString(data.landlordContact?.phone, 'payee telephone'));
 
   // Signer (signature block).
   //  - Individual: role label derived from signerCapacity (Defect #3 removed the

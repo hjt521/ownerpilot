@@ -14,7 +14,11 @@ import {
   PRINT_OPTIONS_SUBTITLE,
   PRINT_CARDS,
   FULL_PACKET_MODAL,
+  PRINT_DIALOG_HINT,
+  PRINT_DIALOG_HINT_DETAIL,
+  PRINT_DIALOG_HINT_BACKGROUNDS,
 } from '@/lib/produce/packetCopy';
+import { buildNoticePdfFilename } from '@/lib/produce/noticePdfFilename';
 
 /**
  * PacketPrintOptions — RiskPath(TM) Connected Forms Phase 1 print screen.
@@ -42,13 +46,28 @@ export function PacketPrintOptions({
   const [showFullModal, setShowFullModal] = useState(false);
   const [packetError, setPacketError] = useState<string | null>(null);
 
-  const openPrintable = (html: string) => {
+  // Smart PDF filename (Save-as-PDF uses the print window's document.title).
+  const pdfFilename = buildNoticePdfFilename({
+    tenantNames: data.tenantNames,
+    streetAddress: data.propertyAddress,
+    unit: data.propertyUnit,
+  });
+
+  const openPrintable = (html: string, title?: string) => {
     // Same mechanism as the previous Download PDF action: open the styled
     // document and trigger the browser's print-to-PDF. No external dependency.
     const w = window.open('', '_blank');
     if (!w) return;
     w.document.write(html);
     w.document.close();
+    // Seed the browser's suggested PDF filename from the approved format.
+    if (title) {
+      try {
+        w.document.title = title;
+      } catch {
+        /* cross-window title set can throw in rare cases; ignore. */
+      }
+    }
     w.focus();
     w.print();
   };
@@ -63,7 +82,7 @@ export function PacketPrintOptions({
       return;
     }
     onProduced();
-    openPrintable(html);
+    openPrintable(html, pdfFilename);
   };
 
   const cards: { key: string; title: string; description: string; onClick: () => void }[] = [
@@ -99,6 +118,14 @@ export function PacketPrintOptions({
       <div>
         <h2 className="text-lg font-semibold text-gray-900">{PRINT_OPTIONS_TITLE}</h2>
         <p className="mt-1 text-sm text-gray-600 leading-relaxed">{PRINT_OPTIONS_SUBTITLE}</p>
+      </div>
+
+      {/* Browser-print guidance (Option A): window.print() can't suppress the
+          browser's own header/footer, so tell the user how to get a clean PDF. */}
+      <div className="rounded-lg border border-rule bg-tint px-4 py-3">
+        <p className="text-sm font-medium text-gray-900">{PRINT_DIALOG_HINT}</p>
+        <p className="mt-1 text-xs text-gray-500 leading-relaxed">{PRINT_DIALOG_HINT_DETAIL}</p>
+        <p className="mt-1 text-xs text-gray-500 leading-relaxed">{PRINT_DIALOG_HINT_BACKGROUNDS}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

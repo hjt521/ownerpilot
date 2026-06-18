@@ -39,8 +39,8 @@ function boldTokens(escaped: string, tokens: string[]): string {
 
 const STYLE = `
   :root {
-    --accent:#102018; --bar:#1C352A; --accent-gold:#A8895A; --ink:#1A1A1A;
-    --muted:#6B6B6B; --rule:#C8C5BD; --bg-tint:#F5F2EC;
+    --accent:#102018; --bar:#102018; --gold:#A8884C; --gold-soft:#C8B488;
+    --ink:#1A1A1A; --muted:#6B6B6B; --rule:#D9D2C2; --bg-tint:#F7F4ED;
   }
   * { box-sizing:border-box; }
   html,body { margin:0; padding:0; background:#fff; }
@@ -48,55 +48,78 @@ const STYLE = `
     font-family:'Inter','Noto Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
     color:var(--ink); -webkit-font-smoothing:antialiased;
   }
-  .page { position:relative; width:8.5in; height:11in; margin:0 auto; background:#fff; padding:0.55in 0.85in 0.95in 0.85in; overflow:hidden; }
-  .accent-bar { position:absolute; top:0; left:0; right:0; height:0.16in; background:var(--bar); }
-  .footer { position:absolute; left:0; right:0; bottom:0; height:0.72in; }
-  .footer .rule { position:absolute; left:0.85in; right:0.85in; bottom:0.72in; border-top:0.5pt solid var(--rule); }
-  .footer .mark { position:absolute; left:0.85in; bottom:0.30in; height:0.34in; width:auto; }
-  .footer .cite { position:absolute; left:0; right:0; bottom:0.47in; text-align:center; font-size:8pt; color:var(--muted); }
-  .footer .pageno { position:absolute; right:0.85in; bottom:0.47in; font-size:8pt; color:var(--muted); }
+  /* Letter sheet. Generous reserved footer band (padding-bottom) keeps legal
+     content above the footer; overflow is visible so legal text is NEVER
+     clipped — a too-long notice continues onto a labeled continuation sheet. */
+  .page { position:relative; width:8.5in; height:11in; margin:0 auto; background:#fff; padding:0.42in 0.8in 0.7in 0.8in; overflow:visible; }
+  .accent-bar { position:absolute; top:0; left:0; right:0; height:0.12in; background:var(--bar); }
+  .accent-bar::after { content:""; position:absolute; left:0; right:0; bottom:-2.5pt; height:2.5pt; background:var(--gold); }
+  .footer { position:absolute; left:0; right:0; bottom:0; height:0.6in; }
+  .footer .rule { position:absolute; left:0.8in; right:0.8in; bottom:0.44in; border-top:0.5pt solid var(--rule); }
+  .footer .rule::before { content:""; position:absolute; left:0; top:-0.5pt; width:0.5in; height:1pt; background:var(--gold); }
+  .footer .mark { position:absolute; left:0.8in; bottom:0.14in; height:0.2in; width:auto; opacity:.92; }
+  .footer .cite { position:absolute; left:0; right:0; bottom:0.24in; text-align:center; font-size:7.5pt; letter-spacing:.2px; color:var(--muted); }
+  .footer .pageno { position:absolute; right:0.8in; bottom:0.24in; font-size:7.5pt; color:var(--muted); }
   .letterhead { text-align:center; }
-  .letterhead img { width:1.25in; height:auto; }
-  .lh-space { height:6pt; }
-  .doc-title { text-align:center; text-transform:uppercase; font-weight:700; font-size:14pt; letter-spacing:1.2px; color:var(--ink); margin:0; }
-  .doc-sub { text-align:center; font-size:9pt; font-weight:500; color:var(--muted); margin:4px 0 10px 0; }
-  .hr { border:0; border-top:0.5pt solid var(--rule); margin:0 0 12px 0; }
-  .recipient { background:var(--bg-tint); border-top:0.5pt solid var(--rule); border-bottom:0.5pt solid var(--rule); padding:12px 14px; margin-bottom:14px; }
-  .recipient .to { font-size:10pt; line-height:14pt; margin:0; }
+  .letterhead img { width:0.92in; height:auto; }
+  .lh-space { height:3pt; }
+  .doc-title { text-align:center; text-transform:uppercase; font-weight:700; font-size:13pt; letter-spacing:1.3px; color:var(--accent); margin:0; }
+  .doc-sub { text-align:center; font-size:8.5pt; font-weight:500; letter-spacing:.3px; color:var(--muted); margin:3px 0 8px 0; }
+  .hr { border:0; border-top:0.5pt solid var(--rule); margin:0 0 9px 0; }
+  .recipient { background:var(--bg-tint); border-left:2.5pt solid var(--gold); border-top:0.5pt solid var(--rule); border-bottom:0.5pt solid var(--rule); border-right:0.5pt solid var(--rule); padding:7px 11px; margin-bottom:9px; }
+  .recipient .to { font-size:10pt; line-height:13.5pt; margin:0; }
   .recipient .to strong { font-weight:600; }
-  .recipient .addr { font-size:11pt; font-weight:600; margin:8px 0 0 0; }
-  .label { font-size:8.5pt; font-weight:600; color:var(--accent); letter-spacing:1.4px; text-transform:uppercase; margin:14px 0 5px 0; }
-  p.body { font-size:10pt; line-height:14pt; text-align:justify; margin:0 0 9px 0; }
+  .recipient .addr { font-size:11pt; font-weight:600; color:var(--accent); margin:5px 0 0 0; }
+  .label { font-size:8pt; font-weight:700; color:var(--gold); letter-spacing:1.6px; text-transform:uppercase; margin:8px 0 4px 0; }
+  p.body { font-size:10pt; line-height:13.5pt; text-align:justify; margin:0 0 5px 0; }
   p.body strong { font-weight:600; }
-  .small { font-size:8.5pt; color:var(--muted); line-height:12pt; margin:0 0 5px 0; }
-  table.items { width:100%; border-collapse:collapse; margin:4px 0 6px 0; }
-  table.items th { font-size:8.5pt; font-weight:600; color:var(--muted); text-align:left; padding:0 0 5px 0; border-bottom:0.5pt solid var(--rule); }
+  .small { font-size:8.5pt; color:var(--muted); line-height:12pt; margin:0 0 4px 0; }
+  table.items { width:100%; border-collapse:collapse; margin:3px 0 4px 0; }
+  table.items th { font-size:8pt; font-weight:700; color:var(--muted); letter-spacing:.5px; text-transform:uppercase; text-align:left; padding:0 0 4px 0; border-bottom:0.75pt solid var(--rule); }
   table.items th.amt, table.items td.amt { text-align:right; }
-  table.items td { font-size:10pt; color:var(--ink); padding:7px 0; }
-  table.items tr.total td { font-weight:700; background:var(--bg-tint); border-top:0.5pt solid var(--rule); padding:7px 8px; }
-  .pay-grid { display:grid; grid-template-columns:1.7in 1fr; row-gap:5px; column-gap:8px; margin:2px 0 8px 0; }
-  .pay-grid .k { font-size:8.5pt; font-weight:600; color:var(--muted); letter-spacing:.3px; padding-top:1px; }
+  table.items td { font-size:10pt; color:var(--ink); padding:5px 0; border-bottom:0.5pt solid #EDE8DC; }
+  table.items tr.total td { font-weight:700; color:var(--accent); background:var(--bg-tint); border-top:0.75pt solid var(--gold-soft); border-bottom:none; padding:6px 8px; }
+  .pay-grid { display:grid; grid-template-columns:1.7in 1fr; row-gap:4px; column-gap:8px; margin:2px 0 6px 0; }
+  .pay-grid .k { font-size:8pt; font-weight:700; color:var(--muted); letter-spacing:.4px; text-transform:uppercase; padding-top:1px; }
   .pay-grid .v { font-size:10pt; }
-  .pay-notes { margin:4px 0 8px 0; }
-  .sig { margin-top:16px; }
-  .sig .line { width:3.2in; border-top:0.6pt solid var(--ink); }
-  .sig .name { font-size:11pt; font-weight:600; margin-top:4px; }
+  .pay-notes { margin:2px 0 5px 0; }
+  .sig { margin-top:10px; }
+  .sig .line { width:3.2in; border-top:0.75pt solid var(--ink); }
+  .sig .name { font-size:11pt; font-weight:600; color:var(--accent); margin-top:4px; }
   .sig .role { font-size:9pt; font-weight:500; color:var(--muted); }
   .sig .by { font-size:10pt; margin-top:3px; color:var(--ink); }
-  .sig .dated { font-size:10pt; margin-top:8px; }
+  .sig .dated { font-size:10pt; margin-top:6px; }
   .sig .dated strong { font-weight:600; }
-  .pos-intro { font-size:10pt; line-height:15pt; text-align:left; margin:0 0 12px 0; }
+  .pos-intro { font-size:10pt; line-height:14pt; text-align:left; margin:0 0 9px 0; }
   .pos-intro strong { font-weight:600; }
   .blank { display:inline-block; border-bottom:0.6pt solid var(--ink); min-width:120px; height:11pt; vertical-align:baseline; }
   .blank.sm { min-width:80px; } .blank.lg { min-width:200px; }
-  .opt { border:0.5pt solid var(--rule); padding:10px 12px; margin-bottom:8px; }
-  .opt .head { display:flex; align-items:center; gap:8px; }
-  .opt .head .lbl { font-size:10.5pt; font-weight:600; }
-  .cbx { width:11px; height:11px; border:0.9pt solid var(--ink); background:#fff; display:inline-block; flex:0 0 auto; }
-  .opt .obody { font-size:10pt; line-height:16pt; text-align:left; margin:6px 0 0 0; }
-  .perjury { font-size:10pt; line-height:15pt; margin:6px 0 0 0; }
+  .opt { border:0.5pt solid var(--rule); border-left:2pt solid var(--gold-soft); border-radius:2px; padding:8px 11px; margin-bottom:7px; }
+  .opt .head { display:flex; align-items:center; gap:9px; }
+  .opt .head .lbl { font-size:10.5pt; font-weight:700; color:var(--accent); letter-spacing:.3px; }
+  .cbx { width:12px; height:12px; border:1pt solid var(--ink); background:#fff; display:inline-block; flex:0 0 auto; }
+  .opt .obody { font-size:10pt; line-height:15pt; text-align:left; margin:5px 0 0 0; }
+  .perjury { font-size:10pt; line-height:14.5pt; margin:4px 0 0 0; }
   .perjury strong { font-weight:600; }
-  @media print { .page { margin:0; } .page + .page { page-break-before:always; } }
+  /* Keep a block (e.g. signature, an option box) from splitting across sheets. */
+  .recipient, .sig, .opt, table.items, .pay-grid { break-inside:avoid; }
+  @media print {
+    .page { margin:0; }
+    .page + .page { page-break-before:always; }
+    /* Print readability on white paper (broker review 2026-06-18): darken pale
+       labels and faint notes; do not rely on background fills for meaning. No
+       spacing/size changes, so the one-page fit is preserved. */
+    .accent-bar, .accent-bar::after, .recipient, .footer .rule::before { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .label { color:#7A5A1E; font-weight:800; }
+    table.items th { color:#333333; border-bottom-color:#8A6A2A; }
+    .pay-grid .k { color:#5A4A28; }
+    .small { color:#333333; }
+    .doc-sub { color:#3A3A3A; }
+    .recipient { border-color:#8A6A2A; border-left-color:#8A6A2A; }
+    .hr { border-top-color:#8A6A2A; }
+    .footer .cite, .footer .pageno { color:#3A3A3A; }
+    .footer .rule { border-top-color:#8A6A2A; }
+  }
   @page { size:Letter; margin:0; }
 `;
 
@@ -220,7 +243,7 @@ export function buildNoticeDocumentHtml(model: NoticeModel): string {
 
 <section class="page">
   <div class="accent-bar"></div>
-  <h1 class="doc-title" style="margin-top:6px">${esc(POS_PROSE.header)}</h1>
+  <h1 class="doc-title" style="margin-top:0.26in">${esc(POS_PROSE.header)}</h1>
   <div class="doc-sub">${esc(POS_PROSE.faceCitation)}</div>
   <hr class="hr">
 
