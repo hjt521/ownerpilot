@@ -31,6 +31,9 @@ export const TENANT_QR_FOOTER_DISCLAIMER =
 export const PAGE_LABELS = {
   tenant: 'TENANT SERVICE COPY',
   owner: 'OWNER RECORD COPY — DO NOT SERVE',
+  ownerDetails: 'OWNER RECORD DETAILS — DO NOT SERVE',
+  proofOfService: 'PROOF OF SERVICE — OWNER RECORD',
+  serviceAttempt: 'SERVICE ATTEMPT RECORD — OWNER RECORD',
   serviceLog: 'SERVICE LOG / PROOF OF SERVICE — OWNER RECORD',
   checklist: 'OWNERPILOT SERVICE CHECKLIST — OWNER RECORD',
 } as const;
@@ -67,43 +70,58 @@ export const FULL_PACKET_MODAL = {
 
 // --- Cover sheet (spec, verbatim) --------------------------------------------
 export const COVER_SHEET = {
-  header: 'OwnerPilot.AI Printable Packet',
-  subheader: 'This packet contains separate copies for tenant delivery and owner records.',
-  boxTitle: 'Your packet includes:',
+  eyebrow: 'Broker-Prepared Notice Packet',
+  header: '3-Day Notice Packet',
+  subtitle: 'California Three-Day Notice to Pay Rent or Quit',
+  boxTitle: 'This packet includes',
   items: [
-    { name: 'Tenant Service Copy', instruction: 'Print and serve this copy on the tenant.' },
+    { name: 'Tenant Service Copy', instruction: 'The only notice copy intended for delivery to the tenant.' },
     { name: 'Owner Record Copy', instruction: 'Keep this copy for your records. Do not serve.' },
-    { name: 'Service Log / Proof of Service', instruction: 'Complete this after service.' },
-    {
-      name: 'OwnerPilot Service Checklist',
-      instruction: 'Use this to track what still needs to be done.',
-    },
+    { name: 'Owner Record Details', instruction: 'A summary of the notice details and RiskPath\u2122 follow-up.' },
+    { name: 'Proof of Service', instruction: 'Complete after the notice has actually been served.' },
+    { name: 'Service Attempt Record', instruction: 'Track attempts, mailing, dates, and server notes.' },
+    { name: 'RiskPath\u2122 Follow-Up Checklist', instruction: 'Track what still needs to be done after printing.' },
   ],
+  importantTitle: 'Important',
   importantNote:
-    'Only the page marked \u201CTENANT SERVICE COPY\u201D is intended for delivery to the tenant.',
+    'Only pages marked TENANT SERVICE COPY are intended for delivery to the tenant. Pages marked OWNER RECORD or DO NOT SERVE are for the owner\u2019s records only.',
+  footer: 'OwnerPilot.AI \u00B7 Broker-prepared workflow \u00B7 Not legal advice',
 } as const;
 
 // --- Checklist (spec, verbatim) ----------------------------------------------
 export const CHECKLIST_TITLE = 'RiskPath\u2122 Follow-Up Checklist';
-export const CHECKLIST_ITEMS = [
-  'Notice/form generated',
-  'Tenant service copy printed',
-  'First service attempt scheduled',
-  'Service attempt logged',
-  'Mailing required? Yes / No',
-  'Mailing date logged',
-  'Service record complete',
-  'Final packet downloaded',
+export const CHECKLIST_GROUPS = [
+  {
+    name: 'Before Service',
+    items: ['Tenant service copy printed', 'Owner record copy saved', 'First service attempt scheduled'],
+  },
+  {
+    name: 'After Each Attempt',
+    items: ['Service attempt logged', 'Mailing required? Yes / No', 'Mailing date logged'],
+  },
+  {
+    name: 'After Service',
+    items: ['Proof of Service completed', 'Final packet downloaded', 'RiskPath\u2122 record updated'],
+  },
+] as const;
+
+// Owner Record Details \u201CNext Step\u201D checklist (page 4, spec verbatim).
+export const NEXT_STEP_ITEMS = [
+  'Print tenant service copy',
+  'Serve tenant service copy',
+  'Log the service attempt',
+  'Complete Proof of Service after service',
 ] as const;
 
 // --- Owner footer (spec, verbatim; QR is a Phase 1 placeholder) --------------
 export const OWNER_FOOTER = {
   title: 'OwnerPilot RiskPath\u2122 Connected Form',
-  line1: 'Scan to continue this RiskPath\u2122',
-  line2: 'Resume your service log, reminders, and next steps.',
   powered: 'Powered by OwnerPilot.AI',
   tagline: 'Every form stays connected to the next step.',
-  qrPlaceholder: 'QR\u2014available in a future update',
+  qrPlaceholder: 'RiskPath QR coming soon',
+  scanDetails: 'Scan to resume this notice record, service log, reminders, and next steps.',
+  scanAttempts: 'Scan to resume your service log and next steps.',
+  scanChecklist: 'Scan to continue this RiskPath\u2122. Resume your service log, reminders, and next steps.',
 } as const;
 
 // --- Packet configuration -----------------------------------------------------

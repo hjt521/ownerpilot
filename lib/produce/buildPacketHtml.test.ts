@@ -72,7 +72,8 @@ check('owner: echoes payee name', owner.includes('Jane Owner'));
 
 // --- Service Log ---
 const log = buildServiceLogHtml(model, data);
-check('log: carries service-log label', log.includes('SERVICE LOG / PROOF OF SERVICE'));
+check('log: PoS page carries PROOF OF SERVICE label', log.includes(PAGE_LABELS.proofOfService));
+check('log: attempts page carries SERVICE ATTEMPT RECORD label', log.includes(PAGE_LABELS.serviceAttempt));
 check('log: reuses verbatim PoS header', log.includes(POS_PROSE.header));
 check('log: reuses verbatim perjury sentence', log.includes('penalty of perjury'));
 check('log: includes attempts record page', log.includes('Service Attempt Record'));
