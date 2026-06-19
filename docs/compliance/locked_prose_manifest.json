@@ -2,6 +2,8 @@
   "manifest_version": "v1",
   "generated_at": "2026-06-19T00:43:06Z",
   "guard_status": "live",
+  "live_attested": "2026-06-18",
+  "live_attested_determination": "docs/compliance/locked_prose_guard_live_attestation_2026-06-18.md",
   "broker_authority": "CalDRE B9445457",
   "authoring_authority": "docs/compliance/broker_blanket_authorization_2026-06-15.md",
   "guard_design": "docs/compliance/locked_prose_ci_guard_scope_broker_determination_2026-06-15.md",
