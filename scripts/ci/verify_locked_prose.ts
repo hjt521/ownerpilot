@@ -1,4 +1,4 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env tsx
 /**
  * scripts/ci/verify_locked_prose.ts
  *
@@ -17,7 +17,7 @@
  * Behavior: HARD CI FAIL on any drift (§3.3 — no warn-then-ack mode).
  *
  * Usage:
- *   npx ts-node scripts/ci/verify_locked_prose.ts
+ *   npx tsx scripts/ci/verify_locked_prose.ts
  *   # or wire into the package.json "ci:verify-locked-prose" script.
  *
  * Exit codes:
