@@ -209,28 +209,28 @@ Applying the two governing rules to the 15-combination universe:
 
 ### §8.4 Broker ruling
 
-**Authoritative source: the Section 4 matrix.** The matrix enumerates ten rendering compositions and five DISALLOWED rows, which is correct under the § 1947.3 floor and the EFT pairing rule. The prose summary in C7a at lines 183 and 279 ("Eleven combinations are valid") is a **prose miscount**; the matrix is right.
+**Authoritative source: the Section 4 matrix.** The matrix enumerates ten rendering compositions and five DISALLOWED rows, which is correct under the § 1947.3 floor and the EFT pairing rule.
 
 **Correct counts:**
 
 - **Valid combinations: ten (10).**
 - **Disallowed combinations: five (5).**
 
-The "five disallowed" figure stated on lines 183, 280, and the parenthetical on line 183 is **correct** — there are exactly five disallowed combinations: `B`, `E`, `IE`, `BE`, `IBE`. The line-183 parenthetical wording ("the four involving EFT-with-only-bank or EFT-with-only-in-person, and the two single-method non-floor cases") is itself a miscount of the five (it sums to six) and is also a prose error — but the headline number five is right; the parenthetical is wrong.
+As originally authored, the C7a determination contained two prose summaries (the Section 4 trailing paragraph and the "Ships now" bullet) that stated "Eleven combinations are valid." Both were prose miscounts against the Section 4 matrix; the matrix was right. A third prose error sat in a parenthetical on the same trailing paragraph that enumerated four EFT cases plus two single-method cases — summing to six against a headline figure of five. The headline figure of five was correct; the five disallowed combinations are exactly `B`, `E`, `IE`, `BE`, `IBE`. All three prose errors were resolved by the Branch-B whole-file replacement of the C7a determination committed at `9baefe5`, which does not contain "Eleven" anywhere and does not contain the six-summing parenthetical; line numbers in the replaced file differ from those in the original and are not referenced here.
 
-### §8.5 Staged mechanical fixes (build side applies all three, verbatim)
+### §8.5 Mechanical fixes — superseded by Branch-B whole-file replacement of C7a (2026-06-18, committed `9baefe5`)
 
-These edits are applied to [`c7a_multiselect_face_review_broker_determination_2026-06-15.md`](c7a_multiselect_face_review_broker_determination_2026-06-15.md):
+This section originally staged three surgical edits to be applied to [`c7a_multiselect_face_review_broker_determination_2026-06-15.md`](c7a_multiselect_face_review_broker_determination_2026-06-15.md): two `Eleven`→`Ten` substitutions (lines 183 and 279) and one parenthetical rewrite. Those edits are no longer applicable.
 
-1. **Line 183 (end of Section 4):** Replace *"Eleven combinations are valid. Five are disallowed."* with *"**Ten combinations are valid. Five are disallowed.** The blanket authority to amend this matrix is broker-retained under Section 3 of the blanket authorization."*
+**What happened:** Build-side escalation [`c7a_filestate_broker_ruling_request_2026-06-18.md`](c7a_filestate_broker_ruling_request_2026-06-18.md) flagged that the workspace copy of the C7a determination and the committed repo copy had diverged: the workspace copy had been replaced with a wholesale posture rewrite (the "…-3" state) at some point prior to the staged-edit inventory in this section being authored, while the committed repo copy remained in its original form. The staged inventory therefore described surgical edits against a file state that did not exist in the repo.
 
-2. **Line 183 parenthetical (if separately rendered):** Replace the parenthetical *"the four involving EFT-with-only-bank or EFT-with-only-in-person, and the two single-method non-floor cases"* with *"the three combinations that violate the EFT pairing rule (`IE`, `IBE`, plus `BE` and `E` which also violate the floor), and the two single-method non-floor cases (`B`, `E`) — for five disallowed combinations in total."*
+**Disposition under broker ruling [`c7a_filestate_broker_ruling_response_2026-06-18.md`](c7a_filestate_broker_ruling_response_2026-06-18.md):** Branch B — build side replaced the repo's C7a file byte-for-byte with the workspace-current "…-3" state. The replacement (committed `9baefe5`) subsumes the count fixes the surgical inventory targeted (line 183 and line 279 both read `Ten` in the replaced file; the targeted parenthetical does not exist in the replaced file), and additionally aligns the C7a file's posture and §11 framing with the binding blanket-authorization posture every other determination in this commit set carries.
 
-   - Note: this rewrite is mechanical bookkeeping on the parenthetical to make the enumeration sum to five. The disallowed *set* itself is unchanged; only the descriptive text is corrected.
+**Authoritative reference for the substantive resolution:** [`c7a_filestate_broker_ruling_response_2026-06-18.md`](c7a_filestate_broker_ruling_response_2026-06-18.md) §1 (ruling), §2 (rationale).
 
-3. **Line 279 (Section "Ships now" bullet):** Replace *"Eleven permitted combinations per the matrix in Section 4."* with *"**Ten permitted combinations per the matrix in Section 4.**"*
+**Authoring-discipline note (kept on the record):** The staged-edit inventory originally in this section was authored without a fresh disk read of the C7a file at the time of drafting, which is how the workspace-vs-repo divergence entered the audit trail in the first place. The prior attempt to patch this section then introduced a second instance of the same error — the patch block was authored against the workspace draft of §8.5 rather than the committed bytes, and was caught by build-side escalation [`pkt_s85_reconciliation_broker_ruling_request_2026-06-18.md`](pkt_s85_reconciliation_broker_ruling_request_2026-06-18.md) before reaching the repo. Going forward, every patch to a determination is to be authored against a fresh read of the committed repo bytes (and a `git diff origin/main` on the target path), not against any workspace copy. The workspace artifact and the committed repo file are not assumed to be the same bytes.
 
-Build side: apply verbatim. No code change is required — the validator (`validatePaymentMethods`) and the matrix in Section 4 are both correct as shipped; only the prose summary is wrong.
+**Status: superseded.** No further action is required on the surgical-edit inventory originally staged in this section; it has been subsumed by the Branch-B whole-file replacement of C7a committed at `9baefe5`. Any future amendment to the C7a determination is broker-authored under the blanket authorization and does not require re-opening this section.
 
 ### §8.6 Other items still needing separate review
 
@@ -240,7 +240,7 @@ Build side: apply verbatim. No code change is required — the validator (`valid
 - [ ] [CONSIDER] Owner-facing QR rollout — Page-4 / Page-6 note treatment when `TENANT_QR_FOOTER_ENABLED=true` (§6 flag).
 - [ ] [TRACKING] Engineering packet template defect (recurring) — auto-generates attorney-attribution framing; 7-day fix deadline from 2026-06-15. Apply manual scrub until template lands.
 
-**Status: CLOSED for this packet.** §8 miscount ruling is final; build side may apply the three §8.5 edits to the C7a determination at any time without further broker concurrence.
+**Status: closed for this packet.** §8 miscount ruling is final. The surgical edits originally staged in §8.5 are superseded by the Branch-B whole-file replacement of `c7a_multiselect_face_review_broker_determination_2026-06-15.md` (committed `9baefe5`); see §8.5 and [`c7a_filestate_broker_ruling_response_2026-06-18.md`](c7a_filestate_broker_ruling_response_2026-06-18.md) for the authoritative resolution. No further action on §8.5; the §8.6 items above remain open for separate review.
 
 ---
 
