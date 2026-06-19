@@ -1,0 +1,22 @@
+name: locked-prose-lock
+# Authoritative gate for Tier-A/Tier-B locked compliance prose
+# (locked_prose_ci_guard_scope_broker_determination_2026-06-15.md §3.3 — HARD FAIL on drift).
+# No path filter on purpose, mirroring system-prompt-lock.yml: a required check that is
+# "skipped" by a path filter can be treated as passing by some branch-protection setups.
+# This always runs and is fast, so it cannot be evaded by how the change touches the file.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-locked-prose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Verify locked compliance prose matches the manifest
+        run: npm run ci:verify-locked-prose
