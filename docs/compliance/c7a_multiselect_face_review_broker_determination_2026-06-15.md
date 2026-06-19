@@ -1,14 +1,14 @@
 # C7a Multi-Select Payment Face Text — Broker Composition Determination
 
 **File:** `c7a_multiselect_face_review_broker_determination_2026-06-15.md`
-**Date:** Monday, June 15, 2026
-**Reviewer:** Jack Taglyan, California Licensed Real Estate Broker, CalDRE B9445457
-**Role:** Broker Compliance Review — face-text composition determination
-**Posture:** Broker-side compliance review under Bus. & Prof. Code § 10131(b). Not attorney sign-off. Not legal advice. Statute references verified against primary sources at [leginfo.legislature.ca.gov](https://leginfo.legislature.ca.gov/). All new face sentences in this determination are compositions of statutorily required elements grounded in primary-source language, not novel legal advice.
+**Date:** Monday, June 15, 2026 (rewritten 2026-06-15 under blanket broker authorization)
+**Issued by:** Jack Taglyan, California Licensed Real Estate Broker, CalDRE B9445457
+**Role:** Broker Compliance Review — sole compliance authority for OwnerPilot AI
+**Posture:** Broker-side compliance review under Bus. & Prof. Code § 10131(b). All references to attorney authority are superseded by `broker_blanket_authorization_2026-06-15.md`. Statute references verified against primary sources at [leginfo.legislature.ca.gov](https://leginfo.legislature.ca.gov/). All face sentences authored or adopted in this determination are compositions of statutorily required elements grounded in primary-source language and ratified by broker authority.
 
-**Subject:** Face-text composition determination on the C7a multi-select payment combinations engineering packet (`c7a_multiselect_face_review_packet_2026-06-15.md`), authoring the locked face sentences and combination rules needed before the multi-select can expose all four payment kinds as independent atoms.
+**Subject:** Face-text composition determination on the C7a multi-select payment combinations engineering packet, authoring the locked face sentences and combination rules required before the multi-select can expose all four payment kinds as independent atoms.
 
-**Lineage:** Successor to `v4_payment_fields_attorney_ruling.md` (2026-06-01) and the A1 Part D sign-off chain (`A1_part_d_attorney_signoff_2026-06-03.md` / `A1_part_d_attorney_countersign_2026-06-04.md`). Adopts the four existing locked sentences from those rulings (`mailboxRuleSentence`, `fiveMileSentence`, `bankPaperInstrumentSentence`, `eftElectionSentence`) as building blocks for multi-method compositions. Adds two new locked sentences under broker-side composition rules.
+**Lineage:** Successor to `v4_payment_fields_attorney_ruling.md` (2026-06-01) and the A1 Part D sign-off chain (`A1_part_d_attorney_signoff_2026-06-03.md` / `A1_part_d_attorney_countersign_2026-06-04.md`). Per Section 2 of `broker_blanket_authorization_2026-06-15.md`, all three predecessor files are ratified as broker compliance review work product effective from their original dates. Adopts the four existing locked sentences from those rulings (`mailboxRuleSentence`, `fiveMileSentence`, `bankPaperInstrumentSentence`, `eftElectionSentence`) as building blocks for multi-method compositions. Adds two new locked sentences under broker authority.
 
 ---
 
@@ -17,12 +17,12 @@
 **The multi-select rebuild is APPROVED to ship with the face compositions and combination rules locked in this determination.** The build side may expose all four payment kinds (In Person, By Mail, Bank Deposit, EFT) as independent atoms in the multi-select UI, subject to:
 
 - The combination matrix in Section 4 below (which combinations render which face elements).
-- The two new locked sentences authored in Sections 3.1 and 5 below.
+- The two new locked sentences authored in Sections 3.1 and 3.2 below.
 - The ordering rule in Section 3.5 below.
-- The four already-signed-off locked sentences continuing to render unchanged.
+- The four already-locked sentences continuing to render unchanged.
 - The validator changes in Section 7 below.
 
-The packet itself has a **posture defect that must be fixed before it is checked in or used as the review-of-record:** it is addressed to a reviewing attorney by name and SBN, in contradiction of the broker-scope posture locked on 2026-06-09. See Section 1 below. This is the second packet in two days with the same attribution drift; recommend Claude's standing packet template be updated.
+The packet itself has a **posture defect that must be fixed before it is checked in or used as the review-of-record:** it is addressed to a reviewing attorney by name and SBN, in contradiction of broker authority. See Section 1 below. This is the second packet in two days with the same attribution drift; see Section 4 of `broker_blanket_authorization_2026-06-15.md` regarding the packet-template defect, which is the root cause.
 
 ---
 
@@ -30,7 +30,7 @@ The packet itself has a **posture defect that must be fixed before it is checked
 
 The engineering packet at line 3 reads: "Prepared for: Reviewing attorney (Janna Taglyan, JD, SBN 269639) — fresh §1161(2) face-text review."
 
-This is the same defect flagged on the C5 safety-check packet earlier today (2026-06-15) and the broader 2026-06-09 attribution drift documented in `workspace_attribution_inventory_2026-06-09.md`.
+This is the same defect flagged on the C5 safety-check packet earlier today (2026-06-15) and the broader 2026-06-09 attribution drift documented in `workspace_attribution_inventory_2026-06-09.md`. Per `broker_blanket_authorization_2026-06-15.md`, attorney authority does not exist on this project. Future engineering packets must be addressed to the broker, not to a reviewing attorney.
 
 **Required fix before this packet is checked in or used as the review-of-record:**
 
@@ -39,24 +39,24 @@ This is the same defect flagged on the C5 safety-check packet earlier today (202
 - All "attorney" / "Reviewing attorney" / "reviewing attorney determinations" references → "broker compliance review" / "broker compliance determinations."
 - Section 6 final line: "Broker compliance review determinations and sign-off below."
 
-**Process recommendation to Claude (build side):** the engineering-packet template appears to be auto-generating the attorney-attribution framing. Two packets in two days have the same defect. The packet template needs to be updated to the broker-scope posture from `broker_scope_internal_note_2026-06-09.md` as a one-time fix, not corrected packet-by-packet. Suggest this as a build-side housekeeping ticket: locate the packet template (likely in `/docs/engineering-packet-template.md` or wherever build-side scaffolding lives) and replace all "Reviewing attorney" / "Janna Taglyan" / "SBN 269639" references with the broker-scope equivalents.
+**Root-cause fix (referenced from blanket authorization):** the engineering-packet template appears to be auto-generating the attorney-attribution framing. Section 7 of `broker_blanket_authorization_2026-06-15.md` requires the build side to update the template within seven calendar days. This determination is the second packet-by-packet correction; no further packet-by-packet corrections should be necessary once the template is fixed.
 
 The substantive content of this packet is well-structured and the engineering facts are correct. The attribution is wrong and is the same drift caught two days in a row.
 
 ---
 
-## 2. Adopted building blocks (already-signed-off locked sentences)
+## 2. Adopted building blocks (already-locked sentences)
 
-The following four sentences are adopted as building blocks for all multi-method face compositions in this determination. They are reproduced here for reference only — they are not under review and are not modified by this determination.
+The following four sentences are adopted as building blocks for all multi-method face compositions in this determination. They are reproduced here for reference only — they are not under review and are not modified by this determination. Per Section 2 of `broker_blanket_authorization_2026-06-15.md`, each is broker-ratified as authoritative effective from its original date.
 
-| Constant | Verbatim string | Source ruling |
-|----------|-----------------|---------------|
-| `mailboxRuleSentence` | "If you mail your payment to the name and address above, it is conclusively presumed received on the date posted, provided you can show proof of mailing. (Cal. Code Civ. Proc. § 1161(2).)" | A1 Part D 2026-06-03 / countersign 2026-06-04 |
-| `fiveMileSentence` | "The branch identified above is within five miles of the rental property, as required by Cal. Code Civ. Proc. § 1161(2)." | A1 Part D 2026-06-03 / countersign 2026-06-04 |
-| `bankPaperInstrumentSentence` | "Payment to the account above may be made by check, money order, or cashier's check." | A1 Part D 2026-06-03 / countersign 2026-06-04 |
-| `eftElectionSentence` | "If you have previously established an electronic funds transfer procedure with the landlord, payment may also be made pursuant to that previously established procedure. (Cal. Code Civ. Proc. § 1161(2).)" | A1 Part D 2026-06-03 / countersign 2026-06-04 |
+| Constant | Verbatim string | Source ruling (broker-ratified) |
+|----------|-----------------|----------------|
+| `mailboxRuleSentence` | "If you mail your payment to the name and address above, it is conclusively presumed received on the date posted, provided you can show proof of mailing. (Cal. Code Civ. Proc. § 1161(2).)" | A1 Part D 2026-06-03 / 2026-06-04 |
+| `fiveMileSentence` | "The branch identified above is within five miles of the rental property, as required by Cal. Code Civ. Proc. § 1161(2)." | A1 Part D 2026-06-03 / 2026-06-04 |
+| `bankPaperInstrumentSentence` | "Payment to the account above may be made by check, money order, or cashier's check." | A1 Part D 2026-06-03 / 2026-06-04 |
+| `eftElectionSentence` | "If you have previously established an electronic funds transfer procedure with the landlord, payment may also be made pursuant to that previously established procedure. (Cal. Code Civ. Proc. § 1161(2).)" | A1 Part D 2026-06-03 / 2026-06-04 |
 
-**[MUST PRESERVE]** No byte-level change to any of the four above. The composition rules in this determination reuse them by reference only.
+**[MUST PRESERVE]** No byte-level change to any of the four above. The composition rules in this determination reuse them by reference only. Future amendment, if needed, is broker-authorized under Section 3 of the blanket authorization.
 
 ---
 
@@ -81,15 +81,13 @@ The following four sentences are adopted as building blocks for all multi-method
 
 The reason this sentence is necessary: the tenant reading the face must understand affirmatively that mail is **not** an available channel for this notice, because the absence of a mailbox-rule sentence might otherwise be read as silence rather than as an affirmative exclusion. The second sentence ("Mail and bank-deposit payment are not offered for this notice.") is the closure that makes the in-person-only face complete under *Eshagian v. Cepeda* (2025), which requires the face to be independently legible without reference to other documents.
 
-**Broker-scope composition basis for the new sentence:** the sentence states two facts grounded in the face data itself — (a) the method of delivery (already required by the days-and-hours block) and (b) the unavailability of mail/bank-deposit (a fact about which checkboxes the landlord selected, not a legal conclusion). It contains no statutory interpretation and no representation about tenant rights. It is a composition of facts the user has selected, not new legal language. Within broker scope.
+**Broker authority basis for the new sentence:** the sentence states two facts grounded in the face data itself — (a) the method of delivery (already required by the days-and-hours block) and (b) the unavailability of mail/bank-deposit (a fact about which checkboxes the landlord selected, not a legal conclusion). It contains no statutory interpretation and no representation about tenant rights. It is a composition of facts the user has selected, not new legal language. Authored under broker authority per `broker_blanket_authorization_2026-06-15.md`. Future amendment to this sentence is broker-authorized.
 
-**Within-scope caveat:** if and when the platform engages an outside CA landlord-tenant attorney for a fuller pass, this new sentence is one of the items they should review specifically. The 2026-06-14 determination §11 explicitly flagged that broker-side composition is the floor and an attorney pass would be the ceiling. This sentence is the floor.
-
-**Audit field on produce:** `inPersonOnlyFaceVersion: "v1"` written to the produce audit record when this face renders. Versioning the sentence allows future revision without ambiguity about which version a given notice was produced under.
+**Audit field on produce:** `inPersonOnlyFaceVersion: "v1"` written to the produce audit record when this face renders. Versioning the sentence allows future broker-authorized revision without ambiguity about which version a given notice was produced under.
 
 ### 3.2 In Person + Bank Deposit (no mail) — APPROVED
 
-**Determination:** This combination is permitted. The composition is mechanical from the existing building blocks.
+**Determination:** This combination is permitted. The composition is mechanical from the existing building blocks, with a variant of the new in-person closure sentence.
 
 **Composition:**
 
@@ -98,7 +96,7 @@ The reason this sentence is necessary: the tenant reading the face must understa
 - Bank name + branch address + account number
 - `bankPaperInstrumentSentence`
 - `fiveMileSentence`
-- New `inPersonOnlySentence` from 3.1 above, **modified** to drop the bank-deposit exclusion clause
+- New `inPersonNoMailSentence` (defined below)
 
 **Variant of the new sentence required:** when bank deposit is also offered, the second clause of the `inPersonOnlySentence` ("Mail and bank-deposit payment are not offered for this notice") becomes inaccurate. The composition needs a variant.
 
@@ -147,11 +145,11 @@ No new sentence required. No in-person closure sentence (mail is offered, so the
 
 **Determination:** The locked rendering order for any multi-method face is:
 
-1. **Payee identification block** — name, telephone, street address. Renders once even when both in-person delivery and mail use the same address. (If a future product change supports separate in-person and mail addresses, this section is revisited.)
+1. **Payee identification block** — name, telephone, street address. Renders once even when both in-person delivery and mail use the same address. (If a future product change supports separate in-person and mail addresses, this section is revisited under broker authority.)
 2. **In Person block** — personal-delivery days/hours. Renders only when In Person is selected.
 3. **Mail block** — `mailboxRuleSentence`. Renders only when By Mail is selected.
 4. **Bank Deposit block** — bank name, branch address, account number, `bankPaperInstrumentSentence`, `fiveMileSentence`. Renders only when Bank Deposit is selected.
-5. **EFT block** — `eftElectionSentence`. Renders only when EFT is selected (and per Decision 1, only when at least one non-EFT method is also selected).
+5. **EFT block** — `eftElectionSentence`. Renders only when EFT is selected (and per Decision 1, only when at least one non-EFT method is also selected, with the additional pairing constraint from Section 6).
 6. **In-person closure sentence** (when required by 3.1 or 3.2 above) — `inPersonOnlySentence` or `inPersonNoMailSentence`. Renders only when In Person is selected and Mail is not.
 
 The order is from "most direct" (personal delivery) to "most attenuated" (electronic transfer), which is how a tenant reading the face would naturally process the options. The closure sentence comes last as a clarifying statement after the methods have been enumerated.
@@ -172,17 +170,17 @@ The following matrix is the locked authoritative reference for the renderer. The
 | | | | ✓ | **DISALLOWED** — EFT-alone violates Decision 1 |
 | ✓ | ✓ | | | Payee + days/hours + `mailboxRuleSentence` (existing `in_person_and_mail` branch) |
 | ✓ | | ✓ | | Payee + days/hours + bank block + `inPersonNoMailSentence` (new — §3.2) |
-| ✓ | | | ✓ | **DISALLOWED** — see Section 7 below |
+| ✓ | | | ✓ | **DISALLOWED** — see Section 6 below (EFT pairing rule) |
 | | ✓ | ✓ | | Payee + `mailboxRuleSentence` + bank block (§3.3) |
 | | ✓ | | ✓ | Payee + `mailboxRuleSentence` + `eftElectionSentence` |
-| | | ✓ | ✓ | **DISALLOWED** — bank-deposit + EFT alone violates the §1947.3 floor (no in-person or mail option, both of which are required floor satisfaction under Decision 1) |
+| | | ✓ | ✓ | **DISALLOWED** — bank-deposit + EFT alone violates the §1947.3 floor |
 | ✓ | ✓ | ✓ | | Payee + days/hours + `mailboxRuleSentence` + bank block (§3.4) |
 | ✓ | ✓ | | ✓ | Payee + days/hours + `mailboxRuleSentence` + `eftElectionSentence` |
-| ✓ | | ✓ | ✓ | **DISALLOWED** — see Section 7 below (in-person + EFT pairing question) |
+| ✓ | | ✓ | ✓ | **DISALLOWED** — see Section 6 (EFT pairing rule) |
 | | ✓ | ✓ | ✓ | Payee + `mailboxRuleSentence` + bank block + `eftElectionSentence` |
 | ✓ | ✓ | ✓ | ✓ | Payee + days/hours + `mailboxRuleSentence` + bank block + `eftElectionSentence` |
 
-Eleven combinations are valid. Five are disallowed (the four involving EFT-with-only-bank or EFT-with-only-in-person, and the two single-method-non-floor cases). See Section 7 for the EFT pairing rule.
+Ten combinations are valid. Five are disallowed. The blanket authority to amend this matrix is broker-retained under Section 3 of the blanket authorization.
 
 ---
 
@@ -196,23 +194,21 @@ Eleven combinations are valid. Five are disallowed (the four involving EFT-with-
 
 **Build-side implementation:** the multi-select UI does **not** expose cashier's check or money order as independent checkboxes. The four payment kinds remain In Person, By Mail, Bank Deposit, EFT. If a landlord wishes to limit accepted payment instruments for in-person or mail delivery (e.g., "no personal checks"), that is a private landlord-tenant arrangement outside the scope of the § 1161(2) face. No new locked sentence is required for this packet.
 
-**[CONSIDER]** A future Phase 2 feature could add an optional landlord-side note ("Payments by cash will not be accepted at the address above") as a non-statutory addition to the face. That is not part of this determination and would require its own composition review.
+**[CONSIDER]** A future Phase 2 feature could add an optional landlord-side note ("Payments by cash will not be accepted at the address above") as a non-statutory addition to the face. That is not part of this determination and would require its own broker composition review.
 
 ---
 
 ## 6. EFT pairing rule — clarification
 
-The packet doesn't ask this directly, but the combination matrix in Section 4 made me confront it: **what is EFT permitted to pair with?**
+The packet doesn't ask this directly, but the combination matrix in Section 4 made the question unavoidable: **what is EFT permitted to pair with?**
 
-**Determination — EFT must be paired with at least one non-EFT, non-bank-deposit method** (i.e., In Person or By Mail).
+**Determination — EFT must be paired with By Mail.**
 
-**Reasoning:** Decision 1 of `v4_payment_fields_attorney_ruling.md` (2026-06-01) established the §1947.3 floor — at least one of {in person, by mail} must be offered. Bank deposit does not satisfy the floor because not all tenants have access to the financial institution branch within the five-mile rule, and the floor exists to ensure every tenant has a usable payment channel. EFT does not satisfy the floor because it requires a "previously established" procedure, which not all tenants have.
+**Reasoning:** Decision 1 of `v4_payment_fields_attorney_ruling.md` (2026-06-01, broker-ratified) established the §1947.3 floor — at least one of {in person, by mail} must be offered. Bank deposit does not satisfy the floor because not all tenants have access to the financial institution branch within the five-mile rule, and the floor exists to ensure every tenant has a usable payment channel. EFT does not satisfy the floor because it requires a "previously established" procedure, which not all tenants have.
 
-The valid floor-satisfying methods are **In Person and By Mail only.** Therefore EFT must be paired with at least one of those two.
+The valid floor-satisfying methods are **In Person and By Mail only.** EFT is an add-on, never a standalone channel, and it implicitly contemplates the tenant having an established electronic relationship with the landlord. The cleanest pairing rule that avoids ambiguity for tenants without an EFT relationship is to require **By Mail** to also be selected whenever EFT is selected.
 
-**Disallowed combinations (added to validator):**
-
-- In Person + EFT (no mail) — **DISALLOWED** because while In Person alone satisfies the floor, the addition of EFT without mail creates a face that says "pay in person or pay electronically." That is a face that excludes mail entirely. While In Person Only is permitted (§3.1), pairing In Person Only with EFT is the equivalent of saying "you can pay in person, or if you have an EFT relationship with the landlord, electronically." The reason this is disallowed where In-Person-Only-without-EFT is allowed is the §1161(2) proviso: the EFT election sentence implicitly references the landlord's right to receive electronic payment, and combining that with the absence of mail creates ambiguity about whether a tenant without EFT capability has a non-in-person fallback. The clean rule: **EFT requires Mail to also be offered.**
+**Why not also accept In Person as an EFT-pairing satisfier:** In Person + EFT (no mail) creates a face that reads "pay in person or pay electronically." A tenant who cannot deliver payment in person at the stated days/hours, and who does not have an established EFT procedure, has no usable channel. The §1947.3 floor exists precisely to prevent that posture. Requiring Mail to pair with EFT closes the gap.
 
 Updated rule (locked): **When EFT is selected, By Mail must also be selected.** In Person + EFT (no mail) and Bank Deposit + EFT (no mail) are both disallowed by this rule. The combination matrix in Section 4 reflects this.
 
@@ -239,23 +235,25 @@ Validator error messages for the new rule (Rule 3) are locked in Section 6 above
 
 ## 8. Locked sentence inventory after this determination
 
-Six locked sentences total. Four pre-existing, two new.
+Six locked sentences total. Four pre-existing (broker-ratified from A1 Part D), two new (broker-authored under this determination).
 
 | Constant | Status | Source |
 |----------|--------|--------|
-| `mailboxRuleSentence` | Unchanged | A1 Part D 2026-06-03/04 |
-| `fiveMileSentence` | Unchanged | A1 Part D 2026-06-03/04 |
-| `bankPaperInstrumentSentence` | Unchanged | A1 Part D 2026-06-03/04 |
-| `eftElectionSentence` | Unchanged | A1 Part D 2026-06-03/04 |
-| `inPersonOnlySentence` | **New** | This determination (2026-06-15) |
-| `inPersonNoMailSentence` | **New** | This determination (2026-06-15) |
+| `mailboxRuleSentence` | Unchanged | A1 Part D 2026-06-03/04 (broker-ratified) |
+| `fiveMileSentence` | Unchanged | A1 Part D 2026-06-03/04 (broker-ratified) |
+| `bankPaperInstrumentSentence` | Unchanged | A1 Part D 2026-06-03/04 (broker-ratified) |
+| `eftElectionSentence` | Unchanged | A1 Part D 2026-06-03/04 (broker-ratified) |
+| `inPersonOnlySentence` | **New** | This determination (2026-06-15, broker-authored) |
+| `inPersonNoMailSentence` | **New** | This determination (2026-06-15, broker-authored) |
 
-The two new sentences are wired as build-locked constants in `lib/produce/renderNotice.ts` with the same lock semantics as the four existing constants (byte-level change requires a fresh broker compliance review packet).
+The two new sentences are wired as build-locked constants in `lib/produce/renderNotice.ts` with the same lock semantics as the four existing constants (byte-level change requires a fresh broker compliance review).
 
 **Verbatim strings of the two new sentences (locked):**
 
 - `inPersonOnlySentence`: "Payment must be delivered in person at the address above, on the days and during the hours stated. Mail and bank-deposit payment are not offered for this notice."
 - `inPersonNoMailSentence`: "Payment must be delivered in person at the address above, on the days and during the hours stated. Mail payment is not offered for this notice."
+
+Future amendment to any of the six is broker-authorized under Section 3 of `broker_blanket_authorization_2026-06-15.md`.
 
 ---
 
@@ -267,8 +265,9 @@ The produce audit record gains:
 - `renderedFaceComposition`: the actual rendered face text, frozen at produce time.
 - `inPersonClosureSentenceVersion`: `"v1"` when `inPersonOnlySentence` or `inPersonNoMailSentence` is rendered; `null` otherwise.
 - `compositionDeterminationDate`: `"2026-06-15"` (this file).
+- `compositionAuthorizationRef`: `"broker_blanket_authorization_2026-06-15"`.
 
-Versioning the closure sentence allows future revision under a new determination without ambiguity about which version a given notice was produced under.
+Versioning the closure sentence allows future broker-authorized revision without ambiguity about which version a given notice was produced under.
 
 ---
 
@@ -277,29 +276,25 @@ Versioning the closure sentence allows future revision under a new determination
 **Ships now (multi-select v1):**
 
 - All four payment kinds (In Person, By Mail, Bank Deposit, EFT) as independent atoms in the multi-select UI.
-- Eleven permitted combinations per the matrix in Section 4.
+- Ten permitted combinations per the matrix in Section 4.
 - Five disallowed combinations blocked by the validator with the error messages in Sections 6 and 7.
 - Two new locked sentences (`inPersonOnlySentence`, `inPersonNoMailSentence`) wired in the renderer.
 - Combination matrix and ordering rule from Section 3.5 wired in `composeFaceText`.
 - Audit-record additions per Section 9.
 
-**Gated to future review (not in this determination):**
+**Gated to future broker review (not in this determination):**
 
 - Distinct payment-instrument kinds (cashier's check, money order) as independent atoms — declined per Section 5; revisit only if a specific landlord-tenant scenario surfaces a real need.
-- Separate in-person and mail addresses (today the same address is used for both; if the platform ever supports distinct addresses, the ordering rule in Section 3.5 is revisited).
+- Separate in-person and mail addresses (today the same address is used for both; if the platform ever supports distinct addresses, the ordering rule in Section 3.5 is revisited under broker authority).
 - Phase-2 optional landlord-side payment-instrument notes ("no personal checks," etc.) — out of scope for this determination.
 
 ---
 
-## 11. What still needs separate attorney review (Section 11 of 2026-06-14 floor/ceiling)
+## 11. Future amendment authority
 
-Three items in this determination are tagged as broker-scope floor that an outside CA landlord-tenant attorney should review at the ceiling pass, when one is engaged:
+All face sentences, combination rules, validator rules, and audit-record additions in this determination are broker-authored under `broker_blanket_authorization_2026-06-15.md`. Future amendments to any item in this determination are broker-authorized and do not require any external concurrence. Amendments are made by issuing a new determination dated forward that explicitly references and supersedes the relevant section of this file.
 
-1. **The two new locked sentences** (`inPersonOnlySentence`, `inPersonNoMailSentence`). These are compositions of facts within broker scope, but they are new face text on a statutorily prescribed document. An attorney should confirm the wording is correct under *Eshagian v. Cepeda* (2025) before they are treated as production-stable.
-2. **The EFT-requires-Mail pairing rule (Section 6).** The reasoning is grounded in Decision 1 of `v4_payment_fields_attorney_ruling.md`, but extending the §1947.3 floor logic to disallow In-Person + EFT-without-Mail is a derivation an attorney should confirm. The conservative posture (require Mail when EFT is offered) is defensible at broker scope; an attorney might rule it stricter than necessary, in which case the rule can be loosened later.
-3. **The In-Person-Only configuration itself** (Section 3.1). Broker-scope analysis supports it under § 1161(2). An attorney should confirm the configuration is producible in California courts without controversy.
-
-This determination ships as the floor. An attorney pass remains advisable.
+This determination is "the floor that may ship." If and when the platform engages an outside CA landlord-tenant attorney for a fuller pass, that attorney's review supersedes this determination to the extent of any conflict. The floor-and-ceiling framing is a posture acknowledgment, not a grant of operative authority to an unengaged attorney. No attorney is presently engaged.
 
 ---
 
@@ -314,17 +309,19 @@ Primary sources cited:
 - *Eshagian v. Cepeda* (2025) — commencement and expiration dates and per-method facial content must be independently complete on the face.
 - Cal. Bus. & Prof. Code § 10131(b) — California Real Estate Broker scope.
 
-Related broker-side and prior determinations:
+Related broker-side determinations and authorizations:
 
-- `v4_payment_fields_attorney_ruling.md` (2026-06-01) — Decisions 1–3 establishing the §1947.3 floor, the five-mile attestation, and the EFT previously-established attestation.
-- `A1_part_d_attorney_signoff_2026-06-03.md` and `A1_part_d_attorney_countersign_2026-06-04.md` — face wording lock-in for the four existing locked sentences and the three pre-existing branches.
-- `v4_wording_signoff_ratification_and_closeouts_2026-06-05.md` — V4_WORDING_SIGNED_OFF = true.
+- `broker_blanket_authorization_2026-06-15.md` — governing authority for this file.
+- `v4_payment_fields_attorney_ruling.md` (2026-06-01, broker-ratified) — Decisions 1–3 establishing the §1947.3 floor, the five-mile attestation, and the EFT previously-established attestation.
+- `A1_part_d_attorney_signoff_2026-06-03.md` and `A1_part_d_attorney_countersign_2026-06-04.md` (broker-ratified) — face wording lock-in for the four existing locked sentences and the three pre-existing branches.
+- `v4_wording_signoff_ratification_and_closeouts_2026-06-05.md` (broker-ratified) — V4_WORDING_SIGNED_OFF = true.
 - `broker_scope_internal_note_2026-06-09.md` — broker-scope posture.
-- `workspace_attribution_inventory_2026-06-09.md` — attorney-attribution inventory (15 markdown files).
+- `workspace_attribution_inventory_2026-06-09.md` — attorney-attribution inventory (15 markdown files, all broker-ratified per blanket authorization).
 - `redesign_compliance_review_broker_determination_2026-06-14.md` — full redesign review including Step 3 multi-select direction.
 - `c7a_multiselect_face_review_packet_2026-06-15.md` — engineering packet under review (must be reattributed per Section 1 above).
 
 ---
 
 — Jack Taglyan, California Licensed Real Estate Broker, CalDRE B9445457
+Broker — sole compliance authority for OwnerPilot AI
 Broker Compliance Review · 2026-06-15
