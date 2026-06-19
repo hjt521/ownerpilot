@@ -1,5 +1,5 @@
 // bankDepositMethodHelper / bankDepositMethodDisclosure
-// Source: bank_deposit_privacy_disclosure_copy_broker_determination_2026-06-18.md §2
+// Source: bank_deposit_disclosure_copy_ratification_broker_determination_2026-06-18.md §2
 // Authority: broker_blanket_authorization_2026-06-15.md
 // CalDRE B9445457
 //

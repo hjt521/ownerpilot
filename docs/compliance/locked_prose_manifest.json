@@ -1,0 +1,40 @@
+{
+  "manifest_version": "v1",
+  "generated_at": "2026-06-19T00:43:06Z",
+  "guard_status": "live",
+  "broker_authority": "CalDRE B9445457",
+  "authoring_authority": "docs/compliance/broker_blanket_authorization_2026-06-15.md",
+  "guard_design": "docs/compliance/locked_prose_ci_guard_scope_broker_determination_2026-06-15.md",
+  "entries": [
+    {
+      "constant": "bankDepositMethodHelper",
+      "tier": "B",
+      "file": "lib/flow/bankDepositDisclosureCopy.ts",
+      "verbatim": "Selecting bank deposit will print your bank's name, branch address, and full account number on the face of the notice. California Code of Civil Procedure § 1161(2) requires these details to appear on the notice for this payment option to be valid. If account-number visibility on a posted notice is a concern, consider opening a dedicated rent-collection account so your operating-account number is never disclosed.",
+      "hash": "34c23cc573ee558c86f8bba5563589b9b9c6d46bf57890bf364bc295dd71b2e1",
+      "version_stamp": "bankDepositMethodCopyVersion=v1",
+      "source_determination": "docs/compliance/bank_deposit_disclosure_copy_ratification_broker_determination_2026-06-18.md",
+      "source_section": "§2.1"
+    },
+    {
+      "constant": "bankDepositMethodDisclosureExpandLabel",
+      "tier": "B",
+      "file": "lib/flow/bankDepositDisclosureCopy.ts",
+      "verbatim": "Why is this required?",
+      "hash": "463a370578d66b7d9a531d9db8c9b18ca0bd9caa01e384086d23a227ef8fd1bc",
+      "version_stamp": "bankDepositMethodCopyVersion=v1",
+      "source_determination": "docs/compliance/bank_deposit_disclosure_copy_ratification_broker_determination_2026-06-18.md",
+      "source_section": "§2.2"
+    },
+    {
+      "constant": "bankDepositMethodDisclosure",
+      "tier": "B",
+      "file": "lib/flow/bankDepositDisclosureCopy.ts",
+      "verbatim": "Why your account number appears on the notice. When you offer bank deposit as a payment option, California Code of Civil Procedure § 1161(2) requires the notice to identify the financial institution, the branch address (within five miles of the rental property), and the account number where rent may be deposited. The statute names the account number specifically — a masked or truncated number does not satisfy the requirement and can expose the notice to challenge in an unlawful detainer proceeding.\n\nIf privacy is a concern, you have two compliant options:\n\n1. Skip bank deposit on this notice. It is one of four optional payment methods. In Person and By Mail satisfy the statute on their own.\n\n2. Use a dedicated rent-collection account. Open a separate account used only for inbound rent. The disclosed account number is then the rent-collection account, not your operating account.\n\nThis is broker guidance to help you weigh the trade-off — not legal advice. For questions specific to your situation, consult a California licensed attorney of your choosing.",
+      "hash": "32d4f0e66f03f5a2801d793785ea4cd33024c39911722adfe25d3399254a7496",
+      "version_stamp": "bankDepositMethodCopyVersion=v1",
+      "source_determination": "docs/compliance/bank_deposit_disclosure_copy_ratification_broker_determination_2026-06-18.md",
+      "source_section": "§2.3"
+    }
+  ]
+}

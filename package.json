@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/run_tests.mjs"
+    "test": "node scripts/run_tests.mjs",
+    "ci:verify-locked-prose": "tsx scripts/ci/verify_locked_prose.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
