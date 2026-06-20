@@ -32,10 +32,12 @@ import type {
 } from './geocodeTypes';
 import {
   lookupCountyParcel,
+  parseAddressForCounty,
   type CountyLookupDeps,
   type CountyAuditFields,
   type CountyVerdict,
 } from './countyParcelAdapter';
+import { zipInCityOfLa } from './cityOfLaZips';
 import {
   lookupZimasParcel,
   type ZimasLookupDeps,
@@ -58,6 +60,8 @@ export type ClassifierBranch =
   | 'locality_not_la'
   | 'county_confirm'
   | 'county_deny'
+  | 'county_situs_gap'
+  | 'county_ambiguous'
   | 'zimas_confirm'
   | 'zimas_miss'
   | 'correction_suppressed'
@@ -88,6 +92,9 @@ export interface GeocodeAuditRecord {
   possibleNextAction: string | null;
   // County branch (may be absent if not reached)
   county?: CountyAuditFields & { verdict: CountyVerdict };
+  // v3 County ruling §3.5 — logged whenever the County branch ran:
+  countyQueryReturnedZeroFeatures?: boolean;
+  countyZipInLaZipSet?: boolean;
   // ZIMAS branch (may be absent if not reached)
   zimas?: ZimasAuditFields & { verdict: ZimasVerdict };
   // outcome
@@ -270,10 +277,14 @@ export async function resolveLaAddressV2(
     return { disposition: outcome.disposition, reviewReason: outcome.reviewReason, audit };
   }
 
-  // STEP 5 — County TaxRateCity. (proceed_to_parcel ⇒ we have a formattedAddress.)
+  // STEP 4 — County TaxRateCity (stem-matched, ZIP-scoped). (proceed_to_parcel ⇒ formattedAddress.)
   const formatted = signals.formattedAddress ?? inputAddress;
   const county = await lookupCountyParcel(formatted, deps.county);
   audit.county = { ...county.audit, verdict: county.verdict };
+  // §3.5 audit fields: zero-features + ZIP-in-LA-set, logged whenever County ran.
+  const countyZip = parseAddressForCounty(formatted).zip;
+  audit.countyQueryReturnedZeroFeatures = county.audit.parcelFound === false;
+  audit.countyZipInLaZipSet = zipInCityOfLa(countyZip);
 
   if (county.verdict === 'county_confirms_la') {
     // Step 6 asymmetric suppression: a confirm on corrected input is held.
@@ -296,8 +307,29 @@ export async function resolveLaAddressV2(
     await deps.recordAudit?.(audit);
     return { disposition: 'not_la', audit };
   }
+  if (county.verdict === 'county_ambiguous') {
+    // §2.3: >1 parcel with conflicting TaxRateCity → manual review, not a guess.
+    audit.disposition = 'manual_review';
+    audit.reviewReason = 'county_ambiguous';
+    audit.branch = 'county_ambiguous';
+    await deps.recordAudit?.(audit);
+    return { disposition: 'manual_review', reviewReason: 'county_ambiguous', audit };
+  }
 
-  // STEP 5 (ZIMAS) — County inconclusive. Needs the lat/lng.
+  // county_inconclusive. §3.3: distinguish a SITUS GAP (0 features) from a
+  // ran-but-non-actionable inconclusive. If 0 features AND ZIP not in the
+  // City-of-LA ZIP set → manual_review (county_situs_gap), do NOT fall to ZIMAS
+  // (this closes the #4 border-artifact failure mode). If 0 features but ZIP IS
+  // in the LA set, or it's a different inconclusive, fall through to ZIMAS.
+  if (county.audit.parcelFound === false && !zipInCityOfLa(countyZip)) {
+    audit.disposition = 'manual_review';
+    audit.reviewReason = 'county_situs_gap';
+    audit.branch = 'county_situs_gap';
+    await deps.recordAudit?.(audit);
+    return { disposition: 'manual_review', reviewReason: 'county_situs_gap', audit };
+  }
+
+  // STEP 5 (ZIMAS) — County inconclusive (and not a non-LA situs gap). Needs lat/lng.
   const lat = signals.latitude;
   const lng = signals.longitude;
   if (typeof lat !== 'number' || typeof lng !== 'number') {

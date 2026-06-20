@@ -24,7 +24,10 @@ export type ManualReviewReason =
   | 'billing_cap_exhausted' // §2.3: $500 cap circuit breaker tripped
   // --- §5 classifier-order additions (parcel-lookup-questions ruling) ---
   | 'input_corrected' // §5 step 2: Google AV inferred/replaced components (possibleNextAction FIX)
-  | 'parcel_lookup_inconclusive'; // §5 steps 5/6: County inconclusive AND ZIMAS miss/error
+  | 'parcel_lookup_inconclusive' // §5 steps 5/6: County inconclusive AND ZIMAS miss/error
+  // --- v3 County branch ruling additions ---
+  | 'county_situs_gap' // County 0-features for the address AND ZIP not in City-of-LA ZIP set
+  | 'county_ambiguous'; // County stem+ZIP returned >1 parcel with conflicting TaxRateCity
 
 /** Granularity values Address Validation can return (the ones the ruling names). */
 export type ValidationGranularity =

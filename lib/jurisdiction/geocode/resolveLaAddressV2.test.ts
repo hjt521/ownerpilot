@@ -203,7 +203,53 @@ async function main() {
   }
 
   // ============ fail-closed ============
-  console.log('\n=== fail-closed paths ===');
+  console.log('\n=== v3 County ruling: situs-gap + ambiguous (§5 checklist) ===');
+  {
+    // #4 Santa Monica: County 0 features + ZIP 90401 NOT in City-of-LA set → county_situs_gap.
+    const r = await resolveLaAddressV2('1600 Main St', deps({
+      signals: { formattedAddress: '1600 Main Street, Santa Monica, CA 90401, USA', correction: { hasReplacedComponents: true } },
+      countyRecords: [], // County situs gap
+      zimasRecords: [zimas('11', 'TR 9358')], // ZIMAS WOULD confirm (border artifact) — must NOT be reached
+    }));
+    check('#4: County 0-features + non-LA ZIP → county_situs_gap', r.disposition === 'manual_review' && r.reviewReason === 'county_situs_gap' && r.audit.branch === 'county_situs_gap');
+    check('#4 anti-regression: ZIMAS NOT reached (no border-artifact confirm)', r.audit.zimas === undefined);
+    check('#4: NOT confirmed_la (the non-negotiable)', r.disposition !== ('confirmed_la' as unknown));
+    check('#4 audit: zero-features flag true', r.audit.countyQueryReturnedZeroFeatures === true);
+    check('#4 audit: zip-in-LA-set false', r.audit.countyZipInLaZipSet === false);
+  }
+  {
+    // #5 West Athens: County now MATCHES (suffix fix) → unincorporated → not_la.
+    const r = await resolveLaAddressV2('11460 S Normandie Ave', deps({
+      signals: { formattedAddress: '11460 S Normandie Avenue, Los Angeles, CA 90044, USA' },
+      countyRecords: [county('unincorporated')],
+    }));
+    check('#5: County unincorporated → not_la (county_deny)', r.disposition === 'not_la' && r.audit.branch === 'county_deny');
+  }
+  {
+    // #3 North Hills counterfactual: County gap BUT ZIP 91343 IS in City-of-LA set → fall to ZIMAS.
+    const r = await resolveLaAddressV2('8401 Sepulveda Blvd', deps({
+      signals: { formattedAddress: '8401 Sepulveda Boulevard, North Hills, CA 91343, USA' },
+      countyRecords: [], // County gap
+      zimasRecords: [zimas('6', 'TR 2899')], // ZIMAS confirms (correct)
+    }));
+    check('#3: County gap + in-LA ZIP → falls to ZIMAS → confirmed_la', r.disposition === 'confirmed_la' && r.audit.branch === 'zimas_confirm');
+    check('#3 audit: zip-in-LA-set true', r.audit.countyZipInLaZipSet === true);
+  }
+  {
+    // County ambiguous: >1 parcel, conflicting TaxRateCity → manual_review (county_ambiguous).
+    const r = await resolveLaAddressV2('x', deps({
+      countyRecords: [county('LOS ANGELES'), county('CULVER CITY')],
+    }));
+    check('county_ambiguous: conflicting TaxRateCity → manual_review (county_ambiguous)', r.disposition === 'manual_review' && r.reviewReason === 'county_ambiguous' && r.audit.branch === 'county_ambiguous');
+  }
+  {
+    // Suffix-fix confirm: clean LA address resolves via County (not by ZIMAS accident).
+    const r = await resolveLaAddressV2('1100 Wilshire Blvd', deps({
+      signals: { formattedAddress: '1100 Wilshire Boulevard, Los Angeles, CA 90017, USA' },
+      countyRecords: [county('LOS ANGELES')],
+    }));
+    check('suffix-fix: clean LA → confirmed_la via County (not ZIMAS)', r.disposition === 'confirmed_la' && r.audit.branch === 'county_confirm');
+  }
   {
     const r = await resolveLaAddressV2('x', deps({ signalsThrow: true }));
     check('Google fetch throws → manual_review api_error (never confirm)', r.disposition === 'manual_review' && r.reviewReason === 'api_error');
