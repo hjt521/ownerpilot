@@ -294,8 +294,18 @@ export function parseAddressForCounty(formatted: string): {
 } {
   const parts = formatted.split(',').map((p) => p.trim());
   const streetLine = parts.length > 0 ? parts[0] : '';
-  const zipMatch = formatted.match(/\b(\d{5})(?:-\d{4})?\b/);
-  const zip = zipMatch ? zipMatch[1] : null;
+  // ZIP must come from the POSTAL position, NOT the first 5-digit run — a 5-digit
+  // house number (e.g. "11460 S Normandie") would otherwise hijack the match.
+  // Prefer a ZIP that follows a 2-letter state token ("..., CA 90044[-1215]");
+  // else take the LAST 5-digit group in the string (postal codes trail addresses).
+  let zip: string | null = null;
+  const stateZip = formatted.match(/\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b/);
+  if (stateZip) {
+    zip = stateZip[1];
+  } else {
+    const all = formatted.match(/\b\d{5}(?:-\d{4})?\b/g);
+    if (all && all.length) zip = all[all.length - 1].slice(0, 5);
+  }
 
   const tokens = streetLine.split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return { house: null, stem: null, zip };
