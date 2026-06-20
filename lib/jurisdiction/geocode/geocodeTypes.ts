@@ -15,13 +15,16 @@ export type GeocodeDisposition =
   | 'not_la' // §2.1(5): resolved to a locality other than Los Angeles
   | 'manual_review'; // §2.1(4): anything that cannot be auto-decided
 
-/** Why a candidate routed to manual review (§2.1(4) verbatim trigger set). */
+/** Why a candidate routed to manual review (§2.1(4) + §5 classifier order). */
 export type ManualReviewReason =
   | 'coarse_granularity' // validationGranularity is BLOCK/ROUTE/OTHER/GRANULARITY_UNSPECIFIED
   | 'no_locality' // reverse-geocode returned no locality component
   | 'boundary_edge_case' // AV claimed LA but reverse-geocode locality != "Los Angeles"
   | 'api_error' // call errored / timed out
-  | 'billing_cap_exhausted'; // §2.3: $500 cap circuit breaker tripped
+  | 'billing_cap_exhausted' // §2.3: $500 cap circuit breaker tripped
+  // --- §5 classifier-order additions (parcel-lookup-questions ruling) ---
+  | 'input_corrected' // §5 step 2: Google AV inferred/replaced components (possibleNextAction FIX)
+  | 'parcel_lookup_inconclusive'; // §5 steps 5/6: County inconclusive AND ZIMAS miss/error
 
 /** Granularity values Address Validation can return (the ones the ruling names). */
 export type ValidationGranularity =
