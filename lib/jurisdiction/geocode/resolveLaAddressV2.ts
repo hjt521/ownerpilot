@@ -1,34 +1,24 @@
 /**
  * A.5 — City-of-LA geocode classifier rewrite (the §5 binding classifier order).
  *
- * Implements `la_geocode_parcel_lookup_open_questions_broker_ruling_response_2026-06-20`
- * §5 EXACTLY, as refined by the findings ruling (§4.1/4.2/4.3) and the ZIMAS
- * ratification (two-signal rule). Order:
+ * Implements the §5 binding classifier order as amended by Q1 (correction-flag
+ * field set) and Q2 (correction gate moved to a post-parcel ASYMMETRIC step).
+ * Order:
  *
- *   1. Granularity gate:
- *      1a. PROXIMITY + locality non-null, non-"Los Angeles", admin1=California → not_la
- *          (else, coarse) → manual_review (coarse_granularity)
- *   2. Correction-flag gate: hasReplacedComponents | possibleNextAction==FIX
- *      → manual_review (input_corrected). (hasInferredComponents EXCLUDED per the
- *      B.1 re-run correction-flag ruling §2 — non-discriminating on live data.)
- *   3. Locality presence: locality null → manual_review (no_locality)
- *   4. Geocode locality check: locality=="Los Angeles" && admin1=="California"
- *      → proceed to step 5; else → not_la
- *   5. County TaxRateCity:
- *        confirms_la → confirmed_la (ZIMAS not consulted)
- *        denies_la   → not_la       (ZIMAS not consulted)
- *        inconclusive → step 6
- *   6. ZIMAS fallback:
- *        confirms_la (two-signal) → confirmed_la
- *        inconclusive (miss/fail) → manual_review (parcel_lookup_inconclusive)
+ *   1. Granularity gate (+ 1a PROXIMITY-locality-deny → not_la)
+ *   2. Locality presence → manual_review (no_locality)
+ *   3. Geocode locality check → not_la else proceed
+ *   4. County TaxRateCity → confirm (subject to step 6) / deny (final) / fall-through
+ *   5. ZIMAS two-signal fallback → confirm (subject to step 6) / fall-through
+ *   6. Correction-flag gate (ASYMMETRIC, Q2): isCorrected = hasReplacedComponents
+ *      || possibleNextAction=='FIX'.
+ *        - confirmed_la + isCorrected → suppress to manual_review (input_corrected)
+ *        - not_la                     → passthrough (deny NEVER suppressed)
+ *        - both parcel branches fell through + isCorrected → input_corrected
+ *        - both fell through + not corrected → parcel_lookup_inconclusive
  *
- * A.6 — every classification produces a full audit record (see GeocodeAuditRecord)
- * naming the branch that produced the disposition.
- *
- * Steps 1–4 are PURE (`classifyPreParcel`), exhaustively unit-testable with no
- * network. Steps 5–6 run in the async orchestrator with injected County/ZIMAS
- * adapters. Fail-closed throughout: nothing here produces confirmed_la on an
- * error path.
+ * Steps 1–3 are PURE (`classifyPreParcel`), no network. Steps 4–6 run in the
+ * async orchestrator with injected County/ZIMAS adapters. Fail-closed throughout.
  *
  * GATE: the orchestrator asserts isLaProductionUnblocked() at entry (default; a
  * test hook may inject an open gate). Flips no flag; makes no live call until
@@ -70,6 +60,8 @@ export type ClassifierBranch =
   | 'county_deny'
   | 'zimas_confirm'
   | 'zimas_miss'
+  | 'correction_suppressed'
+  | 'correction_inconclusive'
   | 'billing_cap_exhausted'
   | 'api_error';
 
@@ -174,24 +166,11 @@ export function classifyPreParcel(i: PreParcelInput): PreParcelOutcome {
     };
   }
 
-  // STEP 2 — correction-flag gate (§4.2, amended by the B.1 re-run correction-flag
-  // ruling 2026-06-20 §2). hasInferredComponents is EXCLUDED: live data showed it
-  // true on every probed address (Google sets it for routine ZIP+4 normalization),
-  // so it has no discriminating power. Gate fires only on a genuine replacement or
-  // an explicit FIX next-action.
-  const corrected =
-    i.correction.hasReplacedComponents === true ||
-    i.correction.possibleNextAction === 'FIX';
-  if (corrected) {
-    return {
-      kind: 'terminal',
-      disposition: 'manual_review',
-      reviewReason: 'input_corrected',
-      branch: 'correction_flag',
-    };
-  }
+  // (Correction-flag gate REMOVED from pre-parcel — Q2 ruling moved it to a
+  // post-parcel asymmetric suppression step in the orchestrator. Parcel branches
+  // resolve first; a confirm on a corrected input is suppressed, a deny is not.)
 
-  // STEP 3 — locality presence.
+  // STEP 2 — locality presence.
   if (i.locality === null) {
     return {
       kind: 'terminal',
@@ -201,11 +180,24 @@ export function classifyPreParcel(i: PreParcelInput): PreParcelOutcome {
     };
   }
 
-  // STEP 4 — geocode locality check.
+  // STEP 3 — geocode locality check.
   if (i.locality === 'Los Angeles' && i.administrativeAreaLevel1 === 'California') {
     return { kind: 'proceed_to_parcel' };
   }
   return { kind: 'terminal', disposition: 'not_la', branch: 'locality_not_la' };
+}
+
+/**
+ * Post-parcel asymmetric correction-suppression (Q2 ruling §3 step 6). Applied
+ * AFTER County/ZIMAS resolve. `isCorrected` fires on hasReplacedComponents OR
+ * possibleNextAction=='FIX' (Q1 field set). Asymmetry:
+ *   - confirmed_la + isCorrected → suppress to manual_review (input_corrected)
+ *   - not_la                     → passthrough (a deny is NEVER suppressed)
+ * The compliance cost of a false confirm (defective notice) outweighs a false
+ * deny (user re-tries), so the gate pays only on the confirm side.
+ */
+export function isCorrectedInput(c: CorrectionFlags): boolean {
+  return c.hasReplacedComponents === true || c.possibleNextAction === 'FIX';
 }
 
 /** Orchestrator deps: the geocode fetchers + both parcel adapters + gate hook. */
@@ -284,23 +276,39 @@ export async function resolveLaAddressV2(
   audit.county = { ...county.audit, verdict: county.verdict };
 
   if (county.verdict === 'county_confirms_la') {
+    // Step 6 asymmetric suppression: a confirm on corrected input is held.
+    if (isCorrectedInput(signals.correction)) {
+      audit.disposition = 'manual_review';
+      audit.reviewReason = 'input_corrected';
+      audit.branch = 'correction_suppressed';
+      await deps.recordAudit?.(audit);
+      return { disposition: 'manual_review', reviewReason: 'input_corrected', audit };
+    }
     audit.disposition = 'confirmed_la';
     audit.branch = 'county_confirm';
     await deps.recordAudit?.(audit);
     return { disposition: 'confirmed_la', audit };
   }
   if (county.verdict === 'county_denies_la') {
+    // Deny is NEVER suppressed (asymmetry) — passthrough.
     audit.disposition = 'not_la';
     audit.branch = 'county_deny';
     await deps.recordAudit?.(audit);
     return { disposition: 'not_la', audit };
   }
 
-  // STEP 6 — ZIMAS fallback (County inconclusive). Needs the lat/lng.
+  // STEP 5 (ZIMAS) — County inconclusive. Needs the lat/lng.
   const lat = signals.latitude;
   const lng = signals.longitude;
   if (typeof lat !== 'number' || typeof lng !== 'number') {
-    // No coordinate to spatial-query → inconclusive (fail-closed).
+    // No coordinate to spatial-query → fall-through. Step 6 applies.
+    if (isCorrectedInput(signals.correction)) {
+      audit.disposition = 'manual_review';
+      audit.reviewReason = 'input_corrected';
+      audit.branch = 'correction_inconclusive';
+      await deps.recordAudit?.(audit);
+      return { disposition: 'manual_review', reviewReason: 'input_corrected', audit };
+    }
     audit.disposition = 'manual_review';
     audit.reviewReason = 'parcel_lookup_inconclusive';
     audit.branch = 'zimas_miss';
@@ -312,13 +320,29 @@ export async function resolveLaAddressV2(
   audit.zimas = { ...zimas.audit, verdict: zimas.verdict };
 
   if (zimas.verdict === 'zimas_confirms_la') {
+    // Step 6 asymmetric suppression at the ZIMAS confirm too.
+    if (isCorrectedInput(signals.correction)) {
+      audit.disposition = 'manual_review';
+      audit.reviewReason = 'input_corrected';
+      audit.branch = 'correction_suppressed';
+      await deps.recordAudit?.(audit);
+      return { disposition: 'manual_review', reviewReason: 'input_corrected', audit };
+    }
     audit.disposition = 'confirmed_la';
     audit.branch = 'zimas_confirm';
     await deps.recordAudit?.(audit);
     return { disposition: 'confirmed_la', audit };
   }
 
-  // ZIMAS miss / two-signal fail / error → manual_review (parcel_lookup_inconclusive).
+  // Both parcel branches fell through (no current disposition). Step 6:
+  //   isCorrected → input_corrected ; else → parcel_lookup_inconclusive.
+  if (isCorrectedInput(signals.correction)) {
+    audit.disposition = 'manual_review';
+    audit.reviewReason = 'input_corrected';
+    audit.branch = 'correction_inconclusive';
+    await deps.recordAudit?.(audit);
+    return { disposition: 'manual_review', reviewReason: 'input_corrected', audit };
+  }
   audit.disposition = 'manual_review';
   audit.reviewReason = 'parcel_lookup_inconclusive';
   audit.branch = 'zimas_miss';
