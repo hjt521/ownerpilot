@@ -24,10 +24,12 @@ console.log('\n=== Production gate (must stay LOCKED) ===');
 console.log('\n1. Default deps -> LA production blocked');
 {
   check('not unblocked', isLaProductionUnblocked() === false);
-  check('all three missing', laProductionMissingDependencies().length === 3);
+  // geocode v6 ratification §2.6: geocodeConfirmationBuilt is now true, so 5
+  // remain (calendar, form-job, + the three production-traffic conditions).
+  check('five deps missing', laProductionMissingDependencies().length === 5);
 }
 
-console.log('\n2. Partial deps still blocked (need ALL three)');
+console.log('\n2. Partial deps still blocked (need ALL)');
 {
   check('geocode only -> blocked', isLaProductionUnblocked({
     geocodeConfirmationBuilt: true, cityBusinessDayCalendarBuilt: false, rtcFormRefreshJobBuilt: false,
@@ -37,18 +39,27 @@ console.log('\n2. Partial deps still blocked (need ALL three)');
   }) === false);
 }
 
-console.log('\n3. Only all-three unblocks');
+console.log('\n3. Only ALL conditions unblock (3 build + 3 traffic, §2.6)');
 {
-  check('all three -> unblocked', isLaProductionUnblocked({
+  // The old three build flags alone are NO LONGER sufficient — the §2.6
+  // production-traffic conditions must also hold. This is the core protection.
+  check('old three build flags only -> STILL blocked', isLaProductionUnblocked({
     geocodeConfirmationBuilt: true, cityBusinessDayCalendarBuilt: true, rtcFormRefreshJobBuilt: true,
+  }) === false);
+  check('all six -> unblocked', isLaProductionUnblocked({
+    geocodeConfirmationBuilt: true, cityBusinessDayCalendarBuilt: true, rtcFormRefreshJobBuilt: true,
+    geocodeAuditDurabilityWired: true, cityOfLaZipsAuthoritative: true, parcelEndpointHealthCheckLive: true,
   }) === true);
 }
 
-console.log('\n4. The committed default literally has all deps false');
+console.log('\n4. The committed default: geocode TRUE (v6 ratification), the rest false');
 {
-  check('geocode false', LA_PRODUCTION_DEPENDENCIES.geocodeConfirmationBuilt === false);
+  check('geocode TRUE (ratified)', LA_PRODUCTION_DEPENDENCIES.geocodeConfirmationBuilt === true);
   check('calendar false', LA_PRODUCTION_DEPENDENCIES.cityBusinessDayCalendarBuilt === false);
   check('form job false', LA_PRODUCTION_DEPENDENCIES.rtcFormRefreshJobBuilt === false);
+  check('audit durability false', LA_PRODUCTION_DEPENDENCIES.geocodeAuditDurabilityWired === false);
+  check('authoritative zips false', LA_PRODUCTION_DEPENDENCIES.cityOfLaZipsAuthoritative === false);
+  check('endpoint health-check false', LA_PRODUCTION_DEPENDENCIES.parcelEndpointHealthCheckLive === false);
 }
 
 console.log('\n=== AB 2347 boundary (no day-counts may leak) ===');

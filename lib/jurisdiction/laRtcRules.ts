@@ -128,20 +128,44 @@ export interface LaProductionDependencies {
   cityBusinessDayCalendarBuilt: boolean;
   /** Embedded RTC forms with versioning + hash-comparison refresh job. */
   rtcFormRefreshJobBuilt: boolean;
+  // --- Production-traffic conditions (geocode v6 ratification §2.6) -----------
+  // The three flags above are BUILD-CORRECTNESS signals. These three are
+  // PRODUCTION-TRAFFIC conditions that must ALSO hold before real LA traffic
+  // flows. Separable concerns: a build flag can be true (code correct) while a
+  // traffic condition is false (deployment infra not yet in place). Optional so
+  // existing partial dependency literals keep compiling; the gate uses === true,
+  // so absent/undefined correctly fails closed. All effectively default false.
+  /** Audit-log sink + manual-review queue on durable storage (not in-memory). */
+  geocodeAuditDurabilityWired?: boolean;
+  /** City-of-LA ZIP set replaced with the authoritative USPS LACA / LA City GIS pull. */
+  cityOfLaZipsAuthoritative?: boolean;
+  /** Quarterly County + ZIMAS endpoint health-check cron live, with drift notification. */
+  parcelEndpointHealthCheckLive?: boolean;
 }
 
-/** Current state: NONE built. LA production is blocked. */
+/**
+ * Current state. geocodeConfirmationBuilt flipped TRUE per the geocode v6
+ * production attestation ratification (la_geocode_resolver_v6_production_
+ * attestation_broker_ratification_2026-06-20 §2.1): the §5 chain is ratified
+ * against amended §6 at HEAD 07cd5f3. The other two build flags remain false
+ * pending their own sign-offs; the three production-traffic flags remain false
+ * pending their dependencies (§2.6). LA production stays blocked.
+ */
 export const LA_PRODUCTION_DEPENDENCIES: LaProductionDependencies = {
-  geocodeConfirmationBuilt: false,
+  geocodeConfirmationBuilt: true,
   cityBusinessDayCalendarBuilt: false,
   rtcFormRefreshJobBuilt: false,
+  geocodeAuditDurabilityWired: false,
+  cityOfLaZipsAuthoritative: false,
+  parcelEndpointHealthCheckLive: false,
 };
 
 /**
- * Structural gate: returns true ONLY when all three dependencies are satisfied.
- * The produce path must consult this before ever attaching an RTC notice and
- * treating an LA property as produceable. Until then, LA stays blocked — the
- * code enforces the sign-off's "does not authorize production" condition.
+ * Structural gate: returns true ONLY when all dependencies are satisfied — the
+ * three build-correctness flags AND the three production-traffic conditions
+ * (geocode v6 ratification §2.6). The produce path must consult this before ever
+ * attaching an RTC notice and treating an LA property as produceable. With
+ * geocodeConfirmationBuilt now true, LA stays blocked on the remaining five.
  */
 export function isLaProductionUnblocked(
   deps: LaProductionDependencies = LA_PRODUCTION_DEPENDENCIES,
@@ -149,7 +173,11 @@ export function isLaProductionUnblocked(
   return (
     deps.geocodeConfirmationBuilt === true &&
     deps.cityBusinessDayCalendarBuilt === true &&
-    deps.rtcFormRefreshJobBuilt === true
+    deps.rtcFormRefreshJobBuilt === true &&
+    // Production-traffic conditions (§2.6) — must hold before real LA traffic.
+    deps.geocodeAuditDurabilityWired === true &&
+    deps.cityOfLaZipsAuthoritative === true &&
+    deps.parcelEndpointHealthCheckLive === true
   );
 }
 
@@ -164,5 +192,11 @@ export function laProductionMissingDependencies(
     missing.push('Verified LA city business-day calendar (LAHD filing deadline)');
   if (!deps.rtcFormRefreshJobBuilt)
     missing.push('RTC form embed-and-refresh job (versioned, hash-checked)');
+  if (!deps.geocodeAuditDurabilityWired)
+    missing.push('Geocode audit-log + manual-review queue on durable storage (§2.6)');
+  if (!deps.cityOfLaZipsAuthoritative)
+    missing.push('Authoritative City-of-LA ZIP set (USPS LACA / LA City GIS) (§2.6)');
+  if (!deps.parcelEndpointHealthCheckLive)
+    missing.push('County + ZIMAS endpoint health-check cron (§2.6)');
   return missing;
 }
