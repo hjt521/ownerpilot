@@ -8,8 +8,9 @@
  *   1. Granularity gate:
  *      1a. PROXIMITY + locality non-null, non-"Los Angeles", admin1=California → not_la
  *          (else, coarse) → manual_review (coarse_granularity)
- *   2. Correction-flag gate: hasInferredComponents | hasReplacedComponents |
- *      possibleNextAction==FIX → manual_review (input_corrected)
+ *   2. Correction-flag gate: hasReplacedComponents | possibleNextAction==FIX
+ *      → manual_review (input_corrected). (hasInferredComponents EXCLUDED per the
+ *      B.1 re-run correction-flag ruling §2 — non-discriminating on live data.)
  *   3. Locality presence: locality null → manual_review (no_locality)
  *   4. Geocode locality check: locality=="Los Angeles" && admin1=="California"
  *      → proceed to step 5; else → not_la
@@ -173,9 +174,12 @@ export function classifyPreParcel(i: PreParcelInput): PreParcelOutcome {
     };
   }
 
-  // STEP 2 — correction-flag gate (§4.2).
+  // STEP 2 — correction-flag gate (§4.2, amended by the B.1 re-run correction-flag
+  // ruling 2026-06-20 §2). hasInferredComponents is EXCLUDED: live data showed it
+  // true on every probed address (Google sets it for routine ZIP+4 normalization),
+  // so it has no discriminating power. Gate fires only on a genuine replacement or
+  // an explicit FIX next-action.
   const corrected =
-    i.correction.hasInferredComponents === true ||
     i.correction.hasReplacedComponents === true ||
     i.correction.possibleNextAction === 'FIX';
   if (corrected) {
