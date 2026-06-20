@@ -35,7 +35,8 @@ export const COUNTY_PARCEL_ENDPOINT =
 export type CountyVerdict =
   | 'county_confirms_la' // TaxRateCity == "los angeles"
   | 'county_denies_la' // TaxRateCity present, some other value
-  | 'county_inconclusive'; // not found / null / error (→ ZIMAS fallback)
+  | 'county_ambiguous' // >1 parcel with conflicting TaxRateCity (ruling §2.3)
+  | 'county_inconclusive'; // not found (0 features) / null / error (resolver gates on ZIP)
 
 /** Audit fields captured for every County lookup (binding audit-log set, §A.6). */
 export interface CountyAuditFields {
@@ -115,8 +116,9 @@ export function classifyCountyParcel(records: ParsedParcelRecord[]): CountyLooku
 
   const distinct = Array.from(new Set(taxCities));
   if (distinct.length > 1) {
-    // Ambiguous: matched parcels disagree on tax-rate city. Fail-closed.
-    return { verdict: 'county_inconclusive', audit };
+    // Ambiguous: matched parcels disagree on tax-rate city (ruling §2.3) → distinct
+    // verdict so the resolver routes to manual_review (county_ambiguous), not ZIMAS.
+    return { verdict: 'county_ambiguous', audit };
   }
 
   const tax = distinct[0];
@@ -210,16 +212,23 @@ export async function lookupCountyParcel(
  * inconclusive (→ ZIMAS fallback), which is the intended fail-soft path.
  */
 export const defaultCountyFetcher: CountyFetcher = async (formattedAddress, signal) => {
-  const { street, zip } = splitFormattedAddress(formattedAddress);
-  // Build an ArcGIS where clause; ZIP narrows, street LIKE matches the situs head.
+  const { house, stem, zip } = parseAddressForCounty(formattedAddress);
+  // Stem-matching (ruling §2.4): Google spells out street suffixes (BOULEVARD),
+  // the County abbreviates (BLVD). Match on house + street-stem (suffix stripped)
+  // LIKE, narrowed by ZIP5 for street-name disambiguation. ZIP is a tie-breaker
+  // here, NOT a jurisdiction signal.
   const clauses: string[] = [];
-  if (street) clauses.push(`SitusFullAddress LIKE '${escapeArcgis(street.toUpperCase())}%'`);
+  if (house && stem) {
+    clauses.push(`SitusFullAddress LIKE '${escapeArcgis(`${house} ${stem}`.toUpperCase())}%'`);
+  } else if (stem) {
+    clauses.push(`SitusFullAddress LIKE '${escapeArcgis(stem.toUpperCase())}%'`);
+  }
   if (zip) clauses.push(`SitusZIP LIKE '${escapeArcgis(zip)}%'`);
   const where = clauses.length ? clauses.join(' AND ') : '1=0';
   const fields = ['TaxRateCity', 'SitusCity', 'AIN', 'APN'].join(',');
   const url =
     `${COUNTY_PARCEL_ENDPOINT}?where=${encodeURIComponent(where)}` +
-    `&outFields=${encodeURIComponent(fields)}&returnGeometry=false&resultRecordCount=5&f=json`;
+    `&outFields=${encodeURIComponent(fields)}&returnGeometry=false&resultRecordCount=10&f=json`;
 
   const resp = await fetch(url, { method: 'GET', signal });
   if (!resp.ok) throw new Error(`county HTTP ${resp.status}`);
@@ -246,13 +255,66 @@ function escapeArcgis(s: string): string {
 }
 
 /**
- * Pull the leading street line and ZIP from a Google formatted address like
- * "1100 Wilshire Boulevard, Los Angeles, CA 90017-1916, USA".
- * Returns the street head ("1100 Wilshire Boulevard") and 5-digit ZIP ("90017").
+ * USPS Publication 28 Appendix C street-suffix set (the common forms Google
+ * spells out and the County abbreviates). Closed enumeration; stripping the
+ * trailing suffix token makes the County `SitusFullAddress LIKE` match regardless
+ * of spelled-out vs abbreviated form. (Ruling §2.4.)
  */
-export function splitFormattedAddress(formatted: string): { street: string | null; zip: string | null } {
+const STREET_SUFFIXES: ReadonlySet<string> = new Set([
+  'ALLEY', 'ANNEX', 'ARCADE', 'AVENUE', 'BAYOU', 'BEACH', 'BEND', 'BLUFF', 'BOULEVARD',
+  'BRANCH', 'BRIDGE', 'BROOK', 'BURG', 'BYPASS', 'CAMP', 'CANYON', 'CAPE', 'CAUSEWAY',
+  'CENTER', 'CIRCLE', 'CLIFF', 'CLUB', 'COMMON', 'CORNER', 'COURSE', 'COURT', 'COVE',
+  'CREEK', 'CRESCENT', 'CREST', 'CROSSING', 'CURVE', 'DALE', 'DAM', 'DIVIDE', 'DRIVE',
+  'ESTATE', 'EXPRESSWAY', 'EXTENSION', 'FALL', 'FALLS', 'FERRY', 'FIELD', 'FLAT', 'FORD',
+  'FOREST', 'FORGE', 'FORK', 'FORT', 'FREEWAY', 'GARDEN', 'GATEWAY', 'GLEN', 'GREEN',
+  'GROVE', 'HARBOR', 'HAVEN', 'HEIGHTS', 'HIGHWAY', 'HILL', 'HILLS', 'HOLLOW', 'INLET',
+  'ISLAND', 'JUNCTION', 'KEY', 'KNOLL', 'LAKE', 'LANDING', 'LANE', 'LIGHT', 'LOAF',
+  'LOCK', 'LODGE', 'LOOP', 'MALL', 'MANOR', 'MEADOW', 'MEWS', 'MILL', 'MISSION',
+  'MOTORWAY', 'MOUNT', 'MOUNTAIN', 'NECK', 'ORCHARD', 'OVAL', 'OVERPASS', 'PARK',
+  'PARKWAY', 'PASS', 'PASSAGE', 'PATH', 'PIKE', 'PINE', 'PLACE', 'PLAIN', 'PLAZA',
+  'POINT', 'PORT', 'PRAIRIE', 'RADIAL', 'RAMP', 'RANCH', 'RAPID', 'REST', 'RIDGE',
+  'RIVER', 'ROAD', 'ROUTE', 'ROW', 'RUN', 'SHOAL', 'SHORE', 'SPRING', 'SPUR', 'SQUARE',
+  'STATION', 'STRAVENUE', 'STREAM', 'STREET', 'SUMMIT', 'TERRACE', 'THROUGHWAY', 'TRACE',
+  'TRACK', 'TRAFFICWAY', 'TRAIL', 'TUNNEL', 'TURNPIKE', 'UNDERPASS', 'UNION', 'VALLEY',
+  'VIADUCT', 'VIEW', 'VILLAGE', 'VILLE', 'VISTA', 'WALK', 'WALL', 'WAY', 'WELL',
+]);
+
+/**
+ * Parse a Google-formatted address into the parts the County stem query needs.
+ * "1100 Wilshire Boulevard, Los Angeles, CA 90017-1916, USA" →
+ *   { house: "1100", stem: "Wilshire", zip: "90017" }
+ * The trailing street-type suffix is stripped if recognized (so spelled-out
+ * "Boulevard" matches the County's "BLVD"). A directional prefix (N/S/E/W) is
+ * preserved in the stem. If no recognized suffix, the full street line is used.
+ */
+export function parseAddressForCounty(formatted: string): {
+  house: string | null;
+  stem: string | null;
+  zip: string | null;
+} {
   const parts = formatted.split(',').map((p) => p.trim());
-  const street = parts.length > 0 ? parts[0] : null;
+  const streetLine = parts.length > 0 ? parts[0] : '';
   const zipMatch = formatted.match(/\b(\d{5})(?:-\d{4})?\b/);
-  return { street: street || null, zip: zipMatch ? zipMatch[1] : null };
+  const zip = zipMatch ? zipMatch[1] : null;
+
+  const tokens = streetLine.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return { house: null, stem: null, zip };
+
+  // House number = leading token if numeric.
+  let house: string | null = null;
+  let rest = tokens;
+  if (/^\d+[A-Za-z]?$/.test(tokens[0])) {
+    house = tokens[0];
+    rest = tokens.slice(1);
+  }
+
+  // Strip a trailing recognized street-type suffix from the remaining tokens.
+  if (rest.length > 1) {
+    const last = rest[rest.length - 1].toUpperCase().replace(/\.$/, '');
+    if (STREET_SUFFIXES.has(last)) {
+      rest = rest.slice(0, -1);
+    }
+  }
+  const stem = rest.length > 0 ? rest.join(' ') : null;
+  return { house, stem, zip };
 }

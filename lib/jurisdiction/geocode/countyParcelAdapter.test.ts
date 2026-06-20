@@ -6,7 +6,7 @@ import {
   classifyCountyParcel,
   lookupCountyParcel,
   normalizeJurisdiction,
-  splitFormattedAddress,
+  parseAddressForCounty,
   type ParsedParcelRecord,
   type CountyLookupResult,
 } from './countyParcelAdapter';
@@ -59,7 +59,7 @@ async function main() {
   check('multiple parcels agree on LA → confirms',
     classifyCountyParcel([rec('LOS ANGELES'), rec('Los Angeles')]).verdict === 'county_confirms_la');
   check('multiple parcels disagree → inconclusive (fail-closed)',
-    classifyCountyParcel([rec('LOS ANGELES'), rec('CULVER CITY')]).verdict === 'county_inconclusive');
+    classifyCountyParcel([rec('LOS ANGELES'), rec('CULVER CITY')]).verdict === 'county_ambiguous');
 
   console.log('\n=== audit fields ===');
   {
@@ -74,11 +74,28 @@ async function main() {
   check('normalize collapses whitespace', normalizeJurisdiction('LOS   ANGELES') === 'los angeles');
   check('normalize trims + lowercases', normalizeJurisdiction('  Unincorporated ') === 'unincorporated');
 
-  console.log('\n=== splitFormattedAddress ===');
+  console.log('\n=== parseAddressForCounty (stem-matching, ruling §2.4) ===');
   {
-    const s = splitFormattedAddress('1100 Wilshire Boulevard, Los Angeles, CA 90017-1916, USA');
-    check('street head extracted', s.street === '1100 Wilshire Boulevard');
-    check('5-digit zip extracted from zip+4', s.zip === '90017');
+    const s = parseAddressForCounty('1100 Wilshire Boulevard, Los Angeles, CA 90017-1916, USA');
+    check('house extracted', s.house === '1100');
+    check('suffix "Boulevard" stripped → stem "Wilshire"', s.stem === 'Wilshire');
+    check('5-digit zip from zip+4', s.zip === '90017');
+  }
+  {
+    const s = parseAddressForCounty('11460 S Normandie Avenue, Los Angeles, CA 90044, USA');
+    check('directional preserved in stem (S Normandie)', s.stem === 'S Normandie');
+    check('house 11460', s.house === '11460');
+  }
+  {
+    const s = parseAddressForCounty('1600 Main Street, Santa Monica, CA 90401, USA');
+    check('Street stripped → stem "Main"', s.stem === 'Main');
+    check('zip 90401', s.zip === '90401');
+  }
+  {
+    // No recognized suffix → full street line kept as stem.
+    const s = parseAddressForCounty('1 World Way, Los Angeles, CA 90045, USA');
+    check('Way stripped → stem "World"', s.stem === 'World');
+    check('house 1', s.house === '1');
   }
 
   console.log('\n=== lookupCountyParcel: fail-closed + retry + cache ===');
