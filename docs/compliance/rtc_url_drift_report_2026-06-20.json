@@ -1,0 +1,186 @@
+{
+  "date": "2026-06-20",
+  "userAgent": "ownerpilot-rtc-url-drift-check/1.0 (read-only form audit; contact: broker)",
+  "results": [
+    {
+      "key": "armenian",
+      "inputUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Armenian.pdf",
+      "ok": true,
+      "finalUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Armenian.pdf",
+      "finalStatus": 200,
+      "redirectChain": [
+        {
+          "url": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Armenian.pdf",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "lastModified": "Thu, 07 Aug 2025 23:34:01 GMT",
+      "contentType": "application/pdf",
+      "contentLengthHeader": "1088198",
+      "actualBytes": 1088198,
+      "sha256": "05b83877d97221bf3b98a4bbbaeb29235f870cef2fe3378885f991f5b51bba20",
+      "error": null
+    },
+    {
+      "key": "cantonese",
+      "inputUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Traditional-Chinese.pdf",
+      "ok": true,
+      "finalUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Traditional-Chinese.pdf",
+      "finalStatus": 200,
+      "redirectChain": [
+        {
+          "url": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Traditional-Chinese.pdf",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "lastModified": "Thu, 07 Aug 2025 23:34:15 GMT",
+      "contentType": "application/pdf",
+      "contentLengthHeader": "1128987",
+      "actualBytes": 1128987,
+      "sha256": "71ad943a24f1a6c49aa64c4db973b0262b92cafaa12743c9e8c5d86a1b3dafc9",
+      "error": null
+    },
+    {
+      "key": "english",
+      "inputUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-English.pdf",
+      "ok": true,
+      "finalUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-English.pdf",
+      "finalStatus": 200,
+      "redirectChain": [
+        {
+          "url": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-English.pdf",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "lastModified": "Tue, 16 Jun 2026 21:03:44 GMT",
+      "contentType": "application/pdf",
+      "contentLengthHeader": "844172",
+      "actualBytes": 844172,
+      "sha256": "d0653950008da9004c405a91685c2c212557ae6398eb2f79d9a6cf7d7beb5f7a",
+      "error": null
+    },
+    {
+      "key": "farsi",
+      "inputUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Farsi.pdf",
+      "ok": true,
+      "finalUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Farsi.pdf",
+      "finalStatus": 200,
+      "redirectChain": [
+        {
+          "url": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Farsi.pdf",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "lastModified": "Fri, 08 Aug 2025 23:10:15 GMT",
+      "contentType": "application/pdf",
+      "contentLengthHeader": "1364895",
+      "actualBytes": 1364895,
+      "sha256": "8d12f5a4e3bdaa60807d61d94181b8db9c6280f29f349c81b329dfdce9140ee0",
+      "error": null
+    },
+    {
+      "key": "korean",
+      "inputUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Korean.pdf",
+      "ok": true,
+      "finalUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Korean.pdf",
+      "finalStatus": 200,
+      "redirectChain": [
+        {
+          "url": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Korean.pdf",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "lastModified": "Thu, 07 Aug 2025 23:34:07 GMT",
+      "contentType": "application/pdf",
+      "contentLengthHeader": "1127364",
+      "actualBytes": 1127364,
+      "sha256": "683dbc620035d6458dc762cba776b36afd47b1f81a8eefe8a336194256e248c5",
+      "error": null
+    },
+    {
+      "key": "mandarin",
+      "inputUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Simplified-Chinese.pdf",
+      "ok": true,
+      "finalUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Simplified-Chinese.pdf",
+      "finalStatus": 200,
+      "redirectChain": [
+        {
+          "url": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Simplified-Chinese.pdf",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "lastModified": "Thu, 07 Aug 2025 23:15:03 GMT",
+      "contentType": "application/pdf",
+      "contentLengthHeader": "1102215",
+      "actualBytes": 1102215,
+      "sha256": "c74efb9f64771fb059e6186f8d6f150df6cf1c8b834fe3a1eaacb76199c2acd3",
+      "error": null
+    },
+    {
+      "key": "russian",
+      "inputUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Russian.pdf",
+      "ok": true,
+      "finalUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Russian.pdf",
+      "finalStatus": 200,
+      "redirectChain": [
+        {
+          "url": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Russian.pdf",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "lastModified": "Thu, 07 Aug 2025 23:15:10 GMT",
+      "contentType": "application/pdf",
+      "contentLengthHeader": "948394",
+      "actualBytes": 948394,
+      "sha256": "63cc30da901b64e3c8e7a8169b38db7786dea7f5bb6a6799d8bfbdf2750bef02",
+      "error": null
+    },
+    {
+      "key": "spanish",
+      "inputUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Spanish.pdf",
+      "ok": true,
+      "finalUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Spanish.pdf",
+      "finalStatus": 200,
+      "redirectChain": [
+        {
+          "url": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Spanish.pdf",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "lastModified": "Tue, 16 Jun 2026 21:03:55 GMT",
+      "contentType": "application/pdf",
+      "contentLengthHeader": "867218",
+      "actualBytes": 867218,
+      "sha256": "947885d0af7eb21f7b66c0f54294b6803923449a21c93c75c0797512455d8371",
+      "error": null
+    },
+    {
+      "key": "tagalog",
+      "inputUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Tagalog.pdf",
+      "ok": true,
+      "finalUrl": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Tagalog.pdf",
+      "finalStatus": 200,
+      "redirectChain": [
+        {
+          "url": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Tagalog.pdf",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "lastModified": "Thu, 07 Aug 2025 23:14:57 GMT",
+      "contentType": "application/pdf",
+      "contentLengthHeader": "1133227",
+      "actualBytes": 1133227,
+      "sha256": "0a70e2eb4cb863f034ddf3723b05a82f152c3172453e1169ec6c18b566428c20",
+      "error": null
+    }
+  ]
+}
