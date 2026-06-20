@@ -212,19 +212,19 @@ export async function lookupCountyParcel(
  * inconclusive (→ ZIMAS fallback), which is the intended fail-soft path.
  */
 export const defaultCountyFetcher: CountyFetcher = async (formattedAddress, signal) => {
-  const { house, stem, zip } = parseAddressForCounty(formattedAddress);
-  // Stem-matching (ruling §2.4): Google spells out street suffixes (BOULEVARD),
-  // the County abbreviates (BLVD). Match on house + street-stem (suffix stripped)
-  // LIKE, narrowed by ZIP5 for street-name disambiguation. ZIP is a tie-breaker
-  // here, NOT a jurisdiction signal.
+  const { house, coreStreet, zip } = parseAddressForCounty(formattedAddress);
+  // Structured-field match (v3 ruling §2.4, refined): Google's formatted address
+  // is inconsistent about directionals (drops "S", spells out "West") and jams in
+  // unit numbers ("Apt 5"), so a SitusFullAddress LIKE reconstruction misses. The
+  // County normalizes into SitusHouseNo / SitusStreet (incl. suffix, e.g.
+  // "NORMANDIE AVE") / SitusDirection (separate). Match house + core street name
+  // (directional + unit + suffix stripped) + ZIP5 — directional- and unit-agnostic.
   const clauses: string[] = [];
-  if (house && stem) {
-    clauses.push(`SitusFullAddress LIKE '${escapeArcgis(`${house} ${stem}`.toUpperCase())}%'`);
-  } else if (stem) {
-    clauses.push(`SitusFullAddress LIKE '${escapeArcgis(stem.toUpperCase())}%'`);
-  }
+  if (house) clauses.push(`SitusHouseNo = '${escapeArcgis(house)}'`);
+  if (coreStreet) clauses.push(`SitusStreet LIKE '${escapeArcgis(coreStreet)}%'`);
   if (zip) clauses.push(`SitusZIP LIKE '${escapeArcgis(zip)}%'`);
-  const where = clauses.length ? clauses.join(' AND ') : '1=0';
+  // Require at least house + street to avoid over-broad matches.
+  const where = house && coreStreet ? clauses.join(' AND ') : '1=0';
   const fields = ['TaxRateCity', 'SitusCity', 'AIN', 'APN'].join(',');
   const url =
     `${COUNTY_PARCEL_ENDPOINT}?where=${encodeURIComponent(where)}` +
@@ -279,25 +279,42 @@ const STREET_SUFFIXES: ReadonlySet<string> = new Set([
   'VIADUCT', 'VIEW', 'VILLAGE', 'VILLE', 'VISTA', 'WALK', 'WALL', 'WAY', 'WELL',
 ]);
 
+/** Directional tokens (prefix or as the County's SitusDirection), spelled + abbrev. */
+const DIRECTIONALS: ReadonlySet<string> = new Set([
+  'N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW',
+  'NORTH', 'SOUTH', 'EAST', 'WEST', 'NORTHEAST', 'NORTHWEST', 'SOUTHEAST', 'SOUTHWEST',
+]);
+/** Secondary-unit designators (USPS Pub 28 Appendix C2) that may pollute the street line. */
+const UNIT_DESIGNATORS: ReadonlySet<string> = new Set([
+  'APT', 'APARTMENT', 'STE', 'SUITE', 'UNIT', 'RM', 'ROOM', 'FL', 'FLOOR', 'BLDG',
+  'BUILDING', 'DEPT', 'SPC', 'SPACE', 'LOT', 'TRLR', 'HNGR', 'SLIP', 'PIER', 'KEY', '#',
+]);
+
 /**
- * Parse a Google-formatted address into the parts the County stem query needs.
- * "1100 Wilshire Boulevard, Los Angeles, CA 90017-1916, USA" →
- *   { house: "1100", stem: "Wilshire", zip: "90017" }
- * The trailing street-type suffix is stripped if recognized (so spelled-out
- * "Boulevard" matches the County's "BLVD"). A directional prefix (N/S/E/W) is
- * preserved in the stem. If no recognized suffix, the full street line is used.
+ * Parse a Google-formatted address into the parts the County STRUCTURED-FIELD
+ * query needs. Google's formatting is inconsistent (drops directionals, spells
+ * them out, jams unit numbers into the street line), so we extract:
+ *   - house: leading numeric token
+ *   - coreStreet: street NAME with the directional prefix, any secondary-unit
+ *     tail (Apt 5, Ste 200, #3), AND the trailing street-type suffix all removed
+ *   - zip: 5-digit postal code (from the postal position, not the house number)
+ *
+ * The County stores street name in `SitusStreet` (e.g. "NORMANDIE AVE") with the
+ * directional in its own `SitusDirection` field, so matching `SitusStreet LIKE
+ * '<coreStreet>%'` is directional- and format-agnostic. Example:
+ *   "11460 Normandie Avenue, ..., CA 90044" → house 11460, core "NORMANDIE", zip 90044
+ *   "1234 South Hill Street Apt 5, ..., 90015" → house 1234, core "HILL", zip 90015
+ *   "7510 West Sunset Boulevard, ..., 90046" → house 7510, core "SUNSET", zip 90046
  */
 export function parseAddressForCounty(formatted: string): {
   house: string | null;
-  stem: string | null;
+  coreStreet: string | null;
   zip: string | null;
 } {
   const parts = formatted.split(',').map((p) => p.trim());
   const streetLine = parts.length > 0 ? parts[0] : '';
-  // ZIP must come from the POSTAL position, NOT the first 5-digit run — a 5-digit
-  // house number (e.g. "11460 S Normandie") would otherwise hijack the match.
-  // Prefer a ZIP that follows a 2-letter state token ("..., CA 90044[-1215]");
-  // else take the LAST 5-digit group in the string (postal codes trail addresses).
+  // ZIP from the postal position, NOT the first 5-digit run (house numbers can be
+  // 5 digits). Prefer the group after a 2-letter state token; else the LAST group.
   let zip: string | null = null;
   const stateZip = formatted.match(/\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b/);
   if (stateZip) {
@@ -307,24 +324,31 @@ export function parseAddressForCounty(formatted: string): {
     if (all && all.length) zip = all[all.length - 1].slice(0, 5);
   }
 
-  const tokens = streetLine.split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return { house: null, stem: null, zip };
+  let tokens = streetLine.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return { house: null, coreStreet: null, zip };
 
-  // House number = leading token if numeric.
+  // House number = leading numeric token.
   let house: string | null = null;
-  let rest = tokens;
   if (/^\d+[A-Za-z]?$/.test(tokens[0])) {
     house = tokens[0];
-    rest = tokens.slice(1);
+    tokens = tokens.slice(1);
   }
 
-  // Strip a trailing recognized street-type suffix from the remaining tokens.
-  if (rest.length > 1) {
-    const last = rest[rest.length - 1].toUpperCase().replace(/\.$/, '');
-    if (STREET_SUFFIXES.has(last)) {
-      rest = rest.slice(0, -1);
-    }
+  // Strip a leading directional prefix (N / S / North / South / ...).
+  if (tokens.length > 1 && DIRECTIONALS.has(tokens[0].toUpperCase().replace(/\.$/, ''))) {
+    tokens = tokens.slice(1);
   }
-  const stem = rest.length > 0 ? rest.join(' ') : null;
-  return { house, stem, zip };
+
+  // Truncate at the first secondary-unit designator (Apt, Ste, Unit, #, ...).
+  const unitIdx = tokens.findIndex((t) => UNIT_DESIGNATORS.has(t.toUpperCase().replace(/\.$/, '')) || t.startsWith('#'));
+  if (unitIdx >= 0) tokens = tokens.slice(0, unitIdx);
+
+  // Strip a trailing recognized street-type suffix (Boulevard, Avenue, ...).
+  if (tokens.length > 1) {
+    const last = tokens[tokens.length - 1].toUpperCase().replace(/\.$/, '');
+    if (STREET_SUFFIXES.has(last)) tokens = tokens.slice(0, -1);
+  }
+
+  const coreStreet = tokens.length > 0 ? tokens.join(' ').toUpperCase() : null;
+  return { house, coreStreet, zip };
 }
