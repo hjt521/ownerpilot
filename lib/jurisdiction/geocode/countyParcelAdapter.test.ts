@@ -92,10 +92,12 @@ async function main() {
     check('zip 90401', s.zip === '90401');
   }
   {
-    // No recognized suffix → full street line kept as stem.
-    const s = parseAddressForCounty('1 World Way, Los Angeles, CA 90045, USA');
-    check('Way stripped → stem "World"', s.stem === 'World');
-    check('house 1', s.house === '1');
+    // REGRESSION: a 5-digit house number must NOT hijack the ZIP parse.
+    const s = parseAddressForCounty('11460 S Normandie Avenue, Los Angeles, CA 90044, USA');
+    check('5-digit house: zip is 90044 not 11460', s.zip === '90044');
+    check('5-digit house: house is 11460', s.house === '11460');
+    const s2 = parseAddressForCounty('11919 Culver Boulevard, Los Angeles, CA 90066, USA');
+    check('5-digit house #2: zip is 90066 not 11919', s2.zip === '90066');
   }
 
   console.log('\n=== lookupCountyParcel: fail-closed + retry + cache ===');
