@@ -67,14 +67,21 @@ async function main() {
     (() => { const o = classifyPreParcel(pre({ validationGranularity: 'PREMISE_PROXIMITY' as ValidationGranularity, locality: 'Reno', administrativeAreaLevel1: 'Nevada' })); return o.kind === 'terminal' && o.reviewReason === 'coarse_granularity'; })());
 
   console.log('\n=== step 2: correction-flag gate (§4.2) ===');
-  check('hasInferredComponents → input_corrected',
-    (() => { const o = classifyPreParcel(pre({ correction: { hasInferredComponents: true } })); return o.kind === 'terminal' && o.reviewReason === 'input_corrected'; })());
   check('hasReplacedComponents → input_corrected',
     (() => { const o = classifyPreParcel(pre({ correction: { hasReplacedComponents: true } })); return o.kind === 'terminal' && o.reviewReason === 'input_corrected'; })());
   check('possibleNextAction FIX → input_corrected',
     (() => { const o = classifyPreParcel(pre({ correction: { possibleNextAction: 'FIX' } })); return o.kind === 'terminal' && o.reviewReason === 'input_corrected'; })());
+  // §7 regression guard A: hasInferredComponents alone (the clean-LA class #15/#1/#18)
+  // MUST NOT trip the gate — Google sets it for routine ZIP+4 on every address.
+  check('REGRESSION: hasInferredComponents=true ALONE → does NOT trip (proceeds)',
+    classifyPreParcel(pre({ correction: { hasInferredComponents: true, hasReplacedComponents: false, possibleNextAction: 'ACCEPT' } })).kind === 'proceed_to_parcel');
+  check('REGRESSION: hasInferred=true + CONFIRM_ADD_SUBPREMISES (the #15 Wilshire shape) → proceeds',
+    classifyPreParcel(pre({ correction: { hasInferredComponents: true, hasReplacedComponents: false, possibleNextAction: 'CONFIRM_ADD_SUBPREMISES' } })).kind === 'proceed_to_parcel');
+  // §7 regression guard B: the #9 typo class (hasReplacedComponents=true) MUST still trip.
+  check('REGRESSION: hasReplacedComponents=true (the #9 typo class) → still input_corrected',
+    (() => { const o = classifyPreParcel(pre({ correction: { hasInferredComponents: true, hasReplacedComponents: true, possibleNextAction: 'CONFIRM' } })); return o.kind === 'terminal' && o.reviewReason === 'input_corrected'; })());
   check('correction gate fires AFTER granularity (coarse+corrected → coarse)',
-    (() => { const o = classifyPreParcel(pre({ validationGranularity: 'ROUTE', correction: { hasInferredComponents: true } })); return o.kind === 'terminal' && o.reviewReason === 'coarse_granularity'; })());
+    (() => { const o = classifyPreParcel(pre({ validationGranularity: 'ROUTE', correction: { hasReplacedComponents: true } })); return o.kind === 'terminal' && o.reviewReason === 'coarse_granularity'; })());
 
   console.log('\n=== step 3: locality presence ===');
   check('null locality → no_locality',
