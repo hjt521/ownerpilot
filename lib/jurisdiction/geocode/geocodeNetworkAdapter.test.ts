@@ -64,7 +64,8 @@ async function main() {
     await fetchReverseGeocode(34.05, -118.24, KEY);
     check('latlng has no space', seen!.url.includes('latlng=') && !decodeURIComponent(seen!.url).includes('34.05, -118.24'));
     check('latlng comma-joined', decodeURIComponent(seen!.url).includes('34.05,-118.24'));
-    check('key in header, NOT in query string', !seen!.url.includes(KEY) && (seen!.init.headers as Record<string,string>)['X-Goog-Api-Key'] === KEY);
+    check('key in query string (Geocoding endpoint requires it; header rejected)', seen!.url.includes(`key=${KEY}`));
+    check('no X-Goog-Api-Key header on geocoding call', !(seen!.init.headers as Record<string,string> | undefined)?.['X-Goog-Api-Key']);
   }
 
   // ---- Normalization: long_name AND longText both map to long_name ----
