@@ -74,21 +74,39 @@ async function main() {
   check('normalize collapses whitespace', normalizeJurisdiction('LOS   ANGELES') === 'los angeles');
   check('normalize trims + lowercases', normalizeJurisdiction('  Unincorporated ') === 'unincorporated');
 
-  console.log('\n=== parseAddressForCounty (stem-matching, ruling §2.4) ===');
+  console.log('\n=== parseAddressForCounty (structured-field core, v3 ruling §2.4) ===');
   {
     const s = parseAddressForCounty('1100 Wilshire Boulevard, Los Angeles, CA 90017-1916, USA');
     check('house extracted', s.house === '1100');
-    check('suffix "Boulevard" stripped → stem "Wilshire"', s.stem === 'Wilshire');
+    check('suffix "Boulevard" stripped → core "WILSHIRE"', s.coreStreet === 'WILSHIRE');
     check('5-digit zip from zip+4', s.zip === '90017');
   }
   {
+    // Directional dropped from core (County keeps it in SitusDirection).
     const s = parseAddressForCounty('11460 S Normandie Avenue, Los Angeles, CA 90044, USA');
-    check('directional preserved in stem (S Normandie)', s.stem === 'S Normandie');
+    check('directional S stripped → core "NORMANDIE"', s.coreStreet === 'NORMANDIE');
     check('house 11460', s.house === '11460');
   }
   {
+    // Real Google form for #5: directional DROPPED by Google entirely → still NORMANDIE.
+    const s = parseAddressForCounty('11460 Normandie Avenue, Los Angeles, CA 90044-1215, USA');
+    check('Google drops directional → core still "NORMANDIE"', s.coreStreet === 'NORMANDIE');
+    check('zip 90044', s.zip === '90044');
+  }
+  {
+    // Real Google form for #12: spelled directional + jammed unit "Apt 5".
+    const s = parseAddressForCounty('1234 South Hill Street Apt 5, Los Angeles, CA 90015, USA');
+    check('spelled "South" + unit "Apt 5" stripped → core "HILL"', s.coreStreet === 'HILL');
+    check('house 1234', s.house === '1234');
+  }
+  {
+    // Real Google form for #8: spelled "West" directional.
+    const s = parseAddressForCounty('7510 West Sunset Boulevard, Los Angeles, CA 90046-3408, USA');
+    check('spelled "West" stripped → core "SUNSET"', s.coreStreet === 'SUNSET');
+  }
+  {
     const s = parseAddressForCounty('1600 Main Street, Santa Monica, CA 90401, USA');
-    check('Street stripped → stem "Main"', s.stem === 'Main');
+    check('Street stripped → core "MAIN"', s.coreStreet === 'MAIN');
     check('zip 90401', s.zip === '90401');
   }
   {
