@@ -108,14 +108,16 @@ export async function fetchReverseGeocode(
 ): Promise<ReverseGeocodeResponse> {
   const { signal, clear } = withTimeout(TIMEOUT_MS);
   try {
-    // latlng must have NO space (Google requirement). Key goes in the header,
-    // NOT the query string, so the URL is safe to log if ever needed.
-    const url = `${GEOCODE_ENDPOINT}?latlng=${encodeURIComponent(`${lat},${lng}`)}`;
-    const resp = await fetch(url, {
-      method: 'GET',
-      headers: { 'X-Goog-Api-Key': apiKey }, // key only here, never logged
-      signal,
-    });
+    // The legacy Geocoding endpoint (maps/api/geocode/json) does NOT accept the
+    // X-Goog-Api-Key header — it requires the key as a `key=` query parameter
+    // (confirmed live 2026-06-20: header-only auth returns REQUEST_DENIED).
+    // latlng must have NO space (Google requirement).
+    // ⚠️ This URL contains the API key. It must NEVER be logged or placed in an
+    // error message. Errors below deliberately reference only the status, not the URL.
+    const url =
+      `${GEOCODE_ENDPOINT}?latlng=${encodeURIComponent(`${lat},${lng}`)}` +
+      `&key=${encodeURIComponent(apiKey)}`;
+    const resp = await fetch(url, { method: 'GET', signal });
     if (!resp.ok) {
       throw new Error(`reverse-geocode HTTP ${resp.status}`);
     }
