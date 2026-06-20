@@ -66,22 +66,11 @@ async function main() {
   check('PROXIMITY + non-LA locality but admin1 not California → coarse (not 1a)',
     (() => { const o = classifyPreParcel(pre({ validationGranularity: 'PREMISE_PROXIMITY' as ValidationGranularity, locality: 'Reno', administrativeAreaLevel1: 'Nevada' })); return o.kind === 'terminal' && o.reviewReason === 'coarse_granularity'; })());
 
-  console.log('\n=== step 2: correction-flag gate (§4.2) ===');
-  check('hasReplacedComponents → input_corrected',
-    (() => { const o = classifyPreParcel(pre({ correction: { hasReplacedComponents: true } })); return o.kind === 'terminal' && o.reviewReason === 'input_corrected'; })());
-  check('possibleNextAction FIX → input_corrected',
-    (() => { const o = classifyPreParcel(pre({ correction: { possibleNextAction: 'FIX' } })); return o.kind === 'terminal' && o.reviewReason === 'input_corrected'; })());
-  // §7 regression guard A: hasInferredComponents alone (the clean-LA class #15/#1/#18)
-  // MUST NOT trip the gate — Google sets it for routine ZIP+4 on every address.
-  check('REGRESSION: hasInferredComponents=true ALONE → does NOT trip (proceeds)',
-    classifyPreParcel(pre({ correction: { hasInferredComponents: true, hasReplacedComponents: false, possibleNextAction: 'ACCEPT' } })).kind === 'proceed_to_parcel');
-  check('REGRESSION: hasInferred=true + CONFIRM_ADD_SUBPREMISES (the #15 Wilshire shape) → proceeds',
+  console.log('\n=== step 2 (was correction; now post-parcel) — pre-parcel no longer gates on correction ===');
+  check('corrected input alone still PROCEEDS pre-parcel (correction is post-parcel now)',
+    classifyPreParcel(pre({ correction: { hasReplacedComponents: true } })).kind === 'proceed_to_parcel');
+  check('hasInferredComponents=true alone → proceeds (clean-LA class)',
     classifyPreParcel(pre({ correction: { hasInferredComponents: true, hasReplacedComponents: false, possibleNextAction: 'CONFIRM_ADD_SUBPREMISES' } })).kind === 'proceed_to_parcel');
-  // §7 regression guard B: the #9 typo class (hasReplacedComponents=true) MUST still trip.
-  check('REGRESSION: hasReplacedComponents=true (the #9 typo class) → still input_corrected',
-    (() => { const o = classifyPreParcel(pre({ correction: { hasInferredComponents: true, hasReplacedComponents: true, possibleNextAction: 'CONFIRM' } })); return o.kind === 'terminal' && o.reviewReason === 'input_corrected'; })());
-  check('correction gate fires AFTER granularity (coarse+corrected → coarse)',
-    (() => { const o = classifyPreParcel(pre({ validationGranularity: 'ROUTE', correction: { hasReplacedComponents: true } })); return o.kind === 'terminal' && o.reviewReason === 'coarse_granularity'; })());
 
   console.log('\n=== step 3: locality presence ===');
   check('null locality → no_locality',
@@ -153,12 +142,64 @@ async function main() {
     }));
     check('North Hills: County miss + ZIMAS confirm → confirmed_la (zimas_confirm)', r.disposition === 'confirmed_la' && r.audit.branch === 'zimas_confirm');
   }
-  console.log('\n=== §A.7 regression: #9 typo → input_corrected ===');
+  console.log('\n=== §A.7 regression: #9 typo → input_corrected (Q2 asymmetric) ===');
   {
+    // #9 case A: corrected address CONFIRMS in County → suppressed to input_corrected.
     const r = await resolveLaAddressV2('123 Mian Stret', deps({
-      signals: { correction: { hasReplacedComponents: true } },
+      signals: { correction: { hasReplacedComponents: true }, locality: 'Los Angeles', administrativeAreaLevel1: 'California' },
+      countyRecords: [county('LOS ANGELES')], // corrected addr resolves LA
     }));
-    check('#9: Google corrected input → manual_review input_corrected', r.disposition === 'manual_review' && r.reviewReason === 'input_corrected' && r.audit.branch === 'correction_flag');
+    check('#9 caseA: corrected + County confirm → SUPPRESSED to input_corrected', r.disposition === 'manual_review' && r.reviewReason === 'input_corrected' && r.audit.branch === 'correction_suppressed');
+  }
+  {
+    // #9 case B: corrected address falls through both → correction gate catches it.
+    const r = await resolveLaAddressV2('123 Mian Stret', deps({
+      signals: { correction: { hasReplacedComponents: true }, locality: 'Los Angeles', administrativeAreaLevel1: 'California' },
+      countyRecords: [], zimasRecords: [], // both fall through
+    }));
+    check('#9 caseB: corrected + both fall-through → input_corrected (correction_inconclusive)', r.disposition === 'manual_review' && r.reviewReason === 'input_corrected' && r.audit.branch === 'correction_inconclusive');
+  }
+
+  console.log('\n=== Q2 §5 checklist: asymmetric suppression ===');
+  {
+    // Santa Monica: County DENIES → deny passthrough, correction gate does NOT fire.
+    const r = await resolveLaAddressV2('1600 Main St', deps({
+      signals: { correction: { hasReplacedComponents: true }, locality: 'Los Angeles', administrativeAreaLevel1: 'California' },
+      countyRecords: [county('SANTA MONICA')],
+    }));
+    check('#4 Santa Monica: corrected + County deny → not_la (deny NOT suppressed)', r.disposition === 'not_la' && r.audit.branch === 'county_deny');
+  }
+  {
+    // Synthetic: corrected + County confirm → suppressed.
+    const r = await resolveLaAddressV2('x', deps({
+      signals: { correction: { hasReplacedComponents: true } },
+      countyRecords: [county('LOS ANGELES')],
+    }));
+    check('asymmetric-suppress: corrected + County confirm → input_corrected', r.disposition === 'manual_review' && r.reviewReason === 'input_corrected' && r.audit.branch === 'correction_suppressed');
+  }
+  {
+    // Synthetic: corrected + County deny → passthrough not_la.
+    const r = await resolveLaAddressV2('x', deps({
+      signals: { correction: { hasReplacedComponents: true } },
+      countyRecords: [county('GLENDALE')],
+    }));
+    check('asymmetric-passthrough: corrected + County deny → not_la (not suppressed)', r.disposition === 'not_la' && r.audit.branch === 'county_deny');
+  }
+  {
+    // Clean confirm (not corrected) → stays confirmed_la.
+    const r = await resolveLaAddressV2('x', deps({
+      signals: { correction: {} },
+      countyRecords: [county('LOS ANGELES')],
+    }));
+    check('clean + County confirm → confirmed_la (no suppression)', r.disposition === 'confirmed_la' && r.audit.branch === 'county_confirm');
+  }
+  {
+    // Corrected + ZIMAS confirm → suppressed.
+    const r = await resolveLaAddressV2('x', deps({
+      signals: { correction: { hasReplacedComponents: true } },
+      countyRecords: [], zimasRecords: [zimas('11', 'TR 9358')],
+    }));
+    check('asymmetric-suppress at ZIMAS: corrected + ZIMAS confirm → input_corrected', r.disposition === 'manual_review' && r.reviewReason === 'input_corrected' && r.audit.branch === 'correction_suppressed');
   }
 
   // ============ fail-closed ============
