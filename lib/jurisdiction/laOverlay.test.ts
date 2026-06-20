@@ -24,9 +24,9 @@ console.log('\n=== Production gate (must stay LOCKED) ===');
 console.log('\n1. Default deps -> LA production blocked');
 {
   check('not unblocked', isLaProductionUnblocked() === false);
-  // geocode v6 ratification §2.6: geocodeConfirmationBuilt is now true, so 5
-  // remain (calendar, form-job, + the three production-traffic conditions).
-  check('five deps missing', laProductionMissingDependencies().length === 5);
+  // geocode v6 ratification §2.6 + go-live decisions §2: geocode AND calendar
+  // are now true, so 4 remain (form-job + the three production-traffic conditions).
+  check('four deps missing', laProductionMissingDependencies().length === 4);
 }
 
 console.log('\n2. Partial deps still blocked (need ALL)');
@@ -52,10 +52,10 @@ console.log('\n3. Only ALL conditions unblock (3 build + 3 traffic, §2.6)');
   }) === true);
 }
 
-console.log('\n4. The committed default: geocode TRUE (v6 ratification), the rest false');
+console.log('\n4. The committed default: geocode + calendar TRUE, the rest false');
 {
   check('geocode TRUE (ratified)', LA_PRODUCTION_DEPENDENCIES.geocodeConfirmationBuilt === true);
-  check('calendar false', LA_PRODUCTION_DEPENDENCIES.cityBusinessDayCalendarBuilt === false);
+  check('calendar TRUE (go-live decisions §2)', LA_PRODUCTION_DEPENDENCIES.cityBusinessDayCalendarBuilt === true);
   check('form job false', LA_PRODUCTION_DEPENDENCIES.rtcFormRefreshJobBuilt === false);
   check('audit durability false', LA_PRODUCTION_DEPENDENCIES.geocodeAuditDurabilityWired === false);
   check('authoritative zips false', LA_PRODUCTION_DEPENDENCIES.cityOfLaZipsAuthoritative === false);

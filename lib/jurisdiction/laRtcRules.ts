@@ -146,14 +146,16 @@ export interface LaProductionDependencies {
 /**
  * Current state. geocodeConfirmationBuilt flipped TRUE per the geocode v6
  * production attestation ratification (la_geocode_resolver_v6_production_
- * attestation_broker_ratification_2026-06-20 §2.1): the §5 chain is ratified
- * against amended §6 at HEAD 07cd5f3. The other two build flags remain false
- * pending their own sign-offs; the three production-traffic flags remain false
+ * attestation_broker_ratification_2026-06-20 §2.1). cityBusinessDayCalendarBuilt
+ * flipped TRUE per la_city_calendar_dependency_broker_signoff_2026-06-20 (flip-
+ * eligibility confirmed) and la_go_live_status_and_open_decisions_broker_ruling_
+ * response_2026-06-20 §2 (per-flag flip authorized; §1.1 amendment). rtcFormRefresh
+ * remains false pending step-(e); the three production-traffic flags remain false
  * pending their dependencies (§2.6). LA production stays blocked.
  */
 export const LA_PRODUCTION_DEPENDENCIES: LaProductionDependencies = {
   geocodeConfirmationBuilt: true,
-  cityBusinessDayCalendarBuilt: false,
+  cityBusinessDayCalendarBuilt: true,
   rtcFormRefreshJobBuilt: false,
   geocodeAuditDurabilityWired: false,
   cityOfLaZipsAuthoritative: false,
