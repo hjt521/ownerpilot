@@ -1,0 +1,20 @@
+name: verify-classifier-lock
+
+# Enforces the classifier persistence-lock conflict broker ruling (2026-06-20) §2.4:
+# classifier_audit_log migrations must never introduce an input-text column.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify-classifier-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify classifier_audit_log has no input-text column
+        run: node scripts/ci/verify_classifier_audit_no_input_text.mjs
