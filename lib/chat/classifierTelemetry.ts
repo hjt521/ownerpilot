@@ -11,6 +11,15 @@
  *
  * In-process counters reset per serverless instance — they are a convenience/debug
  * read, not the source of truth. The Gateway dashboard + these log lines are.
+ *
+ * PERSISTENCE LOCK STATUS (2026-06-20 broker ruling):
+ *   Lock is NOT amended. Counts-only-for-target-text stands.
+ *   Operational-telemetry substrate is expanded (per classifier_persistence_lock_conflict_broker_ruling_response_2026-06-20.md):
+ *   classifier_audit_log on Supabase captures: model_id, model_call_id, verdict, score_or_flags,
+ *   decision_latency_ms, chain_head_sha, input_decision_hash (HMAC-SHA-256, non-reversible).
+ *   classifier_audit_log MUST NOT capture input_text. Enforcement: see §2.4 CI guard.
+ *   Gateway dashboard remains source of truth for live operational visibility.
+ *   — Jack Taglyan / CalDRE B9445457 / 2026-06-20
  */
 
 export type ClassifierSideName = 'input' | 'output';
