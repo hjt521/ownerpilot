@@ -74,3 +74,73 @@ Until 4d wires the page-side caller and instrumentation, there are no invocation
 - **API key.** `GOOGLE_GEOCODE_API_KEY` must be present in the server environment before 4d invokes the surface in production. Absent key → the surface returns `503 { error: "geocode_unavailable" }` (the key reader throws; no verdict is invented).
 - **No silent fallback.** A resolver error returns `503`; the surface never substitutes a guessed verdict. (The page-side mapping of a `503`/error to a hard `JURISDICTION_RESOLUTION_FAILED` blocker is 4d's concern.)
 - **v1 untouched.** `resolveLaAddress` (v1) is referenced only for its response types + the `findComponent` extraction helper; it is not wired, modified, or deleted, and remains on its deferred-deletion timer.
+
+## Slice 4d — page-side jurisdiction resolver bridge (dormant-by-gate)
+
+Status: wired and tested; observably dormant in production for the entire 4d
+window. The bridge wakes at the master go-live flip with no code change.
+
+### What 4d wires
+
+At ReviewStep entry (the produce-flow Review page), a page-side effect invokes
+the 4c geocode server surface (`POST /api/notice/geocode`) for the property
+address, keyed on the normalized address, and caches the resolver verdict in
+flow state (`NoticeFlowData.cachedResolverVerdict`). The produce gate
+(`evaluateCanProduceV4`) reads that cached verdict synchronously and supersedes
+the `detectJurisdiction` stub on the `NEEDS_CONFIRMATION` branch only (FORK A):
+`confirmed_la` → LA-overlay hard block, `not_la` → clears, `manual_review` →
+manual-review hard block, resolver error → resolution-failed hard block (Retry).
+The three new hard-block codes render as terminal blocks (no "Fix this →" jump;
+B.1). The notice face composes only after a non-blocking verdict (FORK B).
+
+### Dormant-by-gate (Option 1, ruling 2026-06-22)
+
+Throughout 4d's production life the LA-production gate is CLOSED
+(`geocodeAuditDurabilityWired` = false). The page-side effect's first action is
+the `isLaProductionUnblocked()` check; when the gate is closed the bridge does
+NOT invoke the surface — no fetch, no cached verdict, no organic audit row, no
+loading/retry UI. The stub's `JURISDICTION_NEEDS_CONFIRMATION` stands and the
+user sees the pre-4d page-1 "confirm the address" flow for LA-ish addresses,
+unchanged. Organic page traffic produces no `geocode_audit_log` rows during 4d.
+
+This is the steady-state shape, not a temporary early-return: there is no
+dormancy feature flag and no "remove when gate opens" TODO. When the master
+go-live PR flips `geocodeAuditDurabilityWired` to true, the predicate returns
+true on the next ReviewStep entry and the bridge invokes — with no code change
+in 4d's files. That is the property that keeps go-live a switch-flip.
+
+The resolver's own gate self-assertion (runbook §2.1) is unchanged and remains
+the defense-in-depth backstop for any non-organic caller path (deliberate test
+invocations, the §8 verification suite, future caller surfaces). Under Option 1
+the page-side check is the primary mechanism for organic traffic; the
+self-assertion is the layered backstop.
+
+### Draft persistence (freeze-loss on deploy)
+
+`cachedResolverVerdict` is a new `NoticeFlowData` field, so `DRAFT_VERSION`
+bumped 2 → 3 (ruling 4d-A.1). Per the envelope rule, pre-4d drafts (`v: 2`) are
+discarded on load — no field-level migration. Any in-flight draft at the 4d
+deploy is invalidated once and the user re-enters; a draft is cheap to re-enter,
+and not persisting the verdict would balloon the audit log with refresh-driven
+duplicate resolves. During the 4d window the field is never populated (the
+resolver is never invoked organically), so in practice the only observable 4d
+effect in production is this one-time draft discard at deploy.
+
+### Cache invalidation + refresh + retry (behavior when the gate is open)
+
+- Cache is keyed on the normalized property address (trim + collapse whitespace
+  + lowercase). Editing the address invalidates the cache (the keyed lookup
+  misses) and the resolver re-runs at the next ReviewStep entry. An in-flight
+  call is aborted on address edit / unmount (FORK B: one in-flight call, cancel
+  stale).
+- A refresh on Review reuses the persisted verdict for the same address (no
+  re-resolve, no second audit row) — the reason 4d-A.1 chose persistence over
+  in-memory.
+- The Retry button (on resolution-failed only) clears the failed verdict for the
+  current address and forces a fresh invocation; each retry is a new audit row
+  (FORK B per-invocation semantics). No UI-layer cooldown (rate-limit posture is
+  the resolver's / Slice 5's concern).
+- Loading copy: standard "Confirming jurisdiction…" below 4s wall-clock; "slow"
+  variant "Confirming jurisdiction. This can take a few seconds." at 4s+. Both
+  §3.A verbatim. These and the Retry "Try again" label (§3.C) are wired but not
+  organically reachable in the 4d window.
