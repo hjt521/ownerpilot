@@ -51,20 +51,77 @@ The audit **row** and the failure **event** have different audiences, so they ca
 
 ---
 
-## The reconciliation signal (what §8 verifies)
+## §8 — Verification suite (bounded-anomaly monitor)
 
-The detectable signature of freeze-loss is a **count delta**:
+§8 is the audit-substrate's bounded-anomaly + trend monitor. It is NOT exact
+reconciliation: no durable server-side invocation counter exists in this codebase
+by design (a pre-write marker is recursive; a Vercel-log oracle would couple us to
+a non-substrate vendor for compliance signal). §8 instead decomposes the substrate
+signal into four components and isolates freeze-loss as the residual.
 
-```
-(# resolver invocations during produce)  −  (# geocode_audit_log rows written)  =  lost deferred writes
-```
+The four components, over a window:
 
-- Resolver-invocation count: surfaced by 4d's page-side instrumentation (the page invokes the surface once per (address, ReviewStep-entry) cache miss).
-- `geocode_audit_log` row count: queried directly.
+  1. rows_written
+       = COUNT(*) FROM geocode_audit_log WHERE decided_at ∈ window
 
-The **§8 verification suite** (its own broker ruling, raised after 4d lands) reconciles these two counts and reports the deferred-write completion rate. A small, stable delta is expected freeze-loss; a growing delta indicates a deferred-write regression (e.g. `after()` not firing in a runtime config) and should be investigated.
+  2. write_failures_unrecovered
+       = COUNT geocode_audit_write_failure events WHERE decision_input_hash
+         has no matching row in geocode_audit_log
 
-Until 4d wires the page-side caller and instrumentation, there are no invocations to reconcile — this section is the forward contract for the §8 suite.
+  3. dispositions_with_no_row_by_design
+       = COUNT geocode_disposition events WHERE disposition ∈
+         {invalid_json, address_required, geocode_unavailable}
+
+  4. freeze_loss_suspected
+       = (COUNT geocode_disposition events WHERE disposition ∈
+          {confirmed_la, not_la, manual_review, gate_closed})
+         − rows_written
+         − write_failures_unrecovered
+
+gate_closed dispositions and gate_closed rows are counted on both sides at full
+weight. write_failures_unrecovered are computed via decision_input_hash join.
+
+§8 is not gate-bearing. geocodeAuditDurabilityWired flips on §8 ARTIFACT delivery
++ broker attestation at the master go-live PR. Post-flip §8 monitoring produces
+alerts and investigation tickets; it does not auto-revert the gate. Any gate-state
+change is a separate broker-authored single-commit PR.
+
+Threshold table (canonical):
+  freeze_loss_suspected == 0  AND  write_failures_unrecovered == 0  → green
+  freeze_loss_suspected == 1  AND  prior window green                → yellow (alert)
+  freeze_loss_suspected ≥ 1   AND  prior window yellow-or-red        → red (alert + ticket)
+  freeze_loss_suspected ≥ 2   (any single window)                    → red (alert + ticket)
+  write_failures_unrecovered ≥ 1                                     → red (alert + ticket)
+  freeze_loss_suspected < 0                                          → red (substrate bug)
+
+The substrate adds one new structured-log event (geocode_disposition, emitted at
+every return branch of app/api/notice/geocode/route.ts; hash-only, no raw
+input_address) and one new audit table (section8_runs, migration 010, RLS
+service_role only).
+
+§8 artifacts:
+  (1) lib/jurisdiction/geocode/section8.verification.test.ts — pre-go-live one-shot;
+      named by the master go-live predicate as the §8 build-gate signal.
+  (2) scripts/section8_monitor.ts — local-CLI recurring monitor (daily 03:00 PT);
+      service_role key sourced from local broker environment per Slice 4 §2.2.
+      NEVER referenced from app/Vercel/git/CI.
+  (3) This runbook §8 section — query set + threshold table + investigation procedure
+      for red alerts.
+
+Investigation procedure for red:
+  - Pull the section8_runs row.
+  - Cross-reference the window against deployment activity (recent deploys can
+    transiently widen freeze_loss_suspected as instances are torn down mid-after()).
+  - For freeze_loss_suspected ≥ 2 without correlated deployment activity: substrate
+    regression candidate. Broker decides whether to re-close the gate via a
+    single-commit revert PR.
+  - For write_failures_unrecovered ≥ 1: query the matching geocode_audit_write_failure
+    events for error_class clustering. If a single error_class accounts for the
+    cluster, that's the substrate signal; if hash-spread, that's a substrate-or-vendor
+    concern needing a separate ruling.
+  - For freeze_loss_suspected < 0: stop. The disposition log is dropping events
+    OR a non-route.ts code path is writing rows. Either is a substrate bug that
+    blocks further interpretation until resolved.
 
 ---
 
