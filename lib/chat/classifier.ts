@@ -11,6 +11,11 @@
  * failure must NOT block the response — it degrades to exactly the signed-off regex
  * floor. The caller increments an ops-visible error counter (ruling §4.1) and the
  * institutional sustained-outage escalation (§4.2) is an ops/flag concern, not here.
+ *
+ * Slice 3b (audit-durability) expands the result to carry the §1.2 audit fields
+ * (model_call_id, decision latency) and SANITIZES the error to a bounded class so no
+ * raw error message — which can embed a fragment of the model's output via
+ * JSON.parse's SyntaxError — ever reaches the persisted `reason` (ruling §2.3a).
  */
 
 import { CLASSIFIER_PROMPT } from './classifierPrompt';
@@ -65,27 +70,91 @@ export function buildClassifierInput(side: ClassifierSide, target: string, conte
   return `SIDE: ${side}\n\nRECENT CONVERSATION:\n${context || '(none)'}\n\nTARGET:\n${target}`;
 }
 
-/** Injected model call: takes (systemPrompt, userMessage) → completion text + tokens. */
-export type CompleteFn = (system: string, user: string) => Promise<{ text: string; tokens: number }>;
+/**
+ * Injected model call. Returns the completion text + token count, and (Slice 3b) the
+ * provider call id when available — `modelCallId` is optional so stubs that return
+ * only { text, tokens } stay valid. Latency is measured by the caller (runClassifier),
+ * which is the §2.5 boundary: the complete() round trip.
+ */
+export type CompleteFn = (
+  system: string,
+  user: string,
+) => Promise<{ text: string; tokens: number; modelCallId?: string | null }>;
+
+/**
+ * Bounded classifier error classes (Slice 3b, ruling §2.3a). NEVER a raw message:
+ * JSON.parse's SyntaxError embeds a fragment of the parsed text in its `.message`,
+ * so passing `e.message` through would leak model output into the persisted `reason`.
+ */
+export type ClassifierErrorClass =
+  | 'no_json'        // parseClassifierVerdict found no JSON object
+  | 'invalid_shape'  // parsed value was not an object
+  | 'parse_failed'   // JSON.parse threw (SyntaxError) — message withheld
+  | 'model_error'    // complete() threw (SDK / network / timeout)
+  | 'unknown';       // non-Error throw
+
+/** Map a caught error to a bounded class. The raw message is intentionally discarded
+ *  — it can contain a fragment of the model's output (parse_failed) or provider
+ *  internals (model_error), neither of which may be persisted or logged as `reason`. */
+export function classifyClassifierError(e: unknown): ClassifierErrorClass {
+  if (e instanceof SyntaxError) return 'parse_failed';
+  if (e instanceof Error) {
+    if (e.message === 'classifier: no JSON object found') return 'no_json';
+    if (e.message === 'classifier: not an object') return 'invalid_shape';
+    return 'model_error';
+  }
+  return 'unknown';
+}
 
 export type ClassifierResult =
-  | { ok: true; flagged: boolean; categories: string[]; tokens: number }
-  | { ok: false; error: string };
+  | {
+      ok: true;
+      flagged: boolean;
+      categories: string[];
+      tokens: number;
+      modelCallId: string | null;
+      latencyMs: number;
+    }
+  | {
+      ok: false;
+      error: ClassifierErrorClass;
+      modelCallId: string | null;
+      latencyMs: number;
+    };
 
 /** Run the classifier on the residual. Never throws — any failure returns
- *  { ok:false }, which the caller fail-opens to the regex floor. */
+ *  { ok:false } with a BOUNDED error class, which the caller fail-opens to the regex
+ *  floor. latencyMs is the complete() round trip (§2.5); on error it is the elapsed
+ *  time before the throw. */
 export async function runClassifier(
   side: ClassifierSide,
   target: string,
   context: string,
   complete: CompleteFn
 ): Promise<ClassifierResult> {
+  const startedAt = Date.now();
   try {
-    const { text, tokens } = await complete(CLASSIFIER_PROMPT, buildClassifierInput(side, target, context));
+    const { text, tokens, modelCallId } = await complete(
+      CLASSIFIER_PROMPT,
+      buildClassifierInput(side, target, context),
+    );
+    const latencyMs = Date.now() - startedAt; // complete() round trip (§2.5)
     const verdict = parseClassifierVerdict(text);
-    return { ok: true, flagged: verdictFlagsSide(verdict, side), categories: verdict.categories, tokens };
+    return {
+      ok: true,
+      flagged: verdictFlagsSide(verdict, side),
+      categories: verdict.categories,
+      tokens,
+      modelCallId: modelCallId ?? null,
+      latencyMs,
+    };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'classifier error' };
+    return {
+      ok: false,
+      error: classifyClassifierError(e),
+      modelCallId: null,
+      latencyMs: Date.now() - startedAt,
+    };
   }
 }
 

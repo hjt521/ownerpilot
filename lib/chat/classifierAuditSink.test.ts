@@ -2,11 +2,13 @@
  * Slice 3a — classifier audit sink tests. No live calls (client + flag injected).
  * Covers the dormant-flag no-op (§4.2), the null-hash warning path (§4.3), and the
  * swallow+log+alert+count failure posture (§2.3 / Slice 2 parity).
+ * Slice 3b adds the boot self-check cases (§2.4 req 4 / §4.4).
  */
 import {
   createClassifierAuditSink,
   classifierAuditWriteFailureCount,
   classifierAuditHashKeyMissingCount,
+  classifierAuditStartupCheck,
   type ClassifierAuditAlert,
   type ClassifierAuditAlertSink,
   type SupabaseAuditClient,
@@ -89,6 +91,45 @@ async function main() {
   let threw2 = false;
   try { await sinkNoAlert(rec()); } catch { threw2 = true; }
   check('no alert sink: still does not throw', threw2 === false);
+
+  // --- Slice 3b: boot self-check (§2.4 req 4 / §4.4) ---
+  const savedLive = process.env.CLASSIFIER_AUDIT_LIVE;
+  const savedKey = process.env.CLASSIFIER_AUDIT_HASH_KEY;
+  const savedSha = process.env.VERCEL_GIT_COMMIT_SHA;
+
+  // flag off → no-op regardless of missing env
+  process.env.CLASSIFIER_AUDIT_LIVE = 'false';
+  delete process.env.CLASSIFIER_AUDIT_HASH_KEY;
+  delete process.env.VERCEL_GIT_COMMIT_SHA;
+  const a1 = new CapturingAlertSink();
+  classifierAuditStartupCheck({ alerts: a1 });
+  check('startup: flag off → no alerts', a1.emitted.length === 0);
+
+  // flag on + key missing → hash_key_missing alert
+  process.env.CLASSIFIER_AUDIT_LIVE = 'true';
+  process.env.VERCEL_GIT_COMMIT_SHA = 'sha123';
+  const a2 = new CapturingAlertSink();
+  classifierAuditStartupCheck({ alerts: a2 });
+  check('startup: live + key missing → hash_key_missing alert', a2.emitted.some((a) => a.alertClass === 'classifier_audit_hash_key_missing'));
+  check('startup: sha present → no sha alert', !a2.emitted.some((a) => a.alertClass === 'classifier_audit_chain_head_sha_missing'));
+
+  // flag on + sha missing → chain_head_sha_missing alert
+  process.env.CLASSIFIER_AUDIT_HASH_KEY = 'k';
+  delete process.env.VERCEL_GIT_COMMIT_SHA;
+  const a3 = new CapturingAlertSink();
+  classifierAuditStartupCheck({ alerts: a3 });
+  check('startup: live + sha missing → chain_head_sha_missing alert', a3.emitted.some((a) => a.alertClass === 'classifier_audit_chain_head_sha_missing'));
+  check('startup: key present → no key alert', !a3.emitted.some((a) => a.alertClass === 'classifier_audit_hash_key_missing'));
+
+  // flag on + all present → no alerts
+  process.env.VERCEL_GIT_COMMIT_SHA = 'sha123';
+  const a4 = new CapturingAlertSink();
+  classifierAuditStartupCheck({ alerts: a4 });
+  check('startup: live + all present → no alerts', a4.emitted.length === 0);
+
+  if (savedLive === undefined) delete process.env.CLASSIFIER_AUDIT_LIVE; else process.env.CLASSIFIER_AUDIT_LIVE = savedLive;
+  if (savedKey === undefined) delete process.env.CLASSIFIER_AUDIT_HASH_KEY; else process.env.CLASSIFIER_AUDIT_HASH_KEY = savedKey;
+  if (savedSha === undefined) delete process.env.VERCEL_GIT_COMMIT_SHA; else process.env.VERCEL_GIT_COMMIT_SHA = savedSha;
 }
 
 main().then(() => {

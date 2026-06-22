@@ -23,7 +23,8 @@ import type { ClassifierAuditRecord } from './classifierAuditTypes';
 export type ClassifierAuditAlertSeverity = 'major' | 'critical';
 export type ClassifierAuditAlertClass =
   | 'classifier_audit_write_failure'
-  | 'classifier_audit_hash_key_missing';
+  | 'classifier_audit_hash_key_missing'
+  | 'classifier_audit_chain_head_sha_missing';
 export interface ClassifierAuditAlert {
   source: 'classifier_audit';
   alertClass: ClassifierAuditAlertClass;
@@ -169,4 +170,57 @@ export function createClassifierAuditSink(
       // swallowed — the request must proceed (ruling §2.3 / Slice 2 parity)
     }
   };
+}
+
+/**
+ * Boot self-check (ruling §2.4 req 4 / §4.4). Wired into instrumentation.ts
+ * register(). A no-op unless CLASSIFIER_AUDIT_LIVE is on — when the audit is live,
+ * surfaces a misconfigured key (hashes would be null) or a missing deploy sha
+ * (chain_head_sha would be 'unknown') ONCE at boot, not just on the first user
+ * message. Boot is NEVER blocked: the classifier itself does not depend on the audit
+ * substrate. Emits distinct alert classes so each can be filtered/trended.
+ */
+export function classifierAuditStartupCheck(deps: { alerts?: ClassifierAuditAlertSink } = {}): void {
+  if (process.env.CLASSIFIER_AUDIT_LIVE !== 'true') return;
+
+  const keyMissing = !(process.env.CLASSIFIER_AUDIT_HASH_KEY && process.env.CLASSIFIER_AUDIT_HASH_KEY.length > 0);
+  const shaMissing = !(process.env.VERCEL_GIT_COMMIT_SHA && process.env.VERCEL_GIT_COMMIT_SHA.length > 0);
+
+  if (keyMissing) {
+    emitStartupAlert(
+      'classifier_audit_hash_key_missing',
+      'Classifier audit is LIVE but CLASSIFIER_AUDIT_HASH_KEY is absent at boot. ' +
+        'Rows will write with input_decision_hash = null until the key is set.',
+      deps.alerts,
+    );
+  }
+  if (shaMissing) {
+    emitStartupAlert(
+      'classifier_audit_chain_head_sha_missing',
+      'Classifier audit is LIVE but VERCEL_GIT_COMMIT_SHA is absent at boot. ' +
+        "chain_head_sha will be 'unknown' and hashes non-comparable with production.",
+      deps.alerts,
+    );
+  }
+}
+
+function emitStartupAlert(
+  alertClass: ClassifierAuditAlertClass,
+  body: string,
+  alerts?: ClassifierAuditAlertSink,
+): void {
+  try {
+    // eslint-disable-next-line no-console
+    console.error(JSON.stringify({ event: alertClass, phase: 'startup', ts: new Date().toISOString() }));
+  } catch { /* logging must never block boot */ }
+  if (alerts) {
+    void alerts.emit({
+      source: 'classifier_audit',
+      alertClass,
+      channels: ['in_app', 'email'],
+      severity: 'major',
+      title: 'Classifier audit boot self-check',
+      body,
+    }).catch(() => { /* alert emission must never block boot */ });
+  }
 }

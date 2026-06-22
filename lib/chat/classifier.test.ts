@@ -6,6 +6,7 @@ import {
   classifierBlocks,
   isUnsure,
   classifierDecision,
+  classifyClassifierError,
   INPUT_CATEGORIES,
   OUTPUT_CATEGORIES,
   type CompleteFn,
@@ -101,6 +102,31 @@ console.log('\n=== runClassifier + fail-open-to-regex-floor ===\n');
   check('clean verdict never blocks', classifierDecision(cleanOk, false) === false && classifierDecision(cleanOk, true) === false);
   check('error + fail-open → does NOT block (degrade to regex floor)', classifierDecision(errored, false) === false);
   check('error + fail-closed → blocks (ops sustained-outage escalation)', classifierDecision(errored, true) === true);
+
+  console.log('\n=== Slice 3b: error sanitization (reason leak closed) ===\n');
+  check("classifyClassifierError: no-brace → no_json", classifyClassifierError(new Error('classifier: no JSON object found')) === 'no_json');
+  check("classifyClassifierError: not-object → invalid_shape", classifyClassifierError(new Error('classifier: not an object')) === 'invalid_shape');
+  check("classifyClassifierError: SyntaxError → parse_failed", classifyClassifierError(new SyntaxError('Unexpected token x')) === 'parse_failed');
+  check("classifyClassifierError: other Error → model_error", classifyClassifierError(new Error('timeout')) === 'model_error');
+  check("classifyClassifierError: non-Error → unknown", classifyClassifierError('boom') === 'unknown');
+
+  const noJson = await runClassifier('input', 'x', '', stub('no json here at all'));
+  check('no-brace output → no_json', noJson.ok === false && noJson.error === 'no_json');
+  const badJson = await runClassifier('input', 'x', '', stub('{bad json: "tenant said something"}'));
+  check('malformed JSON → parse_failed', badJson.ok === false && badJson.error === 'parse_failed');
+  check('parse_failed leaks NO raw model text', !JSON.stringify(badJson).includes('tenant'));
+  const modelErr = await runClassifier('input', 'x', '', throwing);
+  check('complete() throw → model_error', modelErr.ok === false && modelErr.error === 'model_error');
+
+  console.log('\n=== Slice 3b: latency + model_call_id ===\n');
+  const okRes = await runClassifier('input', 'x', '', stub('{"flagged": false, "categories": []}', 7));
+  check('success carries numeric latencyMs', okRes.ok === true && typeof okRes.latencyMs === 'number' && okRes.latencyMs >= 0);
+  check('error carries numeric latencyMs', modelErr.ok === false && typeof modelErr.latencyMs === 'number' && modelErr.latencyMs >= 0);
+  check('success modelCallId null when stub omits it', okRes.ok === true && okRes.modelCallId === null);
+  check('error modelCallId is null', modelErr.ok === false && modelErr.modelCallId === null);
+  const withId: CompleteFn = async () => ({ text: '{"flagged": false, "categories": []}', tokens: 5, modelCallId: 'msg_abc' });
+  const idRes = await runClassifier('input', 'x', '', withId);
+  check('modelCallId passes through from complete()', idRes.ok === true && idRes.modelCallId === 'msg_abc');
 
   console.log('\n=== locked prompt wired ===\n');
   check('CLASSIFIER_PROMPT is the verbatim attorney text', CLASSIFIER_PROMPT.includes('You are a safety classifier for OwnerPilot'));

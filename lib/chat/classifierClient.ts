@@ -7,6 +7,9 @@
  *
  * Non-streaming, tiny max_tokens. Throws on any failure — runClassifier catches it
  * and the route fail-opens to the regex floor (unless ops has set CLASSIFIER_FAIL_CLOSED).
+ *
+ * Slice 3b: surfaces msg.id as modelCallId for the §1.2 audit field. Latency is
+ * timed by runClassifier (the §2.5 boundary), not here.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -30,6 +33,6 @@ export function makeGatewayComplete(): CompleteFn {
       .map((b) => b.text)
       .join('');
     const tokens = (msg.usage?.input_tokens ?? 0) + (msg.usage?.output_tokens ?? 0);
-    return { text, tokens };
+    return { text, tokens, modelCallId: msg.id ?? null };
   };
 }
