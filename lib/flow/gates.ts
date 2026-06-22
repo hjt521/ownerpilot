@@ -20,6 +20,7 @@ import {
 import { validatePaymentMethods } from '../payments/validatePaymentMethods';
 import { buildMethodsInput } from './paymentMethodsAdapter';
 import { detectJurisdiction } from '../jurisdiction/detectJurisdiction';
+import { supersedeNeedsConfirmation } from './jurisdictionSupersession';
 import { getVerifiedHolidaySet } from '../dates/holidays';
 import { computeCompliancePeriod, type ServiceMethod } from '../dates/computeCompliancePeriod';
 import { validatePayeeTrioAndDelivery } from '../payments/contactValidation';
@@ -254,8 +255,25 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
   if (!data.propertyAddress || data.propertyAddress.trim() === '') {
     blockers.push({ code: 'PROPERTY_ADDRESS_MISSING', message: 'A property address is required.' });
   } else {
-    const jur = detectJurisdiction({ address: data.propertyAddress, city: data.propertyCity });
-    if (jur.decision !== 'NO_KNOWN_OVERLAY') {
+const jur = detectJurisdiction({ address: data.propertyAddress, city: data.propertyCity });
+    if (jur.decision === 'NEEDS_CONFIRMATION') {
+      // FORK A (ruling 2026-06-22): the resolver supersedes the stub ONLY on the
+      // NEEDS_CONFIRMATION branch, and only when a cached verdict for the current
+      // normalized address is present. Absent a cached verdict, the stub's
+      // NEEDS_CONFIRMATION stands ("supersedes once present"); FORK B's
+      // face-gating is the independent safety that prevents producing an
+      // unverified notice. `confirmed_other_overlay_city` was verified ABSENT
+      // from the resolver disposition union during 4d, so it is not wired here;
+      // BLOCK_OVERLAY_CITY continues to originate only from the stub below.
+      const sup = supersedeNeedsConfirmation(data.propertyAddress, data.cachedResolverVerdict);
+      if (sup.kind === 'superseded') {
+        blockers.push(sup.blocker);
+      } else if (sup.kind === 'no_verdict') {
+        blockers.push({ code: `JURISDICTION_${jur.decision}`, message: jur.message });
+      }
+      // sup.kind === 'cleared' (not_la): push NO jurisdiction blocker.
+    } else if (jur.decision !== 'NO_KNOWN_OVERLAY') {
+      // All other stub decisions (e.g. BLOCK_OVERLAY_CITY) are unchanged.
       blockers.push({ code: `JURISDICTION_${jur.decision}`, message: jur.message });
     }
   }
