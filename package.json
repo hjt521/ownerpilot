@@ -10,7 +10,8 @@
     "test": "node scripts/run_tests.mjs",
     "ci:verify-locked-prose": "tsx scripts/ci/verify_locked_prose.ts",
     "ci:verify-classifier-lock": "node scripts/ci/verify_classifier_audit_no_input_text.mjs",
-    "ci:verify-no-live-cliff": "node scripts/ci/verify_no_live_cliff_schedule.mjs"
+    "ci:verify-no-live-cliff": "node scripts/ci/verify_no_live_cliff_schedule.mjs",
+    "ci:verify-geocode-failure-event": "node scripts/ci/verify_geocode_failure_event_no_user_content.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",

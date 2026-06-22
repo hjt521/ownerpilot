@@ -95,28 +95,36 @@ export function toGeocodeAuditRow(rec: GeocodeAuditRecord, chainHeadSha: string)
 }
 
 /** Record a swallowed audit-write failure: counter + distinct structured event +
- *  alert through the shared channel. NEVER throws (ruling §2.3). The structured
- *  log carries the decision_input_hash (not the raw address) so the failed
- *  decision is identifiable without leaking the address into the log stream. */
+ *  alert through the shared channel. NEVER throws (Slice 2 §2.3).
+ *
+ *  Privacy posture (ratification 2026-06-22 §2.3, binding): the failure EVENT
+ *  flows to a broader operational surface (incident channel, dashboard, on-call)
+ *  than the RLS-protected audit row, so it carries ONLY non-reversible
+ *  identifiers — `decision_input_hash` (joins to the audit row), `attempted_at`,
+ *  a sanitized `error_class`, and `chain_head_sha`. It carries NO `input_address`
+ *  (raw address stays on the audit row, service_role-only) and NO verdict
+ *  (`disposition`/`review_reason` live on the row, looked up via the hash). */
 function recordAuditFailure(
-  record: GeocodeAuditRecord,
   decisionInputHash: string,
+  chainHeadSha: string,
   err: unknown,
   alerts?: AuditAlertSink,
 ): void {
   counters.geocodeAuditWriteFailures += 1;
+  // error_class is a sanitized category (the Error subclass name, e.g. 'Error',
+  // 'AbortError'), never the raw error message — so no user content can leak
+  // through the failure event (§2.3 req 1).
   const errorClass = err instanceof Error ? err.name : 'unknown';
   try {
     // eslint-disable-next-line no-console
     console.error(
       JSON.stringify({
         event: 'geocode_audit_write_failure',
-        decisionInputHash,
-        disposition: record.disposition,
-        reviewReason: record.reviewReason ?? null,
-        errorClass,
-        failureCount: counters.geocodeAuditWriteFailures,
-        ts: new Date().toISOString(),
+        decision_input_hash: decisionInputHash,
+        attempted_at: new Date().toISOString(),
+        error_class: errorClass,
+        chain_head_sha: chainHeadSha,
+        failure_count: counters.geocodeAuditWriteFailures,
       }),
     );
   } catch {
@@ -131,8 +139,8 @@ function recordAuditFailure(
         title: 'Geocode audit-write failure',
         body:
           `A geocode_audit_log write failed (decision ${decisionInputHash.slice(0, 12)}…, ` +
-          `disposition ${record.disposition}, error ${errorClass}). The user request ` +
-          `proceeded; the audit row is missing and must be reconciled per the runbook ` +
+          `error ${errorClass}). The user request proceeded; the audit row is ` +
+          `missing and must be reconciled per the runbook ` +
           `(docs/runbooks/geocode_audit_write_failure.md).`,
       })
       .catch(() => {
@@ -169,14 +177,91 @@ export function createSupabaseRecordAudit(
   const sha = deps.chainHeadSha ?? resolveChainHeadSha;
 
   return async function recordAudit(record: GeocodeAuditRecord): Promise<void> {
-    const row = toGeocodeAuditRow(record, sha());
+    const chainHeadSha = sha();
+    const row = toGeocodeAuditRow(record, chainHeadSha);
     try {
       const supabase = await getClient();
       const { error } = await supabase.from('geocode_audit_log').insert(row);
       if (error) throw new Error(error.message);
     } catch (err) {
-      recordAuditFailure(record, row.decision_input_hash, err, deps.alerts);
+      recordAuditFailure(row.decision_input_hash, chainHeadSha, err, deps.alerts);
       // swallowed — the user request must proceed (ruling 4.3=A)
     }
+  };
+}
+
+/**
+ * A function that schedules deferred work to run AFTER the response is sent.
+ * The new geocode server surface injects `(fn) => after(fn)` from `next/server`;
+ * tests inject a synchronous collector. Kept INJECTED (not a direct `after`
+ * import) so this sink module stays framework-agnostic and unit-testable with
+ * no Next runtime. The scheduled function is fire-once; `Defer` does not await
+ * it — the platform primitive owns its lifecycle.
+ */
+export type Defer = (fn: () => Promise<void>) => void;
+
+/**
+ * Slice 4c — DEFERRED geocode audit sink (broker rulings
+ * slice4c_resolver_wiring_premise_broker_ruling_response_2026-06-21.md §2.2 +
+ * slice4_export_cliff_resolver_wiring_broker_ruling_response_2026-06-21.md §2.8;
+ * deferral mechanism reaffirmed in
+ * slice4c_pageside_bridge_synchronous_flow_broker_ruling_response_2026-06-22.md).
+ *
+ * Identical persistence semantics to createSupabaseRecordAudit, with ONE change:
+ * the deferred-scope discipline of §2.8 / §2.2 req 1 — only the Supabase insert
+ * is deferred. Specifically, when the returned recordAudit is invoked:
+ *
+ *   - SYNCHRONOUS, before returning to the caller:
+ *       row assembly + decision_input_hash + chain_head_sha read
+ *       (`toGeocodeAuditRow(record, sha())`).
+ *   - DEFERRED via the injected `defer` (i.e. `after()` at the surface):
+ *       getClient() + `.insert()` + the swallow+log+alert+count failure path.
+ *
+ * This matches the Slice 3b classifier-audit hybrid: assemble now, write later,
+ * so a slow/failing audit insert never sits upstream of the user response. The
+ * failure path reuses recordAuditFailure verbatim (Slice 2 §2.3 parity:
+ * swallow + log + alert + count). Fire-and-forget is NOT used — the write is
+ * carried by the platform's deferred-work primitive, which the ruling
+ * distinguishes from an un-awaited floating promise (Slice 4 §2.8 req 2).
+ *
+ * The resolver awaits this recordAudit once per terminal branch; because the
+ * deferred insert is scheduled (not awaited) and the function then resolves,
+ * the resolver's await returns as soon as assembly + scheduling complete. The
+ * actual insert runs after the response, owned by `defer`.
+ *
+ * Purely additive: createSupabaseRecordAudit (Slice 2) and its tests are
+ * untouched. This is the second constructor on the same sink module.
+ */
+export function createDeferredSupabaseRecordAudit(
+  defer: Defer,
+  deps: SupabaseAuditSinkDeps = {},
+): (record: GeocodeAuditRecord) => Promise<void> {
+  const getClient =
+    deps.getClient ??
+    (async () => {
+      const { createClient } = await import('../../supabase/server');
+      return (await createClient()) as unknown as SupabaseAuditClient;
+    });
+  const sha = deps.chainHeadSha ?? resolveChainHeadSha;
+
+  return async function recordAudit(record: GeocodeAuditRecord): Promise<void> {
+    // SYNCHRONOUS scope (§2.2 req 1 / §2.8): assemble the row, compute the hash,
+    // read chain_head_sha — all before the deferred work is scheduled and before
+    // this function resolves.
+    const chainHeadSha = sha();
+    const row = toGeocodeAuditRow(record, chainHeadSha);
+
+    // DEFERRED scope: ONLY the Supabase insert (+ its swallow+log+alert+count
+    // failure path). Scheduled via the injected primitive; not awaited here.
+    defer(async () => {
+      try {
+        const supabase = await getClient();
+        const { error } = await supabase.from('geocode_audit_log').insert(row);
+        if (error) throw new Error(error.message);
+      } catch (err) {
+        recordAuditFailure(row.decision_input_hash, chainHeadSha, err, deps.alerts);
+        // swallowed — the deferred write must never throw into the runtime
+      }
+    });
   };
 }
