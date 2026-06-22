@@ -63,6 +63,8 @@ import {
 } from '@/lib/jurisdiction/geocode/zimasParcelAdapter';
 import {
   createDeferredSupabaseRecordAudit,
+  computeDecisionInputHash,
+  resolveChainHeadSha,
   type Defer,
 } from '@/lib/jurisdiction/geocode/supabaseAuditSink';
 
@@ -210,12 +212,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: GeocodeRequestBody;
   try {
     body = (await req.json()) as GeocodeRequestBody;
-  } catch {
+} catch {
+    console.log(
+      JSON.stringify({
+        type: 'geocode_disposition',
+        disposition: 'invalid_json',
+        timestamp: new Date().toISOString(),
+        chain_head_sha: resolveChainHeadSha(),
+      }),
+    );
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
-
   const address = typeof body.address === 'string' ? body.address.trim() : '';
-  if (address === '') {
+if (address === '') {
+    console.log(
+      JSON.stringify({
+        type: 'geocode_disposition',
+        disposition: 'address_required',
+        timestamp: new Date().toISOString(),
+        chain_head_sha: resolveChainHeadSha(),
+      }),
+    );
     return NextResponse.json({ error: 'address_required' }, { status: 400 });
   }
 
@@ -243,6 +260,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       await recordAudit(buildGateClosedAuditRecord(address));
     }
 
+// Lockstep (gate_closed only): this decision_input_hash MUST equal the row
+    // hash computed in supabaseAuditSink.ts for the synthetic gate_closed row
+    // (recordAudit -> computeDecisionInputHash). Update BOTH sites in one PR.
+    console.log(
+      JSON.stringify({
+        type: 'geocode_disposition',
+        disposition: gateClosed ? 'gate_closed' : 'geocode_unavailable',
+        ...(gateClosed
+          ? { decision_input_hash: computeDecisionInputHash(address, resolveChainHeadSha()) }
+          : {}),
+        timestamp: new Date().toISOString(),
+        chain_head_sha: resolveChainHeadSha(),
+      }),
+    );
+
     // No verdict is invented on error. The surface is dormant-by-gate until
     // master go-live; the page-side gate check (4d) prevents reaching this in
     // normal operation, so this is the backstop path.
@@ -251,6 +283,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 503 },
     );
   }
+
+// Lockstep: this decision_input_hash MUST equal the row hash computed in
+  // supabaseAuditSink.ts (createDeferredSupabaseRecordAudit -> computeDecisionInputHash).
+  // Any change to canonicalization or sha source must update BOTH sites in one PR.
+  console.log(
+    JSON.stringify({
+      type: 'geocode_disposition',
+      disposition: result.disposition,
+      decision_input_hash: computeDecisionInputHash(address, resolveChainHeadSha()),
+      timestamp: new Date().toISOString(),
+      chain_head_sha: resolveChainHeadSha(),
+    }),
+  );
 
   return NextResponse.json(
     { disposition: result.disposition, reviewReason: result.reviewReason ?? null },
