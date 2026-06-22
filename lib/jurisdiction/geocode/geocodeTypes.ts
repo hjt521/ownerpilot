@@ -13,7 +13,8 @@
 export type GeocodeDisposition =
   | 'confirmed_la' // §2.1(3): inside City of LA, auto-confirmed at PREMISE+
   | 'not_la' // §2.1(5): resolved to a locality other than Los Angeles
-  | 'manual_review'; // §2.1(4): anything that cannot be auto-decided
+  | 'manual_review' // §2.1(4): anything that cannot be auto-decided
+  | 'gate_closed';
 
 /** Why a candidate routed to manual review (§2.1(4) + §5 classifier order). */
 export type ManualReviewReason =

@@ -67,7 +67,8 @@ export type ClassifierBranch =
   | 'correction_suppressed'
   | 'correction_inconclusive'
   | 'billing_cap_exhausted'
-  | 'api_error';
+  | 'api_error'
+  | 'gate_closed';
 
 /** Google AV correction flags read at step 2 (§4.2). */
 export interface CorrectionFlags {
