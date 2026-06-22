@@ -30,6 +30,9 @@ import { validateStep } from '@/lib/flow/advancement';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
 import { saveProfile, loadProfile, clearProfile, applyProfile } from '@/lib/flow/profile';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
+import { runJurisdictionResolution } from '@/lib/flow/jurisdictionBridge';
+import { normalizeAddressKey } from '@/lib/flow/jurisdictionVerdict';
+import { isLaProductionUnblocked } from '@/lib/jurisdiction/laRtcRules';
 import { validatePaymentMethods } from '@/lib/payments/validatePaymentMethods';
 import { buildMethodsInput } from '@/lib/flow/paymentMethodsAdapter';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
@@ -113,6 +116,10 @@ const PAGES: { label: string; subhead?: string; steps: FlowStep[] }[] = [
     ],
   },
 ];
+// Slice 4d: the wizard page index whose entry triggers the jurisdiction
+// resolver bridge (FORK B: invoke at ReviewStep entry). Derived from PAGES so a
+// reorder can't desync it. Review is the step inside the last page group.
+const REVIEW_PAGE_INDEX = PAGES.findIndex((p) => p.steps.includes(FlowStep.Review));
 
 /** Required-field marker. */
 function Req() {
@@ -128,6 +135,9 @@ function renderStepBody(
   data: NoticeFlowData,
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void,
   goToPage?: (pageIndex: number) => void,
+  jurisdictionResolving?: boolean,
+  jurisdictionSlow?: boolean,
+  onRetryJurisdiction?: () => void,
 ): ReactNode {
   switch (step) {
     case FlowStep.PreflightDispute:
@@ -145,7 +155,16 @@ function renderStepBody(
     case FlowStep.LandlordAgentInfo:
       return <LandlordStep data={data} update={update} />;
     case FlowStep.Review:
-      return <ReviewStep data={data} update={update} goToPage={goToPage} />;
+      return (
+        <ReviewStep
+          data={data}
+          update={update}
+          goToPage={goToPage}
+          jurisdictionResolving={jurisdictionResolving}
+          jurisdictionSlow={jurisdictionSlow}
+          onRetryJurisdiction={onRetryJurisdiction}
+        />
+      );
     default:
       return null;
   }
@@ -155,6 +174,15 @@ export function NoticeFlow() {
   const [state, setState] = useState<NoticeFlowState>(createFlowState);
   const [pageIndex, setPageIndex] = useState(0);
   const [showIssues, setShowIssues] = useState(false);
+// Slice 4d: in-flight + slow-loading + retry-nonce state for the jurisdiction
+  // resolver bridge. resolvingKey = the normalized address currently being
+  // resolved (drives the loading indicator); slowResolve = true once the call
+  // crosses the 4s wall-clock threshold (swaps to the slow §3.A copy);
+  // retryNonce = bumped by the Retry button to force a fresh invocation of a
+  // previously-failed address (FORK B per-invocation semantics).
+  const [resolvingKey, setResolvingKey] = useState<string | null>(null);
+  const [slowResolve, setSlowResolve] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
   const [draftRestored, setDraftRestored] = useState(false);
   const [profilePrefilled, setProfilePrefilled] = useState(false);
   // C5 soft mode: the safety-override confirmation modal.
@@ -199,7 +227,77 @@ export function NoticeFlow() {
     }, 500);
     return () => clearTimeout(t);
   }, [state.data, pageIndex]);
+// Slice 4d — jurisdiction resolver bridge (FORK B: invoke at ReviewStep entry).
+  // Dormant-by-gate (ruling 2026-06-22, Option 1): runJurisdictionResolution
+  // checks isLaProductionUnblocked() FIRST; when the gate is closed it returns
+  // skipped_gate_closed and we write nothing — the stub's NEEDS_CONFIRMATION
+  // stands. This is the steady-state shape: when the gate opens, no code here
+  // changes, only the predicate flips.
+  const normalizedPropertyAddress = normalizeAddressKey(state.data.propertyAddress);
+  useEffect(() => {
+    // Only invoke on the Review page, with a non-empty address, and only when a
+    // verdict for THIS normalized address is not already cached (keyed cache).
+    if (pageIndex !== REVIEW_PAGE_INDEX) return;
+    if (normalizedPropertyAddress === '') return;
+    const cached = state.data.cachedResolverVerdict;
+    if (cached && cached.addressKey === normalizedPropertyAddress) return;
 
+    const controller = new AbortController();
+    let slowTimer: ReturnType<typeof setTimeout> | null = null;
+    let active = true;
+
+    setResolvingKey(normalizedPropertyAddress);
+    setSlowResolve(false);
+    // §3.A slow-copy threshold: 4s wall-clock.
+    slowTimer = setTimeout(() => { if (active) setSlowResolve(true); }, 4000);
+
+    runJurisdictionResolution(state.data.propertyAddress, {
+      isGateOpen: () => isLaProductionUnblocked(),
+      fetchImpl: fetch,
+      signal: controller.signal,
+    })
+      .then((r) => {
+        if (!active) return;
+        if (r.kind === 'verdict') {
+          update({
+            cachedResolverVerdict: {
+              verdict: r.verdict,
+              addressKey: r.addressKey,
+              resolvedAt: new Date().toISOString(),
+            },
+          });
+        }
+        // skipped_gate_closed / skipped_no_address / aborted: write nothing.
+      })
+      .catch(() => { /* fail-soft: a throw maps to no verdict; effect is re-run on next entry */ })
+      .finally(() => {
+        if (slowTimer) clearTimeout(slowTimer);
+        if (active) { setResolvingKey(null); setSlowResolve(false); }
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+      if (slowTimer) clearTimeout(slowTimer);
+    };
+    // Deps: pageIndex + normalized address + retryNonce ONLY. NOT state.data
+    // (would re-fire on our own verdict write). The keyed-cache guard above
+    // makes a redundant run a no-op anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageIndex, normalizedPropertyAddress, retryNonce]);
+  const jurisdictionResolving =
+    resolvingKey !== null && resolvingKey === normalizedPropertyAddress;
+  const onRetryJurisdiction = () => {
+    // Clear the failed verdict for this address and bump the nonce to force a
+    // fresh invocation (FORK B: re-invocation = new audit row).
+    update((d) => {
+      if (d.cachedResolverVerdict?.addressKey === normalizedPropertyAddress) {
+        return { cachedResolverVerdict: undefined };
+      }
+      return {};
+    });
+    setRetryNonce((n) => n + 1);
+  };
   const startOver = () => {
     clearDraft();
     const fresh = createFlowState();
@@ -439,7 +537,7 @@ export function NoticeFlow() {
                   : ''
               }
             >
-              {renderStepBody(step, state.data, update, goToPage)}
+              {renderStepBody(step, state.data, update, goToPage, jurisdictionResolving, slowResolve, onRetryJurisdiction)}
             </div>
           ))}
           </AccordionProvider>
@@ -2663,7 +2761,20 @@ const BLOCKER_PAGE: Record<string, number> = {
   DATES_NOT_COMPUTABLE: 4,
 };
 
+// Slice 4d (B.1): the three resolver hard-block codes are TERMINAL — no
+// "Fix this →" jump. The address is correct/confirmed (LA overlay), ambiguous
+// (manual review), or the failure is on our side (resolution failed); sending
+// the user to Property to "fix" a correct address is misdirection. Returning
+// null suppresses the jump; the blocker message carries the explanation.
+// JURISDICTION_NEEDS_CONFIRMATION keeps its existing page-1 routing (editing
+// the address IS the path out of that one).
+const TERMINAL_JURISDICTION_CODES = new Set<string>([
+  'JURISDICTION_LA_OVERLAY_NOT_YET_AVAILABLE',
+  'JURISDICTION_MANUAL_REVIEW_REQUIRED',
+  'JURISDICTION_RESOLUTION_FAILED',
+]);
 function pageForBlocker(code: string): number | null {
+  if (TERMINAL_JURISDICTION_CODES.has(code)) return null;
   if (code.startsWith('JURISDICTION_')) return 1;
   return code in BLOCKER_PAGE ? BLOCKER_PAGE[code] : null;
 }
@@ -2798,10 +2909,16 @@ function ReviewStep({
   data,
   update,
   goToPage,
+  jurisdictionResolving,
+  jurisdictionSlow,
+  onRetryJurisdiction,
 }: {
   data: NoticeFlowData;
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
   goToPage?: (pageIndex: number) => void;
+  jurisdictionResolving?: boolean;
+  jurisdictionSlow?: boolean;
+  onRetryJurisdiction?: () => void;
 }) {
   const result = evaluateCanProduceV4(data);
 
@@ -2866,6 +2983,23 @@ function ReviewStep({
   // "Produce Notice Packet" action stays below as the deliberate final step.
   return (
     <div className="space-y-6">
+      {jurisdictionResolving && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-2 rounded-lg border border-rule bg-tint px-4 py-3 text-sm text-gray-700"
+        >
+          <span
+            aria-hidden="true"
+            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-300 border-t-brand"
+          />
+          <span>
+            {jurisdictionSlow
+              ? 'Confirming jurisdiction. This can take a few seconds.'
+              : 'Confirming jurisdiction\u2026'}
+          </span>
+        </div>
+      )}
       <StepIntro>
         Here&apos;s where your notice stands. Once everything below is checked
         off, produce your packet using the button further down this step.
@@ -2949,6 +3083,15 @@ function ReviewStep({
                         className="ml-2 align-baseline text-xs font-semibold text-brand underline whitespace-nowrap"
                       >
                         Fix this &rarr;
+                      </button>
+                    )}
+		{b.code === 'JURISDICTION_RESOLUTION_FAILED' && onRetryJurisdiction && (
+                      <button
+                        type="button"
+                        onClick={onRetryJurisdiction}
+                        className="ml-2 align-baseline text-xs font-semibold text-brand underline whitespace-nowrap"
+                      >
+                        Try again
                       </button>
                     )}
                     {b.code === 'PAYMENT_CONFIG_INVALID' && result.paymentErrors.length > 0 && (

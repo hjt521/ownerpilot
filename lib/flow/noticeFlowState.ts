@@ -17,6 +17,7 @@
  */
 
 import type { ServiceMethod } from '../dates/computeCompliancePeriod';
+import type { CachedResolverVerdict } from './jurisdictionVerdict';
 
 /** The ordered steps of the flow. Pre-flight precedes Step 1. */
 export enum FlowStep {
@@ -340,6 +341,16 @@ export interface NoticeFlowData {
    * prior failed attempts). Derived from evaluateStaleness.
    */
   stalenessReason?: StalenessReason | null;
+// --- Jurisdiction resolver verdict (Slice 4d) -----------------------------
+  // FORK B caches the resolveLaAddressV2 verdict here at ReviewStep entry,
+  // keyed on the normalized propertyAddress. The produce gate reads this
+  // synchronously (it never makes the async call). Ruling 4d-A.1: persisting
+  // this field bumps DRAFT_VERSION 2 -> 3; pre-4d drafts discard on load.
+  // Captures verdict + normalized-address key + resolved-at ONLY (not the full
+  // audit row — that is the gate's input, not session state). Undefined = no
+  // verdict yet (the stub's NEEDS_CONFIRMATION stands per "supersedes once
+  // present"). See lib/flow/jurisdictionVerdict.ts.
+  cachedResolverVerdict?: CachedResolverVerdict;
 }
 
 /** Outcome of a single service attempt (attorney B1 enum). */

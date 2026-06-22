@@ -27,6 +27,10 @@
  * false "proceed" is the dangerous outcome. Anything LA-ish, or any ambiguity,
  * routes to NEEDS_CONFIRMATION, not to a silent proceed.
  *
+ * Synchronous first-pass gate for hard overlay-city blocks. The
+ * NEEDS_CONFIRMATION branch is superseded by resolveLaAddressV2 at
+ * ReviewStep per broker ruling 2026-06-22.
+ *
  * This is product routing logic, not legal advice.
  */
 

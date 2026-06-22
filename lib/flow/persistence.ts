@@ -22,7 +22,14 @@ export const DRAFT_KEY = 'op.noticeDraft.v1';
 // so pre-redesign drafts are discarded on load (loadDraft's version check)
 // rather than restoring the user onto the wrong page. Envelope shape is
 // unchanged; the next autosave overwrites the same key (no orphan).
-export const DRAFT_VERSION = 2;
+//
+// Bumped 2 -> 3 with Slice 4d: NoticeFlowData gains `cachedResolverVerdict`.
+// Per the envelope rule (and ruling 4d-A.1), this is a shape change, so the
+// version bumps and pre-4d drafts (v: 2) are discarded on load — no
+// field-level migration. A draft is cheap to re-enter; an audit log polluted
+// with refresh-driven duplicate resolves is not. In-flight drafts are lost
+// once, at the 4d deploy (the "freeze-loss on deploy" note in the runbook).
+export const DRAFT_VERSION = 3;
 
 export interface DraftEnvelope {
   v: number;
