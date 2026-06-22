@@ -25,6 +25,12 @@ import type { RedisLike } from '@/lib/chat/rateLimitStore';
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
 
+// Slice 3b (ruling §2.4 req 4): classifier-audit boot self-check, independent of
+  // the rate-limit store below. No-op unless CLASSIFIER_AUDIT_LIVE; when live,
+  // surfaces a missing hash key / deploy sha once at boot. Never blocks boot.
+  const { classifierAuditStartupCheck } = await import('@/lib/chat/classifierAuditSink');
+  classifierAuditStartupCheck();
+
   const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) {

@@ -15,6 +15,10 @@ import { runClassifier, classifierDecision, isUnsure } from '@/lib/chat/classifi
 import { makeGatewayComplete } from '@/lib/chat/classifierClient'
 import { recordClassifierCall } from '@/lib/chat/classifierTelemetry'
 import { CLASSIFIER_LIVE, CLASSIFIER_FAIL_CLOSED } from '@/lib/chat/classifierConfig'
+import { after } from 'next/server'
+import { createClassifierAuditSink } from '@/lib/chat/classifierAuditSink'
+import { classifierAuditFor } from '@/lib/chat/classifierAuditRecord'
+import type { ClassifierAuditRecord } from '@/lib/chat/classifierAuditTypes'
 
 // Chat endpoint. Pseudonymous product-session gate + per-session rate limits
 // (H2, chatbox #4). No login/PII; counters only, never transcripts. The in-memory
@@ -195,6 +199,10 @@ If you're wondering why OwnerPilot doesn't refer you to a specific attorney, tha
 
 The user finds their own attorney. OwnerPilot does not recommend, name, or refer specific lawyers.`
 
+// Slice 3b: classifier audit sink. Dormant unless CLASSIFIER_AUDIT_LIVE (checked
+// inside the sink, ruling §4.2). Created once per module instance; no construction
+// side effects, so this is safe at module scope.
+const classifierAudit = createClassifierAuditSink()
 type ChatMessage = {
   role: 'user' | 'assistant'
   content: string
@@ -297,9 +305,15 @@ export async function POST(req: Request) {
   const gatewayComplete = CLASSIFIER_LIVE ? makeGatewayComplete() : null
   let classifierTokens = 0
   if (gatewayComplete) {
-    const res = await runClassifier('input', latestUserText(messages), recentContext(messages), gatewayComplete)
+    const inputTarget = latestUserText(messages)
+    const res = await runClassifier('input', inputTarget, recentContext(messages), gatewayComplete)
     if (res.ok) classifierTokens += res.tokens
     recordClassifierCall({ side: 'input', ok: res.ok, unsure: isUnsure(res), reason: res.ok ? undefined : res.error })
+    // Slice 3b: one row per classifier invocation (ruling §2.3). Deferred via after()
+    // so the Supabase insert never delays the response (ruling §4.1 hybrid: input
+    // defers). Scheduled before the block-return, so it runs whether or not we block.
+    const inputAuditRecord = classifierAuditFor(true, { side: 'input', target: inputTarget, result: res, failClosed: CLASSIFIER_FAIL_CLOSED })
+    if (inputAuditRecord) after(() => classifierAudit(inputAuditRecord))
     if (classifierDecision(res, CLASSIFIER_FAIL_CLOSED)) {
       try {
         await store.addTokens(sid, now, classifierTokens)
@@ -349,13 +363,23 @@ export async function POST(req: Request) {
         // output classifier (catches paraphrased notice_draft / legal_conclusion /
         // litigation_strategy). Fail-open unless ops flipped fail-closed (§4.2).
         let out = outputViolates(acc) ? OUTPUT_REFUSAL : acc
+        let outputAuditRecord: ClassifierAuditRecord | null = null
         if (out === acc && gatewayComplete) {
           const res = await runClassifier('output', acc, recentContext(messages), gatewayComplete)
           if (res.ok) classifierTokens += res.tokens
           recordClassifierCall({ side: 'output', ok: res.ok, unsure: isUnsure(res), reason: res.ok ? undefined : res.error })
+          outputAuditRecord = classifierAuditFor(true, { side: 'output', target: acc, result: res, failClosed: CLASSIFIER_FAIL_CLOSED })
           if (classifierDecision(res, CLASSIFIER_FAIL_CLOSED)) out = OUTPUT_REFUSAL
         }
         controller.enqueue(encoder.encode(out))
+
+        // Slice 3b: audit the output invocation AFTER content is flushed (ruling §4.1
+        // hybrid: output awaits — the record only exists here inside the stream, and
+        // the content is already enqueued, so this adds no content latency, only a
+        // marginal stream-close delay). The sink never throws.
+        if (outputAuditRecord) {
+          await classifierAudit(outputAuditRecord)
+        }
 
         // H2: record actual token usage against the per-session monthly cap
         // (best-effort; falls back to a length estimate if usage is unavailable).

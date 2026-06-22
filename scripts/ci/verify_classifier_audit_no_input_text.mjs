@@ -108,5 +108,24 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log(`verify_classifier_audit_no_input_text: PASS (${scanned} migration file(s) referencing ${TABLE} scanned)`);
+// ---------------------------------------------------------------------------
+// Slice 3b (ruling §2.2 req 5): the side column must be constrained to
+// 'input' | 'output' so a non-{input,output} value can never land. Assert that
+// some migration adds a CHECK on side. ('CI guard rejects other values.')
+// ---------------------------------------------------------------------------
+const allSql = files.map((f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8')).join('\n');
+const sideCheck = new RegExp(
+  `check\\s*\\(\\s*side\\s+in\\s*\\(\\s*'input'\\s*,\\s*'output'\\s*\\)\\s*\\)`,
+  'i',
+);
+if (!sideCheck.test(allSql)) {
+  console.error('verify_classifier_audit_no_input_text: FAIL');
+  console.error(
+    `  - ${TABLE}.side is not constrained to ('input','output'). ` +
+      'Add the CHECK constraint (ruling 2026-06-21 §2.2 req 5).'
+  );
+  process.exit(1);
+}
+
+console.log(`verify_classifier_audit_no_input_text: PASS (${scanned} migration file(s) referencing ${TABLE} scanned; side constraint present)`);
 process.exit(0);
