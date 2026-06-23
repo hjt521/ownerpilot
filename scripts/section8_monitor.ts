@@ -231,6 +231,19 @@ async function pgCollectHashes(base: string, key: string, query: string): Promis
   return set;
 }
 
+/** Build the `vercel logs --json` argv for a window. A token is appended ONLY
+ *  when truthy — an empty-string VERCEL_TOKEN (e.g. a sourced `VERCEL_TOKEN=`
+ *  line) is treated as absent, so the CLI falls back to the `vercel login`
+ *  session rather than passing `--token ""` (which vercel rejects). */
+export function buildVercelLogArgs(
+  window: Section8Window,
+  vercelToken: string | undefined,
+): string[] {
+  const args = ['logs', '--json', '--since', window.start.toISOString()];
+  if (vercelToken) args.push('--token', vercelToken);
+  return args;
+}
+
 function buildLiveAdapters(opts: {
   supabaseUrl: string;
   serviceKey: string;
@@ -242,8 +255,7 @@ function buildLiveAdapters(opts: {
 
   const readLogLines: Section8MonitorAdapters['readLogLines'] = (window) =>
     new Promise((resolve, reject) => {
-      const args = ['logs', '--json', '--since', window.start.toISOString()];
-      if (vercelToken !== undefined) args.push('--token', vercelToken);
+      const args = buildVercelLogArgs(window, vercelToken);
       let stdout = '';
       let stderr = '';
       const child = spawn('vercel', args);
