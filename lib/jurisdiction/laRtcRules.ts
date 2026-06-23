@@ -1,26 +1,26 @@
 /**
- * Los Angeles Right-to-Counsel (RTC) overlay — VERIFIED RULES + boundary.
+ * Los Angeles Right-to-Counsel (RTC) overlay — BROKER-VERIFIED RULES + boundary.
  *
- * Attorney-verified 2026-06-01 (see citation pull sign-off). This module holds
+ * Broker-verified 2026-06-01 via primary-source citation pull (see broker sign-off). This module holds
  * the RTC rule FACTS as structured data, the AB 2347 post-production boundary
  * message, and a structural gate that makes producing LA notices impossible
  * until the three required dependencies are satisfied.
  *
  * ⚠️  SCOPE OF THE SIGN-OFF (critical):
- * The attorney verified the RULES and approved BUILDING the overlay logic. The
+ * The broker verified the RULES (per primary-source citation pull) and authorized BUILDING the overlay logic. The
  * sign-off explicitly does NOT authorize producing LA notices in the live
- * product. Three dependencies must each land with their own attorney sign-off
+ * product. Three dependencies must each land with their own broker sign-off
  * first (see LA_PRODUCTION_DEPENDENCIES). The `isLaProductionUnblocked()` gate
  * below enforces this in code, not just in comments.
  *
- * Not legal advice; encodes attorney-verified rules.
+ * Not legal advice; encodes broker-verified rules.
  */
 
 // --- Verified rule facts ---------------------------------------------------
 
 export interface VerifiedRuleEntry {
   verified: boolean;
-  verifiedBy?: string; // "Name, SBN ######"
+  verifiedBy?: string; // "Jack Taglyan, CalDRE B9445457"
   verifiedOn?: string; // 'YYYY-MM-DD'
   source: string;
 }
@@ -42,7 +42,7 @@ export type RtcLanguage = (typeof RTC_PUBLISHED_LANGUAGES)[number];
 
 /**
  * Official LAHD-published RTC notice form locations. The product must serve the
- * OFFICIAL PDF (embed-and-refresh per attorney direction), never a regenerated
+ * OFFICIAL PDF (embed-and-refresh per broker direction), never a regenerated
  * copy. These URLs are the canonical source for the embed-and-refresh job.
  * NOTE: presence here does NOT mean a verified local copy exists — that's the
  * form-refresh dependency (see LA_PRODUCTION_DEPENDENCIES).
@@ -68,7 +68,7 @@ export const RTC_FORM_URLS: Record<RtcLanguage, string> = {
     'https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Tagalog.pdf',
 };
 
-/** Attorney-verified RTC rule facts. */
+/** Broker-verified RTC rule facts. */
 export const LA_RTC_RULES: VerifiedRuleEntry & {
   effectiveDate: string;
   ordinance: string;
@@ -81,12 +81,12 @@ export const LA_RTC_RULES: VerifiedRuleEntry & {
   filingScope: 'all_eviction_notices',
   filingDeadlineBusinessDays: 3,
   verified: true,
-  verifiedBy: '{ATTORNEY_NAME}, SBN {SBN}', // replace with reviewing attorney name + SBN before commit
+  verifiedBy: 'Jack Taglyan, CalDRE B9445457', // broker-verified per primary-source citation pull 2026-06-01
   verifiedOn: '2026-06-01',
   source:
     'LAHD RTC page (https://housing.lacity.gov/rtc) and JCO page ' +
     '(https://housing.lacity.gov/residents/just-cause-for-eviction-ordinance-jco), ' +
-    'fetched + attorney-verified 2026-06-01; City of LA Ordinance 188,681; ' +
+    'fetched + broker-verified 2026-06-01; City of LA Ordinance 188,681; ' +
     'LAMC 151.09.C.9 & 165.05.B.5 (3-business-day filing); ' +
     'CCP § 1167 as amended by AB 2347 (UD response, court days).',
 };
@@ -95,7 +95,7 @@ export const LA_RTC_RULES: VerifiedRuleEntry & {
 
 /**
  * The ENTIRE permitted post-production message regarding the UD stage / AB 2347.
- * Per attorney direction: ZERO specific day-counts about the UD stage. Do not
+ * Per broker direction: ZERO specific day-counts about the UD stage. Do not
  * add "10 days", "court days", "business days", or any number near this. The
  * product must never compute, display, or track UD/court deadlines.
  *
@@ -114,11 +114,11 @@ export const UD_STAGE_BOUNDARY_MESSAGE =
 
 /**
  * The three dependencies that must ALL be satisfied before LA notice production
- * may be unblocked. The attorney sign-off authorized building the overlay but
+ * may be unblocked. The broker sign-off authorized building the overlay but
  * NOT producing LA notices until these land, each with its own sign-off.
  *
  * These flags default to false and must be flipped only when the corresponding
- * dependency is built AND attorney/admin-signed-off. They are deliberately not
+ * dependency is built AND broker/admin-signed-off. They are deliberately not
  * wired to any auto-detection — flipping them is a human, reviewed act.
  */
 export interface LaProductionDependencies {
