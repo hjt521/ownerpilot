@@ -41,3 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .diagnostics/
+
+# geocode resolver test-run scratch (regenerable; not tracked)
+la_geocode_resolver_testset_run_*.md
