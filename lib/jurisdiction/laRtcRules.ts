@@ -157,7 +157,7 @@ export const LA_PRODUCTION_DEPENDENCIES: LaProductionDependencies = {
   geocodeConfirmationBuilt: true,
   cityBusinessDayCalendarBuilt: true,
   rtcFormRefreshJobBuilt: false,
-  geocodeAuditDurabilityWired: false,
+  geocodeAuditDurabilityWired: true,
   cityOfLaZipsAuthoritative: false,
   parcelEndpointHealthCheckLive: false,
 };
