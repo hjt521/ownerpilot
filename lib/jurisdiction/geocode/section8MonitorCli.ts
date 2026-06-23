@@ -1,24 +1,21 @@
 /**
  * section8MonitorCli.ts — pure helpers for the §8 monitor CLI
- * (`scripts/section8_monitor.ts`). Factored out of the script so the
- * window-derivation, arg-parsing, exit-mapping, and payload-routing logic is
- * unit-testable through the repo gate without spawning Vercel or opening a
- * Supabase client. The script stays a thin wrapper: parse → resolve window →
- * build live adapters → runSection8Monitor → exit code + stderr summary.
+ * (`scripts/section8_monitor.ts`). Factored out so the window-derivation,
+ * arg-parsing, and exit-mapping logic is unit-testable through the repo gate
+ * without opening a Supabase client. The script stays a thin wrapper: parse →
+ * resolve window → build live adapters → runSection8Monitor → exit code + stderr.
+ *
+ * DELIVERABLE 4b: the log-payload routing helpers (routeLogPayload /
+ * KNOWN_DISPOSITIONS) are REMOVED — the monitor no longer reads `vercel logs`
+ * (IF-6), so there is no log line to route. The disposition/failure log-line types
+ * are gone from section8MonitorCore. Window derivation, arg parsing, and exit
+ * codes are unchanged.
  *
  * Ruling baseline: NF-1 (calendar-day PT window; one-shot uses explicit bounds
- * verbatim), NF-3 (exit-code scheme), F-A/F-B (route disposition vs failure by
- * key), P-1 (classify against the imported sets, no re-list).
+ * verbatim), NF-3 (exit-code scheme).
  */
-import {
-  ROW_WRITING_DISPOSITIONS,
-  NO_ROW_BY_DESIGN_DISPOSITIONS,
-  type Section8Disposition,
-} from './section8Core';
 import type {
   Section8Window,
-  DispositionLogLine,
-  FailureLogLine,
   MonitorVerdict,
 } from './section8MonitorCore';
 
@@ -35,7 +32,7 @@ export interface MonitorArgs {
   windowEnd?: string;
   /** Compute + print, do not write. */
   dryRun: boolean;
-  /** Pre-go-live one-shot semantics (recovery set = this run's rows only). */
+  /** Pre-go-live one-shot semantics (no NF-2 chain — prior is null). */
   oneShot: boolean;
 }
 
@@ -191,40 +188,4 @@ export function verdictToExitCode(verdict: MonitorVerdict): number {
     case 'monitor_degraded':
       return 20;
   }
-}
-
-// --------------------------------------------------------------------------
-// Log-payload routing (F-A / F-B)
-// --------------------------------------------------------------------------
-
-const KNOWN_DISPOSITIONS: ReadonlySet<string> = new Set<string>([
-  ...ROW_WRITING_DISPOSITIONS,
-  ...NO_ROW_BY_DESIGN_DISPOSITIONS,
-]);
-
-/** Route a parsed inner log payload (already unwrapped from the Vercel envelope
- *  by the script) to a disposition line, a failure line, or null (ignore).
- *  F-B: disposition keyed on `type === 'geocode_disposition'`; failure keyed on
- *  `event === 'geocode_audit_write_failure'`. Malformed/foreign payloads → null.
- *  Disposition strings are validated against the imported union (no re-list). */
-export function routeLogPayload(obj: unknown): DispositionLogLine | FailureLogLine | null {
-  if (obj === null || typeof obj !== 'object') return null;
-  const o = obj as Record<string, unknown>;
-
-  if (o.type === 'geocode_disposition') {
-    const d = o.disposition;
-    if (typeof d !== 'string' || !KNOWN_DISPOSITIONS.has(d)) return null;
-    const disposition = d as Section8Disposition;
-    const hash = typeof o.decision_input_hash === 'string' ? o.decision_input_hash : undefined;
-    const line: DispositionLogLine = { type: 'geocode_disposition', disposition };
-    if (hash !== undefined) line.decision_input_hash = hash;
-    return line;
-  }
-
-  if (o.event === 'geocode_audit_write_failure') {
-    if (typeof o.decision_input_hash !== 'string') return null;
-    return { event: 'geocode_audit_write_failure', decision_input_hash: o.decision_input_hash };
-  }
-
-  return null;
 }
