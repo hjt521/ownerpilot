@@ -123,6 +123,112 @@ Investigation procedure for red:
     OR a non-route.ts code path is writing rows. Either is a substrate bug that
     blocks further interpretation until resolved.
 
+### §8 read-path query set (deliverable 4 — operator recipes)
+
+Runnable recipes the §8 monitor uses and that an operator runs by hand to
+cross-check a `section8_runs` row. They IMPLEMENT the four-component
+definitions and threshold table above; they do not restate them. `service_role`
+is sourced from the broker-local `.env` (operator-surface-only); never
+app/Vercel/git/CI. Load creds first: `set -a; source .env.local; set +a`.
+
+Run the monitor:
+```
+npx tsx scripts/section8_monitor.ts                 # recurring: prior PT calendar day
+npx tsx scripts/section8_monitor.ts --one-shot      # pre-go-live one-shot (no chain)
+npx tsx scripts/section8_monitor.ts --dry-run       # compute + print, write nothing
+npx tsx scripts/section8_monitor.ts --window-start 2026-06-21T07:00:00Z --window-end 2026-06-22T07:00:00Z
+```
+Exit codes: `0` green / `0` yellow (WARN) / `10` red / `20` monitor_degraded / `1` hard error.
+
+Pull the window's disposition + failure events (BOTH log levels — disposition is
+info, failure is error):
+```
+vercel logs --json --since <window-start-ISO> \
+  | grep -E 'geocode_disposition|geocode_audit_write_failure'
+```
+The inner payload is the envelope's `.message` field. Disposition events key on
+`"type":"geocode_disposition"`; failures on `"event":"geocode_audit_write_failure"`.
+Window membership is by envelope timestamp (STRICT window); the +5m band below
+applies ONLY to the N1 row query.
+
+**(a) N1 `rows_written` — with the +5m hash-matched grace band (NF-1 sub-decision).**
+`decided_at` is insert-time (`default now()`), so a near-midnight decision's row
+can land just past `window_end`; the +5m tail catches it and the hash `in (...)`
+filter keeps the band safe (an unrelated next-day row won't match an in-window
+hash). Reproduce this exactly or a strict-window hand query may disagree by ±1 on
+a midnight-straddle day:
+```sql
+select count(*) from public.geocode_audit_log
+ where decided_at >= '<window-start-ISO>'
+   and decided_at <  '<window-end-ISO>'::timestamptz + interval '5 minutes'
+   and decision_input_hash in ( <in-window row-writing disposition hashes> );
+```
+
+**(b) Prior real verdict — the consecutive-chain predicate skips `monitor_degraded` (NF-2):**
+```sql
+select verdict from public.section8_runs
+ where verdict <> 'monitor_degraded'
+ order by window_end desc
+ limit 1;
+```
+
+**(c) Review all non-green signals over the last N days (the row-as-ticket cadence, NF-3):**
+```sql
+select window_start, window_end, verdict,
+       rows_written, write_failures_unrecovered,
+       dispositions_with_no_row_by_design, freeze_loss_suspected
+  from public.section8_runs
+ where verdict <> 'green'
+   and window_end >= now() - interval '<N> days'
+ order by window_end desc;
+```
+
+**(d) Chain that drove a red — the row plus prior runs back to the last non-degraded
+verdict (so a red `freeze==1` shows the yellow it escalated from, across any
+`monitor_degraded` gap):**
+```sql
+select window_start, window_end, verdict, freeze_loss_suspected
+  from public.section8_runs
+ where window_end <= '<the red row''s window_end>'
+ order by window_end desc
+ limit 10;
+-- read downward to the first non-monitor_degraded row: that is the prior real
+-- verdict the predicate used.
+```
+
+### §8 recurring run — launchd agent (committed template; broker installs locally)
+
+Daily 03:00 local. No credentials in the plist — the wrapper sources the
+broker-local `.env` at runtime (`service_role` + `VERCEL_TOKEN` never enter the
+plist; rail-clean). Copy to `~/Library/LaunchAgents/com.ownerpilot.section8monitor.plist`,
+edit the two `/Users/YOU/...` paths to your checkout + log location, then
+`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ownerpilot.section8monitor.plist`.
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ownerpilot.section8monitor</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/YOU/ownerpilot &amp;&amp; set -a &amp;&amp; source .env.local &amp;&amp; set +a &amp;&amp; exec npx tsx scripts/section8_monitor.ts</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>StandardErrorPath</key>
+  <string>/Users/YOU/Library/Logs/ownerpilot-section8monitor.log</string>
+  <key>StandardOutPath</key>
+  <string>/Users/YOU/Library/Logs/ownerpilot-section8monitor.log</string>
+</dict>
+</plist>
+```
+Exit codes captured in the log: `0` green/yellow, `10` red, `20` monitor_degraded, `1` hard error.
+
 ---
 
 ## Operational notes
