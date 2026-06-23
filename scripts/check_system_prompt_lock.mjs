@@ -3,16 +3,16 @@
  * SYSTEM_PROMPT lock checker — workflow hardening per the 2026-06-06 drift ruling §4.
  *
  * The deployed help-chatbox system prompt is legal-adjacent: it cannot change
- * without attorney review (the prompt-equivalent of V4_WORDING_SIGNED_OFF for the
- * produced-notice face). This guard makes a silent prompt edit impossible to ship:
+ * without operator re-review (the change-control equivalent of V4_WORDING_SIGNED_OFF
+ * for the produced-notice face). This guard makes a silent prompt edit impossible to ship:
  * it extracts the SYSTEM_PROMPT body from app/api/chat/route.ts, hashes it, and
  * compares against the committed approved hash in system_prompt.lock.json.
  *
  *   - match     -> exit 0 (the prompt is unchanged from the locked baseline)
- *   - mismatch  -> exit 1 (the prompt changed; STOP — this is attorney-gated)
+ *   - mismatch  -> exit 1 (the prompt changed; STOP — this is operator change-controlled)
  *
  * Re-locking is a deliberate, attributed, reviewable act (mirrors how the holiday
- * table and Part E masking policy get re-locked): after the attorney signs off a
+ * table and Part E masking policy get re-locked): after operator re-review of a
  * new prompt revision, run with --write and the attribution flags, then commit the
  * updated lock file alongside the route change.
  *
@@ -22,9 +22,9 @@
  * Usage:
  *   node scripts/check_system_prompt_lock.mjs
  *   node scripts/check_system_prompt_lock.mjs --write \
- *        --approved-by "Janna Taglyan, JD, SBN 269639" \
+ *        --approved-by "operator" \
  *        --approved-on 2026-06-06 \
- *        --source-rev "ownerpilot_system_prompt_v4_1_attorney_signoff_2026-06-06.md" \
+ *        --source-rev "<source file or SHA>" \
  *        --status LOCKED
  */
 
@@ -95,7 +95,7 @@ if (args.write) {
     note:
       args.note ||
       'Re-locked via --write. Commit this file alongside the route change. A change ' +
-        'to SYSTEM_PROMPT requires attorney review before re-locking (drift ruling 2026-06-06 §4).',
+        'to SYSTEM_PROMPT requires operator re-review before re-locking (drift ruling 2026-06-06 §4).',
     lockedAt: new Date().toISOString(),
   };
   writeFileSync(LOCK_PATH, JSON.stringify(lock, null, 2) + '\n', 'utf8');
@@ -129,11 +129,11 @@ fail(
   `SYSTEM_PROMPT in ${ROUTE_PATH} has CHANGED from the locked baseline.\n\n` +
     `  locked sha256:  ${lock.sha256}\n` +
     `  current sha256: ${hash}\n\n` +
-    `The help-chatbox system prompt is attorney-gated (drift ruling 2026-06-06 §4).\n` +
-    `Do NOT commit a prompt change without attorney review.\n\n` +
+    `The help-chatbox system prompt is operator change-controlled (drift ruling 2026-06-06 §4).\n` +
+    `Do NOT commit a prompt change without operator re-review.\n\n` +
     `If this change has been reviewed and signed off, re-lock it deliberately:\n` +
     `  node scripts/check_system_prompt_lock.mjs --write \\\n` +
-    `    --approved-by "<attorney name, SBN>" --approved-on <YYYY-MM-DD> \\\n` +
+    `    --approved-by "operator" --approved-on <YYYY-MM-DD> \\\n` +
     `    --source-rev "<signed-off source file or SHA>" --status LOCKED\n` +
     `then commit ${LOCK_PATH} alongside ${ROUTE_PATH}.`
 );
