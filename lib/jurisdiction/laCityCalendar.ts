@@ -21,7 +21,7 @@
  * missing/unverified year so production blocks rather than counting against an
  * incomplete set.
  *
- * Not legal advice; encodes attorney-verifiable administrative-calendar data.
+ * Not legal advice; encodes broker-verifiable administrative-calendar data.
  */
 
 export interface CityHolidayYear {
@@ -29,14 +29,14 @@ export interface CityHolidayYear {
   /** Observed city-holiday dates, 'YYYY-MM-DD'. */
   dates: string[];
   verified: boolean;
-  verifiedBy?: string; // "Name, SBN ######"
+  verifiedBy?: string; // "Jack Taglyan, CalDRE B9445457" — filled by broker after primary-source citation pull
   verifiedOn?: string; // 'YYYY-MM-DD'
   source: string;
 }
 
 /**
  * Per-year LA city holiday tables. 2026 is STAGED (verified:false) pending
- * attorney sign-off of the city-business-day citation pull. It THROWS until
+ * broker sign-off of the city-business-day citation pull. It THROWS until
  * verified — staging does not bypass the gate.
  */
 export const LA_CITY_HOLIDAYS: Record<number, CityHolidayYear> = {
@@ -57,15 +57,15 @@ export const LA_CITY_HOLIDAYS: Record<number, CityHolidayYear> = {
       '2026-11-27', // Day After Thanksgiving
       '2026-12-25', // Christmas
     ],
-    verified: false, // attorney flips true after verifying vs. LAMC Article 9 / city sources
-    verifiedBy: '{ATTORNEY_NAME}, SBN {SBN}',
+    verified: false, // broker flips true after verifying vs. LAMC Article 9 / city sources
+    verifiedBy: '',
     verifiedOn: '',
     source:
       'City of LA 2026 holidays per LADBS ' +
       '(https://dbs.lacity.gov/our-organization/locations-offices/holidays) and ' +
       'Dept. of Recreation & Parks 2026 schedule, both fetched 2026-06-01; ' +
       'governing authority LAMC Article 9 (Legal Holidays / Open and Closed ' +
-      'Days for City Offices) — Article 9 text to be confirmed by attorney.',
+      'Days for City Offices) — Article 9 text to be confirmed by broker per citation pull.',
   },
 };
 
@@ -129,7 +129,7 @@ export interface FilingDeadlineResult {
  *
  * NOTE on the count rule: starts the day AFTER service and counts forward,
  * collecting the first N city business days; the Nth is the deadline. The
- * attorney is to confirm this start-day convention matches LAHD practice
+ * broker is to confirm this start-day convention matches LAHD practice
  * (flagged in the citation pull). Defaults to 3 business days.
  */
 export function computeLahdFilingDeadline(
