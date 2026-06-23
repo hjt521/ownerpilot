@@ -11,10 +11,17 @@
  *       sink + production deps; the page-side bridge is Slice 4d). The surface
  *       therefore ships with ZERO production callers and is dormant by
  *       non-invocation until 4d wires the page-side call.
+ *   - slice8_deliverable4b_fork_g_fork_f_broker_ruling_response_2026-06-22.md
+ *       FORK G = G-b: a SYNCHRONOUS geocode_dispositions row is written at each
+ *       row-writing return, before the response, on a DIFFERENT lifecycle than the
+ *       deferred after() audit insert — the §8 monitor's teardown-independent
+ *       durable reference. Deliberate, bounded partial reversal of Slice 4c §2.8
+ *       for THIS write only (≤250ms hard timeout, swallow-on-fail). The audit-row
+ *       deferral is preserved exactly.
  *
  * SINGLE RESPONSIBILITY (§2.1 req 3, binding). This surface does EXACTLY one
- * thing: take an address, run resolveLaAddressV2, return its disposition, and
- * defer the audit-row write. It does NOT:
+ * thing: take an address, run resolveLaAddressV2, return its disposition, write
+ * the synchronous disposition row, and defer the audit-row write. It does NOT:
  *   - generate notice content, assemble PDFs, apply overlay logic,
  *   - call laOverlay.ts, embed compliance prose,
  *   - check isLaProductionUnblocked() (the gate check is PAGE-SIDE, §2.1 req 4 /
@@ -67,12 +74,100 @@ import {
   resolveChainHeadSha,
   type Defer,
 } from '@/lib/jurisdiction/geocode/supabaseAuditSink';
+import { createClient } from '@/lib/supabase/server';
 
 // nodejs runtime is REQUIRED: after() must be available at runtime (§2.1 req 2).
 export const runtime = 'nodejs';
 // This surface performs live network calls + a deferred audit write; it is never
 // statically cacheable.
 export const dynamic = 'force-dynamic';
+
+// ===========================================================================
+// Fork G (G-b) — synchronous disposition-row write (the §8 monitor's
+// teardown-independent durable reference). Broker ruling 2026-06-22.
+// ===========================================================================
+
+/** Hard timeout for the synchronous disposition write. The disposition row is on
+ *  the user-response path (a deliberate, bounded partial reversal of Slice 4c §2.8
+ *  for THIS write only), so it must never sit unboundedly upstream of the
+ *  response. ≤250ms ceiling per the ruling; swallow on breach. */
+const DISPOSITION_SYNC_WRITE_TIMEOUT_MS = 250;
+
+/** Minimal structural insert client — the real @supabase/ssr client satisfies it.
+ *  Cast-to-structural (as the audit sink does) so the disposition insert is not
+ *  constrained by generated DB types and the sink stays unaware of this table. */
+interface DispositionInsertClient {
+  from(table: string): { insert(row: unknown): PromiseLike<{ error: { message: string } | null }> };
+}
+
+/** Race a thenable against a hard timeout. On timeout the returned promise
+ *  rejects; the caller swallows (the response must proceed). */
+function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
+  return Promise.race([
+    Promise.resolve(p),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`geocode_dispositions write timed out after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
+/** Sanitized error category (Error subclass name only — never the raw message),
+ *  mirroring the audit-sink privacy posture so no user content leaks into logs. */
+function serializeErrorSummary(err: unknown): string {
+  return err instanceof Error ? err.name : 'unknown';
+}
+
+/** The geocode_dispositions row shape (migration 011, lean 5-col; id + decided_at
+ *  default DB-side). */
+function toGeocodeDispositionRow(decisionInputHash: string, disposition: string, chainHeadSha: string) {
+  return {
+    decision_input_hash: decisionInputHash,
+    disposition,
+    chain_head_sha: chainHeadSha,
+  };
+}
+
+/**
+ * Write the synchronous geocode_dispositions row BEFORE the response returns, on a
+ * different lifecycle than the deferred after() audit insert, so it survives the
+ * post-response teardown that can lose the audit row — making "audit row lost"
+ * detectable by the §8 monitor as freeze_dispositions_orphaned >= 1 (Fork G §4).
+ *
+ * Uses the same anon server client the deferred sink uses (service_role is
+ * operator-only — standing rail; geocode_dispositions has the app-INSERT-only wall
+ * per migration 011 / Fork H-a). ≤250ms hard timeout, swallow-on-fail: a
+ * slow/failing disposition write NEVER blocks or fails the user response. On
+ * swallow it emits a DISTINCT structured log line for operator-side leading
+ * indication (the durable detection is the §8 monitor's substrate-divergence red).
+ */
+async function writeDispositionRowSync(
+  disposition: string,
+  decisionInputHash: string,
+  chainHeadSha: string,
+): Promise<void> {
+  try {
+    const supabase = (await createClient()) as unknown as DispositionInsertClient;
+    const { error } = await withTimeout(
+      supabase
+        .from('geocode_dispositions')
+        .insert(toGeocodeDispositionRow(decisionInputHash, disposition, chainHeadSha)),
+      DISPOSITION_SYNC_WRITE_TIMEOUT_MS,
+    );
+    if (error) throw new Error(error.message);
+  } catch (err) {
+    // Swallow-on-fail (Fork G): the response must proceed. Distinct tag from
+    // geocode_audit_write_failure so operators can tell the two write paths apart.
+    // eslint-disable-next-line no-console
+    console.error(
+      JSON.stringify({
+        event: 'geocode_disposition_sync_write_failure',
+        decision_input_hash: decisionInputHash,
+        error: serializeErrorSummary(err),
+        chain_head_sha: chainHeadSha,
+      }),
+    );
+  }
+}
 
 /**
  * Pull the first reverse-geocode component whose `types` include `type`. This is
@@ -206,13 +301,17 @@ interface GeocodeRequestBody {
  * POST { address: string } → { disposition, reviewReason? }.
  *
  * Returns only the resolver's decision shape — no audit internals, no content.
- * The audit row is written by the deferred sink (after()), not echoed here.
+ * The audit row is written by the deferred sink (after()); the disposition row is
+ * written synchronously (Fork G); neither is echoed here.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: GeocodeRequestBody;
   try {
     body = (await req.json()) as GeocodeRequestBody;
 } catch {
+    // No-row-by-design return (invalid_json): no recordAudit call and no
+    // geocode_dispositions row by design — see NO_ROW_BY_DESIGN_DISPOSITIONS in
+    // section8Core / Fork D ruling. Only the disposition log line is emitted.
     console.log(
       JSON.stringify({
         type: 'geocode_disposition',
@@ -225,6 +324,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const address = typeof body.address === 'string' ? body.address.trim() : '';
 if (address === '') {
+    // No-row-by-design return (address_required): no recordAudit, no
+    // geocode_dispositions row by design (Fork D).
     console.log(
       JSON.stringify({
         type: 'geocode_disposition',
@@ -258,6 +359,18 @@ if (address === '') {
     // written for it; it is a plain 503.
     if (gateClosed) {
       await recordAudit(buildGateClosedAuditRecord(address));
+      // G-b synchronous disposition row (teardown-independent reference) for the
+      // gate_closed self-assertion — the row-writing return inside the catch.
+      // Lockstep: this hash MUST equal the deferred audit row's hash (both via
+      // computeDecisionInputHash(address, resolveChainHeadSha())).
+      await writeDispositionRowSync(
+        'gate_closed',
+        computeDecisionInputHash(address, resolveChainHeadSha()),
+        resolveChainHeadSha(),
+      );
+    } else {
+      // No-row-by-design return (geocode_unavailable): no recordAudit, no
+      // geocode_dispositions row by design (Fork D).
     }
 
 // Lockstep (gate_closed only): this decision_input_hash MUST equal the row
@@ -283,6 +396,18 @@ if (address === '') {
       { status: 503 },
     );
   }
+
+  // G-b synchronous disposition row (teardown-independent reference). Written
+  // BEFORE the response; the deferred audit insert (scheduled inside
+  // resolveLaAddressV2's recordAudit) runs in after(). result.disposition is
+  // row-writing by construction (the resolver returns only confirmed_la / not_la /
+  // manual_review). Lockstep: this hash MUST equal the audit row's hash (both via
+  // computeDecisionInputHash(address, resolveChainHeadSha())).
+  await writeDispositionRowSync(
+    result.disposition,
+    computeDecisionInputHash(address, resolveChainHeadSha()),
+    resolveChainHeadSha(),
+  );
 
 // Lockstep: this decision_input_hash MUST equal the row hash computed in
   // supabaseAuditSink.ts (createDeferredSupabaseRecordAudit -> computeDecisionInputHash).

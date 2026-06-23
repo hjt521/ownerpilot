@@ -1,19 +1,22 @@
 /**
- * Slice 8 -- section8Core decomposition + threshold tests.
+ * Slice 8 -- section8Core (deliverable 4b) tests: the PURE decomposition + verdict.
  *
- * Proves the §3.2 four-component arithmetic and the §3.5 threshold table on
- * deterministic synthetic inputs. Pure; no resolver, no DB, no logs. The
- * resolver-driven integration test lives in section8.verification.test.ts.
+ * 4b model (durable-vs-durable): three counts (D / R_h / R_t) -> two symmetric
+ * orphan quantities (freeze_dispositions_orphaned = D - R_h, freeze_audit_orphaned
+ * = R_t - R_h) -> verdict. No log parsing, no recovery set, no wfu, no read-time
+ * classification (Fork D/F-a). This file proves the arithmetic + the threshold
+ * table (substrate-divergence red, negative-residual red, >=2 red, ==1 yellow,
+ * NF-2 INDEPENDENT chains per Fork E). The monitor wiring is proven in
+ * section8MonitorCore.test.ts; the end-to-end reconciliation in
+ * section8.verification.test.ts.
  */
 import {
   computeSection8Components,
   computeSection8Verdict,
   ROW_WRITING_DISPOSITIONS,
   NO_ROW_BY_DESIGN_DISPOSITIONS,
-  type Section8Input,
-  type Section8DispositionEvent,
+  type Section8Counts,
   type Section8Components,
-  type Section8Verdict,
 } from './section8Core';
 
 let passed = 0, failed = 0;
@@ -21,180 +24,64 @@ function check(name: string, cond: boolean) {
   if (cond) { passed++; console.log('  \u2713 ' + name); } else { failed++; console.log('  \u2717 ' + name); }
 }
 
-const h = (s: string) => 'hash_' + s;
-const rows = (...hs: string[]) => hs.map((x) => ({ decision_input_hash: h(x) }));
-const recovery = (...hs: string[]) => new Set(hs.map(h));
-const ev = (disposition: Section8DispositionEvent['disposition'], hashKey?: string): Section8DispositionEvent =>
-  hashKey === undefined ? { disposition } : { disposition, decision_input_hash: h(hashKey) };
-
-function input(over: Partial<Section8Input>): Section8Input {
-  return {
-    windowRows: [],
-    dispositionEvents: [],
-    failureEvents: [],
-    recoveryRowHashes: new Set<string>(),
-    ...over,
-  };
-}
+const counts = (D: number, R_h: number, R_t: number): Section8Counts => ({ D, R_h, R_t });
+const comp = (fd: number, fa: number): Section8Components => ({
+  freeze_dispositions_orphaned: fd,
+  freeze_audit_orphaned: fa,
+});
+/** verdict from raw counts + prior (computes components internally). */
+const V = (c: Section8Counts, prior: Section8Components | null): string =>
+  computeSection8Verdict(c, computeSection8Components(c), prior);
 
 function main() {
-  // 0. Set hygiene: the two disposition sets partition the 7-value union.
-  {
-    check('row-writing set has 4 members', ROW_WRITING_DISPOSITIONS.size === 4);
-    check('no-row-by-design set has 3 members', NO_ROW_BY_DESIGN_DISPOSITIONS.size === 3);
-    const overlap = [...ROW_WRITING_DISPOSITIONS].filter((d) => NO_ROW_BY_DESIGN_DISPOSITIONS.has(d));
-    check('the two sets are disjoint', overlap.length === 0);
-    check('gate_closed is row-writing', ROW_WRITING_DISPOSITIONS.has('gate_closed'));
-    check('geocode_unavailable is no-row-by-design', NO_ROW_BY_DESIGN_DISPOSITIONS.has('geocode_unavailable'));
-  }
+  // ---- classification sets (canonical reference; consumed by route.ts) ----
+  check('sets: four row-writing dispositions', ROW_WRITING_DISPOSITIONS.size === 4);
+  check('sets: confirmed_la / not_la / manual_review / gate_closed are row-writing',
+    ROW_WRITING_DISPOSITIONS.has('confirmed_la') && ROW_WRITING_DISPOSITIONS.has('not_la') &&
+    ROW_WRITING_DISPOSITIONS.has('manual_review') && ROW_WRITING_DISPOSITIONS.has('gate_closed'));
+  check('sets: three no-row-by-design dispositions', NO_ROW_BY_DESIGN_DISPOSITIONS.size === 3);
+  check('sets: invalid_json / address_required / geocode_unavailable are no-row-by-design',
+    NO_ROW_BY_DESIGN_DISPOSITIONS.has('invalid_json') && NO_ROW_BY_DESIGN_DISPOSITIONS.has('address_required') &&
+    NO_ROW_BY_DESIGN_DISPOSITIONS.has('geocode_unavailable'));
+  check('sets: disjoint', [...ROW_WRITING_DISPOSITIONS].every((d) => !NO_ROW_BY_DESIGN_DISPOSITIONS.has(d)));
 
-  // 1. Clean window: every row-writing disposition has its row. freeze 0 -> green.
-  {
-    const c = computeSection8Components(input({
-      dispositionEvents: [ev('confirmed_la', 'a'), ev('confirmed_la', 'b'), ev('not_la', 'c'), ev('manual_review', 'd'), ev('gate_closed', 'e')],
-      windowRows: rows('a', 'b', 'c', 'd', 'e'),
-      recoveryRowHashes: recovery('a', 'b', 'c', 'd', 'e'),
-    }));
-    check('clean: rows_written 5', c.rows_written === 5);
-    check('clean: write_failures_unrecovered 0', c.write_failures_unrecovered === 0);
-    check('clean: dispositions_with_no_row_by_design 0', c.dispositions_with_no_row_by_design === 0);
-    check('clean: freeze_loss_suspected 0', c.freeze_loss_suspected === 0);
-    check('clean: verdict green', computeSection8Verdict(c, null) === 'green');
-  }
+  // ---- decomposition arithmetic ----
+  check('comp: balanced -> both 0', (() => { const c = computeSection8Components(counts(5, 5, 5)); return c.freeze_dispositions_orphaned === 0 && c.freeze_audit_orphaned === 0; })());
+  check('comp: disposition orphan = D - R_h', computeSection8Components(counts(3, 1, 1)).freeze_dispositions_orphaned === 2);
+  check('comp: audit orphan = R_t - R_h', computeSection8Components(counts(4, 4, 6)).freeze_audit_orphaned === 2);
+  check('comp: negative disposition orphan permitted (substrate bug)', computeSection8Components(counts(1, 3, 3)).freeze_dispositions_orphaned === -2);
+  check('comp: negative audit orphan permitted', computeSection8Components(counts(5, 5, 2)).freeze_audit_orphaned === -3);
 
-  // 2. By-design no-row dispositions: counted in N3, NOT in the N4 numerator.
-  {
-    const c = computeSection8Components(input({
-      dispositionEvents: [ev('invalid_json'), ev('address_required'), ev('geocode_unavailable')],
-    }));
-    check('by-design: rows_written 0', c.rows_written === 0);
-    check('by-design: N3 == 3', c.dispositions_with_no_row_by_design === 3);
-    check('by-design: freeze 0 (not counted as row-writing)', c.freeze_loss_suspected === 0);
-    check('by-design: verdict green', computeSection8Verdict(c, null) === 'green');
-  }
+  // ---- verdict: greens ----
+  check('verdict: balanced -> green', V(counts(5, 5, 5), null) === 'green');
+  check('verdict: quiet 0/0/0 -> green', V(counts(0, 0, 0), null) === 'green');
 
-  // 3. One freeze-loss: a row-writing disposition with NO row and NO failure
-  //    event (the freeze-loss signature). freeze 1 -> yellow (first occurrence).
-  {
-    const c = computeSection8Components(input({
-      dispositionEvents: [ev('confirmed_la', 'x')],
-      windowRows: [],
-      recoveryRowHashes: new Set<string>(),
-    }));
-    check('freeze-loss: freeze_loss_suspected 1', c.freeze_loss_suspected === 1);
-    check('freeze-loss: wfu 0 (no failure event)', c.write_failures_unrecovered === 0);
-    check('freeze-loss: verdict yellow on first occurrence', computeSection8Verdict(c, null) === 'yellow');
-    check('freeze-loss: verdict green-prior still yellow', computeSection8Verdict(c, 'green') === 'yellow');
-    check('freeze-loss: verdict red if prior yellow (consecutive)', computeSection8Verdict(c, 'yellow') === 'red');
-    check('freeze-loss: verdict red if prior red', computeSection8Verdict(c, 'red') === 'red');
-  }
+  // ---- verdict: substrate divergence (D==0 AND R_t>0) -> red, takes precedence ----
+  check('verdict: D=0 R_t>0 -> red', V(counts(0, 0, 3), null) === 'red');
+  check('verdict: divergence precedence over would-be-negative', V(counts(0, 0, 5), null) === 'red');
 
-  // 4. Write-failure UNRECOVERED: disposition + failure event, no row anywhere.
-  //    N4 nets to 0 (the disposition is explained by the failure), but wfu drives red.
-  {
-    const c = computeSection8Components(input({
-      dispositionEvents: [ev('confirmed_la', 'y')],
-      windowRows: [],
-      failureEvents: [{ decision_input_hash: h('y') }],
-      recoveryRowHashes: new Set<string>(),
-    }));
-    check('wfu: write_failures_unrecovered 1', c.write_failures_unrecovered === 1);
-    check('wfu: freeze_loss_suspected 0 (failure accounts for it)', c.freeze_loss_suspected === 0);
-    check('wfu: verdict red despite freeze 0', computeSection8Verdict(c, null) === 'red');
-  }
+  // ---- verdict: negative residual -> red ----
+  check('verdict: negative disposition orphan -> red', V(counts(1, 3, 3), null) === 'red');
+  check('verdict: negative audit orphan -> red', V(counts(5, 5, 3), null) === 'red');
 
-  // 5. Write-failure RECOVERED: failure event present but the row exists in the
-  //    recovery set (arrived late). wfu 0 -> green.
-  {
-    const c = computeSection8Components(input({
-      dispositionEvents: [ev('confirmed_la', 'z')],
-      windowRows: rows('z'),
-      failureEvents: [{ decision_input_hash: h('z') }],
-      recoveryRowHashes: recovery('z'),
-    }));
-    check('recovered: rows_written 1', c.rows_written === 1);
-    check('recovered: wfu 0 (row exists in recovery set)', c.write_failures_unrecovered === 0);
-    check('recovered: freeze 0', c.freeze_loss_suspected === 0);
-    check('recovered: verdict green', computeSection8Verdict(c, null) === 'green');
-  }
+  // ---- verdict: >= 2 -> red ----
+  check('verdict: disposition orphan 2 -> red', V(counts(2, 0, 0), null) === 'red');
+  check('verdict: audit orphan 2 -> red', V(counts(5, 3, 5), null) === 'red');
 
-  // 6. freeze >= 2 -> red regardless of prior verdict.
-  {
-    const c = computeSection8Components(input({
-      dispositionEvents: [ev('confirmed_la', 'p'), ev('not_la', 'q')],
-      windowRows: [],
-    }));
-    check('freeze>=2: freeze_loss_suspected 2', c.freeze_loss_suspected === 2);
-    check('freeze>=2: verdict red with prior null', computeSection8Verdict(c, null) === 'red');
-    check('freeze>=2: verdict red with prior green', computeSection8Verdict(c, 'green') === 'red');
-  }
+  // ---- verdict: == 1 -> yellow first occurrence ----
+  check('verdict: disposition orphan 1, no prior -> yellow', V(counts(1, 0, 0), null) === 'yellow');
+  check('verdict: audit orphan 1 amid traffic, no prior -> yellow', V(counts(4, 4, 5), null) === 'yellow');
+  check('verdict: both orphans 1 same run, no prior -> yellow', V(counts(5, 4, 5), null) === 'yellow');
 
-  // 7. Negative residual -> red (substrate bug): more rows than row-writing
-  //    dispositions (disposition log dropped events, or a non-route writer).
-  {
-    const c = computeSection8Components(input({
-      dispositionEvents: [ev('confirmed_la', 'm')],
-      windowRows: rows('m', 'n'),
-      recoveryRowHashes: recovery('m', 'n'),
-    }));
-    check('negative: freeze_loss_suspected -1', c.freeze_loss_suspected === -1);
-    check('negative: verdict red (substrate bug)', computeSection8Verdict(c, null) === 'red');
-  }
+  // ---- verdict: NF-2 independent chains (Fork E) ----
+  check('chain: disposition orphan 1 + prior disposition orphan 1 -> red', V(counts(1, 0, 0), comp(1, 0)) === 'red');
+  check('chain: audit orphan 1 + prior audit orphan 1 -> red', V(counts(4, 4, 5), comp(0, 1)) === 'red');
+  check('chain: chains do NOT cross (disp now, audit prior) -> yellow', V(counts(1, 0, 0), comp(0, 1)) === 'yellow');
+  check('chain: chains do NOT cross (audit now, disp prior) -> yellow', V(counts(4, 4, 5), comp(1, 0)) === 'yellow');
+  check('chain: prior green (0,0) does not escalate -> yellow', V(counts(1, 0, 0), comp(0, 0)) === 'yellow');
 
-  // 8. gate_closed is row-writing: a gate_closed disposition with no row is a
-  //    freeze-loss candidate exactly like a verdict row.
-  {
-    const c = computeSection8Components(input({
-      dispositionEvents: [ev('gate_closed', 'g')],
-      windowRows: [],
-    }));
-    check('gate_closed: contributes to freeze residual', c.freeze_loss_suspected === 1);
-  }
-
-  // 9. Mixed one-shot green-light set: one of each row-writing disposition with
-  //    rows, plus the three by-design error dispositions. The pre-go-live pass
-  //    criterion (§2.5): freeze 0, wfu 0, N3 == injected error count (3).
-  {
-    const c = computeSection8Components(input({
-      dispositionEvents: [
-        ev('confirmed_la', 'r1'), ev('not_la', 'r2'), ev('manual_review', 'r3'), ev('gate_closed', 'r4'),
-        ev('invalid_json'), ev('address_required'), ev('geocode_unavailable'),
-      ],
-      windowRows: rows('r1', 'r2', 'r3', 'r4'),
-      recoveryRowHashes: recovery('r1', 'r2', 'r3', 'r4'),
-    }));
-    const injectedErrorCount = 3;
-    const oneShotPass = c.freeze_loss_suspected === 0 && c.write_failures_unrecovered === 0 && c.dispositions_with_no_row_by_design === injectedErrorCount;
-    check('one-shot: freeze 0', c.freeze_loss_suspected === 0);
-    check('one-shot: wfu 0', c.write_failures_unrecovered === 0);
-    check('one-shot: N3 matches injected error count exactly', c.dispositions_with_no_row_by_design === injectedErrorCount);
-    check('one-shot: pre-go-live pass criterion satisfied', oneShotPass);
-    check('one-shot: verdict green', computeSection8Verdict(c, null) === 'green');
-  }
-
-  // 10. Verdict precedence table spot-checks against §3.5.
-  {
-    const mk = (over: Partial<Section8Components>): Section8Components => ({ rows_written: 0, write_failures_unrecovered: 0, dispositions_with_no_row_by_design: 0, freeze_loss_suspected: 0, ...over });
-    const cases: Array<[Partial<Section8Components>, Section8Verdict | null, Section8Verdict]> = [
-      [{ freeze_loss_suspected: 0, write_failures_unrecovered: 0 }, null, 'green'],
-      [{ freeze_loss_suspected: 1 }, null, 'yellow'],
-      [{ freeze_loss_suspected: 1 }, 'green', 'yellow'],
-      [{ freeze_loss_suspected: 1 }, 'yellow', 'red'],
-      [{ freeze_loss_suspected: 1 }, 'red', 'red'],
-      [{ freeze_loss_suspected: 2 }, null, 'red'],
-      [{ freeze_loss_suspected: 5 }, 'green', 'red'],
-      [{ write_failures_unrecovered: 1 }, null, 'red'],
-      [{ write_failures_unrecovered: 1, freeze_loss_suspected: 0 }, 'green', 'red'],
-      [{ freeze_loss_suspected: -1 }, null, 'red'],
-      [{ freeze_loss_suspected: -3 }, 'green', 'red'],
-    ];
-    let all = true;
-    for (const [c, prior, want] of cases) {
-      const got = computeSection8Verdict(mk(c), prior);
-      if (got !== want) { all = false; console.log(`    mismatch: ${JSON.stringify(c)} prior=${prior} -> ${got}, want ${want}`); }
-    }
-    check('verdict precedence table matches §3.5 for all spot-checks', all);
-  }
+  // ---- verdict: red severity beats the chain (>=2 regardless of prior) ----
+  check('verdict: orphan 2 stays red even with prior 0', V(counts(2, 0, 0), comp(0, 0)) === 'red');
 }
 
 main();

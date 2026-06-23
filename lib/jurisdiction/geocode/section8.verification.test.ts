@@ -1,27 +1,38 @@
 /**
- * Slice 8 — verification suite (the pre-go-live one-shot; ruling §2.7-(1)).
+ * Slice 8 — verification suite (the pre-go-live one-shot; ruling §2.7-(1)),
+ * DELIVERABLE 4b (durable-vs-durable; G-b + F-a).
  *
- * Posture (b), ratified 2026-06-22: per the Slice 2 / Slice 4 test posture, this
- * suite drives the REAL deferred audit sink (createDeferredSupabaseRecordAudit)
- * across every row-writing disposition class to produce real geocode_audit_log
- * rows with real decision_input_hashes, models the route's geocode_disposition
- * events exactly as app/api/notice/geocode/route.ts emits them (deliverable 1),
- * and reconciles the two through section8Core's four-component decomposition
- * (ruling §3.2). It asserts the pre-go-live pass criterion (§2.5) AND the MUST
- * route-vs-sink hash-equality lockstep (deliverable-1 ruling §6 / §2) for
- * confirmed_la and gate_closed.
+ * Posture (b): this suite drives the REAL deferred audit sink
+ * (createDeferredSupabaseRecordAudit) across the row-writing disposition classes
+ * to produce real geocode_audit_log rows with real decision_input_hashes, and
+ * MODELS the synchronous geocode_dispositions rows the way
+ * app/api/notice/geocode/route.ts writes them under Fork G (G-b) —
+ * computeDecisionInputHash(address, sha), the SAME hash the sink stamps on the
+ * audit row. It reconciles the two through section8Core's 4b decomposition
+ * (D / R_h / R_t -> two orphan quantities) and asserts:
+ *   - the pre-go-live pass criterion (freeze_dispositions_orphaned == 0 AND
+ *     freeze_audit_orphaned == 0) on a clean set;
+ *   - the route-vs-sink hash-equality LOCKSTEP (deliverable-1 ruling §6): the
+ *     modeled disposition-row hash equals the real sink audit-row hash;
+ *   - DETECTION of each anomaly class the 4b model is responsible for.
  *
- * It also demonstrates DETECTION (the point of a verification suite): a modeled
- * freeze-loss surfaces as freeze_loss_suspected; a real sink write-failure
- * surfaces as write_failures_unrecovered (distinct from freeze-loss); a
- * recovered write-failure nets to green. This proves the decomposition both
- * produces clean numbers on a clean set and isolates each anomaly class.
+ * What changed from deliverable 4:
+ *   - Fork D: only the four ROW-WRITING dispositions get a geocode_dispositions
+ *     row; the three no-row-by-design dispositions are NOT captured -> they do
+ *     not enter D, and N3 is retired (not asserted).
+ *   - Fork G: Scenario 2 (teardown) STAYS yellow — the synchronous disposition
+ *     row survives the teardown that loses the deferred audit row, so the loss
+ *     surfaces as freeze_dispositions_orphaned == 1 (it would have been an
+ *     invisible green under the rejected G-a).
+ *   - Fork F-a: wfu is retired. An audit-write FAILURE (the deferred insert runs
+ *     and errors) is no longer a distinct wfu/red signal; it surfaces as the SAME
+ *     freeze_dispositions_orphaned the teardown does (audit row absent,
+ *     disposition row present). The geocode_audit_write_failure console emission
+ *     stays as an operator-side leading indicator only.
+ *   - Fork G symmetric: a synchronous disposition-write FAILURE with the audit row
+ *     present surfaces as freeze_audit_orphaned (the new quantity).
  *
- * No live calls: Supabase client + alert sink + defer are injected (the Slice 4c
- * deferred-sink test pattern). The resolver function is NOT invoked here (it
- * pulls live network adapters); the row-producing substrate under test is the
- * sink + the route's emission + the §8 decomposition — exactly what freeze-loss
- * afflicts.
+ * No live calls: Supabase client + alert sink + defer are injected.
  */
 import {
   createDeferredSupabaseRecordAudit,
@@ -34,10 +45,7 @@ import type { GeocodeAuditRecord } from './resolveLaAddressV2';
 import {
   computeSection8Components,
   computeSection8Verdict,
-  ROW_WRITING_DISPOSITIONS,
-  type Section8Disposition,
-  type Section8DispositionEvent,
-  type Section8Input,
+  type Section8Counts,
 } from './section8Core';
 
 let passed = 0, failed = 0;
@@ -47,7 +55,7 @@ function check(name: string, cond: boolean) {
 
 const FIXED_SHA = 'deadbeefcafe';
 
-/** Supabase stub: records inserted rows; can be told to fail (deferred test pattern). */
+/** Supabase stub: records inserted geocode_audit_log rows; can be told to fail. */
 class StubClient implements SupabaseAuditClient {
   inserted: Array<Record<string, unknown>> = [];
   failWith: string | null = null;
@@ -70,8 +78,8 @@ class DeferCollector {
   async run(): Promise<void> { const fns = this.scheduled; this.scheduled = []; for (const fn of fns) await fn(); }
 }
 
-/** Build a row-writing GeocodeAuditRecord for a disposition class (the shape the
- *  resolver/route produce). Distinct inputAddress → distinct decision_input_hash. */
+/** Build a row-writing GeocodeAuditRecord for a disposition class. Distinct
+ *  inputAddress → distinct decision_input_hash. */
 function recordFor(
   disposition: 'confirmed_la' | 'not_la' | 'manual_review' | 'gate_closed',
   addr: string,
@@ -93,19 +101,9 @@ function recordFor(
   }
 }
 
-/** Model the route's geocode_disposition event for an (address, disposition):
- *  hash present iff the disposition is row-writing, computed the SAME way the
- *  route computes it — computeDecisionInputHash(address, sha). Mirrors
- *  app/api/notice/geocode/route.ts; this is the route side of the lockstep. */
-function routeEvent(address: string, disposition: Section8Disposition): Section8DispositionEvent {
-  return ROW_WRITING_DISPOSITIONS.has(disposition)
-    ? { disposition, decision_input_hash: computeDecisionInputHash(address, FIXED_SHA) }
-    : { disposition };
-}
-
-/** Drive one record through the REAL deferred sink; return the inserted row (or
- *  null if the insert failed or the deferred fn was not run — i.e. freeze-loss). */
-async function sinkRow(
+/** Drive one record through the REAL deferred sink; return the inserted audit row
+ *  (or null if the insert failed, or the deferred fn was not run — teardown). */
+async function sinkAuditRow(
   record: GeocodeAuditRecord,
   opts: { fail?: boolean; alerts?: AuditAlertSink; run?: boolean } = {},
 ): Promise<Record<string, unknown> | null> {
@@ -122,14 +120,38 @@ async function sinkRow(
   return client.inserted[0] ?? null;
 }
 
+/** The synchronous geocode_dispositions row hash route.ts would write for a
+ *  decision (Fork G): computeDecisionInputHash(address, sha) — the SAME hash the
+ *  sink stamps on the audit row (the route-vs-sink lockstep). */
+function dispositionHash(addr: string): string {
+  return computeDecisionInputHash(addr, FIXED_SHA);
+}
+
 function parseFailureEvent(captured: string[]): Record<string, unknown> | undefined {
   return captured
     .map((c) => { try { return JSON.parse(c) as Record<string, unknown>; } catch { return null; } })
     .find((o) => o && o.event === 'geocode_audit_write_failure') as Record<string, unknown> | undefined;
 }
 
+/** Reconcile modeled disposition rows (hashes) against real audit rows into the
+ *  three counts, then run the 4b decomposition + verdict. */
+function reconcile(dispositionHashes: string[], auditRows: Array<Record<string, unknown> | null>) {
+  const dset = new Set(dispositionHashes);
+  const auditHashes = auditRows
+    .filter((r): r is Record<string, unknown> => r !== null)
+    .map((r) => r.decision_input_hash as string);
+  const counts: Section8Counts = {
+    D: dispositionHashes.length,
+    R_t: auditHashes.length,
+    R_h: auditHashes.filter((h) => dset.has(h)).length,
+  };
+  const components = computeSection8Components(counts);
+  const verdict = computeSection8Verdict(counts, components, null);
+  return { counts, components, verdict };
+}
+
 async function main() {
-  // === SCENARIO 1: clean one-shot — one of every disposition class. ===========
+  // === SCENARIO 1: clean one-shot — one of every row-writing class. ============
   {
     const addrs = {
       confirmed_la: '100 Confirmed Ave',
@@ -137,148 +159,112 @@ async function main() {
       manual_review: '300 Ambiguous St',
       gate_closed: '400 Gate Closed Way',
     };
-    const rowConfirmed = await sinkRow(recordFor('confirmed_la', addrs.confirmed_la));
-    const rowNotLa = await sinkRow(recordFor('not_la', addrs.not_la));
-    const rowManual = await sinkRow(recordFor('manual_review', addrs.manual_review));
-    const rowGateClosed = await sinkRow(recordFor('gate_closed', addrs.gate_closed));
-    const windowRows = [rowConfirmed, rowNotLa, rowManual, rowGateClosed]
-      .filter((r): r is Record<string, unknown> => r !== null)
-      .map((r) => ({ decision_input_hash: r.decision_input_hash as string }));
+    const rowConfirmed = await sinkAuditRow(recordFor('confirmed_la', addrs.confirmed_la));
+    const rowNotLa = await sinkAuditRow(recordFor('not_la', addrs.not_la));
+    const rowManual = await sinkAuditRow(recordFor('manual_review', addrs.manual_review));
+    const rowGateClosed = await sinkAuditRow(recordFor('gate_closed', addrs.gate_closed));
+    const auditRows = [rowConfirmed, rowNotLa, rowManual, rowGateClosed];
 
-    const dispositionEvents: Section8DispositionEvent[] = [
-      routeEvent(addrs.confirmed_la, 'confirmed_la'),
-      routeEvent(addrs.not_la, 'not_la'),
-      routeEvent(addrs.manual_review, 'manual_review'),
-      routeEvent(addrs.gate_closed, 'gate_closed'),
-      routeEvent('', 'invalid_json'),
-      routeEvent('', 'address_required'),
-      routeEvent('500 Unavailable Rd', 'geocode_unavailable'),
+    // Fork D: only the four row-writing dispositions get a disposition row. The
+    // three no-row-by-design dispositions are intentionally NOT modeled here.
+    const dispositionHashes = [
+      dispositionHash(addrs.confirmed_la),
+      dispositionHash(addrs.not_la),
+      dispositionHash(addrs.manual_review),
+      dispositionHash(addrs.gate_closed),
     ];
 
-    const input: Section8Input = {
-      windowRows,
-      dispositionEvents,
-      failureEvents: [],
-      recoveryRowHashes: new Set(windowRows.map((r) => r.decision_input_hash)),
-    };
-    const c = computeSection8Components(input);
+    const { counts, components, verdict } = reconcile(dispositionHashes, auditRows);
 
-    check('clean: all four row-writing rows landed', windowRows.length === 4);
-    check('clean: rows_written 4', c.rows_written === 4);
-    check('clean: write_failures_unrecovered 0', c.write_failures_unrecovered === 0);
-    check('clean: dispositions_with_no_row_by_design 3', c.dispositions_with_no_row_by_design === 3);
-    check('clean: freeze_loss_suspected 0', c.freeze_loss_suspected === 0);
-    const oneShotPass =
-      c.freeze_loss_suspected === 0 && c.write_failures_unrecovered === 0 && c.dispositions_with_no_row_by_design === 3;
+    check('clean: all four audit rows landed', auditRows.filter((r) => r !== null).length === 4);
+    check('clean: D = 4', counts.D === 4);
+    check('clean: R_t = 4', counts.R_t === 4);
+    check('clean: R_h = 4 (all hash-matched)', counts.R_h === 4);
+    check('clean: freeze_dispositions_orphaned 0', components.freeze_dispositions_orphaned === 0);
+    check('clean: freeze_audit_orphaned 0', components.freeze_audit_orphaned === 0);
+    const oneShotPass = components.freeze_dispositions_orphaned === 0 && components.freeze_audit_orphaned === 0;
     check('clean: PRE-GO-LIVE one-shot pass criterion satisfied', oneShotPass);
-    check('clean: verdict green', computeSection8Verdict(c, null) === 'green');
+    check('clean: verdict green', verdict === 'green');
 
-    // MUST (deliverable-1 ruling §6): route-vs-sink hash equality for the two
-    // row-writing dispositions that carry a hash on the event.
-    const evConfirmed = routeEvent(addrs.confirmed_la, 'confirmed_la');
-    const evGateClosed = routeEvent(addrs.gate_closed, 'gate_closed');
-    check('LOCKSTEP confirmed_la: route event hash equals sink row hash',
-      evConfirmed.decision_input_hash !== undefined &&
-      rowConfirmed !== null &&
-      evConfirmed.decision_input_hash === rowConfirmed.decision_input_hash);
-    check('LOCKSTEP gate_closed: route event hash equals sink row hash',
-      evGateClosed.decision_input_hash !== undefined &&
-      rowGateClosed !== null &&
-      evGateClosed.decision_input_hash === rowGateClosed.decision_input_hash);
+    // LOCKSTEP (deliverable-1 ruling §6): the modeled disposition-row hash equals
+    // the real sink audit-row hash, for two row-writing classes.
+    check('LOCKSTEP confirmed_la: disposition hash == sink audit row hash',
+      rowConfirmed !== null && dispositionHash(addrs.confirmed_la) === rowConfirmed.decision_input_hash);
+    check('LOCKSTEP gate_closed: disposition hash == sink audit row hash',
+      rowGateClosed !== null && dispositionHash(addrs.gate_closed) === rowGateClosed.decision_input_hash);
     check('LOCKSTEP: the two hashes differ (distinct input addresses)',
-      evConfirmed.decision_input_hash !== evGateClosed.decision_input_hash);
+      dispositionHash(addrs.confirmed_la) !== dispositionHash(addrs.gate_closed));
     check('LOCKSTEP: sink row hash is a 64-hex SHA-256, not a placeholder',
       typeof rowConfirmed?.decision_input_hash === 'string' &&
       /^[0-9a-f]{64}$/.test(rowConfirmed.decision_input_hash as string));
   }
 
-  // === SCENARIO 2: freeze-loss DETECTION. =====================================
-  // A confirmed_la disposition is emitted, but the deferred insert never runs
-  // (instance frozen/torn down post-response) → no row, no failure event. The
-  // residual is the only signal.
+  // === SCENARIO 2: teardown freeze-loss (Fork G — STAYS yellow). ===============
+  // The synchronous disposition row landed; the deferred audit insert never ran
+  // (instance torn down post-response). D=1, R_h=0, R_t=0 -> freeze_dispositions
+  // _orphaned=1 -> yellow. Under the rejected G-a this would have been an invisible
+  // green; G-b's teardown-independent disposition row is what makes it detectable.
   {
     const addr = '600 Frozen Instance Ct';
-    const rowOrNull = await sinkRow(recordFor('confirmed_la', addr), { run: false });
-    check('freeze-loss: row absent (deferred insert never ran)', rowOrNull === null);
-    const c = computeSection8Components({
-      windowRows: [],
-      dispositionEvents: [routeEvent(addr, 'confirmed_la')],
-      failureEvents: [],
-      recoveryRowHashes: new Set<string>(),
-    });
-    check('freeze-loss: freeze_loss_suspected 1', c.freeze_loss_suspected === 1);
-    check('freeze-loss: write_failures_unrecovered 0 (no failure event)', c.write_failures_unrecovered === 0);
-    check('freeze-loss: verdict yellow (first occurrence)', computeSection8Verdict(c, null) === 'yellow');
+    const auditRow = await sinkAuditRow(recordFor('confirmed_la', addr), { run: false }); // audit deferred fn NOT run
+    check('teardown: audit row absent (deferred insert never ran)', auditRow === null);
+    const { components, verdict } = reconcile([dispositionHash(addr)], [auditRow]);
+    check('teardown: freeze_dispositions_orphaned 1', components.freeze_dispositions_orphaned === 1);
+    check('teardown: freeze_audit_orphaned 0', components.freeze_audit_orphaned === 0);
+    check('teardown: verdict yellow (caught — Fork G)', verdict === 'yellow');
   }
 
-  // === SCENARIO 3: write-failure DETECTION (distinct from freeze-loss). ========
-  // The deferred insert RUNS but fails → no row, and the sink emits a REAL
-  // geocode_audit_write_failure event (captured from console.error). §8 reads
-  // that event from the log archive; here we parse the real emission and feed its
-  // decision_input_hash. wfu drives red; the freeze residual stays 0.
+  // === SCENARIO 3: audit-write FAILURE — F-a subsumption. ======================
+  // The deferred insert RUNS but fails; the sink emits a real geocode_audit_write
+  // _failure (operator-side leading indicator). Under Fork F-a there is no wfu: the
+  // audit row is absent and the disposition row is present, so it surfaces as the
+  // SAME freeze_dispositions_orphaned=1 the teardown does — NOT a distinct red.
   {
     const addr = '700 Write Failure Pl';
     const origError = console.error;
     const captured: string[] = [];
     console.error = (msg?: unknown) => { captured.push(String(msg)); };
-    let row: Record<string, unknown> | null = null;
+    let auditRow: Record<string, unknown> | null = null;
     try {
-      row = await sinkRow(recordFor('confirmed_la', addr), { fail: true });
+      auditRow = await sinkAuditRow(recordFor('confirmed_la', addr), { fail: true });
     } finally {
       console.error = origError;
     }
     const failEvt = parseFailureEvent(captured);
 
-    check('write-failure: no row written', row === null);
-    check('write-failure: real failure event emitted', failEvt !== undefined);
-    check('write-failure: failure event carries decision_input_hash', typeof failEvt?.decision_input_hash === 'string');
+    check('audit-failure: no audit row written', auditRow === null);
+    check('audit-failure: real geocode_audit_write_failure emitted (operator indicator)', failEvt !== undefined);
+    check('audit-failure: failure event carries decision_input_hash', typeof failEvt?.decision_input_hash === 'string');
+    check('audit-failure: failure hash equals the disposition hash (joinable)',
+      (failEvt?.decision_input_hash as string) === dispositionHash(addr));
 
-    const failHash = failEvt?.decision_input_hash as string;
-    const c = computeSection8Components({
-      windowRows: [],
-      dispositionEvents: [routeEvent(addr, 'confirmed_la')],
-      failureEvents: [{ decision_input_hash: failHash }],
-      recoveryRowHashes: new Set<string>(),
-    });
-    check('write-failure: write_failures_unrecovered 1', c.write_failures_unrecovered === 1);
-    check('write-failure: freeze_loss_suspected 0 (failure accounts for the disposition)', c.freeze_loss_suspected === 0);
-    check('write-failure: verdict red', computeSection8Verdict(c, null) === 'red');
-    check('write-failure: failure hash equals the route event hash (joinable)',
-      failHash === computeDecisionInputHash(addr, FIXED_SHA));
+    const { components, verdict } = reconcile([dispositionHash(addr)], [auditRow]);
+    check('audit-failure (F-a): freeze_dispositions_orphaned 1 (no separate wfu)', components.freeze_dispositions_orphaned === 1);
+    check('audit-failure (F-a): verdict yellow, same as teardown', verdict === 'yellow');
   }
 
-  // === SCENARIO 4: RECOVERED write-failure → green. ===========================
-  // A failure event was emitted on a first attempt, but the row exists (a later
-  // attempt / backfill landed it). The decision_input_hash join reclassifies the
-  // failure as recovered (ruling §2.4). wfu 0, freeze 0 → green.
+  // === SCENARIO 4: synchronous disposition-write FAILURE, audit present. ========
+  // Fork G symmetric / the new freeze_audit_orphaned quantity. Four clean decisions
+  // plus one where the audit row landed but the disposition row did NOT (the sync
+  // write timed out / failed). D=4, R_h=4, R_t=5 -> freeze_audit_orphaned=1 -> yellow.
   {
-    const addr = '800 Recovered Later Dr';
-    const rec = recordFor('confirmed_la', addr);
-    const origError = console.error;
-    const captured: string[] = [];
-    console.error = (m?: unknown) => { captured.push(String(m)); };
-    let row: Record<string, unknown> | null = null;
-    try {
-      await sinkRow(rec, { fail: true }); // first attempt fails → failure event
-      row = await sinkRow(rec);           // later attempt succeeds → row lands
-    } finally {
-      console.error = origError;
-    }
-    const failEvt = parseFailureEvent(captured);
-    const failHash = failEvt?.decision_input_hash as string;
-    const rowHash = row?.decision_input_hash as string;
-    check('recovered: failure event and row share the same decision_input_hash', failHash === rowHash);
+    const clean = ['810 A St', '820 B St', '830 C St', '840 D St'];
+    const orphanAddr = '850 Sync Failed St';
+    const cleanRows = [];
+    for (const a of clean) cleanRows.push(await sinkAuditRow(recordFor('confirmed_la', a)));
+    const orphanAudit = await sinkAuditRow(recordFor('not_la', orphanAddr)); // audit landed
+    const auditRows = [...cleanRows, orphanAudit];
+    // disposition rows: the four clean ones only — the orphan decision's sync
+    // disposition write FAILED, so no disposition row for it.
+    const dispositionHashes = clean.map(dispositionHash);
 
-    const c = computeSection8Components({
-      windowRows: [{ decision_input_hash: rowHash }],
-      dispositionEvents: [routeEvent(addr, 'confirmed_la')],
-      failureEvents: [{ decision_input_hash: failHash }],
-      recoveryRowHashes: new Set([rowHash]),
-    });
-    check('recovered: rows_written 1', c.rows_written === 1);
-    check('recovered: write_failures_unrecovered 0 (row exists → recovered)', c.write_failures_unrecovered === 0);
-    check('recovered: freeze_loss_suspected 0', c.freeze_loss_suspected === 0);
-    check('recovered: verdict green', computeSection8Verdict(c, null) === 'green');
+    const { counts, components, verdict } = reconcile(dispositionHashes, auditRows);
+    check('sync-fail: D 4', counts.D === 4);
+    check('sync-fail: R_t 5 (orphan audit row present)', counts.R_t === 5);
+    check('sync-fail: R_h 4 (orphan not hash-matched)', counts.R_h === 4);
+    check('sync-fail: freeze_dispositions_orphaned 0', components.freeze_dispositions_orphaned === 0);
+    check('sync-fail: freeze_audit_orphaned 1', components.freeze_audit_orphaned === 1);
+    check('sync-fail: verdict yellow', verdict === 'yellow');
   }
 }
 

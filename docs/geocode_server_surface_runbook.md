@@ -53,141 +53,177 @@ The audit **row** and the failure **event** have different audiences, so they ca
 
 ## §8 — Verification suite (bounded-anomaly monitor)
 
-§8 is the audit-substrate's bounded-anomaly + trend monitor. It is NOT exact
-reconciliation: no durable server-side invocation counter exists in this codebase
-by design (a pre-write marker is recursive; a Vercel-log oracle would couple us to
-a non-substrate vendor for compliance signal). §8 instead decomposes the substrate
-signal into four components and isolates freeze-loss as the residual.
+§8 is durable-vs-durable reconciliation. Deliverable 4b adds `geocode_dispositions` (migration 011), a durable, teardown-independent disposition record written synchronously on the response path. The monitor compares it against `geocode_audit_log` over a banded window. No log oracle. No vendor-coupled ephemeral source. The two durable tables are the only inputs.
 
-The four components, over a window:
+Both writes are durable; the disposition write is teardown-independent. A lost audit row surfaces as a non-zero orphan against the disposition row that survived, instead of both records dying together and the window going vacuously green.
 
-  1. rows_written
-       = COUNT(*) FROM geocode_audit_log WHERE decided_at ∈ window
+### §8.1 — The three measured durable counts
 
-  2. write_failures_unrecovered
-       = COUNT geocode_audit_write_failure events WHERE decision_input_hash
-         has no matching row in geocode_audit_log
+The monitor reads three counts over the banded window:
 
-  3. dispositions_with_no_row_by_design
-       = COUNT geocode_disposition events WHERE disposition ∈
-         {invalid_json, address_required, geocode_unavailable}
+- **D** — count of `public.geocode_dispositions` rows in the window.
+- **R_h** — count of `public.geocode_audit_log` rows in the window whose `decision_input_hash` matches an in-window disposition hash (hash-matched).
+- **R_t** — total count of `public.geocode_audit_log` rows in the window (no hash filter).
 
-  4. freeze_loss_suspected
-       = (COUNT geocode_disposition events WHERE disposition ∈
-          {confirmed_la, not_la, manual_review, gate_closed})
-         − rows_written
-         − write_failures_unrecovered
+All three reads carry the +5m band (see §8.8). All three reads must succeed; if any read fails the verdict is `monitor_degraded` and the substrate-reconciliation rules below are not evaluated for the window.
 
-gate_closed dispositions and gate_closed rows are counted on both sides at full
-weight. write_failures_unrecovered are computed via decision_input_hash join.
+### §8.2 — The two computed orphan quantities
 
-§8 is not gate-bearing. geocodeAuditDurabilityWired flips on §8 ARTIFACT delivery
-+ broker attestation at the master go-live PR. Post-flip §8 monitoring produces
-alerts and investigation tickets; it does not auto-revert the gate. Any gate-state
-change is a separate broker-authored single-commit PR.
+From the three counts, the monitor computes:
 
-Threshold table (canonical):
-  freeze_loss_suspected == 0  AND  write_failures_unrecovered == 0  → green
-  freeze_loss_suspected == 1  AND  prior window green                → yellow (alert)
-  freeze_loss_suspected ≥ 1   AND  prior window yellow-or-red        → red (alert + ticket)
-  freeze_loss_suspected ≥ 2   (any single window)                    → red (alert + ticket)
-  write_failures_unrecovered ≥ 1                                     → red (alert + ticket)
-  freeze_loss_suspected < 0                                          → red (substrate bug)
+- `freeze_dispositions_orphaned = D − R_h` — **audit-write-loss.** A disposition occurred; its audit row is absent. Caused by `after()` teardown of the audit insert, by an audit-write failure (the `geocode_audit_write_failure` operator indicator), or by a substrate regression on the audit-write path.
+- `freeze_audit_orphaned = R_t − R_h` — **disposition-write-loss.** An audit row exists; its matching disposition row is absent. Caused by a synchronous-disposition-write failure (`geocode_disposition_sync_write_failure`), by a non-route.ts code path inserting audit rows (a substrate bug), or by a `decided_at` placement bug that puts an audit row outside the band while its disposition row sits inside.
 
-The substrate adds one new structured-log event (geocode_disposition, emitted at
-every return branch of app/api/notice/geocode/route.ts; hash-only, no raw
-input_address) and one new audit table (section8_runs, migration 010, RLS
-service_role only).
+The parent ruling's §3 ground-4 bullet-1 stated the orphan arithmetic as "audit rows minus disposition rows plus one." That formulation is wrong. The corrected formulation is the two subtractions above: `D − R_h` and `R_t − R_h`, evaluated independently. The "plus one" term in the parent was a residue from an earlier draft that conflated the count of orphans with the count of consecutive-yellow occurrences (the NF-2 chain). The chain is tracked separately in `section8_runs` history (§8.4); it is not arithmetic inside a single window's orphan count.
 
-§8 artifacts:
-  (1) lib/jurisdiction/geocode/section8.verification.test.ts — pre-go-live one-shot;
-      named by the master go-live predicate as the §8 build-gate signal.
-  (2) scripts/section8_monitor.ts — local-CLI recurring monitor (daily 03:00 PT);
-      service_role key sourced from local broker environment per Slice 4 §2.2.
-      NEVER referenced from app/Vercel/git/CI.
-  (3) This runbook §8 section — query set + threshold table + investigation procedure
-      for red alerts.
+### §8.3 — `section8_runs` column-name mapping (migration continuity)
 
-Investigation procedure for red:
-  - Pull the section8_runs row.
-  - Cross-reference the window against deployment activity (recent deploys can
-    transiently widen freeze_loss_suspected as instances are torn down mid-after()).
-  - For freeze_loss_suspected ≥ 2 without correlated deployment activity: substrate
-    regression candidate. Broker decides whether to re-close the gate via a
-    single-commit revert PR.
-  - For write_failures_unrecovered ≥ 1: query the matching geocode_audit_write_failure
-    events for error_class clustering. If a single error_class accounts for the
-    cluster, that's the substrate signal; if hash-spread, that's a substrate-or-vendor
-    concern needing a separate ruling.
-  - For freeze_loss_suspected < 0: stop. The disposition log is dropping events
-    OR a non-route.ts code path is writing rows. Either is a substrate bug that
-    blocks further interpretation until resolved.
+Column names from migration 010 are retained for continuity. Do not rename. The 4b quantities map as follows:
 
-### §8 read-path query set (deliverable 4 — operator recipes)
+- `rows_written` carries **R_h**.
+- `freeze_loss_suspected` carries **freeze_dispositions_orphaned** (`D − R_h`). Name kept; do not rename.
+- `freeze_audit_orphaned` is a **new** column added by migration 011 carrying the second orphan (`R_t − R_h`).
+- `write_failures_unrecovered` is **retired** (Fork F-a). Column retained at default 0 by migration 011; no longer populated; no longer read by the monitor. See §8.7.
 
-Runnable recipes the §8 monitor uses and that an operator runs by hand to
-cross-check a `section8_runs` row. They IMPLEMENT the four-component
-definitions and threshold table above; they do not restate them. `service_role`
-is sourced from the broker-local `.env` (operator-surface-only); never
-app/Vercel/git/CI. Load creds first: `set -a; source .env.local; set +a`.
+### §8.4 — Threshold table (canonical)
 
-Run the monitor:
+The monitor evaluates the rules below in this exact order. The first rule whose predicate matches sets the verdict; later rules are not evaluated for that window. "Prior non-degraded run" means the most recent row in `public.section8_runs` whose `verdict` is not `monitor_degraded`.
+
+| # | Predicate | Verdict |
+|---|---|---|
+| 1 | any of the three durable reads (D, R_h, R_t) fails | `monitor_degraded` |
+| 2 | `D == 0` AND `R_t > 0` | `red` (substrate divergence — the disposition write path is dark while audit writes continue) |
+| 3 | `freeze_dispositions_orphaned < 0` OR `freeze_audit_orphaned < 0` | `red` (negative residual — substrate bug; events dropping or a non-route.ts writer is producing rows) |
+| 4 | `freeze_dispositions_orphaned >= 2` OR `freeze_audit_orphaned >= 2` (single window) | `red` |
+| 5 | `freeze_dispositions_orphaned == 1` AND prior non-degraded run had `freeze_loss_suspected == 1` | `red` |
+| 6 | `freeze_audit_orphaned == 1` AND prior non-degraded run had `freeze_audit_orphaned == 1` | `red` |
+| 7 | `freeze_dispositions_orphaned == 1` OR `freeze_audit_orphaned == 1` (first occurrence on its own chain) | `yellow` |
+| 8 | otherwise | `green` |
+
+### §8.5 — Verdict-evaluation ladder (locked-prose constant `SECTION8_N1_VERDICT_LADDER`)
+
 ```
-npx tsx scripts/section8_monitor.ts                 # recurring: prior PT calendar day
-npx tsx scripts/section8_monitor.ts --one-shot      # pre-go-live one-shot (no chain)
-npx tsx scripts/section8_monitor.ts --dry-run       # compute + print, write nothing
-npx tsx scripts/section8_monitor.ts --window-start 2026-06-21T07:00:00Z --window-end 2026-06-22T07:00:00Z
+1. read D, R_h, R_t over the banded window
+2. on any read failure                                         → monitor_degraded ; STOP
+3. if D == 0 AND R_t > 0                                       → red (substrate divergence) ; STOP
+4. compute freeze_dispositions_orphaned = D - R_h
+5. compute freeze_audit_orphaned        = R_t - R_h
+6. if either orphan < 0                                        → red (negative residual) ; STOP
+7. if either orphan >= 2                                       → red ; STOP
+8. fetch prior non-degraded run (single row, window_end desc)
+9. if freeze_dispositions_orphaned == 1
+       AND prior.freeze_loss_suspected == 1                    → red ; STOP
+10. if freeze_audit_orphaned == 1
+       AND prior.freeze_audit_orphaned == 1                    → red ; STOP
+11. if freeze_dispositions_orphaned == 1
+       OR freeze_audit_orphaned == 1                           → yellow ; STOP
+12. otherwise                                                  → green
 ```
-Exit codes: `0` green / `0` yellow (WARN) / `10` red / `20` monitor_degraded / `1` hard error.
 
-Pull the window's disposition + failure events (BOTH log levels — disposition is
-info, failure is error):
-```
-vercel logs --json --since <window-start-ISO> \
-  | grep -E 'geocode_disposition|geocode_audit_write_failure'
-```
-The inner payload is the envelope's `.message` field. Disposition events key on
-`"type":"geocode_disposition"`; failures on `"event":"geocode_audit_write_failure"`.
-Window membership is by envelope timestamp (STRICT window); the +5m band below
-applies ONLY to the N1 row query.
+The two consecutive-occurrence checks in steps 9 and 10 are independent. A `freeze_dispositions_orphaned == 1` this window plus a `freeze_audit_orphaned == 1` on the prior non-degraded run does **not** escalate either chain. The chains do not cross.
 
-**(a) N1 `rows_written` — with the +5m hash-matched grace band (NF-1 sub-decision).**
-`decided_at` is insert-time (`default now()`), so a near-midnight decision's row
-can land just past `window_end`; the +5m tail catches it and the hash `in (...)`
-filter keeps the band safe (an unrelated next-day row won't match an in-window
-hash). Reproduce this exactly or a strict-window hand query may disagree by ±1 on
-a midnight-straddle day:
+### §8.6 — G-b synchronous-disposition asymmetry
+
+In `app/api/notice/geocode/route.ts`, at each row-writing return (the four row-writing dispositions; see Fork D), the `geocode_dispositions` row is inserted **synchronously**, before `Response.json()` returns, with a 250ms hard timeout and swallow-on-fail emitting `geocode_disposition_sync_write_failure`. The disposition row survives post-response teardown.
+
+The `geocode_audit_log` row remains **deferred** via `after()`. It can be lost to teardown. The Slice 4c §2.8 audit-write-off-user-response principle is preserved exactly for the audit row.
+
+This asymmetry is the design. A lost audit row surfaces as `freeze_dispositions_orphaned >= 1`: the disposition row remains as the teardown-independent reference against which the missing audit row is detected. Without the synchronous disposition write, a teardown that kills both inserts in `after()` produces `D = 0, R_t = 0, R_h = 0` and the window goes vacuously green — the founding freeze-loss case is then invisible. G-b makes it visible.
+
+The 250ms timeout caps the latency cost: the synchronous insert competes for at most a quarter-second on the response path, and a slow or failing Supabase insert is swallowed (the request still returns the resolver verdict). The cost is hard-bounded; the detection capability is unbounded.
+
+### §8.7 — Retirements stated as retired
+
+- **N3** (`dispositions_with_no_row_by_design`) — **retired (Fork D).** Disposition capture is row-writing-only. The four row-writing dispositions get a `geocode_dispositions` row; the non-row-writing dispositions (handled-error and equivalents) get no row by construction. The N3 column in `section8_runs` is retained at default 0 by migration 011; no longer populated; no longer read.
+- **wfu** (`write_failures_unrecovered`) — **retired (Fork F-a).** An audit-write failure now surfaces through `freeze_dispositions_orphaned` (audit row absent, disposition row present), identical in monitor-signature to a teardown. The wfu column is retained at default 0 by migration 011; no longer populated; no longer read.
+- The `geocode_audit_write_failure` structured-log event **remains** in the route handler. It is an **operator-side leading indicator only** — useful for correlating an observed `freeze_dispositions_orphaned >= 1` to an audit-write-failure root cause vs. a teardown root cause (see §8.10). It is **not** a §8 monitor input and **not** a verdict-evaluation signal.
+
+### §8.8 — Band scope (corrected: applies to all three durable reads)
+
+The +5m band applies to **all three** durable reads (D, R_h, R_t), not only to the audit-rows query. Both sides banded keeps a near-midnight decision's disposition row **and** its audit row in the same window, so neither becomes a phantom orphan.
+
+`decided_at` on both tables is insert-time (`default now()`). A decision made just before `window_end` can have its disposition row land just before the boundary and its audit row land just after (the `after()` defer can push the audit insert past midnight by a few seconds; the synchronous disposition insert lands within the request). Without symmetric banding, that decision produces a phantom `freeze_dispositions_orphaned = 1`. With symmetric +5m on both sides, the audit row lands inside the banded window and the hash join (R_h) catches it.
+
+The +5m tail does not double-count rows across windows: the hash filter on R_h restricts to in-window disposition hashes, so an audit row landing in a band tail is counted toward the window of its disposition row, not the calendar window of its `decided_at`. The +5m is a tail extension on R_t identical to D's and R_h's; midnight-straddle contributions cancel symmetrically across two consecutive windows.
+
+### §8.9 — Substrate (what 4b adds to the schema)
+
+- `public.geocode_dispositions` (migration 011) — durable disposition record. App-INSERT-only RLS wall (Fork H-a) mirroring `geocode_audit_log` verbatim: revoke-all → grant insert to `anon, authenticated` → RLS-on → `policy ... for insert to anon, authenticated with check (true)`. The app (anon role) writes via PostgREST; the monitor (`service_role`, broker-local environment only) reads via RLS bypass.
+- `public.section8_runs.freeze_audit_orphaned` (migration 011) — new column carrying the second orphan quantity (`R_t − R_h`).
+- `service_role` remains operator-surface-only (standing rail). Never in `app/`, never in CI, never in Vercel runtime env. Broker-local `.env.local` only.
+
+### §8.10 — Investigation procedure
+
+When the monitor produces a non-green verdict, follow the procedure that matches the observed signature.
+
+**`freeze_dispositions_orphaned >= 1`, deploy-correlated** (the run window contains or immediately follows a Vercel deployment):
+- Treat as teardown freeze-loss. Vercel torn down the instance mid-`after()`; the audit insert never completed.
+- Transient. Expected around deploys. The single-occurrence first-window value is `yellow`; the NF-2 chain catches a second consecutive occurrence on the next run.
+
+**`freeze_dispositions_orphaned >= 1`, NOT deploy-correlated:**
+- Cross-reference `geocode_audit_write_failure` operator-log events for the window. If present, an audit-write **failure** (F-a) produced the orphan, not a teardown. Investigate the audit-write path: Supabase availability, RLS policy, schema drift on `geocode_audit_log`.
+- If `geocode_audit_write_failure` is absent for the window: either a teardown unrelated to a Vercel deploy (rare; possible on a cold-start instance recycle), or a substrate regression. Inspect the route handler's `after()` block for a regression that throws before the audit insert resolves.
+
+**`freeze_audit_orphaned >= 1`:**
+- A synchronous-disposition-write failure produced the orphan: the audit row landed, the disposition row did not. Cross-reference `geocode_disposition_sync_write_failure` operator-log events for the window. Investigate the synchronous-disposition write path: the 250ms timeout firing under load, Supabase contention on `geocode_dispositions`, or RLS policy drift on the disposition table.
+- If `geocode_disposition_sync_write_failure` is absent for the window, a non-route.ts code path is writing audit rows (substrate bug). Locate and stop the rogue writer.
+
+**`D == 0 AND R_t > 0`:**
+- Substrate divergence. The disposition write path is dark while audit writes continue. Stop; do not interpret further. Investigate route.ts: is the synchronous disposition insert reachable on the response path, is it timing out 100% on the 250ms cap, has migration 011 been applied to the live database.
+
+**Either orphan `< 0`:**
+- Negative residual. Either the disposition log is dropping events (a write succeeded but no row landed — RLS or schema regression), or a non-route.ts path is writing rows in one of the two tables. Substrate bug; blocks interpretation until resolved.
+
+Gate-state changes remain broker-authored single-commit PRs. §8 never auto-reverts the gate. A red verdict is a signal for broker investigation, not an automatic rollback trigger.
+
+### §8 read-path query set
+
+Operator hand-queries equivalent to the monitor's PostgREST reads. Schema-qualified, with the +5m band as `::timestamptz + interval '5 minutes'` matching the existing runbook representation. Angle-bracket placeholders.
+
 ```sql
+-- D: disposition rows in the banded window
+select count(*) from public.geocode_dispositions
+ where decided_at >= '<window-start-ISO>'
+   and decided_at <  '<window-end-ISO>'::timestamptz + interval '5 minutes';
+```
+```sql
+-- R_h: audit rows hash-matched to in-window disposition hashes
 select count(*) from public.geocode_audit_log
  where decided_at >= '<window-start-ISO>'
    and decided_at <  '<window-end-ISO>'::timestamptz + interval '5 minutes'
-   and decision_input_hash in ( <in-window row-writing disposition hashes> );
+   and decision_input_hash in (
+     select decision_input_hash from public.geocode_dispositions
+      where decided_at >= '<window-start-ISO>'
+        and decided_at <  '<window-end-ISO>'::timestamptz + interval '5 minutes'
+   );
 ```
-
-**(b) Prior real verdict — the consecutive-chain predicate skips `monitor_degraded` (NF-2):**
 ```sql
-select verdict from public.section8_runs
+-- R_t: total audit rows in the banded window (no hash filter)
+select count(*) from public.geocode_audit_log
+ where decided_at >= '<window-start-ISO>'
+   and decided_at <  '<window-end-ISO>'::timestamptz + interval '5 minutes';
+```
+```sql
+-- prior non-degraded run's two orphan quantities (NF-2 dual-chain lookback)
+select freeze_loss_suspected, freeze_audit_orphaned
+  from public.section8_runs
  where verdict <> 'monitor_degraded'
  order by window_end desc
  limit 1;
 ```
-
-**(c) Review all non-green signals over the last N days (the row-as-ticket cadence, NF-3):**
 ```sql
+-- review all non-green over N days (retired wfu / N3 columns dropped from the select)
 select window_start, window_end, verdict,
-       rows_written, write_failures_unrecovered,
-       dispositions_with_no_row_by_design, freeze_loss_suspected
+       rows_written, freeze_loss_suspected, freeze_audit_orphaned
   from public.section8_runs
  where verdict <> 'green'
    and window_end >= now() - interval '<N> days'
  order by window_end desc;
 ```
-
-**(d) Chain that drove a red — the row plus prior runs back to the last non-degraded
-verdict (so a red `freeze==1` shows the yellow it escalated from, across any
-`monitor_degraded` gap):**
 ```sql
-select window_start, window_end, verdict, freeze_loss_suspected
+-- chain that drove a red, back to the last non-degraded verdict
+select window_start, window_end, verdict,
+       freeze_loss_suspected, freeze_audit_orphaned
   from public.section8_runs
  where window_end <= '<the red row''s window_end>'
  order by window_end desc
