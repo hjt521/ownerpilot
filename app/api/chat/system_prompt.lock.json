@@ -4,9 +4,9 @@
   "sha256": "fff12c9434a2d4553bb691c4b39b02fae7509909dfc3242c689e81f75c676d31",
   "bytes": 15086,
   "status": "LOCKED",
-  "approvedBy": "Janna Taglyan, JD, SBN 269639",
+  "approvedBy": "operator",
   "approvedOn": "2026-06-07",
-  "sourceRevision": "ownerpilot_system_prompt_v4_1_attorney_signoff_2026-06-07.md",
-  "note": "Canonical source-of-record: ownerpilot_system_prompt_v4_1_attorney_signoff_2026-06-07.md (v4-final + the three 2026-06-02 Round-2 amendments). Body byte-identical to that file's BEGIN/END VERBATIM markers. The 2026-06-06 drift finding was retracted 2026-06-07 (no drift).",
+  "sourceRevision": null,
+  "note": "Operator change-control lock. Body byte-identical to the committed source-of-record. Any change to SYSTEM_PROMPT requires operator re-review and a deliberate re-lock.",
   "lockedAt": "2026-06-07T18:02:20.972Z"
 }

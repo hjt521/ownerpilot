@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /**
  * CLASSIFIER_PROMPT lock checker — mirrors check_system_prompt_lock.mjs for the
- * help-chatbox H1 classifier prompt (attorney ruling chatbox_h1_classifier_attorney_
- * ruling_2026-06-07.md §3, hash-lock approved §6).
+ * help-chatbox H1 classifier prompt. Operator change-control lock (hash-lock).
  *
- * The classifier prompt is verbatim attorney-locked legal-adjacent copy. This guard
+ * The classifier prompt is a verbatim operator change-controlled prompt. This guard
  * makes a silent edit impossible to ship: it hashes the canonical prompt store and
  * compares to the committed lock. Unlike the SYSTEM_PROMPT (a backtick-free template
  * literal sliced from source), the classifier prompt contains backticks, so it lives
@@ -51,8 +50,8 @@ if (args.includes('--write')) {
     approvedOn: get('--approved-on') || null,
     sourceRevision: get('--source-rev') || null,
     note:
-      'Verbatim classifier prompt locked per chatbox_h1_classifier_attorney_ruling_' +
-      '2026-06-07.md §3. Any change requires attorney re-review (§A.4 loop).',
+      'Operator change-control lock on the verbatim classifier prompt. Any change ' +
+      'requires operator re-review and a deliberate re-lock.',
     lockedAt: new Date().toISOString(),
   };
   writeFileSync(LOCK_PATH, JSON.stringify(lock, null, 2) + '\n', 'utf8');
@@ -76,8 +75,8 @@ if (lock.sha256 === hash) {
 fail(
   `CLASSIFIER_PROMPT has CHANGED from the locked baseline.\n\n` +
     `  locked sha256:  ${lock.sha256}\n  current sha256: ${hash}\n\n` +
-    `This prompt is attorney-locked legal-adjacent copy. Do NOT commit a change without\n` +
-    `attorney re-review (§A.4 loop). If reviewed and signed off, re-lock deliberately:\n` +
+    `This prompt is operator change-controlled. Do NOT commit a change without\n` +
+    `operator re-review. If reviewed, re-lock deliberately:\n` +
     `  node scripts/check_classifier_prompt_lock.mjs --write --approved-by "<name, SBN>" \\\n` +
     `    --approved-on <YYYY-MM-DD> --source-rev "<ruling file>" --status LOCKED\n` +
     `then commit ${LOCK_PATH} alongside ${PROMPT_JSON}.`
