@@ -25,3 +25,6 @@ jobs:
       - name: Typecheck
         if: ${{ !cancelled() }}
         run: npx tsc --noEmit
+      - name: Typecheck edge functions
+        if: ${{ !cancelled() }}
+        run: npm run ci:typecheck-edge

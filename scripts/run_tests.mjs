@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const roots = process.argv.slice(2);
-const ROOTS = roots.length ? roots : ['lib'];
+const ROOTS = roots.length ? roots : ['lib', 'supabase/functions'];
 
 function walk(dir, acc) {
   let entries;
