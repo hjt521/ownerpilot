@@ -32,6 +32,7 @@
   ],
   "exclude": [
     "node_modules",
-    "supabase/functions"
+    "supabase/functions",
+    "scripts/rtc_parity_check.ts"
   ]
 }
