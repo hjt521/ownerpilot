@@ -1,0 +1,42 @@
+RTC parity check — 2026-06-24T22:23:35.656Z
+Run by: broker (CalDRE B9445457)
+Network: live LAHD CDN
+Mechanism: M1 (broker-run script, identical fetcher code) — predicate 7 evidence
+
+URL 1 (english): https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-English.pdf
+  Baseline: d0653950008da9004c405a91685c2c212557ae6398eb2f79d9a6cf7d7beb5f7a
+  Live:     d0653950008da9004c405a91685c2c212557ae6398eb2f79d9a6cf7d7beb5f7a   ✓ MATCH
+
+URL 2 (spanish): https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Spanish.pdf
+  Baseline: 947885d0af7eb21f7b66c0f54294b6803923449a21c93c75c0797512455d8371
+  Live:     947885d0af7eb21f7b66c0f54294b6803923449a21c93c75c0797512455d8371   ✓ MATCH
+
+URL 3 (korean): https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Korean.pdf
+  Baseline: 683dbc620035d6458dc762cba776b36afd47b1f81a8eefe8a336194256e248c5
+  Live:     683dbc620035d6458dc762cba776b36afd47b1f81a8eefe8a336194256e248c5   ✓ MATCH
+
+URL 4 (farsi): https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Farsi.pdf
+  Baseline: 8d12f5a4e3bdaa60807d61d94181b8db9c6280f29f349c81b329dfdce9140ee0
+  Live:     8d12f5a4e3bdaa60807d61d94181b8db9c6280f29f349c81b329dfdce9140ee0   ✓ MATCH
+
+URL 5 (armenian): https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Armenian.pdf
+  Baseline: 05b83877d97221bf3b98a4bbbaeb29235f870cef2fe3378885f991f5b51bba20
+  Live:     05b83877d97221bf3b98a4bbbaeb29235f870cef2fe3378885f991f5b51bba20   ✓ MATCH
+
+URL 6 (russian): https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Russian.pdf
+  Baseline: 63cc30da901b64e3c8e7a8169b38db7786dea7f5bb6a6799d8bfbdf2750bef02
+  Live:     63cc30da901b64e3c8e7a8169b38db7786dea7f5bb6a6799d8bfbdf2750bef02   ✓ MATCH
+
+URL 7 (cantonese): https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Traditional-Chinese.pdf
+  Baseline: 71ad943a24f1a6c49aa64c4db973b0262b92cafaa12743c9e8c5d86a1b3dafc9
+  Live:     71ad943a24f1a6c49aa64c4db973b0262b92cafaa12743c9e8c5d86a1b3dafc9   ✓ MATCH
+
+URL 8 (mandarin): https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Simplified-Chinese.pdf
+  Baseline: c74efb9f64771fb059e6186f8d6f150df6cf1c8b834fe3a1eaacb76199c2acd3
+  Live:     c74efb9f64771fb059e6186f8d6f150df6cf1c8b834fe3a1eaacb76199c2acd3   ✓ MATCH
+
+URL 9 (tagalog): https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Tagalog.pdf
+  Baseline: 0a70e2eb4cb863f034ddf3723b05a82f152c3172453e1169ec6c18b566428c20
+  Live:     0a70e2eb4cb863f034ddf3723b05a82f152c3172453e1169ec6c18b566428c20   ✓ MATCH
+
+Overall: 9/9 MATCH — PARITY CONFIRMED
