@@ -22,7 +22,8 @@ import { RTC_FORM_URLS, type RtcLanguage } from './_core/laRtcRules.ts';
 import type { FetchedForm, LanguageFetcher } from './_core/rtcRefreshJob.ts';
 
 const MAX_REDIRECT_HOPS = 10;
-const DEFAULT_USER_AGENT = 'ownerpilot-rtc-refresh/1.0 (read-only form fetch; contact: broker)';
+// UA locked by broker ruling 2026-06-24. Do not modify without broker sign-off. Reason: only string empirically confirmed against LAHD WAF.
+const DEFAULT_USER_AGENT = 'ownerpilot-rtc-refresh/1.0';
 
 async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', bytes);
