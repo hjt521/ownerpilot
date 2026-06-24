@@ -2,11 +2,12 @@
  * rtc-refresh handler tests — auth + leg + Monday-LA gate + hoisted production gate.
  * Plain tsx suite (check() helper); Deno-free because handler.ts injects all runtime.
  *
- * Step-3 high-water-mark test (B-shape): with the store now REAL (recording mock), gate
- * OPEN + a throwing fetcher stub completes the run (runRefresh absorbs fetch failures into
- * fetch_error outcomes), the store records a run-result carrying the fetcher marker, and
- * alerts fire without throwing. This proves the fetcher is the current frontier (Step 4) —
- * replacing the Step-2 store-throws test, which no longer holds now that the store is real.
+ * Step-4 high-water mark: store AND fetcher are now real, so the frontier is the ALERT SINK.
+ * The injected fetcher stub RETURNS { error } (what the real fetcher does on failure — it never
+ * throws-on-invoke), runRefresh absorbs that into fetch_error outcomes, and:
+ *   (a) with recording alerts, the run completes (200), records a run-result, and emits alerts;
+ *   (b) with a THROWING alert stub, the run 500s — proving alerts is the last remaining frontier.
+ * Baseline-independent: asserts nothing about hash matches (a match would couple to real baselines).
  */
 import { handleRequest, isMondayInLosAngeles, type HandlerEnv } from './handler.ts';
 import { RTC_PUBLISHED_LANGUAGES } from './_core/laRtcRules.ts';
@@ -23,8 +24,10 @@ const SECRET = 'test-secret-value';
 const MONDAY = new Date('2026-06-22T17:00:00Z');
 const TUESDAY = new Date('2026-06-23T17:00:00Z');
 
-const STEP3_FETCHER_MARKER = 'STEP3_FETCHER_MARKER: skeleton fetcher; lands in Step 4';
-const throwFetcher: LanguageFetcher = async () => { throw new Error(STEP3_FETCHER_MARKER); };
+const STEP4_FETCH_ERROR = 'STEP4_FETCH_ERROR: injected fetch failure';
+// Error-returning fetcher: mirrors the REAL fetcher's failure shape ({ error }), not a throw.
+const errorFetcher: LanguageFetcher = async (language) => ({ language, error: STEP4_FETCH_ERROR });
+const throwAlerts: AlertSink = { emit: async () => { throw new Error('STEP5_ALERTS: skeleton alert sink; lands in Step 5'); } };
 
 // Recording mock store (real-shaped, non-throwing) — captures what runRefresh records.
 function recordingStore(): RefreshStateStore & { runs: RefreshRunResult[] } {
@@ -49,7 +52,7 @@ function env(over: Partial<HandlerEnv> = {}): HandlerEnv {
     secret: SECRET,
     now: () => MONDAY,
     gateIsOpen: () => false,
-    deps: { fetcher: throwFetcher, store: recordingStore(), alerts: recordingAlerts() },
+    deps: { fetcher: errorFetcher, store: recordingStore(), alerts: recordingAlerts() },
     ...over,
   };
 }
@@ -92,19 +95,25 @@ async function main() {
   r = await handleRequest(req(SECRET, { leg: 'cron' }), env({ gateIsOpen: () => false }));
   check('cron + Monday + gate CLOSED => 200 skipped la-gate-closed', r.status === 200 && (await r.json()).skipped === 'la-gate-closed');
 
-  // --- STEP-3 HIGH-WATER MARK (B): gate OPEN -> fetcher reached -> failure absorbed into outcomes ---
+  // --- STEP-4 (a): gate OPEN + real-shaped error-fetcher + recording alerts -> run completes ---
   const store = recordingStore();
   const alerts = recordingAlerts();
   r = await handleRequest(req(SECRET, { leg: 'cron' }),
-    env({ gateIsOpen: () => true, deps: { fetcher: throwFetcher, store, alerts } }));
-  check('gate OPEN + throwing fetcher completes (failure absorbed) => 200', r.status === 200);
+    env({ gateIsOpen: () => true, deps: { fetcher: errorFetcher, store, alerts } }));
+  check('gate OPEN + error-fetcher completes (failure absorbed) => 200', r.status === 200);
   check('store recorded exactly one run-result', store.runs.length === 1);
   const outs = store.runs[0]?.outcomes ?? [];
   check('run-result has one outcome per published language', outs.length === RTC_PUBLISHED_LANGUAGES.length);
-  check('every outcome is fetch_error carrying the fetcher marker',
-    outs.length > 0 && outs.every((o: any) => o.kind === 'fetch_error' && String(o.reason).includes('STEP3_FETCHER_MARKER')));
-  check('all_failed is true (every fetch threw)', store.runs[0]?.allFailed === true);
+  check('every outcome is fetch_error carrying the fetch error',
+    outs.length > 0 && outs.every((o: any) => o.kind === 'fetch_error' && String(o.reason).includes('STEP4_FETCH_ERROR')));
+  check('all_failed is true (every fetch errored)', store.runs[0]?.allFailed === true);
   check('alerts were emitted and did not throw', alerts.emitted.length > 0);
+
+  // --- STEP-4 (b) HIGH-WATER MARK: alerts is the last frontier -> throwing alerts 500s ---
+  const store2 = recordingStore();
+  r = await handleRequest(req(SECRET, { leg: 'cron' }),
+    env({ gateIsOpen: () => true, deps: { fetcher: errorFetcher, store: store2, alerts: throwAlerts } }));
+  check('gate OPEN + throwing alert sink => 500 (alerts is the current frontier)', r.status === 500);
 }
 
 main().then(() => {
