@@ -2,14 +2,15 @@
  * rtc-refresh Edge Function — Deno entry (thin binding).
  *
  * Wires the runtime: reads secrets from Deno env, supplies the clock, and injects deps.
- * Step 3: the real Supabase store is wired (createSupabaseRefreshStore over a service_role
- * client created in-Supabase — rail intact). fetcher + alerts remain Step-named stubs
- * (lands in Steps 4 / 5). All logic lives in handler.ts (Deno-free, unit-tested under Node).
+ * Step 3 wired the real store; Step 4 wires the real fetcher (createLanguageFetcher over
+ * Deno fetch + crypto.subtle, byte-parity with scripts/rtc_url_drift_check.ts). The alert
+ * sink remains a Step-named stub (lands in Step 5). All logic lives in handler.ts (Deno-free,
+ * unit-tested under Node).
  */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { handleRequest, type HandlerEnv } from './handler.ts';
 import { createSupabaseRefreshStore, type SupabaseRefreshClient } from './store.ts';
-import type { LanguageFetcher } from './_core/rtcRefreshJob.ts';
+import { createLanguageFetcher } from './fetcher.ts';
 import type { AlertSink } from './_core/rtcRefreshTypes.ts';
 
 // Real store: service_role client, created INSIDE Supabase (never leaves; rail intact).
@@ -20,11 +21,12 @@ const supabase = createClient(
 ) as unknown as SupabaseRefreshClient;
 const store = createSupabaseRefreshStore({ getClient: async () => supabase });
 
-// Step-named throw-on-invoke stubs (lands in Steps 4 / 5). fetcher throws are absorbed by
-// runRefresh into fetch_error outcomes; the alerts stub is the current observable frontier.
-const fetcher: LanguageFetcher = async () => {
-  throw new Error('skeleton: fetcher not implemented; lands in Step 4');
-};
+// Real fetcher: Deno fetch + crypto.subtle SHA-256, URLs from RTC_FORM_URLS.
+const fetcher = createLanguageFetcher();
+
+// Step-named throw-on-invoke stub (lands in Step 5). The production gate short-circuits
+// before runRefresh pre-go-live, so this never executes in the real path; a test that
+// reaches it fails loudly. Alerts fire only on revision/failure outcomes.
 const alerts: AlertSink = {
   emit: async () => { throw new Error('skeleton: alert sink not implemented; lands in Step 5'); },
 };
