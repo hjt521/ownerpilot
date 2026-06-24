@@ -2,11 +2,12 @@
  * rtc-refresh handler tests — auth + leg + Monday-LA gate + hoisted production gate.
  * Plain tsx suite (check() helper); Deno-free because handler.ts injects all runtime.
  *
- * Step-4 high-water mark: store AND fetcher are now real, so the frontier is the ALERT SINK.
- * The injected fetcher stub RETURNS { error } (what the real fetcher does on failure — it never
- * throws-on-invoke), runRefresh absorbs that into fetch_error outcomes, and:
- *   (a) with recording alerts, the run completes (200), records a run-result, and emits alerts;
- *   (b) with a THROWING alert stub, the run 500s — proving alerts is the last remaining frontier.
+ * Step-5: store, fetcher, AND alert sink are all real now — no stub frontier remains. These two
+ * orchestration tests use real-shaped injected deps (error-returning fetcher = what the real
+ * fetcher does on failure; recording/throwing alert sinks):
+ *   (a) with a non-throwing sink, the run completes (200), records a run-result, emits alerts;
+ *   (b) with a THROWING sink, the run 500s — documenting that an alert-transport failure surfaces
+ *       loudly, not swallowed (the console stub never throws, but the future shared transport could).
  * Baseline-independent: asserts nothing about hash matches (a match would couple to real baselines).
  */
 import { handleRequest, isMondayInLosAngeles, type HandlerEnv } from './handler.ts';
@@ -95,7 +96,7 @@ async function main() {
   r = await handleRequest(req(SECRET, { leg: 'cron' }), env({ gateIsOpen: () => false }));
   check('cron + Monday + gate CLOSED => 200 skipped la-gate-closed', r.status === 200 && (await r.json()).skipped === 'la-gate-closed');
 
-  // --- STEP-4 (a): gate OPEN + real-shaped error-fetcher + recording alerts -> run completes ---
+  // --- (a): gate OPEN + real-shaped error-fetcher + recording alerts -> run completes ---
   const store = recordingStore();
   const alerts = recordingAlerts();
   r = await handleRequest(req(SECRET, { leg: 'cron' }),
@@ -109,11 +110,11 @@ async function main() {
   check('all_failed is true (every fetch errored)', store.runs[0]?.allFailed === true);
   check('alerts were emitted and did not throw', alerts.emitted.length > 0);
 
-  // --- STEP-4 (b) HIGH-WATER MARK: alerts is the last frontier -> throwing alerts 500s ---
+  // --- (b): a throwing alert sink surfaces as 500 (not swallowed) — defensive, not a frontier ---
   const store2 = recordingStore();
   r = await handleRequest(req(SECRET, { leg: 'cron' }),
     env({ gateIsOpen: () => true, deps: { fetcher: errorFetcher, store: store2, alerts: throwAlerts } }));
-  check('gate OPEN + throwing alert sink => 500 (alerts is the current frontier)', r.status === 500);
+  check('gate OPEN + throwing alert sink => 500 (transport failure surfaces, not swallowed)', r.status === 500);
 }
 
 main().then(() => {
