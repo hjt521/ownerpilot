@@ -13,6 +13,7 @@
     "ci:verify-no-live-cliff": "node scripts/ci/verify_no_live_cliff_schedule.mjs",
     "ci:verify-geocode-failure-event": "node scripts/ci/verify_geocode_failure_event_no_user_content.mjs",
     "ci:verify-no-operator-secrets": "node scripts/ci/verify_no_operator_secrets.mjs",
+    "ci:typecheck-edge": "tsc -p tsconfig.edge.json",
     "build:edge-core": "node scripts/build_edge_core.mjs",
     "ci:verify-edge-core-sync": "npm run build:edge-core && git diff --exit-code supabase/functions/rtc-refresh/_core/"
   },
