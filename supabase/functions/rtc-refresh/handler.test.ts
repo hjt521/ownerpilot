@@ -2,14 +2,16 @@
  * rtc-refresh handler tests — auth + leg + Monday-LA gate + hoisted production gate.
  * Plain tsx suite (check() helper); Deno-free because handler.ts injects all runtime.
  *
- * The locked negative test (Step-2 determination): valid auth + valid leg + forced
- * Monday + gate OPEN reaches runRefresh and throws the Step-3 store stub — proving the
- * production gate is the ONLY thing protecting the stubs pre-go-live. Moving high-water
- * mark: Step 3 updates this to reach further.
+ * Step-3 high-water-mark test (B-shape): with the store now REAL (recording mock), gate
+ * OPEN + a throwing fetcher stub completes the run (runRefresh absorbs fetch failures into
+ * fetch_error outcomes), the store records a run-result carrying the fetcher marker, and
+ * alerts fire without throwing. This proves the fetcher is the current frontier (Step 4) —
+ * replacing the Step-2 store-throws test, which no longer holds now that the store is real.
  */
 import { handleRequest, isMondayInLosAngeles, type HandlerEnv } from './handler.ts';
+import { RTC_PUBLISHED_LANGUAGES } from './_core/laRtcRules.ts';
 import type { LanguageFetcher } from './_core/rtcRefreshJob.ts';
-import type { RefreshStateStore, AlertSink } from './_core/rtcRefreshTypes.ts';
+import type { RefreshStateStore, AlertSink, RefreshRunResult } from './_core/rtcRefreshTypes.ts';
 
 let passed = 0, failed = 0;
 function check(name: string, cond: boolean) {
@@ -21,22 +23,33 @@ const SECRET = 'test-secret-value';
 const MONDAY = new Date('2026-06-22T17:00:00Z');
 const TUESDAY = new Date('2026-06-23T17:00:00Z');
 
-const throwFetcher: LanguageFetcher = async () => { throw new Error('stub fetcher: Step 4'); };
-const throwStore: RefreshStateStore = {
-  getLanguageState: async () => { throw new Error('stub store getLanguageState: Step 3'); },
-  setLanguageState: async () => { throw new Error('stub store: Step 3'); },
-  getPin: async () => { throw new Error('stub store: Step 3'); },
-  setPin: async () => { throw new Error('stub store: Step 3'); },
-  recordRunResult: async () => { throw new Error('stub store: Step 3'); },
-};
-const throwAlerts: AlertSink = { emit: async () => { throw new Error('stub alerts: Step 5'); } };
+const STEP3_FETCHER_MARKER = 'STEP3_FETCHER_MARKER: skeleton fetcher; lands in Step 4';
+const throwFetcher: LanguageFetcher = async () => { throw new Error(STEP3_FETCHER_MARKER); };
+
+// Recording mock store (real-shaped, non-throwing) — captures what runRefresh records.
+function recordingStore(): RefreshStateStore & { runs: RefreshRunResult[] } {
+  const runs: RefreshRunResult[] = [];
+  return {
+    runs,
+    setLanguageState: async () => {},
+    recordRunResult: async (r: RefreshRunResult) => { runs.push(r); },
+    getLanguageState: async () => { throw new Error('not used'); },
+    getPin: async () => { throw new Error('not used'); },
+    setPin: async () => { throw new Error('not used'); },
+  };
+}
+// Recording alerts (non-throwing) — captures emitted alerts.
+function recordingAlerts(): AlertSink & { emitted: unknown[] } {
+  const emitted: unknown[] = [];
+  return { emitted, emit: async (a) => { emitted.push(a); } };
+}
 
 function env(over: Partial<HandlerEnv> = {}): HandlerEnv {
   return {
     secret: SECRET,
     now: () => MONDAY,
     gateIsOpen: () => false,
-    deps: { fetcher: throwFetcher, store: throwStore, alerts: throwAlerts },
+    deps: { fetcher: throwFetcher, store: recordingStore(), alerts: recordingAlerts() },
     ...over,
   };
 }
@@ -79,10 +92,19 @@ async function main() {
   r = await handleRequest(req(SECRET, { leg: 'cron' }), env({ gateIsOpen: () => false }));
   check('cron + Monday + gate CLOSED => 200 skipped la-gate-closed', r.status === 200 && (await r.json()).skipped === 'la-gate-closed');
 
-  // --- LOCKED NEGATIVE TEST: gate OPEN reaches runRefresh -> throws Step-3 store stub -> 500 ---
-  r = await handleRequest(req(SECRET, { leg: 'cron' }), env({ gateIsOpen: () => true }));
-  check('gate OPEN reaches runRefresh and 500s on the Step-3 store stub', r.status === 500);
-  // This proves the production gate is the ONLY thing protecting the stubs pre-go-live.
+  // --- STEP-3 HIGH-WATER MARK (B): gate OPEN -> fetcher reached -> failure absorbed into outcomes ---
+  const store = recordingStore();
+  const alerts = recordingAlerts();
+  r = await handleRequest(req(SECRET, { leg: 'cron' }),
+    env({ gateIsOpen: () => true, deps: { fetcher: throwFetcher, store, alerts } }));
+  check('gate OPEN + throwing fetcher completes (failure absorbed) => 200', r.status === 200);
+  check('store recorded exactly one run-result', store.runs.length === 1);
+  const outs = store.runs[0]?.outcomes ?? [];
+  check('run-result has one outcome per published language', outs.length === RTC_PUBLISHED_LANGUAGES.length);
+  check('every outcome is fetch_error carrying the fetcher marker',
+    outs.length > 0 && outs.every((o: any) => o.kind === 'fetch_error' && String(o.reason).includes('STEP3_FETCHER_MARKER')));
+  check('all_failed is true (every fetch threw)', store.runs[0]?.allFailed === true);
+  check('alerts were emitted and did not throw', alerts.emitted.length > 0);
 }
 
 main().then(() => {
