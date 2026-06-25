@@ -21,6 +21,8 @@
  * Additive; does NOT edit laRtcRules.ts (frozen under W2).
  */
 import { isLaProductionUnblocked, type RtcLanguage } from './laRtcRules';
+import { checkLanguageFreshness } from './rtcRefresh/languageFreshness';
+import type { ReadBlockStateEnv, FetchLike } from './rtcRefresh/readBlockState';
 
 export type LanguageGateInput = { language: RtcLanguage };
 
@@ -28,7 +30,7 @@ export type LanguageGateInput = { language: RtcLanguage };
  * Whether a given language may be produced/served in LA production right now.
  * Fail-closed: any condition unmet → false.
  */
-export function isLaLanguageUnblocked({ language }: LanguageGateInput): boolean {
+export async function isLaLanguageUnblocked({ language }: LanguageGateInput): Promise<boolean> {
   // (1) LA-wide gate first. Real today; returns false while any dependency is
   //     unbuilt. This is the load-bearing check — no per-language state can make
   //     this true while the gate is closed.
@@ -39,6 +41,29 @@ export function isLaLanguageUnblocked({ language }: LanguageGateInput): boolean 
 
   // (3) language-specific last-refresh failure (W4 §2.2). Step (e) wires real state.
   if (lastRefreshFailedFor(language)) return false;
+
+  // (4) 14-day freshness-fail-closed guard (predicate 6) — real, async. Reads block-state
+  //     in-process through the shared read core (readBlockState), self-presenting the route
+  //     secret; any failure mode -> block. Per
+  //     predicate_6_freshness_guard_broker_determination_2026-06-25.md (B/C/D/E). While the
+  //     LA-wide gate above is closed, this is never reached (short-circuit).
+  const env: ReadBlockStateEnv = {
+    routeSecret: process.env.RTC_BLOCK_STATE_ROUTE_SECRET,
+    baseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    readerJwt: process.env.SUPABASE_RTC_READER_JWT,
+  };
+  const fetchImpl: FetchLike = (url, init) => fetch(url, init);
+  const freshness = await checkLanguageFreshness({ language, now: new Date() }, env, fetchImpl);
+  if (!freshness.fresh) {
+    // D: guard LOGS (failure_class, language, age_ms); runner ALERTS. Never JWT/secret/bodies.
+    console.warn('[rtc-freshness] language blocked (fail-closed)', {
+      failure_class: freshness.failureClass,
+      language,
+      age_ms: freshness.ageMs,
+    });
+    return false;
+  }
 
   return true;
 }

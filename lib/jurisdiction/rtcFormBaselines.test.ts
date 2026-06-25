@@ -43,14 +43,22 @@ check('all nine languages have a last-modified',
 check('spanish baseline is exactly the Jun-16 hash (Aug-2025 typo form not represented)',
   RTC_FORM_BASELINE_HASHES.spanish === SPANISH_JUN16);
 
-console.log('\n=== per-language gate is fail-closed while LA-wide gate is closed ===');
-check('LA-wide gate is closed at HEAD (all deps false)', isLaProductionUnblocked() === false);
-check('english is NOT unblocked (gate closed)', isLaLanguageUnblocked({ language: 'english' }) === false);
-check('spanish is NOT unblocked (gate closed)', isLaLanguageUnblocked({ language: 'spanish' }) === false);
-check('every language is fail-closed while the gate is closed',
-  RTC_PUBLISHED_LANGUAGES.every((l) => isLaLanguageUnblocked({ language: l }) === false));
+async function main() {
+  console.log('\n=== per-language gate is fail-closed while LA-wide gate is closed ===');
+  check('LA-wide gate is closed at HEAD (all deps false)', isLaProductionUnblocked() === false);
+  check('english is NOT unblocked (gate closed)',
+    (await isLaLanguageUnblocked({ language: 'english' })) === false);
+  check('spanish is NOT unblocked (gate closed)',
+    (await isLaLanguageUnblocked({ language: 'spanish' })) === false);
+  check('every language is fail-closed while the gate is closed',
+    (await Promise.all(RTC_PUBLISHED_LANGUAGES.map((l) => isLaLanguageUnblocked({ language: l })))).every(
+      (v) => v === false,
+    ));
 
-console.log('\n----------------------------------------');
-console.log(`  ${passed} passed, ${failed} failed`);
-console.log('----------------------------------------');
-if (failed > 0) process.exit(1);
+  console.log('\n----------------------------------------');
+  console.log(`  ${passed} passed, ${failed} failed`);
+  console.log('----------------------------------------');
+  if (failed > 0) process.exit(1);
+}
+
+main().catch((e) => { console.error(e); process.exit(1); });
