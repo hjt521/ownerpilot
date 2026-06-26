@@ -44,3 +44,5 @@ next-env.d.ts
 
 # geocode resolver test-run scratch (regenerable; not tracked)
 la_geocode_resolver_testset_run_*.md
+
+supabase/.temp/
