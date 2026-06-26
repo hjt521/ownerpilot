@@ -1,11 +1,12 @@
-// Boundary tests for the parcel-health alert builders (§3.4 / §3.5).
+// Boundary tests for the parcel-health alert builders (§3.4 / §3.5) and the
+// EmailAlertDestination constructor (Fork ①b boot-validation).
 // Structural assertions only — verifies the AlertEvent fields land in the right
 // slots and the null→"never" branch. Does NOT re-assert the full locked-prose
 // paragraphs (that text lives in alert.ts under LOCKED markers; duplicating it
 // here would create a second drift surface).
 
 import assert from 'node:assert';
-import { renderToLiveAlert, renderToNotLiveAlert } from './alert';
+import { renderToLiveAlert, renderToNotLiveAlert, EmailAlertDestination } from './alert';
 import type { AlertEvent, ProbeReason } from './types';
 
 let passed = 0;
@@ -111,6 +112,35 @@ check('to_not_live carries each reason value into the subject', () => {
     const r = renderToNotLiveAlert(e);
     assert.ok(r.subject.endsWith('`' + reason + '`'));
   }
+});
+
+// Fork ①b — config injected at construction; boot-validation throws naming the env var.
+// These pin the boot-time-fail behavior so a misconfigured Edge function fails loudly at
+// construction, never silently at the first send.
+check('constructs with complete config and reports kind email', () => {
+  const dest = new EmailAlertDestination({ apiKey: 'k', from: 'a@x.test', to: 'b@x.test' });
+  assert.strictEqual(dest.kind, 'email');
+});
+
+check('throws naming RESEND_API_KEY when apiKey missing', () => {
+  assert.throws(
+    () => new EmailAlertDestination({ apiKey: '', from: 'a@x.test', to: 'b@x.test' }),
+    /RESEND_API_KEY/
+  );
+});
+
+check('throws naming PARCEL_HEALTH_ALERT_FROM when from missing', () => {
+  assert.throws(
+    () => new EmailAlertDestination({ apiKey: 'k', from: '', to: 'b@x.test' }),
+    /PARCEL_HEALTH_ALERT_FROM/
+  );
+});
+
+check('throws naming PARCEL_HEALTH_ALERT_EMAIL when to missing', () => {
+  assert.throws(
+    () => new EmailAlertDestination({ apiKey: 'k', from: 'a@x.test', to: '' }),
+    /PARCEL_HEALTH_ALERT_EMAIL/
+  );
 });
 
 console.log(`\n${passed} passed`);
