@@ -20,3 +20,5 @@ export * from './types';
 export * from './evaluateProbe';
 export * from './rollUpStatus';
 export * from './alert';
+export * from './endpoints/county';
+export * from './endpoints/zimas';
