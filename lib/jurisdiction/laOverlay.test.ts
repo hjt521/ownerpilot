@@ -24,9 +24,11 @@ console.log('\n=== Production gate (must stay LOCKED) ===');
 console.log('\n1. Default deps -> LA production blocked');
 {
   check('not unblocked', isLaProductionUnblocked() === false);
-  // geocode v6 ratification §2.6 + go-live decisions §2: geocode AND calendar
-  // are now true, so 4 remain (form-job + the three production-traffic conditions).
-  check('three deps missing', laProductionMissingDependencies().length === 3);
+  // geocode, calendar, form-job, and audit-durability are now true (geocode v6
+  // ratification §2.6; go-live decisions §2; RTC form-refresh attestation packet §6;
+  // audit-durability attestation 2026-06-23), so 2 remain: cityOfLaZipsAuthoritative
+  // and parcelEndpointHealthCheckLive.
+  check('two deps missing', laProductionMissingDependencies().length === 2);
 }
 
 console.log('\n2. Partial deps still blocked (need ALL)');
@@ -52,11 +54,11 @@ console.log('\n3. Only ALL conditions unblock (3 build + 3 traffic, §2.6)');
   }) === true);
 }
 
-console.log('\n4. The committed default: geocode + calendar TRUE, the rest false');
+console.log('\n4. The committed default: geocode + calendar + form-job + audit-durability TRUE, two traffic flags false');
 {
   check('geocode TRUE (ratified)', LA_PRODUCTION_DEPENDENCIES.geocodeConfirmationBuilt === true);
   check('calendar TRUE (go-live decisions §2)', LA_PRODUCTION_DEPENDENCIES.cityBusinessDayCalendarBuilt === true);
-  check('form job false', LA_PRODUCTION_DEPENDENCIES.rtcFormRefreshJobBuilt === false);
+  check('form job true', LA_PRODUCTION_DEPENDENCIES.rtcFormRefreshJobBuilt === true);
   check('audit durability TRUE (broker attestation 2026-06-23)', LA_PRODUCTION_DEPENDENCIES.geocodeAuditDurabilityWired === true);
   check('authoritative zips false', LA_PRODUCTION_DEPENDENCIES.cityOfLaZipsAuthoritative === false);
   check('endpoint health-check false', LA_PRODUCTION_DEPENDENCIES.parcelEndpointHealthCheckLive === false);

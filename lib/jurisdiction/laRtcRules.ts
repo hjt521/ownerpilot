@@ -150,24 +150,32 @@ export interface LaProductionDependencies {
  * flipped TRUE per la_city_calendar_dependency_broker_signoff_2026-06-20 (flip-
  * eligibility confirmed) and la_go_live_status_and_open_decisions_broker_ruling_
  * response_2026-06-20 §2 (per-flag flip authorized; §1.1 amendment). rtcFormRefresh
- * remains false pending step-(e); the three production-traffic flags remain false
- * pending their dependencies (§2.6). LA production stays blocked.
+ * JobBuilt flipped TRUE per the RTC form-refresh attestation packet
+ * (rtc_form_refresh_attestation_packet_2026-06-25 §6 broker attestation; all
+ * eight predicates PASS). geocodeAuditDurabilityWired previously flipped TRUE
+ * per the geocode audit durability gate-flip determination
+ * (geocode_audit_durability_gate_flip_broker_attestation_2026-06-23) — comment
+ * synced in this PR. Two production-traffic flags remain false: cityOfLaZipsAuthoritative
+ * and parcelEndpointHealthCheckLive (§2.6, dependencies pending). LA production
+ * stays blocked on those two.
  */
 export const LA_PRODUCTION_DEPENDENCIES: LaProductionDependencies = {
   geocodeConfirmationBuilt: true,
   cityBusinessDayCalendarBuilt: true,
-  rtcFormRefreshJobBuilt: false,
+  rtcFormRefreshJobBuilt: true,
   geocodeAuditDurabilityWired: true,
   cityOfLaZipsAuthoritative: false,
   parcelEndpointHealthCheckLive: false,
 };
 
 /**
- * Structural gate: returns true ONLY when all dependencies are satisfied — the
- * three build-correctness flags AND the three production-traffic conditions
+ * Structural gate: returns true ONLY when all six dependencies are satisfied —
+ * the three build-correctness flags AND the three production-traffic conditions
  * (geocode v6 ratification §2.6). The produce path must consult this before ever
  * attaching an RTC notice and treating an LA property as produceable. With
- * geocodeConfirmationBuilt now true, LA stays blocked on the remaining five.
+ * geocodeConfirmationBuilt, cityBusinessDayCalendarBuilt, rtcFormRefreshJobBuilt,
+ * and geocodeAuditDurabilityWired all true, LA stays blocked on the remaining
+ * two: cityOfLaZipsAuthoritative and parcelEndpointHealthCheckLive.
  */
 export function isLaProductionUnblocked(
   deps: LaProductionDependencies = LA_PRODUCTION_DEPENDENCIES,
