@@ -1,0 +1,35 @@
+# parcel-health Edge Function — `_core/` build artifact
+
+**This directory is generated. Do not edit.**
+
+## What lives here
+
+A compiled, deploy-ready copy of the parcel-health closure rooted at
+`lib/jurisdiction/parcelHealth/parcelHealthCore.ts` and its transitive dependencies,
+with `.ts` extensions added to all extensionless relative imports so the Supabase Edge
+deploy bundler (Deno) resolves them.
+
+## Canonical source
+
+`lib/jurisdiction/parcelHealth/` — the barrel (`parcelHealthCore.ts`) plus the pure
+modules it re-exports. **All edits go to the canonical source.** This `_core/` directory
+is regenerated from it; do not hand-edit.
+
+## Regenerate
+
+```bash
+npm run build:parcel-health-core
+```
+
+Idempotent: re-running on unchanged source produces byte-identical output.
+
+## CI guard
+
+`npm run ci:verify-parcel-health-core-sync` runs the generator then
+`git diff --exit-code supabase/functions/parcel-health/_core/`. A stale or hand-edited
+`_core/` fails CI — the Edge Function deploys these bytes, not the canonical source.
+
+## Governing rulings
+
+- `parcel_endpoint_health_check_live_determination_broker_2026-06-25.md`
+- `slice2_architecture_and_alert_sink_broker_ruling_2026-06-25.md`

@@ -15,7 +15,9 @@
     "ci:verify-no-operator-secrets": "node scripts/ci/verify_no_operator_secrets.mjs",
     "ci:typecheck-edge": "tsc -p tsconfig.edge.json",
     "build:edge-core": "node scripts/build_edge_core.mjs",
-    "ci:verify-edge-core-sync": "npm run build:edge-core && git diff --exit-code supabase/functions/rtc-refresh/_core/"
+    "build:parcel-health-core": "node scripts/build_parcel_health_core.mjs",
+    "ci:verify-edge-core-sync": "npm run build:edge-core && git diff --exit-code supabase/functions/rtc-refresh/_core/",
+    "ci:verify-parcel-health-core-sync": "npm run build:parcel-health-core && git diff --exit-code supabase/functions/parcel-health/_core/"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
