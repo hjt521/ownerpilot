@@ -1,3 +1,10 @@
+// ============================================================================
+// GENERATED FILE — DO NOT EDIT
+// Source: lib/jurisdiction/geocode/zimasParcelAdapter.ts
+// Regenerate with: npm run build:parcel-health-core
+// CI guard: git diff --exit-code supabase/functions/parcel-health/_core/
+// Governing ruling: slice2_architecture_and_alert_sink_broker_ruling_2026-06-25.md
+// ============================================================================
 /**
  * ZIMAS parcel adapter (Workstream A.4).
  *

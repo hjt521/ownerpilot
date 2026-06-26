@@ -7,20 +7,89 @@
 // ============================================================================
 import { evaluateProbe, type ProbeObservation } from './evaluateProbe.ts';
 import type { ProbeResult } from './types.ts';
+import {
+  buildZimasParcelQueryUrl,
+  parseZimasFeatures,
+  classifyZimasParcel,
+  type ZimasArcgisResponse,
+} from './zimasParcelAdapter.ts';
 
-// ZIMAS endpoint health probe — FAIL-CLOSED PLACEHOLDER.
+// ZIMAS endpoint health probe (drip-003).
 //
-// ZIMAS endpoint specs (URL, query method, shape-check fields, auth) are broker-held
-// and PENDING (drips #003+). Until they land, this probe routes a deterministic-fail
-// observation through the shared §2 evaluator so the gate stays not_live for ZIMAS —
-// the correct fail-closed posture (slice-2 architecture ruling §4.2; drip-001
-// divergence ruling §3). No network call.
+// §4 divergence #1 (geometry-keyed): ZIMAS is queried by a WGS84 point, not an address or
+// APN — the production resolver hands lat/lng straight to the adapter, so there is no
+// parseAddressForZimas. The probe targets a fixed known-LA parcel and mirrors production's
+// exact spatial query via the shared encoder (buildZimasParcelQueryUrl).
 //
-// httpStatus 0 → evaluateProbe routes to http_status (no HTTP response reached).
-// While ZIMAS is seeded not_live (migration 018) this never produces a to_not_live
-// transition, so the specific reason is not surfaced in an alert; it is replaced by a
-// real fetch + shape-check when the ZIMAS specs land.
+// §4 divergence #2 (two-signal conjunction): the shape-check reuses the production
+// classifier classifyZimasParcel — healthy iff EXACTLY ONE parcel AND CNCL_DIST trimmed
+// ∈ [1..15] AND TRACT trimmed non-blank (drip-003 §3.2 = ratification v6 §3.2). Single source
+// of truth with the production jurisdiction path; the probe cannot drift from how production
+// actually consumes ZIMAS.
+//
+// §4 divergence #3 (single attempt): production uses 5–10s with one retry (v6 §3.5); the probe
+// takes an 8s single attempt and no internal retry — the gate's two-consecutive roll-up is the
+// retry layer.
+
+// Locked constant (broker-authored, drip-003 §5): LA Central Library, a stable, always-resolvable
+// known-LA parcel. Do NOT re-geocode at runtime — the probe must hit the same point every cycle,
+// so the shape-check has a fixed expected verdict.
+const CENTRAL_LIBRARY_COORDS = { lng: -118.2428, lat: 34.0537 } as const;
+
+// §2.4 ruled UA addition (probe = production-twin PLUS this header).
+const PROBE_USER_AGENT = 'ownerpilot-parcel-health/1.0';
+
+// §2.6 single attempt, 8s timeout, NO internal retry.
+const PROBE_TIMEOUT_MS = 8_000;
+
+/**
+ * PURE: classify a ZIMAS probe response into the observation's httpStatus + responseShapeValid.
+ * Separated from the fetch so the §5 fixtures (healthy / OUTLA-sentinel rejection / ArcGIS
+ * error-envelope / HTTP non-200) are testable without network.
+ *
+ * §2.5 ordering: a non-200 short-circuits first; then json.error is checked BEFORE the
+ * features / two-signal read (an ArcGIS 200-with-error-body → response_shape, never an NPE on
+ * `.features`). A healthy body is one where classifyZimasParcel confirms LA for the fixed
+ * Central Library point.
+ */
+export function evaluateZimasProbeResponse(
+  httpStatus: number,
+  json: ZimasArcgisResponse | null,
+): { httpStatus: number; responseShapeValid: boolean } {
+  if (httpStatus !== 200) return { httpStatus, responseShapeValid: false };
+  if (json == null || json.error != null) return { httpStatus, responseShapeValid: false };
+  const records = parseZimasFeatures(json);
+  const responseShapeValid = classifyZimasParcel(records).verdict === 'zimas_confirms_la';
+  return { httpStatus, responseShapeValid };
+}
+
 export async function probeZimas(): Promise<ProbeResult> {
-  const obs: ProbeObservation = { httpStatus: 0, responseShapeValid: false, latencyMs: 0 };
+  const url = buildZimasParcelQueryUrl(CENTRAL_LIBRARY_COORDS);
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
+  const started = Date.now();
+
+  let httpStatus = 0; // 0 = no HTTP response (timeout/network) → http_status
+  let json: ZimasArcgisResponse | null = null;
+  try {
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: { 'User-Agent': PROBE_USER_AGENT },
+      signal: ctrl.signal,
+    });
+    httpStatus = resp.status;
+    if (resp.status === 200) {
+      json = (await resp.json().catch(() => null)) as ZimasArcgisResponse | null;
+    }
+  } catch {
+    // §2.6 single attempt, no retry. Timeout/network → httpStatus stays 0 → http_status.
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const latencyMs = Date.now() - started;
+  const { responseShapeValid } = evaluateZimasProbeResponse(httpStatus, json);
+  const obs: ProbeObservation = { httpStatus, responseShapeValid, latencyMs };
   return evaluateProbe(obs);
 }
