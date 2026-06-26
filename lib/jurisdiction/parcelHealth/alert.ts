@@ -91,14 +91,43 @@ function renderAlert(event: AlertEvent): RenderedAlert | { error: string } {
   return renderToNotLiveAlert({ ...event, reason: event.reason });
 }
 
-// §3.2 env split: PARCEL_HEALTH_ALERT_EMAIL (recipient, not secret),
-// RESEND_API_KEY (secret, credential rail). PARCEL_HEALTH_ALERT_FROM is the verified
-// Resend sender — NOT named in the §3.2 split; see the flag in the PR/handoff.
+// §3.2 — config injected at construction (Fork ①b, broker-ruled 2026-06-26).
+// The Edge binding (supabase/functions/parcel-health/index.ts) reads RESEND_API_KEY,
+// PARCEL_HEALTH_ALERT_FROM, and PARCEL_HEALTH_ALERT_EMAIL from Deno.env and injects them
+// here; this class NEVER reads env. Inject-don't-read keeps env access in exactly one
+// place (the binding layer) and avoids the Deno node-compat `process.env` path, whose
+// failure mode is silent — the cron runs green, the function returns 200, and the alert
+// just never sends. Validation is at construction, not send-time: a misconfigured env
+// fails the function at BOOT (loud), never silently at the first real outage.
+// §3.2 env roles: PARCEL_HEALTH_ALERT_EMAIL (recipient `to`, not secret),
+// PARCEL_HEALTH_ALERT_FROM (verified Resend sender), RESEND_API_KEY (secret, credential rail).
+export interface EmailAlertConfig {
+  apiKey: string;
+  from: string;
+  to: string;
+}
+
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 
 // §3.2 / §3.3 — Resend Tier-1 email destination.
 export class EmailAlertDestination implements AlertDestination {
   readonly kind = 'email' as const;
+  private readonly config: EmailAlertConfig;
+
+  constructor(config: EmailAlertConfig) {
+    // Boot-time validation: throw naming the env var, so a misconfigured Edge function
+    // fails at construction (boot) rather than returning ok:false silently at first send.
+    if (!config.apiKey) {
+      throw new Error('EmailAlertDestination: missing apiKey (set RESEND_API_KEY)');
+    }
+    if (!config.from) {
+      throw new Error('EmailAlertDestination: missing from (set PARCEL_HEALTH_ALERT_FROM)');
+    }
+    if (!config.to) {
+      throw new Error('EmailAlertDestination: missing to (set PARCEL_HEALTH_ALERT_EMAIL)');
+    }
+    this.config = config;
+  }
 
   async send(
     event: AlertEvent
@@ -108,24 +137,16 @@ export class EmailAlertDestination implements AlertDestination {
       return { ok: false, error: rendered.error };
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
-    const to = process.env.PARCEL_HEALTH_ALERT_EMAIL;
-    const from = process.env.PARCEL_HEALTH_ALERT_FROM;
-
-    if (!apiKey) return { ok: false, error: 'RESEND_API_KEY is not set' };
-    if (!to) return { ok: false, error: 'PARCEL_HEALTH_ALERT_EMAIL is not set' };
-    if (!from) return { ok: false, error: 'PARCEL_HEALTH_ALERT_FROM is not set' };
-
     try {
       const res = await fetch(RESEND_ENDPOINT, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${this.config.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from,
-          to,
+          from: this.config.from,
+          to: this.config.to,
           subject: rendered.subject,
           text: rendered.body,
         }),
