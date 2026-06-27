@@ -21,14 +21,13 @@ function check(name: string, cond: boolean, detail = '') {
 
 console.log('\n=== Production gate (must stay LOCKED) ===');
 
-console.log('\n1. Default deps -> LA production blocked');
+console.log('\n1. Default deps -> LA production UNBLOCKED (all six predicates true; go-live)');
 {
-  check('not unblocked', isLaProductionUnblocked() === false);
-  // geocode, calendar, form-job, audit-durability, AND cityOfLaZipsAuthoritative are
-  // now true (geocode v6 ratification §2.6; go-live decisions §2; RTC form-refresh
-  // attestation packet §6; audit-durability attestation 2026-06-23; predicate-5
-  // attestation 2026-06-27), so 1 remains: parcelEndpointHealthCheckLive.
-  check('one dep missing', laProductionMissingDependencies().length === 1);
+  check('unblocked — all six predicates true', isLaProductionUnblocked() === true);
+  // All six now true: geocode v6 §2.6; calendar go-live §2; RTC form-refresh §6;
+  // audit-durability 2026-06-23; cityOfLaZipsAuthoritative predicate-5 2026-06-27;
+  // parcelEndpointHealthCheckLive predicate-6 2026-06-27 (LA go-live).
+  check('no deps missing', laProductionMissingDependencies().length === 0);
 }
 
 console.log('\n2. Partial deps still blocked (need ALL)');
@@ -54,14 +53,14 @@ console.log('\n3. Only ALL conditions unblock (3 build + 3 traffic, §2.6)');
   }) === true);
 }
 
-console.log('\n4. The committed default: geocode + calendar + form-job + audit-durability + authoritative-zips TRUE, one traffic flag false');
+console.log('\n4. The committed default: all six predicates TRUE — LA production gate OPEN (go-live)');
 {
   check('geocode TRUE (ratified)', LA_PRODUCTION_DEPENDENCIES.geocodeConfirmationBuilt === true);
   check('calendar TRUE (go-live decisions §2)', LA_PRODUCTION_DEPENDENCIES.cityBusinessDayCalendarBuilt === true);
   check('form job true', LA_PRODUCTION_DEPENDENCIES.rtcFormRefreshJobBuilt === true);
   check('audit durability TRUE (broker attestation 2026-06-23)', LA_PRODUCTION_DEPENDENCIES.geocodeAuditDurabilityWired === true);
   check('authoritative zips true (predicate-5 attestation 2026-06-27)', LA_PRODUCTION_DEPENDENCIES.cityOfLaZipsAuthoritative === true);
-  check('endpoint health-check false', LA_PRODUCTION_DEPENDENCIES.parcelEndpointHealthCheckLive === false);
+  check('endpoint health-check true (predicate-6 attestation 2026-06-27)', LA_PRODUCTION_DEPENDENCIES.parcelEndpointHealthCheckLive === true);
 }
 
 console.log('\n=== AB 2347 boundary (no day-counts may leak) ===');
