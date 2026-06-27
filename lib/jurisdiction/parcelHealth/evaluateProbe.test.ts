@@ -12,16 +12,17 @@ const eq = (name: string, got: unknown, want: unknown) =>
 console.log('\n=== §2 evaluateProbe boundary suite (live determination §2; ruling §2.4) ===');
 
 // http -> shape -> latency ordering; first failure names the reason.
-eq('200 + valid + 10000ms -> healthy (<= boundary)',
-  evaluateProbe({ httpStatus: 200, responseShapeValid: true, latencyMs: 10000 }),
+// Latency boundary is the §2 ceiling, raised 10s->18s per the ZIMAS diagnostic (2026-06-27).
+eq('200 + valid + 18000ms -> healthy (<= boundary)',
+  evaluateProbe({ httpStatus: 200, responseShapeValid: true, latencyMs: 18000 }),
   { outcome: 'healthy', reason: null });
 
-eq('200 + valid + 9999ms -> healthy (just under)',
-  evaluateProbe({ httpStatus: 200, responseShapeValid: true, latencyMs: 9999 }),
+eq('200 + valid + 17999ms -> healthy (just under)',
+  evaluateProbe({ httpStatus: 200, responseShapeValid: true, latencyMs: 17999 }),
   { outcome: 'healthy', reason: null });
 
-eq('200 + valid + 10001ms -> unhealthy(latency)',
-  evaluateProbe({ httpStatus: 200, responseShapeValid: true, latencyMs: 10001 }),
+eq('200 + valid + 18001ms -> unhealthy(latency)',
+  evaluateProbe({ httpStatus: 200, responseShapeValid: true, latencyMs: 18001 }),
   { outcome: 'unhealthy', reason: 'latency' });
 
 eq('500 + valid + 5000ms -> unhealthy(http_status) [http precedence over shape]',
@@ -32,8 +33,8 @@ eq('200 + missing field + 5000ms -> unhealthy(response_shape)',
   evaluateProbe({ httpStatus: 200, responseShapeValid: false, latencyMs: 5000 }),
   { outcome: 'unhealthy', reason: 'response_shape' });
 
-eq('200 + invalid shape + 12000ms -> unhealthy(response_shape) [shape precedence over latency]',
-  evaluateProbe({ httpStatus: 200, responseShapeValid: false, latencyMs: 12000 }),
+eq('200 + invalid shape + 20000ms -> unhealthy(response_shape) [shape precedence over latency]',
+  evaluateProbe({ httpStatus: 200, responseShapeValid: false, latencyMs: 20000 }),
   { outcome: 'unhealthy', reason: 'response_shape' });
 
 console.log(`\n  ${passed} passed, ${failed} failed`);

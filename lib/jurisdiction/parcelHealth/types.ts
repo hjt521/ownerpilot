@@ -14,10 +14,22 @@ export type EndpointStatus = 'live' | 'not_live';
 // §4 alert-on-transition events (null = no transition, no alert).
 export type Transition = 'to_live' | 'to_not_live' | null;
 
-// Result of evaluating a single probe against §2.
-export interface ProbeResult {
+// §2 verdict produced by evaluateProbe — the pure precedence gate's output.
+export interface ProbeVerdict {
   outcome: ProbeOutcome;
   reason: ProbeReason | null; // null iff healthy (§2 invariant; mirrors the 017 CHECK)
+}
+
+// Full probe result: the §2 verdict PLUS 5a forensic capture (ruled 2026-06-27).
+// The forensic fields are observational — populated by the probe (endpoints/county.ts,
+// endpoints/zimas.ts), written to parcel_health_probe_results (017) by the store. Gate
+// logic reads only outcome/reason; the forensic columns exist for triage, so "is the
+// endpoint slow or down" is one SQL query against latency_ms/http_status, not a diagnostic
+// round.
+export interface ProbeResult extends ProbeVerdict {
+  httpStatus: number;         // HTTP status code; 0 = no response (timeout/network)
+  latencyMs: number;          // wall-clock fetch duration (ms)
+  errorDetail: string | null; // abort/timeout/error message (<=500 chars); null on success
 }
 
 // Rolled-up per-endpoint state (mirrors columns in 018 parcel_health_status).
