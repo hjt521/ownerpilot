@@ -20,11 +20,13 @@
  * Steps 1–3 are PURE (`classifyPreParcel`), no network. Steps 4–6 run in the
  * async orchestrator with injected County/ZIMAS adapters. Fail-closed throughout.
  *
- * GATE: the orchestrator asserts isLaProductionUnblocked() at entry (default; a
- * test hook may inject an open gate). Flips no flag; makes no live call until
- * geocodeConfirmationBuilt flips on broker sign-off.
+ * GATE: the orchestrator asserts the LA production gate at entry. A test hook may inject
+ * `gateIsOpen` (sync); otherwise the dynamic parcel-health gate (isLaProductionLive) reads
+ * parcel_health_status with the 75-min freshness guard once the static predicate flag is true,
+ * and short-circuits closed while it is false. No reader + no override → fail closed. Flips no
+ * flag; makes no live call while the gate is closed.
  */
-import { isLaProductionUnblocked } from '../laRtcRules';
+import { isLaProductionLive, type ParcelHealthReader } from '../parcelHealthGate';
 import type {
   GeocodeDisposition,
   ManualReviewReason,
@@ -228,6 +230,9 @@ export interface ResolverV2Deps {
   county: CountyLookupDeps;
   zimas: ZimasLookupDeps;
   gateIsOpen?: () => boolean;
+  /** Dynamic parcel-health gate reader (predicate-6). Injected in production by
+   *  buildResolverDeps; absent in unit tests, which inject `gateIsOpen` instead. */
+  parcelHealthReader?: ParcelHealthReader;
   /** Optional sink for the audit record (A.6). Defaults to no-op. */
   recordAudit?: (record: GeocodeAuditRecord) => Promise<void> | void;
 }
@@ -240,8 +245,13 @@ export async function resolveLaAddressV2(
   inputAddress: string,
   deps: ResolverV2Deps,
 ): Promise<GeocodeResultV2> {
-  const gateOpen = deps.gateIsOpen ?? isLaProductionUnblocked;
-  if (!gateOpen()) {
+  // Gate: a test/override sync predicate if injected; otherwise the dynamic parcel-health gate
+  // (isLaProductionLive — static short-circuit when the predicate flag is false, else reads
+  // parcel_health_status with the 75-min freshness guard). No reader + no override → fail closed.
+  const gateOpen: () => boolean | Promise<boolean> =
+    deps.gateIsOpen ??
+    (() => (deps.parcelHealthReader ? isLaProductionLive({ reader: deps.parcelHealthReader }) : false));
+  if (!(await gateOpen())) {
     throw new Error('la-prod-gate-closed: geocode resolver must not run while the LA production gate is closed');
   }
 
