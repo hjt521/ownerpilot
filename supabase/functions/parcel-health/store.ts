@@ -99,22 +99,20 @@ function logStoreFailure(op: string, kind: 'read' | 'write', err: unknown): void
 
 // Map a probe result to the parcel_health_probe_results (017) insert row.
 //
-// Flag 4 (broker-ruled 2026-06-26): write outcome + reason + probed_at; the three forensic
-// columns (http_status, latency_ms, error_detail) stay NULL until probeCounty/probeZimas are
-// enriched to surface them (step 5a follow-up). These nulls are a deliberate scope cut, not
-// an oversight — 017 declares all three nullable for exactly this staged-enrichment reason,
-// and the §2 reason↔outcome CHECK (the only constraint here) is satisfied: result.reason is
-// null iff healthy.
+// Forensic columns populated per 5a (ZIMAS-diagnosis-driven, ruled 2026-06-27): the probe now
+// surfaces http_status / latency_ms / error_detail, so triage is a SQL query instead of a
+// diagnostic round. 017 declared all three nullable for exactly this staged enrichment; the
+// §2 reason↔outcome CHECK still holds (result.reason is null iff healthy).
 export function toProbeRow(
   endpoint: Endpoint, result: ProbeResult, probedAt: string,
 ): Record<string, unknown> {
   return {
     endpoint,
     outcome: result.outcome,
-    reason: result.reason,    // null iff healthy — satisfies the 017 reason↔outcome CHECK
-    http_status: null,        // [step 5a] enrich probe return to surface
-    latency_ms: null,         // [step 5a] enrich probe return to surface
-    error_detail: null,       // [step 5a] enrich probe return to surface
+    reason: result.reason,            // null iff healthy — satisfies the 017 reason↔outcome CHECK
+    http_status: result.httpStatus,   // 0 = no HTTP response (timeout/network)
+    latency_ms: result.latencyMs,
+    error_detail: result.errorDetail, // null on success
     probed_at: probedAt,
   };
 }

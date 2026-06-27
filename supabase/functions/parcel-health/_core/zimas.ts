@@ -28,8 +28,8 @@ import {
 // actually consumes ZIMAS.
 //
 // §4 divergence #3 (single attempt): production uses 5–10s with one retry (v6 §3.5); the probe
-// takes an 8s single attempt and no internal retry — the gate's two-consecutive roll-up is the
-// retry layer.
+// takes a 15s single attempt and no internal retry — the gate's two-consecutive roll-up is the
+// retry layer. (Timeout raised 8s→15s per the ZIMAS-from-Edge diagnostic, 2026-06-27.)
 
 // Locked constant (broker-authored, drip-003 §5): LA Central Library, a stable, always-resolvable
 // known-LA parcel. Do NOT re-geocode at runtime — the probe must hit the same point every cycle,
@@ -39,8 +39,9 @@ const CENTRAL_LIBRARY_COORDS = { lng: -118.2428, lat: 34.0537 } as const;
 // §2.4 ruled UA addition (probe = production-twin PLUS this header).
 const PROBE_USER_AGENT = 'ownerpilot-parcel-health/1.0';
 
-// §2.6 single attempt, 8s timeout, NO internal retry.
-const PROBE_TIMEOUT_MS = 8_000;
+// §2.6 single attempt, NO internal retry. ZIMAS-from-Edge measured ~9s (diagnostic 2026-06-27);
+// 15s gives ~60% headroom. Amends drip-003 §2.6.
+const ZIMAS_PROBE_TIMEOUT_MS = 15_000;
 
 /**
  * PURE: classify a ZIMAS probe response into the observation's httpStatus + responseShapeValid.
@@ -67,11 +68,12 @@ export async function probeZimas(): Promise<ProbeResult> {
   const url = buildZimasParcelQueryUrl(CENTRAL_LIBRARY_COORDS);
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), ZIMAS_PROBE_TIMEOUT_MS);
   const started = Date.now();
 
   let httpStatus = 0; // 0 = no HTTP response (timeout/network) → http_status
   let json: ZimasArcgisResponse | null = null;
+  let errorDetail: string | null = null; // [5a] abort/timeout/error message; null on success
   try {
     const resp = await fetch(url, {
       method: 'GET',
@@ -82,8 +84,9 @@ export async function probeZimas(): Promise<ProbeResult> {
     if (resp.status === 200) {
       json = (await resp.json().catch(() => null)) as ZimasArcgisResponse | null;
     }
-  } catch {
+  } catch (err) {
     // §2.6 single attempt, no retry. Timeout/network → httpStatus stays 0 → http_status.
+    errorDetail = String((err as Error)?.message ?? err).slice(0, 500); // [5a] forensic capture
   } finally {
     clearTimeout(timer);
   }
@@ -91,5 +94,6 @@ export async function probeZimas(): Promise<ProbeResult> {
   const latencyMs = Date.now() - started;
   const { responseShapeValid } = evaluateZimasProbeResponse(httpStatus, json);
   const obs: ProbeObservation = { httpStatus, responseShapeValid, latencyMs };
-  return evaluateProbe(obs);
+  // [5a] forensic enrichment: the §2 verdict plus the observed http_status / latency / error.
+  return { ...evaluateProbe(obs), httpStatus, latencyMs, errorDetail };
 }

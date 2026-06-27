@@ -15,7 +15,7 @@ import type { ParcelHealthStore, StoredStatus } from './store.ts';
 
 const SECRET = 'test-secret-value';
 const FIXED = new Date('2026-06-26T00:00:00.000Z');
-const HEALTHY: ProbeResult = { outcome: 'healthy', reason: null };
+const HEALTHY: ProbeResult = { outcome: 'healthy', reason: null, httpStatus: 200, latencyMs: 1200, errorDetail: null };
 
 function makeReq(secret?: string): Request {
   const headers: Record<string, string> = {};
@@ -160,7 +160,7 @@ async function check(name: string, fn: () => Promise<void>): Promise<void> {
         county: { status: 'live', consecutiveFailures: 1, lastSuccessAt: '2026-06-24T00:00:00.000Z', lastProbeAt: '2026-06-25T00:00:00.000Z' },
         zimas: { status: 'live', consecutiveFailures: 0, lastSuccessAt: '2026-06-25T00:00:00.000Z', lastProbeAt: '2026-06-25T00:00:00.000Z' },
       }, rec),
-      makeProbes({ county: { outcome: 'unhealthy', reason: 'response_shape' }, zimas: HEALTHY }),
+      makeProbes({ county: { outcome: 'unhealthy', reason: 'response_shape', httpStatus: 200, latencyMs: 1500, errorDetail: null }, zimas: HEALTHY }),
       sent,
     );
     const res = await handleRequest(makeReq(SECRET), env);

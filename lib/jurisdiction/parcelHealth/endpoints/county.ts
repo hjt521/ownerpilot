@@ -16,8 +16,8 @@ const EXPECTED_TAX_RATE_CITY = 'los angeles';
 // §2.4: ruled UA addition (probe = production-twin PLUS this header).
 const PROBE_USER_AGENT = 'ownerpilot-parcel-health/1.0';
 
-// §2.6: single attempt, 8s timeout (matches production per-attempt), NO internal retry.
-const PROBE_TIMEOUT_MS = 8_000;
+// §2.6: single attempt, NO internal retry. County production per-attempt cap; mirrors drip-001 §2.6.
+const COUNTY_PROBE_TIMEOUT_MS = 8_000;
 
 interface CountyProbeResponse {
   error?: unknown;
@@ -28,11 +28,12 @@ export async function probeCounty(): Promise<ProbeResult> {
   const url = buildCountyParcelQueryUrl(parseAddressForCounty(HALL_OF_ADMINISTRATION_ADDRESS));
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), COUNTY_PROBE_TIMEOUT_MS);
   const started = Date.now();
 
   let httpStatus = 0;            // 0 = no HTTP response (timeout/network) → http_status
   let responseShapeValid = false;
+  let errorDetail: string | null = null; // [5a] abort/timeout/error message; null on success
   try {
     const resp = await fetch(url, {
       method: 'GET',
@@ -52,13 +53,15 @@ export async function probeCounty(): Promise<ProbeResult> {
       }
       // json.error present, json null (parse fail), or contract miss → stays false.
     }
-  } catch {
+  } catch (err) {
     // §2.6 single attempt, no retry. Timeout/network → httpStatus stays 0 → http_status.
+    errorDetail = String((err as Error)?.message ?? err).slice(0, 500); // [5a] forensic capture
   } finally {
     clearTimeout(timer);
   }
 
   const latencyMs = Date.now() - started;
   const obs: ProbeObservation = { httpStatus, responseShapeValid, latencyMs };
-  return evaluateProbe(obs);
+  // [5a] forensic enrichment: the §2 verdict plus the observed http_status / latency / error.
+  return { ...evaluateProbe(obs), httpStatus, latencyMs, errorDetail };
 }
