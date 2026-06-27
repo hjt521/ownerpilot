@@ -75,6 +75,7 @@ import {
   type Defer,
 } from '@/lib/jurisdiction/geocode/supabaseAuditSink';
 import { createClient } from '@/lib/supabase/server';
+import { createParcelHealthStatusReader } from '@/lib/jurisdiction/parcelHealthStatusReader';
 
 // nodejs runtime is REQUIRED: after() must be available at runtime (§2.1 req 2).
 export const runtime = 'nodejs';
@@ -258,13 +259,27 @@ function buildResolverDeps(
   const apiKey = readGeocodeApiKey();
   const county: CountyLookupDeps = { fetcher: defaultCountyFetcher };
   const zimas: ZimasLookupDeps = { fetcher: defaultZimasFetcher };
+  // Predicate-6 dynamic gate reader: narrow-read of parcel_health_status under the
+  // parcel_health_reader JWT (no Supabase client; static Bearer over the global fetch,
+  // mirroring readBlockState §3.1). While parcelEndpointHealthCheckLive is false,
+  // isLaProductionLive short-circuits closed BEFORE this reader is ever called, so this
+  // wiring is behavior-neutral until the flag flips (predicate-6 ruling, Slice 1).
+  const parcelHealthReader = createParcelHealthStatusReader(
+    {
+      baseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      readerJwt: process.env.SUPABASE_PARCEL_HEALTH_READER_JWT,
+    },
+    (url, init) => fetch(url, init),
+  );
   return {
     fetchGeocodeSignals: buildFetchGeocodeSignals(apiKey),
     county,
     zimas,
-    // gateIsOpen omitted → resolver uses the real isLaProductionUnblocked()
-    // backstop (closed today). The PAGE-SIDE gate check (4d) is what actually
-    // governs whether this surface is invoked; the surface stays gate-naive.
+    parcelHealthReader,
+    // gateIsOpen omitted → resolver uses the dynamic parcel-health gate (isLaProductionLive),
+    // which short-circuits closed while the predicate flag is false (same gate-closed behavior
+    // as before this wiring). The PAGE-SIDE gate check (4d) still governs invocation.
     recordAudit,
   };
 }

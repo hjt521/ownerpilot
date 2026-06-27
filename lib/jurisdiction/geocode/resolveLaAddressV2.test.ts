@@ -278,6 +278,38 @@ async function main() {
     check('audit echoes correction flags', a.hasInferredComponents === false && a.possibleNextAction === null);
   }
 
+  // ============ predicate-6 Slice 1: dynamic gate default (behavior-neutral) ============
+  console.log('\n=== dynamic gate default (no gateIsOpen override) ===');
+  {
+    // No gateIsOpen, no reader → fail closed (throws). The default gate is now the dynamic
+    // parcel-health gate; with no reader it returns false.
+    const base = deps({});
+    const noGate: Record<string, unknown> = { ...base };
+    delete noGate.gateIsOpen;
+    let threw = false;
+    try { await resolveLaAddressV2('x', noGate as unknown as ResolverV2Deps); } catch { threw = true; }
+    check('no override + no reader → throws gate-closed (fail closed)', threw);
+  }
+  {
+    // No gateIsOpen, reader present, predicate flag false (HEAD) → isLaProductionLive
+    // short-circuits on the static gate BEFORE reading: reader NOT called, gate stays closed.
+    // This is the behavior-neutral proof — wiring present, dynamic path unreached while flag false.
+    const base = deps({});
+    const noGate: Record<string, unknown> = { ...base };
+    delete noGate.gateIsOpen;
+    let readerCalled = false;
+    noGate.parcelHealthReader = { read: async () => { readerCalled = true; return []; } };
+    let threw = false;
+    try { await resolveLaAddressV2('x', noGate as unknown as ResolverV2Deps); } catch { threw = true; }
+    check('reader present + flag false → still gate-closed (short-circuit)', threw);
+    check('behavior-neutral: reader NOT invoked while predicate flag is false', readerCalled === false);
+  }
+  {
+    // The v6 corpus injects gateIsOpen: () => true everywhere (deps() helper) → the override
+    // surface is preserved and the dynamic default never runs in the corpus. Sanity-assert it.
+    check('gateIsOpen override surface preserved in deps() helper', typeof deps({}).gateIsOpen === 'function');
+  }
+
   console.log('\n----------------------------------------');
   console.log(`  ${passed} passed, ${failed} failed`);
   console.log('----------------------------------------');
