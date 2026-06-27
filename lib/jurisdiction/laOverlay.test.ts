@@ -24,11 +24,11 @@ console.log('\n=== Production gate (must stay LOCKED) ===');
 console.log('\n1. Default deps -> LA production blocked');
 {
   check('not unblocked', isLaProductionUnblocked() === false);
-  // geocode, calendar, form-job, and audit-durability are now true (geocode v6
-  // ratification §2.6; go-live decisions §2; RTC form-refresh attestation packet §6;
-  // audit-durability attestation 2026-06-23), so 2 remain: cityOfLaZipsAuthoritative
-  // and parcelEndpointHealthCheckLive.
-  check('two deps missing', laProductionMissingDependencies().length === 2);
+  // geocode, calendar, form-job, audit-durability, AND cityOfLaZipsAuthoritative are
+  // now true (geocode v6 ratification §2.6; go-live decisions §2; RTC form-refresh
+  // attestation packet §6; audit-durability attestation 2026-06-23; predicate-5
+  // attestation 2026-06-27), so 1 remains: parcelEndpointHealthCheckLive.
+  check('one dep missing', laProductionMissingDependencies().length === 1);
 }
 
 console.log('\n2. Partial deps still blocked (need ALL)');
@@ -54,13 +54,13 @@ console.log('\n3. Only ALL conditions unblock (3 build + 3 traffic, §2.6)');
   }) === true);
 }
 
-console.log('\n4. The committed default: geocode + calendar + form-job + audit-durability TRUE, two traffic flags false');
+console.log('\n4. The committed default: geocode + calendar + form-job + audit-durability + authoritative-zips TRUE, one traffic flag false');
 {
   check('geocode TRUE (ratified)', LA_PRODUCTION_DEPENDENCIES.geocodeConfirmationBuilt === true);
   check('calendar TRUE (go-live decisions §2)', LA_PRODUCTION_DEPENDENCIES.cityBusinessDayCalendarBuilt === true);
   check('form job true', LA_PRODUCTION_DEPENDENCIES.rtcFormRefreshJobBuilt === true);
   check('audit durability TRUE (broker attestation 2026-06-23)', LA_PRODUCTION_DEPENDENCIES.geocodeAuditDurabilityWired === true);
-  check('authoritative zips false', LA_PRODUCTION_DEPENDENCIES.cityOfLaZipsAuthoritative === false);
+  check('authoritative zips true (predicate-5 attestation 2026-06-27)', LA_PRODUCTION_DEPENDENCIES.cityOfLaZipsAuthoritative === true);
   check('endpoint health-check false', LA_PRODUCTION_DEPENDENCIES.parcelEndpointHealthCheckLive === false);
 }
 

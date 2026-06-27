@@ -1,0 +1,297 @@
+{
+  "provenance": {
+    "generated_at_utc": "SYNTHETIC-FIXTURE",
+    "ruling": "workstream_a_fork_3_authoritative_determination_broker_ruling (DRAFT) \u00a72.1/\u00a72.2/\u00a75.1",
+    "crs": 2229,
+    "thresholds": {
+      "high": 0.9,
+      "low": 0.1
+    },
+    "divergence_ratio": null,
+    "cross_check_skipped": true,
+    "coverage_ratio": 0.993,
+    "zcta_rows_dropped_invalid": 0,
+    "zero_area_slivers": [],
+    "canonical_override_exceptions": [
+      {
+        "zip5": "90056",
+        "construction_bucket": "out",
+        "construction_area_ratio": 0.0591,
+        "intersection_area_sqft": 2603456.1,
+        "zcta_total_area_sqft": 44035353.5,
+        "override_bucket": "straddler",
+        "override_reason": "ZIP 90056 covers two adjacent neighborhoods with split jurisdiction:\nLadera Heights (unincorporated LA County, the larger portion) and Ladera\n(City of LA, Council District 11, the smaller portion east of La Cienega\nBoulevard). The City of LA's own Zip Codes Listing\n(https://finance.lacity.gov/sites/g/files/wph1721/files/2026-04/a_Zip-Codes-Listing-City-of-Los-Angeles.pdf)\nlists 90056 under \"Baldwin Hills\" / \"Crenshaw\" \u2014 the City explicitly\nclaims jurisdiction over part of the ZIP. The construction's area_ratio\nplaced 90056 in the `out` bucket per the 0.90/0.10 three-bucket rule\n(\u00a72.2-b) with ratio 0.0591 (~5.9% City-side, ~2.6M sq ft \u2248 0.093 sq mi,\nconsistent with the small Ladera neighborhood east of La Cienega). A\nclean `out` verdict would cause the runtime chain (\u00a76.1) to gate-close\non City-side addresses within Ladera before reaching the parcel rail.\nThis override forces 90056 to the `straddler` bucket so the runtime\nchain routes 90056 lookups through the parcel-rail step (\u00a76.1 step-3)\nfor per-address resolution, which is the correct A-1 disposition for\ncross-jurisdictional ZIPs.",
+        "override_authority": "Broker ruling 2026-06-27, applied at first-construction. Authored under\nthis A-3 determination \u00a75.4-c (canonical_override_exceptions). The\noverride addresses a known structural property of 90056 (split\nCity/Unincorporated jurisdiction with the City-side area below the\n0.10 in-threshold) rather than a defect in the construction or in C-8.\nEmpirical corroboration: the 5.9% City-side share matches the published\njurisdictional split (City \"Ladera\" east of La Cienega, smaller than\nunincorporated \"Ladera Heights\" to the west).",
+        "override_scope": "This override applies only to ZIP 90056 and only to the bucket\nassignment. It does not modify the area_ratio, the C-8 input, the\nZCTA-2010 input, or any other construction parameter. It is a\npost-classification routing override.",
+        "review_cadence": "Re-evaluated at every snapshot refresh. If a future C-8 boundary edit\nchanges the City-side share of 90056 such that the area_ratio crosses\ninto [0.10, 0.90), the override SHALL be removed (the construction's\nnatural straddler classification supersedes the override). If the\nCity-side share is eliminated by a future annexation/de-annexation,\nthe override SHALL be removed and 90056 returned to the natural `out`\nbucket. Review is mechanical against the area_ratio at each refresh;\nno separate broker attestation is required unless the area_ratio\ncrosses a threshold.",
+        "primary_sources": [
+          "https://erickimphotography.com/ladera-and-ladera-heights-a-comprehensive-community-overview/",
+          "https://www.wikiwand.com/en/articles/Ladera_Heights,_California",
+          "https://finance.lacity.gov/sites/g/files/wph1721/files/2026-04/a_Zip-Codes-Listing-City-of-Los-Angeles.pdf"
+        ],
+        "ruling_reference": "workstream_a_fork_3_authoritative_determination_broker_ruling_2026-06-27.md \u00a75.4-c",
+        "broker_attestation": "Jack Taglyan / CalDRE B9445457 / 2026-06-27"
+      }
+    ],
+    "inputs": {
+      "c8_boundary": {
+        "path": "/sessions/awesome-vigilant-heisenberg/mnt/uploads/c8_boundary.geojson",
+        "sha256": "328b4db47541d9cb8bac1d5bc66570f62f587406172ac488d543bf71dbb68b38",
+        "last_edit": "2026-05-19"
+      },
+      "c7_boundary": {
+        "skipped": true
+      },
+      "zcta_2010": {
+        "path": "/sessions/awesome-vigilant-heisenberg/mnt/uploads/tl_2010_06_zcta510.shp",
+        "sha256": "3f2de4022aeb5ef3c1806c91b62b433a49f3feb73238065b9717a2ea298f7a02",
+        "zip_field": "ZCTA5CE10"
+      }
+    },
+    "override_count": 1,
+    "override_zips": [
+      "90056"
+    ],
+    "note": "SYNTHETIC A-2 emitter test fixture \u2014 not a real construction"
+  },
+  "counts": {
+    "in": 82,
+    "straddler": 37,
+    "out": 35,
+    "authoritative_total": 119,
+    "out_nonintersecting_in_zcta_file": 1615,
+    "out_total_rows": 1650,
+    "note": "out=35 counts city-intersecting ZCTAs (inter>0) classified unambiguous-out; the full Census ZCTA-2010 California input additionally contains 1615 non-intersecting ZCTAs (ratio 0), so total out rows = 1650. authoritative_total = in + straddler = 119."
+  },
+  "zips_in": [
+    "90003",
+    "90004",
+    "90005",
+    "90006",
+    "90007",
+    "90010",
+    "90011",
+    "90012",
+    "90013",
+    "90014",
+    "90015",
+    "90016",
+    "90017",
+    "90018",
+    "90019",
+    "90020",
+    "90021",
+    "90024",
+    "90025",
+    "90026",
+    "90027",
+    "90028",
+    "90029",
+    "90031",
+    "90032",
+    "90033",
+    "90034",
+    "90035",
+    "90036",
+    "90037",
+    "90038",
+    "90039",
+    "90041",
+    "90042",
+    "90045",
+    "90049",
+    "90057",
+    "90062",
+    "90064",
+    "90065",
+    "90067",
+    "90068",
+    "90071",
+    "90077",
+    "90079",
+    "90089",
+    "90090",
+    "90094",
+    "90095",
+    "90099",
+    "90272",
+    "90744",
+    "91040",
+    "91303",
+    "91306",
+    "91316",
+    "91324",
+    "91325",
+    "91326",
+    "91330",
+    "91331",
+    "91335",
+    "91345",
+    "91352",
+    "91356",
+    "91364",
+    "91367",
+    "91371",
+    "91401",
+    "91402",
+    "91403",
+    "91405",
+    "91406",
+    "91411",
+    "91423",
+    "91436",
+    "91601",
+    "91602",
+    "91604",
+    "91605",
+    "91606",
+    "91607"
+  ],
+  "zips_straddler": [
+    {
+      "zip": "90001",
+      "area_ratio": 0.2749
+    },
+    {
+      "zip": "90002",
+      "area_ratio": 0.6739
+    },
+    {
+      "zip": "90008",
+      "area_ratio": 0.74
+    },
+    {
+      "zip": "90023",
+      "area_ratio": 0.6268
+    },
+    {
+      "zip": "90043",
+      "area_ratio": 0.6866
+    },
+    {
+      "zip": "90044",
+      "area_ratio": 0.6933
+    },
+    {
+      "zip": "90046",
+      "area_ratio": 0.8681
+    },
+    {
+      "zip": "90047",
+      "area_ratio": 0.6667
+    },
+    {
+      "zip": "90048",
+      "area_ratio": 0.8424
+    },
+    {
+      "zip": "90056",
+      "area_ratio": 0.0591,
+      "override": "\u00a75.4-c"
+    },
+    {
+      "zip": "90058",
+      "area_ratio": 0.1225
+    },
+    {
+      "zip": "90059",
+      "area_ratio": 0.4781
+    },
+    {
+      "zip": "90061",
+      "area_ratio": 0.4496
+    },
+    {
+      "zip": "90063",
+      "area_ratio": 0.2353
+    },
+    {
+      "zip": "90066",
+      "area_ratio": 0.8984
+    },
+    {
+      "zip": "90069",
+      "area_ratio": 0.6119
+    },
+    {
+      "zip": "90210",
+      "area_ratio": 0.5842
+    },
+    {
+      "zip": "90230",
+      "area_ratio": 0.2022
+    },
+    {
+      "zip": "90247",
+      "area_ratio": 0.263
+    },
+    {
+      "zip": "90248",
+      "area_ratio": 0.3364
+    },
+    {
+      "zip": "90291",
+      "area_ratio": 0.8788
+    },
+    {
+      "zip": "90292",
+      "area_ratio": 0.3946
+    },
+    {
+      "zip": "90293",
+      "area_ratio": 0.6401
+    },
+    {
+      "zip": "90402",
+      "area_ratio": 0.2275
+    },
+    {
+      "zip": "90501",
+      "area_ratio": 0.2976
+    },
+    {
+      "zip": "90502",
+      "area_ratio": 0.2127
+    },
+    {
+      "zip": "90710",
+      "area_ratio": 0.7502
+    },
+    {
+      "zip": "90731",
+      "area_ratio": 0.4172
+    },
+    {
+      "zip": "90732",
+      "area_ratio": 0.8668
+    },
+    {
+      "zip": "91042",
+      "area_ratio": 0.2057
+    },
+    {
+      "zip": "91304",
+      "area_ratio": 0.6677
+    },
+    {
+      "zip": "91307",
+      "area_ratio": 0.5213
+    },
+    {
+      "zip": "91311",
+      "area_ratio": 0.3835
+    },
+    {
+      "zip": "91340",
+      "area_ratio": 0.3111
+    },
+    {
+      "zip": "91342",
+      "area_ratio": 0.3207
+    },
+    {
+      "zip": "91344",
+      "area_ratio": 0.8852
+    }
+  ]
+}

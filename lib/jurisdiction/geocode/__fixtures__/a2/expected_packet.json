@@ -1,0 +1,55 @@
+{
+  "artifact": "workstream_a_A2_diff_packet",
+  "generated_at_utc": "2026-06-27T17:59:31.982258+00:00",
+  "ruling_reference": "workstream_a_fork_2_reconciliation_discipline_broker_ruling_2026-06-27.md (\u00a72.1/\u00a72.2/\u00a72.3)",
+  "baseline": {
+    "label": "authoritative v1 (synthetic-mutated)",
+    "path": "lib/jurisdiction/geocode/__fixtures__/a2/baseline.snapshot.json",
+    "sha256": "e40e3ab2c47bdb9429f19c1d97d69f0ca5bd20aa6ecbd2e15b203e5f47b18452",
+    "member_count": 119
+  },
+  "candidate": {
+    "path": "lib/jurisdiction/geocode/__fixtures__/a2/candidate.snapshot.json",
+    "sha256": "3d67939fc4b51e783e45068056e22a250bb7fb4b35f071d9482594cea5bf424a",
+    "member_count": 118
+  },
+  "summary": {
+    "add": 1,
+    "remove": 2,
+    "corpus_impact": 1,
+    "add_auto_apply": 1,
+    "remove_broker_review": 1,
+    "build_halt": 1
+  },
+  "outcome": "BUILD_HALT \u2014 corpus-impact diff requires broker three-disposition review (A-2 \u00a72.3)",
+  "add": [
+    {
+      "zip5": "90099",
+      "candidate_bucket": "in",
+      "disposition": "auto_apply",
+      "corpus_impact": false
+    }
+  ],
+  "remove": [
+    {
+      "zip5": "91343",
+      "candidate_bucket": "out",
+      "disposition": "build_halt",
+      "corpus_impact": true
+    },
+    {
+      "zip5": "91608",
+      "candidate_bucket": "out",
+      "disposition": "broker_review",
+      "corpus_impact": false
+    }
+  ],
+  "corpus_impact_rows": [
+    {
+      "zip5": "91343",
+      "candidate_bucket": "out",
+      "disposition": "build_halt",
+      "corpus_impact": true
+    }
+  ]
+}
