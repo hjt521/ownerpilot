@@ -37,7 +37,7 @@ import {
   type CountyAuditFields,
   type CountyVerdict,
 } from './countyParcelAdapter';
-import { zipInCityOfLa } from './cityOfLaZips';
+import { zipInCityOfLa, classifyZip, type ZipBucket } from './cityOfLaZips';
 import {
   lookupZimasParcel,
   type ZimasLookupDeps,
@@ -96,6 +96,11 @@ export interface GeocodeAuditRecord {
   // v3 County ruling §3.5 — logged whenever the County branch ran:
   countyQueryReturnedZeroFeatures?: boolean;
   countyZipInLaZipSet?: boolean;
+  // A-3 §6.1 wire-up: three-bucket classification of the geocoded ZIP against the
+  // authoritative snapshot ('in' | 'straddler' | 'out'). Audit metadata only — the
+  // v6 verdict taxonomy is preserved (§6.1 clarification (f)); 'in'/'straddler' both
+  // keep the address on the parcel-rail path, 'out' routes to county_situs_gap.
+  countyZipBucket?: ZipBucket;
   // ZIMAS branch (may be absent if not reached)
   zimas?: ZimasAuditFields & { verdict: ZimasVerdict };
   // outcome
@@ -286,6 +291,7 @@ export async function resolveLaAddressV2(
   const countyZip = parseAddressForCounty(formatted).zip;
   audit.countyQueryReturnedZeroFeatures = county.audit.parcelFound === false;
   audit.countyZipInLaZipSet = zipInCityOfLa(countyZip);
+  audit.countyZipBucket = classifyZip(countyZip);
 
   if (county.verdict === 'county_confirms_la') {
     // Step 6 asymmetric suppression: a confirm on corrected input is held.
