@@ -163,10 +163,10 @@ export interface LaProductionDependencies {
  * per the geocode audit durability gate-flip determination
  * (geocode_audit_durability_gate_flip_broker_attestation_2026-06-23) — comment
  * synced in this PR. cityOfLaZipsAuthoritative flipped TRUE per the predicate-5
- * attestation packet (predicate_5_city_of_la_zips_authoritative_attestation_packet_
- * 2026-06-27 §6; A-3 ruling + §6.1 implementation clarification, broker CalDRE
- * B9445457). One production-traffic flag remains false: parcelEndpointHealthCheckLive
- * (§2.6, Workstream B pending). LA production stays blocked on that one.
+ * attestation packet (2026-06-27). parcelEndpointHealthCheckLive flipped TRUE per the
+ * predicate-6 attestation packet (predicate_6_parcel_endpoint_health_check_live_
+ * attestation_packet_2026-06-27 §8, broker CalDRE B9445457): all six predicates are now
+ * satisfied — isLaProductionUnblocked() returns true and the LA production gate is OPEN.
  */
 export const LA_PRODUCTION_DEPENDENCIES: LaProductionDependencies = {
   geocodeConfirmationBuilt: true,
@@ -174,7 +174,7 @@ export const LA_PRODUCTION_DEPENDENCIES: LaProductionDependencies = {
   rtcFormRefreshJobBuilt: true,
   geocodeAuditDurabilityWired: true,
   cityOfLaZipsAuthoritative: true,
-  parcelEndpointHealthCheckLive: false,
+  parcelEndpointHealthCheckLive: true,
 };
 
 /**
@@ -183,9 +183,11 @@ export const LA_PRODUCTION_DEPENDENCIES: LaProductionDependencies = {
  * (geocode v6 ratification §2.6). The produce path must consult this before ever
  * attaching an RTC notice and treating an LA property as produceable. With
  * geocodeConfirmationBuilt, cityBusinessDayCalendarBuilt, rtcFormRefreshJobBuilt,
- * and geocodeAuditDurabilityWired all true, plus cityOfLaZipsAuthoritative flipped
- * (predicate-5 attestation), LA stays blocked on the remaining production-traffic
- * condition: parcelEndpointHealthCheckLive.
+ * and geocodeAuditDurabilityWired all true, plus cityOfLaZipsAuthoritative (predicate-5)
+ * and parcelEndpointHealthCheckLive (predicate-6) flipped, ALL SIX are satisfied — this
+ * returns true and the LA production gate is OPEN (go-live, predicate-6 attestation
+ * 2026-06-27). The dynamic parcel-health fail-closed behavior is enforced at the produce
+ * path (isLaProductionLive); this structural predicate is the static six-flag check.
  */
 export function isLaProductionUnblocked(
   deps: LaProductionDependencies = LA_PRODUCTION_DEPENDENCIES,

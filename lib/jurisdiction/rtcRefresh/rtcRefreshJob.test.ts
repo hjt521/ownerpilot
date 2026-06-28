@@ -35,9 +35,9 @@ check('error => fetch_error',
   classifyOutcome({ language: 'english', error: 'timeout' }).kind === 'fetch_error');
 
 console.log('\n=== gate enforcement ===');
-check('gate closed at HEAD', isLaProductionUnblocked() === false);
-check('runRefresh THROWS while gate closed (real default gate)',
-  await throwsAsync(() => runRefresh({ fetcher: fetcher(), store: new InMemoryRefreshStateStore(), alerts: new RecordingAlertSink() })));
+check('gate OPEN at HEAD (go-live; predicate-6 attestation 2026-06-27)', isLaProductionUnblocked() === true);
+check('runRefresh THROWS while gate closed (explicit closed gate)',
+  await throwsAsync(() => runRefresh({ fetcher: fetcher(), store: new InMemoryRefreshStateStore(), alerts: new RecordingAlertSink(), gateIsOpen: () => false })));
 
 console.log('\n=== Q2: all-match run => no blocks, no alerts, deploy non-blocking ===');
 {

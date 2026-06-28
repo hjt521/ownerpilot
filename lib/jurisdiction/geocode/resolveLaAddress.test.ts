@@ -84,9 +84,9 @@ function makeDeps(over: Partial<ResolverDeps> = {}): ResolverDeps {
 }
 
 (async () => {
-  check('gate is closed at HEAD', isLaProductionUnblocked() === false);
-  check('resolveLaAddress THROWS while gate closed (real default gate)',
-    await throwsAsync(() => resolveLaAddress('123 Main St, Los Angeles, CA', makeDeps())));
+  check('gate is OPEN at HEAD (go-live; predicate-6 attestation 2026-06-27)', isLaProductionUnblocked() === true);
+  check('resolveLaAddress THROWS while gate closed (explicit closed gate)',
+    await throwsAsync(() => resolveLaAddress('123 Main St, Los Angeles, CA', makeDeps({ gateIsOpen: () => false }))));
 
   // Exercise the FULL resolver body with the gate forced open in tests only.
   const openGate = () => true;

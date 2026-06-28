@@ -44,13 +44,17 @@ check('spanish baseline is exactly the Jun-16 hash (Aug-2025 typo form not repre
   RTC_FORM_BASELINE_HASHES.spanish === SPANISH_JUN16);
 
 async function main() {
-  console.log('\n=== per-language gate is fail-closed while LA-wide gate is closed ===');
-  check('LA-wide gate is closed at HEAD (all deps false)', isLaProductionUnblocked() === false);
-  check('english is NOT unblocked (gate closed)',
+  console.log('\n=== LA-wide gate OPEN at HEAD (go-live); languages now fail-closed by freshness when block-state is unavailable ===');
+  check('LA-wide gate is OPEN at HEAD (all six predicates true; predicate-6 go-live 2026-06-27)', isLaProductionUnblocked() === true);
+  // Post go-live the LA-wide gate no longer short-circuits these; isLaLanguageUnblocked now
+  // reaches the 14-day freshness guard, which fails closed when block-state env is absent
+  // (no RTC_BLOCK_STATE_ROUTE_SECRET in the test env). Languages therefore stay blocked — now
+  // by freshness, not by the LA-wide gate. The fail-closed property holds either way.
+  check('english is NOT unblocked (freshness fail-closed)',
     (await isLaLanguageUnblocked({ language: 'english' })) === false);
-  check('spanish is NOT unblocked (gate closed)',
+  check('spanish is NOT unblocked (freshness fail-closed)',
     (await isLaLanguageUnblocked({ language: 'spanish' })) === false);
-  check('every language is fail-closed while the gate is closed',
+  check('every language is fail-closed (freshness guard) with block-state unavailable',
     (await Promise.all(RTC_PUBLISHED_LANGUAGES.map((l) => isLaLanguageUnblocked({ language: l })))).every(
       (v) => v === false,
     ));

@@ -291,18 +291,32 @@ async function main() {
     check('no override + no reader → throws gate-closed (fail closed)', threw);
   }
   {
-    // No gateIsOpen, reader present, predicate flag false (HEAD) → isLaProductionLive
-    // short-circuits on the static gate BEFORE reading: reader NOT called, gate stays closed.
-    // This is the behavior-neutral proof — wiring present, dynamic path unreached while flag false.
+    // Post-flip (parcelEndpointHealthCheckLive=true): the dynamic gate READS the reader (no
+    // static short-circuit now that the flag is true). Empty rows → both endpoints missing →
+    // gate closed → throws; the reader IS invoked.
     const base = deps({});
     const noGate: Record<string, unknown> = { ...base };
     delete noGate.gateIsOpen;
-    let readerCalled = false;
+    let readerCalled: boolean = false;
     noGate.parcelHealthReader = { read: async () => { readerCalled = true; return []; } };
     let threw = false;
     try { await resolveLaAddressV2('x', noGate as unknown as ResolverV2Deps); } catch { threw = true; }
-    check('reader present + flag false → still gate-closed (short-circuit)', threw);
-    check('behavior-neutral: reader NOT invoked while predicate flag is false', readerCalled === false);
+    check('flag true + reader empty → gate-closed (missing endpoints)', threw);
+    check('dynamic gate active post-flip: reader IS invoked', readerCalled);
+  }
+  {
+    // Post-flip: both endpoints live + fresh → gate OPENS → resolver runs (no gate-closed throw).
+    const base = deps({});
+    const noGate: Record<string, unknown> = { ...base };
+    delete noGate.gateIsOpen;
+    const fresh = new Date().toISOString();
+    noGate.parcelHealthReader = { read: async () => ([
+      { endpoint: 'county', currentStatus: 'live', lastProbeAt: fresh },
+      { endpoint: 'zimas', currentStatus: 'live', lastProbeAt: fresh },
+    ]) };
+    let opened = true;
+    try { await resolveLaAddressV2('x', noGate as unknown as ResolverV2Deps); } catch { opened = false; }
+    check('flag true + both live/fresh → gate OPEN, resolver runs (no gate-closed throw)', opened);
   }
   {
     // The v6 corpus injects gateIsOpen: () => true everywhere (deps() helper) → the override
