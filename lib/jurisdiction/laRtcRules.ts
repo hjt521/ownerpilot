@@ -160,6 +160,11 @@ export interface LaProductionDependencies {
  * predicate-6 attestation packet (predicate_6_parcel_endpoint_health_check_live_
  * attestation_packet_2026-06-27 §8, broker CalDRE B9445457): all six predicates are now
  * satisfied — isLaProductionUnblocked() returns true and the LA production gate is OPEN.
+ *
+ * Build marker 2026-06-28: content change to force a fresh client-bundle compile of this
+ * module (predicate-6 go-live cache-bust). Prior production builds were cache restores that
+ * reused a pre-flip chunk; touching this file's content forces webpack to recompile it so the
+ * served bundle reflects parcelEndpointHealthCheckLive: true. No behavior change.
  */
 export const LA_PRODUCTION_DEPENDENCIES: LaProductionDependencies = {
   geocodeConfirmationBuilt: true,
