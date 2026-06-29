@@ -242,7 +242,19 @@ export function NoticeFlow() {
     if (pageIndex !== REVIEW_PAGE_INDEX) return;
     if (normalizedPropertyAddress === '') return;
     const cached = state.data.cachedResolverVerdict;
-    if (cached && cached.addressKey === normalizedPropertyAddress) return;
+    // A cached 'resolution_failed' is TRANSIENT (its own copy says "usually
+    // temporary") and must never permanently suppress re-resolution. The draft
+    // persists across sessions, so without this a single network blip would pin
+    // "couldn't verify jurisdiction" forever (Start over / Try again couldn't
+    // dislodge it). Only a TERMINAL verdict short-circuits the re-fetch; a stale
+    // resolution_failed re-resolves on entry and overwrites itself.
+    if (
+      cached &&
+      cached.addressKey === normalizedPropertyAddress &&
+      cached.verdict !== 'resolution_failed'
+    ) {
+      return;
+    }
 
     const controller = new AbortController();
     let slowTimer: ReturnType<typeof setTimeout> | null = null;
