@@ -313,7 +313,12 @@ export function NoticeFlow() {
 
     return () => {
       active = false;
-      controller.abort();
+      // NOTE: deliberately do NOT abort the in-flight resolve here. The `active`
+      // guard in .then already discards any stale result, so cancelling the
+      // network request was pure harm: on a benign re-render/remount the cleanup
+      // was aborting the healthy resolve before it could return, leaving the
+      // verdict null and the UI stuck on "couldn't verify jurisdiction". Letting
+      // the fetch finish (and discarding stale results via `active`) fixes that.
       if (slowTimer) clearTimeout(slowTimer);
     };
     // Deps: pageIndex + normalized address + retryNonce ONLY. NOT state.data
