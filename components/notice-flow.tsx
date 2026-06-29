@@ -237,6 +237,21 @@ export function NoticeFlow() {
   // changes, only the predicate flips.
   const normalizedPropertyAddress = normalizeAddressKey(state.data.propertyAddress);
   useEffect(() => {
+    // TEMP DIAGNOSTIC (remove after debugging): print why the resolver bridge
+    // does/doesn't fire. Tells us which guard trips before the geocode fetch.
+    // eslint-disable-next-line no-console
+    console.log('[jur-bridge]', JSON.stringify({
+      pageIndex,
+      REVIEW_PAGE_INDEX,
+      onReviewPage: pageIndex === REVIEW_PAGE_INDEX,
+      normalizedPropertyAddress,
+      cachedVerdict: state.data.cachedResolverVerdict?.verdict ?? null,
+      cachedKey: state.data.cachedResolverVerdict?.addressKey ?? null,
+      keyMatches:
+        state.data.cachedResolverVerdict?.addressKey === normalizedPropertyAddress,
+      gateOpen: isLaProductionUnblocked(),
+      retryNonce,
+    }));
     // Only invoke on the Review page, with a non-empty address, and only when a
     // verdict for THIS normalized address is not already cached (keyed cache).
     if (pageIndex !== REVIEW_PAGE_INDEX) return;
