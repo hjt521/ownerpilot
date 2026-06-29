@@ -64,7 +64,14 @@ export function LaProducePanel({
   useEffect(() => {
     let active = true;
     setState({ kind: 'loading' });
-    runLaProduceSequence({ verdict: 'confirmed_la', lahdCopyVersion: lahdFilingPromptCopyVersion, baseName, fetchImpl: fetch })
+    runLaProduceSequence({
+      verdict: 'confirmed_la',
+      lahdCopyVersion: lahdFilingPromptCopyVersion,
+      baseName,
+      // Bind to the global — bare `fetch` called as deps.fetchImpl(...) throws
+      // "Illegal invocation" (same bug fixed in the jurisdiction bridge).
+      fetchImpl: (...args: Parameters<typeof fetch>) => fetch(...args),
+    })
       .then((r) => { if (active) setState(r); })
       .catch(() => { if (active) setState({ kind: 'error', detail: 'sequence failed' }); });
     return () => { active = false; };
