@@ -227,3 +227,37 @@ export function laProductionMissingDependencies(
     missing.push('County + ZIMAS endpoint health-check cron (§2.6)');
   return missing;
 }
+
+// --- Phase 2D produce-overlay gate (la_notice_production_gap_broker_ruling_2026-06-28) ---
+
+/**
+ * SEPARATE produce-gate flag. `isLaProductionUnblocked()` (the six flags above)
+ * gates the RESOLVER / detection path. THIS flag gates the PRODUCE/overlay path —
+ * the RTC + LAHD assembly engine (Phase 2D). It is deliberately kept apart so that
+ * flipping it never disturbs the resolver gate.
+ *
+ * Default FALSE: the produce path stays at JURISDICTION_LA_OVERLAY_NOT_YET_AVAILABLE
+ * (the locked block) until Phase 2D is wired into lib/produce/, broker-verified
+ * end-to-end on real LA addresses, and the broker flips this — the "second flip"
+ * launch event that makes LA production end-user-facing. Flipping is a human,
+ * reviewed act; not auto-detected.
+ *
+ * ENV-DRIVEN (phase2d preview/prod split, broker ruling 2026-06-29): read from
+ * NEXT_PUBLIC_PHASE2D_ASSEMBLY_ENGINE_WIRED so the same committed code can be true
+ * in a preview/test deploy while staying false in production (set the env var only
+ * where the flag should be on). NEXT_PUBLIC_ is required because this flag also
+ * gates CLIENT rendering (notice-flow.tsx LaProducePanel) — a non-public env var
+ * would never reach the browser. The `typeof process` guard keeps the rtc-refresh
+ * Deno edge function (which bundles this module) from throwing on `process`.
+ * Unset/anything-but-"true" => false (fail-closed default preserved).
+ */
+export const PHASE2D_ASSEMBLY_ENGINE_WIRED =
+  typeof process !== 'undefined' &&
+  process.env.NEXT_PUBLIC_PHASE2D_ASSEMBLY_ENGINE_WIRED === 'true';
+
+/** True only when the LA produce-overlay path (Phase 2D) is wired AND launched. */
+export function isLaProducePhase2dWired(
+  flag: boolean = PHASE2D_ASSEMBLY_ENGINE_WIRED,
+): boolean {
+  return flag === true;
+}

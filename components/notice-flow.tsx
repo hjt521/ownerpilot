@@ -31,8 +31,9 @@ import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
 import { saveProfile, loadProfile, clearProfile, applyProfile } from '@/lib/flow/profile';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import { runJurisdictionResolution } from '@/lib/flow/jurisdictionBridge';
+import { boundFetch } from '@/lib/http/boundFetch';
 import { normalizeAddressKey } from '@/lib/flow/jurisdictionVerdict';
-import { isLaProductionUnblocked } from '@/lib/jurisdiction/laRtcRules';
+import { isLaProductionUnblocked, isLaProducePhase2dWired } from '@/lib/jurisdiction/laRtcRules';
 import { validatePaymentMethods } from '@/lib/payments/validatePaymentMethods';
 import { buildMethodsInput } from '@/lib/flow/paymentMethodsAdapter';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
@@ -46,6 +47,8 @@ import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName, for
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import { PacketPrintOptions } from './packet-print-options';
+import { LaProducePanel } from './la-produce-panel';
+import { buildNoticePdfFilename } from '@/lib/produce/noticePdfFilename';
 import { NoticeSummaryPanel } from './notice-summary-panel';
 import { PropertyAddressAutocomplete } from './places-autocomplete';
 import {
@@ -240,7 +243,19 @@ export function NoticeFlow() {
     if (pageIndex !== REVIEW_PAGE_INDEX) return;
     if (normalizedPropertyAddress === '') return;
     const cached = state.data.cachedResolverVerdict;
-    if (cached && cached.addressKey === normalizedPropertyAddress) return;
+    // A cached 'resolution_failed' is TRANSIENT (its own copy says "usually
+    // temporary") and must never permanently suppress re-resolution. The draft
+    // persists across sessions, so without this a single network blip would pin
+    // "couldn't verify jurisdiction" forever (Start over / Try again couldn't
+    // dislodge it). Only a TERMINAL verdict short-circuits the re-fetch; a stale
+    // resolution_failed re-resolves on entry and overwrites itself.
+    if (
+      cached &&
+      cached.addressKey === normalizedPropertyAddress &&
+      cached.verdict !== 'resolution_failed'
+    ) {
+      return;
+    }
 
     const controller = new AbortController();
     let slowTimer: ReturnType<typeof setTimeout> | null = null;
@@ -253,7 +268,10 @@ export function NoticeFlow() {
 
     runJurisdictionResolution(state.data.propertyAddress, {
       isGateOpen: () => isLaProductionUnblocked(),
-      fetchImpl: fetch,
+      // Global-bound fetch (lib/http/boundFetch). Never pass bare `fetch` here:
+      // called as deps.fetchImpl(...) it rebinds `this` and throws "Illegal
+      // invocation". Enforced by scripts/ci/check_fetch_binding.mjs.
+      fetchImpl: boundFetch,
       signal: controller.signal,
     })
       .then((r) => {
@@ -264,6 +282,11 @@ export function NoticeFlow() {
               verdict: r.verdict,
               addressKey: r.addressKey,
               resolvedAt: new Date().toISOString(),
+              reviewReason: r.reviewReason ?? null,
+              // Live-resolver provenance: the produce gate trusts this same-session
+              // verdict directly. The broker-confirm path stamps 'broker_confirm'
+              // and is cross-checked server-side at produce (ruling §2.2).
+              source: 'live_resolver',
             },
           });
         }
@@ -3133,17 +3156,38 @@ function ReviewStep({
         </div>
       )}
 
-      {docHtml && renderedModel && (
-        <PacketPrintOptions
-          model={renderedModel}
-          data={data}
-          noticeDocHtml={docHtml}
-          onProduced={onProduced}
-          disabledKeys={
-            result.canProduce ? ['serviceLog'] : ['tenant', 'owner', 'serviceLog', 'full']
-          }
-        />
-      )}
+      {docHtml && renderedModel &&
+        (data.cachedResolverVerdict?.verdict === 'confirmed_la' &&
+        data.cachedResolverVerdict.addressKey === normalizeAddressKey(data.propertyAddress) &&
+        isLaProducePhase2dWired() &&
+        isLaProductionUnblocked() ? (
+          // Phase 2D: LA notices produce through the overlay panel (server-gated RTC
+          // attach + LAHD prompt). Replaces the normal print options so the notice
+          // can never be printed without the Right-to-Counsel attachment.
+          <LaProducePanel
+            model={renderedModel}
+            data={data}
+            noticeDocHtml={docHtml}
+            baseName={buildNoticePdfFilename({
+              tenantNames: data.tenantNames,
+              streetAddress: data.propertyAddress,
+              unit: data.propertyUnit,
+            })}
+            verdictSource={data.cachedResolverVerdict?.source ?? 'live_resolver'}
+            onProduced={onProduced}
+            onAudit={(f) => update({ laProduceAudit: f })}
+          />
+        ) : (
+          <PacketPrintOptions
+            model={renderedModel}
+            data={data}
+            noticeDocHtml={docHtml}
+            onProduced={onProduced}
+            disabledKeys={
+              result.canProduce ? ['serviceLog'] : ['tenant', 'owner', 'serviceLog', 'full']
+            }
+          />
+        ))}
 
       {/* C6: posture line (locked) on the produce screen. */}
       {docHtml && renderedModel && (

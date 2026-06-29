@@ -37,6 +37,63 @@
       "version_stamp": "bankDepositMethodCopyVersion=v1",
       "source_determination": "docs/compliance/bank_deposit_disclosure_copy_ratification_broker_determination_2026-06-18.md",
       "source_section": "§2.3"
+    },
+    {
+      "constant": "lahdFilingPromptHeader",
+      "tier": "B",
+      "file": "lib/copy/lahd/lahdFilingPromptCopy.ts",
+      "verbatim": "File this notice with LAHD within 3 business days",
+      "hash": "8c3ab1882b94877c4e8a83f4d2f2d6b3601825be0388ce202fd36ce976feb612",
+      "version_stamp": "lahdFilingPromptCopyVersion=v1",
+      "source_determination": "docs/compliance/la_notice_production_gap_broker_ruling_2026-06-28_erratum_artifact_drop_2026-06-28.md",
+      "source_section": "§5"
+    },
+    {
+      "constant": "lahdFilingPromptBody",
+      "tier": "B",
+      "file": "lib/copy/lahd/lahdFilingPromptCopy.ts",
+      "verbatim": "The City of Los Angeles requires this 3-day notice to be filed with the Los Angeles Housing Department (LAHD) within 3 business days of service on the tenant. Filing applies to all eviction notices for all rental units in the City of LA, regardless of whether the unit is covered by the Rent Stabilization Ordinance or the Just Cause Ordinance. Filing is the landlord's obligation. Failure to file may be raised by the tenant as an affirmative defense in an unlawful detainer action. Authority: Los Angeles Municipal Code §§ 151.09.C.9 and 165.05.B.5.",
+      "hash": "22bd90dfc2aea0fb154abbb47c99fbd32562831276dc0f89445b36e3ce84f15a",
+      "version_stamp": "lahdFilingPromptCopyVersion=v1",
+      "source_determination": "docs/compliance/la_notice_production_gap_broker_ruling_2026-06-28_erratum_artifact_drop_2026-06-28.md",
+      "source_section": "§5"
+    },
+    {
+      "constant": "lahdFilingChannelsList",
+      "tier": "B",
+      "file": "lib/copy/lahd/lahdFilingPromptCopy.ts",
+      "verbatim": "File one of three ways:\n\n1. **Online** — Upload a PDF of the notice to the LAHD eviction filing portal at housing.lacity.gov. This is the fastest method and produces an automatic confirmation receipt.\n2. **By mail** — Mail a hard copy of the notice (with a printed LAHD cover sheet) to LAHD. Postmark date is not the filing date — LAHD's date of receipt controls.\n3. **In person** — Deliver a hard copy of the notice to an LAHD public counter.\n\nFile the actual notice that was served. The LAHD cover sheet alone is not a filing. Include the proof of service if one was prepared — the service date is what the 3-business-day clock measures from.",
+      "hash": "8b051d1c737ec0aba1d62f323897da0a507e2fb75c560452483a95cdc3ec004a",
+      "version_stamp": "lahdFilingPromptCopyVersion=v1",
+      "source_determination": "docs/compliance/la_notice_production_gap_broker_ruling_2026-06-28_erratum_artifact_drop_2026-06-28.md",
+      "source_section": "§5"
+    },
+    {
+      "constant": "lahdFilingPromptCopyVersion",
+      "tier": "B",
+      "file": "lib/copy/lahd/lahdFilingPromptCopy.ts",
+      "verbatim": "v1",
+      "hash": "3bfc269594ef649228e9a74bab00f042efc91d5acc6fbee31a382e80d42388fe",
+      "source_determination": "docs/compliance/la_notice_production_gap_broker_ruling_2026-06-28_erratum_artifact_drop_2026-06-28.md",
+      "source_section": "§5"
+    },
+    {
+      "constant": "JURISDICTION_LA_OVERLAY_NOT_YET_AVAILABLE_MESSAGE",
+      "tier": "B",
+      "file": "lib/flow/jurisdictionSupersession.ts",
+      "verbatim": "This property is in the City of Los Angeles. The Los Angeles overlay isn't available in OwnerPilot yet, so a notice for this address can't be produced here. We'll let you know when LA support is live.",
+      "hash": "dfc57b231efc67129c89499a43978565e675f0b1d79a37b8ef887eb922ace075",
+      "source_determination": "docs/compliance/la_notice_production_gap_broker_ruling_2026-06-28.md",
+      "source_section": "Decision 1"
+    },
+    {
+      "constant": "JURISDICTION_LA_OVERLAY_ATTACHMENT_FAILED_MESSAGE",
+      "tier": "B",
+      "file": "lib/flow/jurisdictionSupersession.ts",
+      "verbatim": "This property is in the City of Los Angeles. We hit a problem attaching the required Los Angeles forms, so this notice can't be produced right now. Please try again shortly. If this persists, the issue has been logged for review.",
+      "hash": "d24d2ae6e11f42f71b298fcbf7ca06073128065aa82e5ab71e847e28aa4b88e3",
+      "source_determination": "docs/compliance/la_notice_production_gap_broker_ruling_2026-06-28_erratum_artifact_drop_2026-06-28.md",
+      "source_section": "§5"
     }
   ]
 }

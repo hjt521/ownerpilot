@@ -1,0 +1,5 @@
+# Treat PDFs as binary so git never alters bytes on commit/checkout.
+# Protects the SHA-pinned RTC notices in lib/rtc/packet/** (Phase 2D).
+# See phase2d_section0b_engineering_runbook_2026-06-29.md Step 3.
+*.pdf binary
+*.pdf -text

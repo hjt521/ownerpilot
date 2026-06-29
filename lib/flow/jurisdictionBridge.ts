@@ -42,7 +42,7 @@ export type BridgeRunResult =
   | { kind: 'skipped_gate_closed' }
   | { kind: 'skipped_no_address' }
   | { kind: 'aborted' }
-  | { kind: 'verdict'; verdict: CachedJurisdictionVerdict; addressKey: string };
+  | { kind: 'verdict'; verdict: CachedJurisdictionVerdict; addressKey: string; reviewReason?: string | null };
 
 /** Injected dependencies — all side effects and environment reads. */
 export interface BridgeDeps {
@@ -117,7 +117,9 @@ export async function runJurisdictionResolution(
     case 'confirmed_la':
     case 'not_la':
     case 'manual_review':
-      return { kind: 'verdict', verdict: body.disposition, addressKey };
+      // reviewReason carried so the page can gate the broker-confirm affordance
+      // (Decision B eligibility) on a manual_review's specific reason.
+      return { kind: 'verdict', verdict: body.disposition, addressKey, reviewReason: body.reviewReason ?? null };
     default:
       return { kind: 'verdict', verdict: 'resolution_failed', addressKey };
   }

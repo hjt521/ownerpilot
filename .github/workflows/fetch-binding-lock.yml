@@ -1,0 +1,21 @@
+name: fetch-binding-lock
+# Guards against the "Illegal invocation" fetch bug: bare `fetch` (or window/globalThis
+# .fetch, or a destructured fetch) passed into an injected fetch slot throws when called
+# as deps.fetchImpl(...). See docs/compliance/fetch_binding_regression_test_spec_2026-06-29.md.
+# No path filter on purpose (mirrors locked-prose-lock.yml): always runs, fast, unevadable.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-fetch-binding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Verify no bare/unbound fetch in injected slots
+        run: npm run ci:verify-fetch-binding
