@@ -286,6 +286,8 @@ export function NoticeFlow() {
       signal: controller.signal,
     })
       .then((r) => {
+        // eslint-disable-next-line no-console
+        console.log('[jur-bridge] result', JSON.stringify({ kind: r.kind, verdict: r.kind === 'verdict' ? r.verdict : null, active }));
         if (!active) return;
         if (r.kind === 'verdict') {
           update({
