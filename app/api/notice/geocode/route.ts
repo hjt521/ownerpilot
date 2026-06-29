@@ -61,8 +61,8 @@ import {
   readGeocodeApiKey,
 } from '@/lib/jurisdiction/geocode/resolveLaAddress';
 import {
-  defaultCountyFetcher,
-  type CountyLookupDeps,
+  defaultCountySpatialFetcher,
+  type CountySpatialLookupDeps,
 } from '@/lib/jurisdiction/geocode/countyParcelAdapter';
 import {
   defaultZimasFetcher,
@@ -257,7 +257,7 @@ function buildResolverDeps(
   recordAudit: (record: GeocodeAuditRecord) => Promise<void>,
 ): ResolverV2Deps {
   const apiKey = readGeocodeApiKey();
-  const county: CountyLookupDeps = { fetcher: defaultCountyFetcher };
+  const county: CountySpatialLookupDeps = { fetcher: defaultCountySpatialFetcher };
   const zimas: ZimasLookupDeps = { fetcher: defaultZimasFetcher };
   // Predicate-6 dynamic gate reader: narrow-read of parcel_health_status under the
   // parcel_health_reader JWT (no Supabase client; static Bearer over the global fetch,
