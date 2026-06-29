@@ -237,21 +237,6 @@ export function NoticeFlow() {
   // changes, only the predicate flips.
   const normalizedPropertyAddress = normalizeAddressKey(state.data.propertyAddress);
   useEffect(() => {
-    // TEMP DIAGNOSTIC (remove after debugging): print why the resolver bridge
-    // does/doesn't fire. Tells us which guard trips before the geocode fetch.
-    // eslint-disable-next-line no-console
-    console.log('[jur-bridge]', JSON.stringify({
-      pageIndex,
-      REVIEW_PAGE_INDEX,
-      onReviewPage: pageIndex === REVIEW_PAGE_INDEX,
-      normalizedPropertyAddress,
-      cachedVerdict: state.data.cachedResolverVerdict?.verdict ?? null,
-      cachedKey: state.data.cachedResolverVerdict?.addressKey ?? null,
-      keyMatches:
-        state.data.cachedResolverVerdict?.addressKey === normalizedPropertyAddress,
-      gateOpen: isLaProductionUnblocked(),
-      retryNonce,
-    }));
     // Only invoke on the Review page, with a non-empty address, and only when a
     // verdict for THIS normalized address is not already cached (keyed cache).
     if (pageIndex !== REVIEW_PAGE_INDEX) return;
@@ -282,12 +267,15 @@ export function NoticeFlow() {
 
     runJurisdictionResolution(state.data.propertyAddress, {
       isGateOpen: () => isLaProductionUnblocked(),
-      fetchImpl: fetch,
+      // Bind to the global: passing bare `fetch` as a property and calling it as
+      // deps.fetchImpl(...) sets `this = deps`, which the browser rejects with
+      // "TypeError: Failed to execute 'fetch' on 'Window': Illegal invocation".
+      // An arrow wrapper preserves the default (window) binding. THIS was the bug
+      // that broke all client-side jurisdiction resolution.
+      fetchImpl: (...args: Parameters<typeof fetch>) => fetch(...args),
       signal: controller.signal,
     })
       .then((r) => {
-        // eslint-disable-next-line no-console
-        console.log('[jur-bridge] result', JSON.stringify({ kind: r.kind, verdict: r.kind === 'verdict' ? r.verdict : null, active }));
         if (!active) return;
         if (r.kind === 'verdict') {
           update({
@@ -313,12 +301,7 @@ export function NoticeFlow() {
 
     return () => {
       active = false;
-      // NOTE: deliberately do NOT abort the in-flight resolve here. The `active`
-      // guard in .then already discards any stale result, so cancelling the
-      // network request was pure harm: on a benign re-render/remount the cleanup
-      // was aborting the healthy resolve before it could return, leaving the
-      // verdict null and the UI stuck on "couldn't verify jurisdiction". Letting
-      // the fetch finish (and discarding stale results via `active`) fixes that.
+      controller.abort();
       if (slowTimer) clearTimeout(slowTimer);
     };
     // Deps: pageIndex + normalized address + retryNonce ONLY. NOT state.data

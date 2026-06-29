@@ -80,8 +80,6 @@ export async function runJurisdictionResolution(
   // (2) Invoke the 4c surface. Any error/non-200 -> resolution_failed (FORK A:
   //     no silent stub fallback).
   let res: Response;
-  // eslint-disable-next-line no-console
-  console.log('[jur-bridge] -> fetch /api/notice/geocode', JSON.stringify({ preAborted: deps.signal?.aborted ?? false }));
   try {
     res = await deps.fetchImpl('/api/notice/geocode', {
       method: 'POST',
@@ -90,20 +88,11 @@ export async function runJurisdictionResolution(
       signal: deps.signal,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.log('[jur-bridge] fetch THREW', JSON.stringify({
-      name: (err as { name?: string })?.name ?? null,
-      message: (err as { message?: string })?.message ?? null,
-      sigAborted: deps.signal?.aborted ?? false,
-      classifiedAsAbort: isAbortError(err),
-    }));
     // Abort is a cancellation, not a failure verdict: the caller discards it.
     if (isAbortError(err)) return { kind: 'aborted' };
     return { kind: 'verdict', verdict: 'resolution_failed', addressKey };
   }
 
-  // eslint-disable-next-line no-console
-  console.log('[jur-bridge] fetch returned', JSON.stringify({ status: res.status, sigAborted: deps.signal?.aborted ?? false }));
   if (deps.signal?.aborted) return { kind: 'aborted' };
 
   if (res.status !== 200) {
