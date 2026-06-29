@@ -51,6 +51,24 @@ export interface CachedResolverVerdict {
   addressKey: string;
   /** ISO timestamp when the verdict was recorded (audit / staleness reference). */
   resolvedAt: string;
+  /**
+   * The manual-review reason (when verdict === 'manual_review'), used to decide
+   * whether the broker-confirm affordance is offered (Decision B eligibility).
+   * Absent for non-manual_review verdicts.
+   */
+  reviewReason?: string | null;
+  /**
+   * Provenance (produce-gate reconciliation ruling §2.2). 'live_resolver' is the
+   * default/legacy path (the resolver returned this verdict same-session — the
+   * produce gate trusts the cache). 'broker_confirm' means the verdict was written
+   * by the broker-confirm status view; the produce gate MUST cross-check the
+   * durable server attestation (POST /verify-produce) before producing.
+   */
+  source?: 'live_resolver' | 'broker_confirm';
+  /** Present iff source === 'broker_confirm'; the bearer token the cross-check needs. */
+  brokerConfirmToken?: string;
+  /** normalizeAddressForJurisdictionKey(address) — the cross-check reconciliation key. */
+  addressNormalized?: string;
 }
 
 /**

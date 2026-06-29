@@ -18,6 +18,7 @@
 
 import type { ServiceMethod } from '../dates/computeCompliancePeriod';
 import type { CachedResolverVerdict } from './jurisdictionVerdict';
+import type { LaProduceAuditFields } from '../produce/laProduceClient';
 
 /** The ordered steps of the flow. Pre-flight precedes Step 1. */
 export enum FlowStep {
@@ -351,6 +352,9 @@ export interface NoticeFlowData {
   // verdict yet (the stub's NEEDS_CONFIRMATION stands per "supersedes once
   // present"). See lib/flow/jurisdictionVerdict.ts.
   cachedResolverVerdict?: CachedResolverVerdict;
+  /** LA produce-overlay audit fields, written on the owner's LAHD acknowledgment
+   *  at produce (Phase 2D). Optional; absent for non-LA / pre-Phase-2D notices. */
+  laProduceAudit?: LaProduceAuditFields;
 }
 
 /** Outcome of a single service attempt (attorney B1 enum). */

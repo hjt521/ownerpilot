@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0.0",
+  "lastBaselineUpdate": "2026-06-19T00:00:00Z",
+  "lastBaselineUpdateRuling": "la_rtc_form_revision_acceptance_english_2026-06-19.md + la_rtc_form_revision_acceptance_spanish_2026-06-19.md",
+  "rtcFormBaselineHashes": {
+    "english": "d0653950008da9004c405a91685c2c212557ae6398eb2f79d9a6cf7d7beb5f7a",
+    "spanish": "947885d0af7eb21f7b66c0f54294b6803923449a21c93c75c0797512455d8371"
+  },
+  "rtcFormLastModified": {
+    "english": "2026-06-16T21:03:44Z",
+    "spanish": "2026-06-16T21:03:55Z"
+  },
+  "rtcFormSource": {
+    "english": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-English.pdf",
+    "spanish": "https://housing.lacity.gov/wp-content/uploads/2025/07/NOTICE-OF-TENANTS-RIGHT-TO-COUNSEL-PROGRAM-Spanish.pdf"
+  },
+  "rtcFormLocalPath": {
+    "english": "lib/rtc/packet/english/notice-of-tenants-right-to-counsel-program-english.pdf",
+    "spanish": "lib/rtc/packet/spanish/notice-of-tenants-right-to-counsel-program-spanish.pdf"
+  },
+  "rtcFormSize": {
+    "english": 844172,
+    "spanish": 867218
+  },
+  "rtcRefreshRunAt": null,
+  "rtcHashThreshold": "strict_sha256",
+  "rtcRefreshPolicy": "Weekly cron; broker-gated rollout on revision; strict SHA-256 inequality triggers review.",
+  "notes": "Phase 2D produce gate consumes this file. If file is missing, or any hash on disk fails to match the baseline at produce time, fail closed with JURISDICTION_LA_OVERLAY_ATTACHMENT_FAILED. The rtcRefreshRunAt field is populated by the weekly cron (job 6528bcda) once it has run a baseline capture."
+}

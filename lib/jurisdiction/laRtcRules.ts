@@ -220,3 +220,26 @@ export function laProductionMissingDependencies(
     missing.push('County + ZIMAS endpoint health-check cron (§2.6)');
   return missing;
 }
+
+// --- Phase 2D produce-overlay gate (la_notice_production_gap_broker_ruling_2026-06-28) ---
+
+/**
+ * SEPARATE produce-gate flag. `isLaProductionUnblocked()` (the six flags above)
+ * gates the RESOLVER / detection path. THIS flag gates the PRODUCE/overlay path —
+ * the RTC + LAHD assembly engine (Phase 2D). It is deliberately kept apart so that
+ * flipping it never disturbs the resolver gate.
+ *
+ * Default FALSE: the produce path stays at JURISDICTION_LA_OVERLAY_NOT_YET_AVAILABLE
+ * (the locked block) until Phase 2D is wired into lib/produce/, broker-verified
+ * end-to-end on real LA addresses, and the broker flips this — the "second flip"
+ * launch event that makes LA production end-user-facing. Flipping is a human,
+ * reviewed act; not auto-detected.
+ */
+export const PHASE2D_ASSEMBLY_ENGINE_WIRED = false;
+
+/** True only when the LA produce-overlay path (Phase 2D) is wired AND launched. */
+export function isLaProducePhase2dWired(
+  flag: boolean = PHASE2D_ASSEMBLY_ENGINE_WIRED,
+): boolean {
+  return flag === true;
+}

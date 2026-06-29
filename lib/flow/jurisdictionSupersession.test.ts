@@ -33,6 +33,12 @@ function main() {
     r3.kind === 'superseded' && r3.blocker.code === 'JURISDICTION_LA_OVERLAY_NOT_YET_AVAILABLE');
   check('confirmed_la -> verbatim §3.B message',
     r3.kind === 'superseded' && r3.blocker.message === JURISDICTION_LA_OVERLAY_NOT_YET_AVAILABLE_MESSAGE);
+  // Phase 2D flag gating (la_notice_production_gap ruling): wired + gate open clears
+  // the legacy block (LA produce panel governs); otherwise NOT_YET_AVAILABLE stands.
+  const r3wired = supersedeNeedsConfirmation(ADDR, cached('confirmed_la'), { phase2dWired: true, productionUnblocked: true });
+  check('confirmed_la + Phase2D wired + gate open -> cleared_la', r3wired.kind === 'cleared_la');
+  const r3half = supersedeNeedsConfirmation(ADDR, cached('confirmed_la'), { phase2dWired: true, productionUnblocked: false });
+  check('confirmed_la + wired but gate closed -> NOT_YET_AVAILABLE (fail-closed)', r3half.kind === 'superseded');
 
   // --- manual_review -> manual review blocker ---
   const r4 = supersedeNeedsConfirmation(ADDR, cached('manual_review'));

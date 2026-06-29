@@ -25,6 +25,7 @@
  */
 import type { CachedResolverVerdict } from './jurisdictionVerdict';
 import { normalizeAddressKey } from './jurisdictionVerdict';
+import { isLaProducePhase2dWired, isLaProductionUnblocked } from '../jurisdiction/laRtcRules';
 
 /** Minimal blocker shape (mirrors gates.ts ProduceBlocker; code + message). */
 export interface JurisdictionBlocker {
@@ -41,6 +42,11 @@ export const JURISDICTION_MANUAL_REVIEW_REQUIRED_MESSAGE =
   "We couldn't automatically determine the jurisdiction for this address. A notice for this property requires manual review before it can be produced. Please contact your broker or attorney for assistance with this address.";
 export const JURISDICTION_RESOLUTION_FAILED_MESSAGE =
   "We weren't able to verify jurisdiction for this address right now. This is usually temporary. Please try again, or come back in a few minutes.";
+// Phase 2D produce-overlay runtime failure (la_notice_production_gap erratum §5).
+// Distinct from NOT_YET_AVAILABLE: fires when the overlay IS wired but attachment
+// fails at runtime (missing PDF, SHA mismatch, I/O). Broker-locked verbatim.
+export const JURISDICTION_LA_OVERLAY_ATTACHMENT_FAILED_MESSAGE =
+  "This property is in the City of Los Angeles. We hit a problem attaching the required Los Angeles forms, so this notice can't be produced right now. Please try again shortly. If this persists, the issue has been logged for review.";
 
 /**
  * Given the stub's NEEDS_CONFIRMATION outcome and the current address, return
@@ -56,11 +62,22 @@ export const JURISDICTION_RESOLUTION_FAILED_MESSAGE =
 export type SupersessionResult =
   | { kind: 'superseded'; blocker: JurisdictionBlocker }
   | { kind: 'cleared' }
+  /** confirmed_la with Phase 2D wired + production gate open: the legacy
+   *  NOT_YET_AVAILABLE hard block is cleared; the LA produce panel + server
+   *  verify-la/la-packet now govern produce (with RTC attach + LAHD prompt). */
+  | { kind: 'cleared_la' }
   | { kind: 'no_verdict' };
+
+/** Flags injectable for tests; default to the real module gates. */
+export interface SupersessionFlags {
+  phase2dWired?: boolean;
+  productionUnblocked?: boolean;
+}
 
 export function supersedeNeedsConfirmation(
   currentAddress: string | undefined,
   cached: CachedResolverVerdict | undefined,
+  flags?: SupersessionFlags,
 ): SupersessionResult {
   // No cached verdict at all -> stub stands.
   if (!cached) return { kind: 'no_verdict' };
@@ -72,7 +89,13 @@ export function supersedeNeedsConfirmation(
   switch (cached.verdict) {
     case 'not_la':
       return { kind: 'cleared' };
-    case 'confirmed_la':
+    case 'confirmed_la': {
+      // Phase 2D: when the produce-overlay is wired AND the production gate is open,
+      // clear the legacy hard block — the LA produce panel + server assertion govern
+      // (with RTC attach + LAHD prompt). Default (flag false) keeps NOT_YET_AVAILABLE.
+      const wired = flags?.phase2dWired ?? isLaProducePhase2dWired();
+      const unblocked = flags?.productionUnblocked ?? isLaProductionUnblocked();
+      if (wired && unblocked) return { kind: 'cleared_la' };
       return {
         kind: 'superseded',
         blocker: {
@@ -80,6 +103,7 @@ export function supersedeNeedsConfirmation(
           message: JURISDICTION_LA_OVERLAY_NOT_YET_AVAILABLE_MESSAGE,
         },
       };
+    }
     case 'manual_review':
       return {
         kind: 'superseded',
