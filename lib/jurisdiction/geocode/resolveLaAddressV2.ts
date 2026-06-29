@@ -33,9 +33,9 @@ import type {
   ValidationGranularity,
 } from './geocodeTypes';
 import {
-  lookupCountyParcel,
+  lookupCountyParcelSpatial,
   parseAddressForCounty,
-  type CountyLookupDeps,
+  type CountySpatialLookupDeps,
   type CountyAuditFields,
   type CountyVerdict,
 } from './countyParcelAdapter';
@@ -227,7 +227,7 @@ export interface ResolverV2Deps {
     administrativeAreaLevel1: string | null;
     correction: CorrectionFlags;
   }>;
-  county: CountyLookupDeps;
+  county: CountySpatialLookupDeps;
   zimas: ZimasLookupDeps;
   gateIsOpen?: () => boolean;
   /** Dynamic parcel-health gate reader (predicate-6). Injected in production by
@@ -293,12 +293,37 @@ export async function resolveLaAddressV2(
     return { disposition: outcome.disposition, reviewReason: outcome.reviewReason, audit };
   }
 
-  // STEP 4 — County TaxRateCity (stem-matched, ZIP-scoped). (proceed_to_parcel ⇒ formattedAddress.)
+  // STEP 4 — County jurisdiction via SPATIAL point-in-polygon at the geocoded
+  // coordinate (county_parcel_lookup_method_broker_ruling_2026-06-28, Decision 1).
+  // Both parcel sources (County spatial + ZIMAS) require a coordinate; validate it
+  // ONCE here. Without a coordinate neither source can run → step-6 inconclusive.
   const formatted = signals.formattedAddress ?? inputAddress;
-  const county = await lookupCountyParcel(formatted, deps.county);
+  // ZIP still parsed from the formatted address — used only for the situs-gap gate,
+  // not for the parcel query (which is now geometric). (§3.5 audit + zero-feature gate.)
+  const countyZip = parseAddressForCounty(formatted).zip;
+  const lat = signals.latitude;
+  const lng = signals.longitude;
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    audit.countyZipInLaZipSet = zipInCityOfLa(countyZip);
+    audit.countyZipBucket = classifyZip(countyZip);
+    if (isCorrectedInput(signals.correction)) {
+      audit.disposition = 'manual_review';
+      audit.reviewReason = 'input_corrected';
+      audit.branch = 'correction_inconclusive';
+      await deps.recordAudit?.(audit);
+      return { disposition: 'manual_review', reviewReason: 'input_corrected', audit };
+    }
+    audit.disposition = 'manual_review';
+    audit.reviewReason = 'parcel_lookup_inconclusive';
+    audit.branch = 'zimas_miss';
+    await deps.recordAudit?.(audit);
+    return { disposition: 'manual_review', reviewReason: 'parcel_lookup_inconclusive', audit };
+  }
+
+  const county = await lookupCountyParcelSpatial(lat, lng, deps.county);
   audit.county = { ...county.audit, verdict: county.verdict };
   // §3.5 audit fields: zero-features + ZIP-in-LA-set, logged whenever County ran.
-  const countyZip = parseAddressForCounty(formatted).zip;
+  // (queryMethod/queryCoordinate/featureCount/featureTaxRateCities ride in audit.county.)
   audit.countyQueryReturnedZeroFeatures = county.audit.parcelFound === false;
   audit.countyZipInLaZipSet = zipInCityOfLa(countyZip);
   audit.countyZipBucket = classifyZip(countyZip);
@@ -346,25 +371,8 @@ export async function resolveLaAddressV2(
     return { disposition: 'manual_review', reviewReason: 'county_situs_gap', audit };
   }
 
-  // STEP 5 (ZIMAS) — County inconclusive (and not a non-LA situs gap). Needs lat/lng.
-  const lat = signals.latitude;
-  const lng = signals.longitude;
-  if (typeof lat !== 'number' || typeof lng !== 'number') {
-    // No coordinate to spatial-query → fall-through. Step 6 applies.
-    if (isCorrectedInput(signals.correction)) {
-      audit.disposition = 'manual_review';
-      audit.reviewReason = 'input_corrected';
-      audit.branch = 'correction_inconclusive';
-      await deps.recordAudit?.(audit);
-      return { disposition: 'manual_review', reviewReason: 'input_corrected', audit };
-    }
-    audit.disposition = 'manual_review';
-    audit.reviewReason = 'parcel_lookup_inconclusive';
-    audit.branch = 'zimas_miss';
-    await deps.recordAudit?.(audit);
-    return { disposition: 'manual_review', reviewReason: 'parcel_lookup_inconclusive', audit };
-  }
-
+  // STEP 5 (ZIMAS) — County inconclusive (and not a non-LA situs gap). The
+  // coordinate was already validated above (both parcel sources share it).
   const zimas = await lookupZimasParcel(lat, lng, deps.zimas);
   audit.zimas = { ...zimas.audit, verdict: zimas.verdict };
 

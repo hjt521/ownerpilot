@@ -64,6 +64,16 @@ export interface CountyAuditFields {
   parcelFound: boolean;
   /** Set when the lookup failed (network/5xx/timeout); decision is fail-closed. */
   failureMode?: 'timeout' | 'http_5xx' | 'network_error' | 'bad_response';
+  // --- spatial-method forensic capture (county_parcel_lookup_method ruling 2026-06-28 §1.2 MUST FIX 8) ---
+  /** Retrieval method used. 'spatial_point_in_polygon' for the geometry query;
+   *  'address_string' for the legacy structured-field query (shadow/probe). */
+  queryMethod?: 'spatial_point_in_polygon' | 'address_string';
+  /** The coordinate sent to the spatial query (null for the address-string path). */
+  queryCoordinate?: { lat: number; lng: number } | null;
+  /** Number of features the query returned (forensic; multi-feature debugging). */
+  featureCount?: number;
+  /** TaxRateCity of every returned feature, in order (forensic; multi-feature/disagreement). */
+  featureTaxRateCities?: (string | null)[];
 }
 
 export interface CountyLookupResult {
@@ -97,7 +107,10 @@ export function classifyCountyParcel(records: ParsedParcelRecord[]): CountyLooku
   if (records.length === 0) {
     return {
       verdict: 'county_inconclusive',
-      audit: { taxRateCityRaw: null, situsCityRaw: null, ain: null, apn: null, parcelFound: false },
+      audit: {
+        taxRateCityRaw: null, situsCityRaw: null, ain: null, apn: null, parcelFound: false,
+        featureCount: 0, featureTaxRateCities: [],
+      },
     };
   }
 
@@ -110,6 +123,8 @@ export function classifyCountyParcel(records: ParsedParcelRecord[]): CountyLooku
     ain: first.ain,
     apn: first.apn,
     parcelFound: true,
+    featureCount: records.length,
+    featureTaxRateCities: records.map((r) => r.taxRateCity),
   };
 
   // If multiple parcels matched, require TaxRateCity agreement; disagreement → inconclusive.
@@ -379,4 +394,136 @@ export function parseAddressForCounty(formatted: string): {
 
   const coreStreet = tokens.length > 0 ? tokens.join(' ').toUpperCase() : null;
   return { house, coreStreet, zip };
+}
+
+// ===========================================================================
+// SPATIAL point-in-polygon path (county_parcel_lookup_method_broker_ruling_2026-06-28).
+//
+// Decision 1: the production County jurisdiction lookup is point-in-polygon at the
+// geocoded coordinate (the same lat/lng ZIMAS uses), NOT the address-string match
+// above. The decision rule (classifyCountyParcel, TaxRateCity-only) is UNCHANGED;
+// only retrieval changes. The address-string encoder above is retained for the
+// parcel-health probe and the SHOULD-FIX shadow-compare, not the production decision.
+//
+// Mirrors the ZIMAS adapter's spatial query shape: geometry=lng,lat (ArcGIS wire
+// order), geometryType=esriGeometryPoint, inSR=4326 (server reprojects),
+// spatialRel=esriSpatialRelIntersects. Reads the same four fields the decision +
+// audit consume (TaxRateCity authoritative; SitusCity/AIN/APN forensic).
+// ===========================================================================
+
+/** Injected spatial fetcher: given a WGS84 point, return matched parcel records or throw. */
+export interface CountySpatialFetcher {
+  (lat: number, lng: number, signal: AbortSignal): Promise<ParsedParcelRecord[]>;
+}
+
+export interface CountySpatialLookupDeps {
+  fetcher: CountySpatialFetcher;
+  cache?: CountyCache;
+  /** Per-attempt timeout (ms). Defaults to COUNTY_SPATIAL_DEFAULT_TIMEOUT_MS. */
+  timeoutMs?: number;
+}
+
+/**
+ * Spatial-query per-attempt timeout. SET FROM the §1.2 latency validation
+ * (county_spatial_latency_probe, 2026-06-28): n=72, zero timeouts, p50≈95ms,
+ * p95≈140–390ms, p99≈380–520ms, max 520ms; the historical 180s stall did not
+ * reproduce. 3000ms is ~6× the observed p99 — generous headroom for tail latency
+ * while failing FAST to the ZIMAS fallback (or situs-gap) if County ever hangs,
+ * keeping the County+ZIMAS budget well inside the resolver SLO (ruling §4.3).
+ */
+export const COUNTY_SPATIAL_DEFAULT_TIMEOUT_MS = 3_000;
+
+/**
+ * Build the County parcel MapServer SPATIAL (point-in-polygon) query URL for a
+ * WGS84 point. Behavior-preserving extraction so a probe/shadow path can mirror
+ * production's exact query. geometry is `lng,lat` (ArcGIS wire order); inSR=4326.
+ */
+export function buildCountyParcelSpatialQueryUrl(point: { lat: number; lng: number }): string {
+  const geometry = encodeURIComponent(`${point.lng},${point.lat}`);
+  const fields = ['TaxRateCity', 'SitusCity', 'AIN', 'APN'].join(',');
+  return (
+    `${COUNTY_PARCEL_ENDPOINT}?geometry=${geometry}&geometryType=esriGeometryPoint` +
+    `&inSR=4326&spatialRel=esriSpatialRelIntersects` +
+    `&outFields=${encodeURIComponent(fields)}&returnGeometry=false&f=json`
+  );
+}
+
+/**
+ * Default network spatial fetcher against the LA County parcel MapServer. Throws on
+ * non-2xx / API error / parse failure (caller categorizes + fail-closes). No API key.
+ */
+export const defaultCountySpatialFetcher: CountySpatialFetcher = async (lat, lng, signal) => {
+  const url = buildCountyParcelSpatialQueryUrl({ lat, lng });
+  const resp = await fetch(url, { method: 'GET', signal });
+  if (!resp.ok) throw new Error(`county HTTP ${resp.status}`);
+  const json = (await resp.json()) as {
+    error?: unknown;
+    features?: Array<{ attributes?: Record<string, unknown> }>;
+  };
+  if (json.error) throw new Error('county API error');
+  const feats = json.features ?? [];
+  return feats.map((f) => {
+    const a = f.attributes ?? {};
+    return {
+      taxRateCity: typeof a.TaxRateCity === 'string' ? a.TaxRateCity : null,
+      situsCity: typeof a.SitusCity === 'string' ? a.SitusCity : null,
+      ain: a.AIN == null ? null : String(a.AIN),
+      apn: a.APN == null ? null : String(a.APN),
+    };
+  });
+};
+
+/**
+ * Spatial County lookup with one retry on transient failure and fail-closed
+ * behavior. Same retry/categorize/fail-closed contract as lookupCountyParcel;
+ * delegates the decision to the unchanged classifyCountyParcel pure core. Stamps
+ * the spatial-method forensic audit fields (queryMethod, queryCoordinate).
+ */
+export async function lookupCountyParcelSpatial(
+  lat: number,
+  lng: number,
+  deps: CountySpatialLookupDeps,
+): Promise<CountyLookupResult> {
+  const cacheKey = `county-spatial:${lat.toFixed(6)},${lng.toFixed(6)}`;
+  if (deps.cache) {
+    const hit = await deps.cache.get(cacheKey).catch(() => null);
+    if (hit) return hit;
+  }
+
+  const timeoutMs = deps.timeoutMs ?? COUNTY_SPATIAL_DEFAULT_TIMEOUT_MS;
+  let lastFailure: CountyAuditFields['failureMode'] = 'network_error';
+  const coordinate = { lat, lng };
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { signal, clear } = timeoutSignal(timeoutMs);
+    try {
+      const records = await deps.fetcher(lat, lng, signal);
+      clear();
+      const result = classifyCountyParcel(records);
+      const stamped: CountyLookupResult = {
+        verdict: result.verdict,
+        audit: { ...result.audit, queryMethod: 'spatial_point_in_polygon', queryCoordinate: coordinate },
+      };
+      if (deps.cache) await deps.cache.set(cacheKey, stamped).catch(() => undefined);
+      return stamped;
+    } catch (e) {
+      clear();
+      const msg = (e as Error).message ?? '';
+      if ((e as Error).name === 'AbortError') lastFailure = 'timeout';
+      else if (/\b5\d\d\b/.test(msg)) lastFailure = 'http_5xx';
+      else if (/parse|json|unexpected/i.test(msg)) lastFailure = 'bad_response';
+      else lastFailure = 'network_error';
+      // retry once; second failure falls through to fail-closed below.
+    }
+  }
+
+  // Fail-closed: inconclusive, never confirm on a County failure.
+  return {
+    verdict: 'county_inconclusive',
+    audit: {
+      taxRateCityRaw: null, situsCityRaw: null, ain: null, apn: null, parcelFound: false,
+      failureMode: lastFailure, featureCount: 0, featureTaxRateCities: [],
+      queryMethod: 'spatial_point_in_polygon', queryCoordinate: coordinate,
+    },
+  };
 }

@@ -86,17 +86,28 @@ async function main() {
   check('confirmed parcel → boundary_adjacent null (tracked follow-up)',
     classifyZimasParcel([rec('4', 'IVANHOE')]).audit.zimasBoundaryAdjacent === null);
 
-  console.log('\n=== lookupZimasParcel: fail-closed + retry + cache ===');
+  console.log('\n=== lookupZimasParcel: §3 retry-on-timeout-only + telemetry + cache ===');
   {
     let calls = 0;
     const r = await lookupZimasParcel(34.05, -118.24, { fetcher: async () => { calls++; throw new Error('network down'); } });
-    check('fetcher throw → zimas_inconclusive (fail-closed)', r.verdict === 'zimas_inconclusive');
-    check('retried once (2 attempts)', calls === 2);
+    check('non-timeout error → zimas_inconclusive (fail-closed)', r.verdict === 'zimas_inconclusive');
+    check('non-timeout error → NOT retried (1 attempt) [§3.1]', calls === 1);
+    check('non-timeout error → telemetry records 1 attempt (network_error)',
+      r.audit.zimasAttempts === 1 && r.audit.zimasAttemptOutcomes?.[0] === 'network_error');
     check('never confirms on error', r.verdict !== ('zimas_confirms_la' as unknown));
   }
   {
-    const r = await lookupZimasParcel(34, -118, { fetcher: async () => { const e = new Error('x'); e.name = 'AbortError'; throw e; }, timeoutMs: 5 });
+    let calls = 0;
+    const r = await lookupZimasParcel(34, -118, { fetcher: async () => { calls++; const e = new Error('x'); e.name = 'AbortError'; throw e; }, timeoutMs: 5 });
     check('AbortError → failureMode timeout', r.audit.failureMode === 'timeout');
+    check('timeout → retried once (2 attempts) [§3.1]', calls === 2);
+    check('timeout → telemetry: 2 attempts, both timeout',
+      r.audit.zimasAttempts === 2 && r.audit.zimasAttemptOutcomes?.length === 2 && (r.audit.zimasAttemptOutcomes ?? []).every((o) => o === 'timeout'));
+  }
+  {
+    const r = await lookupZimasParcel(34.07, -118.30, { fetcher: async () => [rec('11', 'TR 1')] });
+    check('success → telemetry attempts=1, outcome success',
+      r.audit.zimasAttempts === 1 && r.audit.zimasAttemptOutcomes?.[0] === 'success');
   }
   {
     const store = new Map<string, ZimasLookupResult>();

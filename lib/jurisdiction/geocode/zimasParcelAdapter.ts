@@ -71,6 +71,13 @@ export interface ZimasAuditFields {
   parcelFound: boolean;
   /** Set on a fail-closed path. */
   failureMode?: 'timeout' | 'http_5xx' | 'network_error' | 'bad_response' | 'multi_parcel';
+  // --- §3 hardening telemetry (county_parcel_lookup_method_broker_ruling_2026-06-28 §3.1) ---
+  /** Number of ZIMAS attempts made this request (1, or 2 when a timeout was retried). */
+  zimasAttempts?: number;
+  /** Per-attempt outcome in order: 'success' or the failureMode of that attempt. */
+  zimasAttemptOutcomes?: string[];
+  /** Per-attempt wall-clock latency (ms), in order. */
+  zimasAttemptLatenciesMs?: number[];
 }
 
 export interface ZimasLookupResult {
@@ -170,7 +177,12 @@ export interface ZimasLookupDeps {
   timeoutMs?: number;
 }
 
-const DEFAULT_TIMEOUT_MS = 8_000;
+// §3.1: per-attempt timeout RAISED but BOUNDED. 10s is the top of the ratified
+// §3.5 5-10s range — a bounded raise to absorb ZIMAS tail latency without holding
+// the resolver indefinitely. Final value subject to the §7 latency validation; the
+// total ZIMAS budget (attempt + at most one timeout-retry) must stay within the
+// resolver SLO (ruling §4.3).
+const DEFAULT_TIMEOUT_MS = 10_000;
 
 function timeoutSignal(ms: number): { signal: AbortSignal; clear: () => void } {
   const ctrl = new AbortController();
@@ -201,27 +213,57 @@ export async function lookupZimasParcel(
 
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   let lastFailure: ZimasAuditFields['failureMode'] = 'network_error';
+  // §3.1 telemetry: capture attempt count, per-attempt outcome, per-attempt latency.
+  const attemptOutcomes: string[] = [];
+  const attemptLatenciesMs: number[] = [];
+  // §3.1 retry budget: per-request, 1 attempt + at most ONE retry, and the retry
+  // fires ONLY on a timeout (network/server variance). 4xx/5xx/parse/network errors
+  // are treated as deterministic for this request and are NOT retried.
+  const MAX_ATTEMPTS = 2;
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const { signal, clear } = timeoutSignal(timeoutMs);
+    const startedAt = Date.now();
     try {
       const records = await deps.fetcher(lat, lng, signal);
       clear();
+      attemptLatenciesMs.push(Date.now() - startedAt);
+      attemptOutcomes.push('success');
       const result = classifyZimasParcel(records);
-      if (deps.cache) await deps.cache.set(key, result).catch(() => undefined);
-      return result;
+      const withTelemetry: ZimasLookupResult = {
+        verdict: result.verdict,
+        audit: {
+          ...result.audit,
+          zimasAttempts: attempt + 1,
+          zimasAttemptOutcomes: attemptOutcomes,
+          zimasAttemptLatenciesMs: attemptLatenciesMs,
+        },
+      };
+      if (deps.cache) await deps.cache.set(key, withTelemetry).catch(() => undefined);
+      return withTelemetry;
     } catch (e) {
       clear();
+      attemptLatenciesMs.push(Date.now() - startedAt);
       const msg = (e as Error).message ?? '';
       if ((e as Error).name === 'AbortError') lastFailure = 'timeout';
       else if (/\b5\d\d\b/.test(msg)) lastFailure = 'http_5xx';
       else if (/parse|json|unexpected/i.test(msg)) lastFailure = 'bad_response';
       else lastFailure = 'network_error';
-      // retry once; second failure falls through to fail-closed below
+      attemptOutcomes.push(lastFailure);
+      // Retry ONLY on the timeout class (§3.1). Any other failure stops now.
+      if (lastFailure !== 'timeout') break;
     }
   }
 
-  return { verdict: 'zimas_inconclusive', audit: emptyAudit(false, lastFailure) };
+  return {
+    verdict: 'zimas_inconclusive',
+    audit: {
+      ...emptyAudit(false, lastFailure),
+      zimasAttempts: attemptOutcomes.length,
+      zimasAttemptOutcomes: attemptOutcomes,
+      zimasAttemptLatenciesMs: attemptLatenciesMs,
+    },
+  };
 }
 
 /**
