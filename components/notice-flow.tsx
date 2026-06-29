@@ -31,6 +31,7 @@ import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
 import { saveProfile, loadProfile, clearProfile, applyProfile } from '@/lib/flow/profile';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import { runJurisdictionResolution } from '@/lib/flow/jurisdictionBridge';
+import { boundFetch } from '@/lib/http/boundFetch';
 import { normalizeAddressKey } from '@/lib/flow/jurisdictionVerdict';
 import { isLaProductionUnblocked, isLaProducePhase2dWired } from '@/lib/jurisdiction/laRtcRules';
 import { validatePaymentMethods } from '@/lib/payments/validatePaymentMethods';
@@ -267,12 +268,10 @@ export function NoticeFlow() {
 
     runJurisdictionResolution(state.data.propertyAddress, {
       isGateOpen: () => isLaProductionUnblocked(),
-      // Bind to the global: passing bare `fetch` as a property and calling it as
-      // deps.fetchImpl(...) sets `this = deps`, which the browser rejects with
-      // "TypeError: Failed to execute 'fetch' on 'Window': Illegal invocation".
-      // An arrow wrapper preserves the default (window) binding. THIS was the bug
-      // that broke all client-side jurisdiction resolution.
-      fetchImpl: (...args: Parameters<typeof fetch>) => fetch(...args),
+      // Global-bound fetch (lib/http/boundFetch). Never pass bare `fetch` here:
+      // called as deps.fetchImpl(...) it rebinds `this` and throws "Illegal
+      // invocation". Enforced by scripts/ci/check_fetch_binding.mjs.
+      fetchImpl: boundFetch,
       signal: controller.signal,
     })
       .then((r) => {

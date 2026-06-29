@@ -16,6 +16,7 @@ import type { NoticeModel } from '@/lib/produce/renderNotice';
 import type { NoticeFlowData } from '@/lib/flow/noticeFlowState';
 import { PacketPrintOptions } from './packet-print-options';
 import { runLaProduceSequence, type LaProduceSequenceResult, type LaProduceAuditFields } from '@/lib/produce/laProduceClient';
+import { boundFetch } from '@/lib/http/boundFetch';
 import { isLaProductionUnblocked } from '@/lib/jurisdiction/laRtcRules';
 import {
   lahdFilingPromptHeader,
@@ -68,9 +69,9 @@ export function LaProducePanel({
       verdict: 'confirmed_la',
       lahdCopyVersion: lahdFilingPromptCopyVersion,
       baseName,
-      // Bind to the global — bare `fetch` called as deps.fetchImpl(...) throws
-      // "Illegal invocation" (same bug fixed in the jurisdiction bridge).
-      fetchImpl: (...args: Parameters<typeof fetch>) => fetch(...args),
+      // Global-bound fetch (lib/http/boundFetch). Never pass bare `fetch`: called
+      // as deps.fetchImpl(...) it rebinds `this` and throws "Illegal invocation".
+      fetchImpl: boundFetch,
     })
       .then((r) => { if (active) setState(r); })
       .catch(() => { if (active) setState({ kind: 'error', detail: 'sequence failed' }); });
