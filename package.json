@@ -23,7 +23,12 @@
     "ci:verify-parcel-health-core-sync": "npm run build:parcel-health-core && git diff --exit-code supabase/functions/parcel-health/_core/",
     "lockedprose:verify": "tsx scripts/ci/verify_locked_prose.ts",
     "lockedprose:hash": "node scripts/lockedprose_hash.mjs",
-    "ci:test-locked-prose-guard": "node scripts/ci/verify_locked_prose.test.mjs"
+    "ci:test-locked-prose-guard": "node scripts/ci/verify_locked_prose.test.mjs",
+    "ci:verify-banned-terms": "node scripts/ci/check_banned_terms.mjs",
+    "ci:verify-mirror-denylist": "node scripts/ci/check_mirror_denylist.mjs",
+    "ci:verify-no-preconsent-analytics": "node scripts/ci/check_no_preconsent_analytics.mjs",
+    "synthetic:a14:503": "tsx scripts/synthetic/a14_503_enqueue_drain_resolve.ts",
+    "synthetic:a14:exhaust": "tsx scripts/synthetic/a14_exhausted_retry.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
@@ -37,7 +42,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.12.4",
-    "stripe": "^22.1.1"
+    "stripe": "^22.1.1",
+    "@notionhq/client": "^2.2.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

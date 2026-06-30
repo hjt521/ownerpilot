@@ -1,0 +1,20 @@
+name: banned-terms-lock
+# Guard E — no banned promotional/legal-conclusion terms in owner-facing copy.
+# Allow-list (with broker-ratified reasons): scripts/ci/banned_terms_allowlist.txt. HARD FAIL on any
+# unallow-listed match. No path filter on purpose (mirrors locked-prose-lock.yml): always runs.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-banned-terms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Verify no banned terms in owner-facing copy
+        run: npm run ci:verify-banned-terms
