@@ -1,0 +1,19 @@
+name: analytics-no-pii-lock
+# Guard D — no PII may reach analytics. Verifies the GA4 / Measurement-Protocol event layer enforces the
+# A15 denylist (no address/name/email/tenant/account-number/free-text) on any event payload. HARD FAIL on violation.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-analytics-no-pii:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Verify analytics events carry no PII
+        run: npm run ci:verify-analytics-no-pii
