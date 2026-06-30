@@ -4,6 +4,7 @@
 
 import { buildPerplexityRequest, PERPLEXITY_ENDPOINT, PERPLEXITY_MODEL, type ChatMessage } from './responseFormat';
 import { modelResponseSchema, type ModelResponse } from './intakeSchema';
+import { isE2EActive } from '../testing/e2eRunTag';
 
 export class PerplexityError extends Error {}
 
@@ -26,6 +27,13 @@ export async function callPerplexity(
   messages: ChatMessage[],
   opts: { apiKey?: string; model?: string; retries?: number } = {},
 ): Promise<ModelResponse> {
+  // E3: deterministic mock on Preview during an E2E run — no network call, no API key needed. Production
+  // reads isE2EActive() as false, so this branch is never taken there (and the mock is dynamically imported).
+  if (isE2EActive()) {
+    const { mockPerplexityResponse } = await import('../testing/e2ePerplexityMock');
+    return mockPerplexityResponse(messages);
+  }
+
   const apiKey = opts.apiKey ?? process.env.PERPLEXITY_API_KEY;
   if (!apiKey) throw new PerplexityError('PERPLEXITY_API_KEY not set');
   const body = buildPerplexityRequest(messages, opts.model ?? PERPLEXITY_MODEL);

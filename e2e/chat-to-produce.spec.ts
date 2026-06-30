@@ -2,8 +2,11 @@
 // Deploy-run. Uses a seeded LA address that the Phase 2D rail produces for; flag must be ON in the preview.
 
 import { test, expect } from '@playwright/test';
+import { E2E_INTAKE_ANSWERS } from '../lib/testing/e2eIntakeFixture';
 
-const LA_ADDRESS = '5537 La Mirada Ave, Unit 202, Los Angeles, CA 90038';
+// Shared fixture keeps this walk in lockstep with the deterministic Perplexity mock (E3).
+const answers = E2E_INTAKE_ANSWERS;
+const LA_ADDRESS = answers[0];
 
 test('chat intake → review → produce happy path', async ({ page }) => {
   await page.goto('/chat');
@@ -11,11 +14,7 @@ test('chat intake → review → produce happy path', async ({ page }) => {
   // §2.2 disclaimer is always present above the input
   await expect(page.getByText(/does not provide legal advice/i)).toBeVisible();
 
-  // Walk a minimal intake (the persona drives; we answer). Each send awaits the assistant turn.
-  const answers = [
-    LA_ADDRESS, 'Clifton Alexander', 'PTAG L LLC', '123 Main St, Los Angeles, CA 90012',
-    'May 2026', '6000', 'in_person', 'personal', 'English', 'yes',
-  ];
+  // Walk the intake (deterministic mock drives the assistant turns). Each send awaits the assistant turn.
   for (const a of answers) {
     await page.getByLabel('Message').fill(a);
     await page.getByRole('button', { name: 'Send' }).click();

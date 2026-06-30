@@ -31,12 +31,19 @@ export async function loadSession(rawToken: string, sb = serviceClient()): Promi
   return (data as ChatSessionRow) ?? null;
 }
 
-/** Create a fresh anonymous session; returns the raw token (to set in cookie/localStorage) + the row id. */
-export async function createSession(sb = serviceClient()): Promise<{ rawToken: string; id: string }> {
+/**
+ * Create a fresh anonymous session; returns the raw token (to set in cookie/localStorage) + the row id.
+ * `tag` is the E2E run tag (e2e_run_id + synthetic_source) — {} for every real request, so the insert is
+ * unchanged in production. See lib/testing/e2eRunTag.
+ */
+export async function createSession(
+  sb = serviceClient(),
+  tag: { e2e_run_id?: string; synthetic_source?: string } = {},
+): Promise<{ rawToken: string; id: string }> {
   const rawToken = generateAnonToken();
   const { data, error } = await sb
     .from('chat_sessions')
-    .insert({ anon_token_hash: hashAnonToken(rawToken), status: 'active' })
+    .insert({ anon_token_hash: hashAnonToken(rawToken), status: 'active', ...tag })
     .select('id')
     .single();
   if (error) throw new Error(`createSession failed: ${error.message}`);

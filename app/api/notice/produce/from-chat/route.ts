@@ -10,6 +10,7 @@ import { loadSession, serviceClient } from '@/lib/chat/session';
 import { missingRequiredFields } from '@/lib/chat/intakeMerge';
 import { evaluateProduceEligibility } from '@/lib/riskpath/produceGate';
 import { buildRiskPathInsert } from '@/lib/riskpath/noticeGenerationEvent';
+import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
 import type { IntakeState } from '@/lib/chat/intakeSchema';
 
 const COOKIE = 'op_chat_token';
@@ -66,7 +67,8 @@ export async function POST(req: NextRequest) {
     noticeDocumentId: rail.documentId ?? null,
     initialState: 'notice_created',
   });
-  const { data: rec, error } = await sb.from('riskpath_records').insert(insert).select('id').single();
+  const tagged = { ...insert, ...e2eTagFromHeaders(req.headers) };
+  const { data: rec, error } = await sb.from('riskpath_records').insert(tagged).select('id').single();
   if (error) return NextResponse.json({ error: 'record_write_failed', detail: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true, pdfUrl: rail.pdfUrl ?? null, riskpathId: rec.id });
