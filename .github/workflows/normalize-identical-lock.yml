@@ -1,0 +1,20 @@
+name: normalize-identical-lock
+# Guard C — Decision 2 address normalization MUST be the resolver SSOT, not a private copy
+# (lane5 normalization fork ruling, Option 1). Verifies lib/decision2/normalize re-exports the
+# jurisdiction resolver's normalizer and does not redefine it. HARD FAIL on divergence.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-normalize-identical-to-resolver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Verify Decision 2 normalize is the resolver SSOT
+        run: npm run ci:verify-normalize-identical-to-resolver

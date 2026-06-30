@@ -1,0 +1,19 @@
+name: sla-sync-lock
+# Guard B — the broker-confirm SLA window must stay in sync across the DB cron, the edge function, and the
+# app-side status copy/logic. Drift between the declared SLA (hours) in any of these is a HARD FAIL.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-broker-confirm-sla-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Verify broker-confirm SLA is in sync
+        run: npm run ci:verify-broker-confirm-sla-sync
