@@ -11,6 +11,7 @@ import { callPerplexity } from '@/lib/chat/perplexityClient';
 import { applyTurn } from '@/lib/chat/orchestrate';
 import { loadSession, createSession, hashAnonToken, serviceClient } from '@/lib/chat/session';
 import { unsupportedLanguageNotice } from '@/lib/chat/refusalBank';
+import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
 import type { ChatMessage } from '@/lib/chat/responseFormat';
 import type { TranscriptTurn } from '@/lib/chat/dbTypes';
 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
   let session = rawToken ? await loadSession(rawToken, sb) : null;
   let setCookie = false;
   if (!session) {
-    const created = await createSession(sb);
+    const created = await createSession(sb, e2eTagFromHeaders(req.headers));
     rawToken = created.rawToken; setCookie = true;
     session = await loadSession(rawToken, sb);
   }
