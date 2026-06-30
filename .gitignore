@@ -48,3 +48,4 @@ la_geocode_resolver_testset_run_*.md
 supabase/.temp/
 !.env.example
 scripts/__pycache__/
+.claude/

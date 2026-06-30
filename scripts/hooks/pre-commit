@@ -16,7 +16,7 @@ if echo "$STAGED" | grep -q '^app/api/chat/route\.ts$'; then
   node scripts/check_system_prompt_lock.mjs || {
     echo ""
     echo "Commit blocked: SYSTEM_PROMPT changed. If attorney-reviewed, re-lock and stage"
-    echo "app/api/chat/system_prompt.lock.json, then commit again (--no-verify bypasses locally; CI still enforces)."
+    echo "lib/chat/persona.lock.json, then commit again (--no-verify bypasses locally; CI still enforces)."
     exit 1
   }
 fi

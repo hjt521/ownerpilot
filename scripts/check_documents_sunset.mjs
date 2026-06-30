@@ -27,8 +27,8 @@
 import { readFileSync } from 'node:fs';
 
 const FLAGS_PATH = 'lib/flow/templateVersion.ts';
-const ROUTE_PATH = 'app/api/chat/route.ts';
-const ANCHOR = 'const SYSTEM_PROMPT = ';
+const ROUTE_PATH = 'lib/chat/persona.ts';
+const ANCHOR = 'const OWNERPILOT_PERSONA_SYSTEM_PROMPT = ';
 
 // Stable, verbatim substring unique to the SIGNED-OFF INTERIM DOCUMENTS paragraph
 // (absent from the v4-final version). Presence == interim language still deployed.

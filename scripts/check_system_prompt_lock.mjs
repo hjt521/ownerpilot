@@ -31,9 +31,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
-const ROUTE_PATH = 'app/api/chat/route.ts';
-const LOCK_PATH = 'app/api/chat/system_prompt.lock.json';
-const ANCHOR = 'const SYSTEM_PROMPT = ';
+const ROUTE_PATH = 'lib/chat/persona.ts';
+const LOCK_PATH = 'lib/chat/persona.lock.json';
+const ANCHOR = 'const OWNERPILOT_PERSONA_SYSTEM_PROMPT = ';
 
 function fail(msg) {
   console.error(`\n\u2717 SYSTEM_PROMPT lock check FAILED\n\n${msg}\n`);
@@ -85,7 +85,7 @@ const bytes = Buffer.byteLength(body, 'utf8');
 if (args.write) {
   const lock = {
     file: ROUTE_PATH,
-    constant: 'SYSTEM_PROMPT',
+    constant: 'OWNERPILOT_PERSONA_SYSTEM_PROMPT',
     sha256: hash,
     bytes,
     status: args.status || 'PENDING_V4_1_RELOCK',

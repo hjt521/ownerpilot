@@ -1,50 +1,44 @@
-/**
- * Product-session gate for the help chatbox (Jack's decision 2026-06-07).
- *
- * This is NOT authentication. No login, no credentials, no PII. The server issues
- * a pseudonymous random session id as an HttpOnly cookie on first contact; the
- * chat endpoint reads it on each request to give rate limiting a stable, anonymous
- * thing to count against. A user clicking in from an ad just starts chatting — the
- * cookie is set silently in the background.
- *
- * Soft boundary by design: clearing cookies yields a fresh session. That trades a
- * little robustness for zero user friction, which is the point of the session-gate
- * (vs. login) choice. A hard boundary would require real auth and is out of scope.
- */
+// lib/chat/session.ts
+// AI-first /chat — anonymous session identity + persistence. Opaque token lives in the browser
+// (localStorage + httpOnly cookie); only the SHA-256 hash is stored (chat_sessions.anon_token_hash).
 
-export const SESSION_COOKIE = 'op_sid';
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
+import { createHash, randomBytes } from 'node:crypto';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { ChatSessionRow } from './dbTypes';
 
-/** Pseudonymous, unguessable session id. Web Crypto is present in node + edge. */
-export function newSessionId(): string {
-  return crypto.randomUUID();
+export function generateAnonToken(): string {
+  return randomBytes(32).toString('hex');
 }
 
-/** Extract the session id from a raw Cookie header, or null if absent/malformed. */
-export function parseSessionId(cookieHeader: string | null | undefined): string | null {
-  if (!cookieHeader) return null;
-  for (const part of cookieHeader.split(';')) {
-    const [k, ...v] = part.trim().split('=');
-    if (k === SESSION_COOKIE) {
-      const val = decodeURIComponent(v.join('='));
-      // accept only uuid-shaped values (the only thing we ever set)
-      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
-        ? val
-        : null;
-    }
-  }
-  return null;
+export function hashAnonToken(rawToken: string): string {
+  return createHash('sha256').update(rawToken, 'utf8').digest('hex');
 }
 
-/** Build the Set-Cookie header value for a session id. HttpOnly (not readable by
- *  JS), SameSite=Lax, Secure, Path=/. No personal data — just the random id. */
-export function sessionCookie(id: string): string {
-  return [
-    `${SESSION_COOKIE}=${encodeURIComponent(id)}`,
-    'Path=/',
-    'HttpOnly',
-    'Secure',
-    'SameSite=Lax',
-    `Max-Age=${SESSION_TTL_SECONDS}`,
-  ].join('; ');
+export function serviceClient(): SupabaseClient {
+  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  });
+}
+
+/** Load a session by raw anon token, or null. Anonymous reads go through the service role (no public RLS). */
+export async function loadSession(rawToken: string, sb = serviceClient()): Promise<ChatSessionRow | null> {
+  const { data } = await sb
+    .from('chat_sessions')
+    .select('*')
+    .eq('anon_token_hash', hashAnonToken(rawToken))
+    .is('soft_deleted_at', null)
+    .maybeSingle();
+  return (data as ChatSessionRow) ?? null;
+}
+
+/** Create a fresh anonymous session; returns the raw token (to set in cookie/localStorage) + the row id. */
+export async function createSession(sb = serviceClient()): Promise<{ rawToken: string; id: string }> {
+  const rawToken = generateAnonToken();
+  const { data, error } = await sb
+    .from('chat_sessions')
+    .insert({ anon_token_hash: hashAnonToken(rawToken), status: 'active' })
+    .select('id')
+    .single();
+  if (error) throw new Error(`createSession failed: ${error.message}`);
+  return { rawToken, id: data.id };
 }
