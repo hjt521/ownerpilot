@@ -14,6 +14,11 @@ export async function GET(req: NextRequest) {
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  // Synthetic-run pause (ruling Q3): suppressed during a prod synthetic window so transient synthetic
+  // rows can't trip a false depth-tier broker alert. JT unsets SYNTHETIC_RUN_ACTIVE after D4 + D8.
+  if (process.env.SYNTHETIC_RUN_ACTIVE === 'true') {
+    return new NextResponse(null, { status: 204 });
+  }
   const sb = svc();
   const { count } = await sb
     .from('automation_mirror_queue')

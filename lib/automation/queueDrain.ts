@@ -51,21 +51,39 @@ export function nextQueueState(
 
 export interface DrainSummary { processed: number; resolved: number; requeued: number; exhausted: number; }
 
+/**
+ * Builds the "due rows" query. When `syntheticRunId` is supplied, the selection is scoped to rows
+ * tagged with that id (`payload_jsonb->>synthetic_run_id`) — the F1 isolation mechanism that keeps a
+ * prod-targeting synthetic drain from ever touching a real queued row. The real cron passes no id, so
+ * its selection is unchanged. Filters are applied BEFORE order/limit so `.filter` stays on the
+ * PostgrestFilterBuilder. Exported so the harness unit test can assert the filter is present.
+ */
+export function selectDueRows(
+  sb: SupabaseClient,
+  nowMs: number,
+  limit: number,
+  syntheticRunId?: string,
+) {
+  let f = sb
+    .from('automation_mirror_queue')
+    .select('id, payload_jsonb, attempts, max_attempts')
+    .is('resolved_at', null)
+    .lte('next_retry_at', new Date(nowMs).toISOString());
+  if (syntheticRunId) {
+    f = f.filter('payload_jsonb->>synthetic_run_id', 'eq', syntheticRunId);
+  }
+  return f.order('created_at', { ascending: true }).limit(limit);
+}
+
 /** One drain tick: retry up to `limit` due rows using the injected `mirror` fn. nowMs injectable for tests. */
 export async function drainOnce(
   sb: SupabaseClient,
   mirror: (payload: RunRecord) => Promise<MirrorResult>,
-  opts: { nowMs?: number; limit?: number } = {},
+  opts: { nowMs?: number; limit?: number; syntheticRunId?: string } = {},
 ): Promise<DrainSummary> {
   const nowMs = opts.nowMs ?? Date.now();
   const limit = opts.limit ?? 50;
-  const { data: rows } = await sb
-    .from('automation_mirror_queue')
-    .select('id, payload_jsonb, attempts, max_attempts')
-    .is('resolved_at', null)
-    .lte('next_retry_at', new Date(nowMs).toISOString())
-    .order('created_at', { ascending: true })
-    .limit(limit);
+  const { data: rows } = await selectDueRows(sb, nowMs, limit, opts.syntheticRunId);
 
   const out: DrainSummary = { processed: 0, resolved: 0, requeued: 0, exhausted: 0 };
   for (const row of (rows ?? []) as QueueRow[]) {
@@ -81,4 +99,21 @@ export async function drainOnce(
     }
   }
   return out;
+}
+
+/**
+ * F1 isolation gate for prod-targeting synthetics: a drain tick that REFUSES to run without a
+ * `syntheticRunId`, so a synthetic harness can never accidentally process real rows with a mocked
+ * mirror. Real cron code must keep calling `drainOnce` (no id) — never this.
+ */
+export async function drainSyntheticOnly(
+  sb: SupabaseClient,
+  mirror: (payload: RunRecord) => Promise<MirrorResult>,
+  syntheticRunId: string,
+  opts: { nowMs?: number; limit?: number } = {},
+): Promise<DrainSummary> {
+  if (!syntheticRunId) {
+    throw new Error('drainSyntheticOnly requires a syntheticRunId (F1 isolation) — aborting');
+  }
+  return drainOnce(sb, mirror, { ...opts, syntheticRunId });
 }

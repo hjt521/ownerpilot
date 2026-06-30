@@ -11,6 +11,11 @@ export async function GET(req: NextRequest) {
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  // Synthetic-run pause (ruling Q3): while a prod synthetic window is open, the real drainer stands
+  // down so it can't interleave with run-uuid-scoped synthetic rows. JT unsets this after D4 + D8.
+  if (process.env.SYNTHETIC_RUN_ACTIVE === 'true') {
+    return new NextResponse(null, { status: 204 });
+  }
   const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
   });
