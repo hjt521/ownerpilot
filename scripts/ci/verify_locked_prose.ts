@@ -43,15 +43,29 @@ import { join, relative, resolve, dirname } from "node:path";
 // Configuration
 // ---------------------------------------------------------------------------
 
-const REPO_ROOT = resolve(__dirname, "..", "..");
+// REPO_ROOT is normally two levels up from scripts/ci/. Tests override it via LOCKED_PROSE_REPO_ROOT
+// to point the guard at a fixture tree (see verify_locked_prose.test.mjs).
+const REPO_ROOT = process.env.LOCKED_PROSE_REPO_ROOT
+  ? resolve(process.env.LOCKED_PROSE_REPO_ROOT)
+  : resolve(__dirname, "..", "..");
+// Shape A — the original hash-attested manifest. Prose lives in `.ts` exports; this manifest audits them.
 const MANIFEST_PATH = join(
   REPO_ROOT,
   "docs",
   "compliance",
   "locked_prose_manifest.json"
 );
+// Shape B — the phase-2 "assembly" manifest (runtime source). Prose lives in this manifest; `.ts`/`.tsx`
+// modules import it via lib/compliance/lockedProse. Added per
+// locked_prose_manifest_schema_reconciliation_broker_ruling_2026-06-29.md §2.
+const ASSEMBLY_MANIFEST_PATH = join(
+  REPO_ROOT,
+  "docs",
+  "compliance",
+  "locked_prose_manifest_phase2_assembly.json"
+);
 const DOCS_COMPLIANCE_DIR = join(REPO_ROOT, "docs", "compliance");
-const SCAN_DIRS = ["lib", "components"];
+const SCAN_DIRS = ["lib", "components", "app"];
 const SCAN_EXTS = new Set([".ts", ".tsx", ".js", ".jsx"]);
 
 // ---------------------------------------------------------------------------
@@ -90,8 +104,39 @@ interface VerifyFailure {
     | "version-stamp-mismatch"
     | "missing-source-file"
     | "dangling-source-comment"
-    | "unreadable-file";
+    | "unreadable-file"
+    // Shape-B (assembly manifest) failure kinds:
+    | "shapeb-schema-violation"
+    | "shapeb-hash-mismatch"
+    | "shapeb-duplicate-key"
+    | "dangling-locked-key";
   detail: string;
+}
+
+// ---------------------------------------------------------------------------
+// Shape B — assembly manifest (runtime source) types
+// ---------------------------------------------------------------------------
+
+interface AssemblyEntry {
+  key: string;
+  version: string;
+  tier: "A" | "B";
+  value: string;
+  hash: string;
+  source_ruling: string;
+  subject?: string;
+  lane?: string;
+  supersedes?: string;
+  note?: string;
+}
+
+interface AssemblyManifest {
+  manifest_version: string;
+  manifest_role: string; // "runtime-source"
+  guard_status: "live" | "required-but-pending";
+  broker_authority: string;
+  source_rulings: string[];
+  entries: AssemblyEntry[];
 }
 
 // ---------------------------------------------------------------------------
@@ -523,34 +568,179 @@ function verifyDanglingReferences(): VerifyFailure[] {
 }
 
 // ---------------------------------------------------------------------------
+// Shape B — assembly manifest passes
+// ---------------------------------------------------------------------------
+
+function readAssemblyManifest(): AssemblyManifest {
+  if (!existsSync(ASSEMBLY_MANIFEST_PATH)) {
+    throw new Error(`Assembly manifest not found at ${ASSEMBLY_MANIFEST_PATH}`);
+  }
+  return JSON.parse(readFileSync(ASSEMBLY_MANIFEST_PATH, "utf8")) as AssemblyManifest;
+}
+
+/**
+ * Shape-B Pass 0 — schema validator (ruling §2.4 item 5).
+ * Every assembly entry must carry {key, value, hash, tier, version}. An entry that looks like a
+ * Shape-A entry (has `constant`/`file`/`verbatim`) is a cross-schema contamination and hard-fails.
+ * Duplicate keys hard-fail (ambiguous resolution).
+ */
+function validateShapeBSchema(m: AssemblyManifest): VerifyFailure[] {
+  const failures: VerifyFailure[] = [];
+  if (!Array.isArray(m.entries)) {
+    return [{ kind: "shapeb-schema-violation", detail: "assembly manifest `entries` is not an array" }];
+  }
+  const seen = new Set<string>();
+  for (const e of m.entries as unknown[]) {
+    const o = e as Record<string, unknown>;
+    const id = typeof o.key === "string" ? o.key : JSON.stringify(o).slice(0, 60);
+    for (const req of ["key", "value", "hash", "tier", "version"]) {
+      if (typeof o[req] !== "string") {
+        failures.push({
+          kind: "shapeb-schema-violation",
+          detail: `assembly entry "${id}" missing/invalid required field "${req}"`,
+        });
+      }
+    }
+    if ("constant" in o || "file" in o || "verbatim" in o) {
+      failures.push({
+        kind: "shapeb-schema-violation",
+        detail: `assembly entry "${id}" carries Shape-A fields (constant/file/verbatim) — cross-schema contamination`,
+      });
+    }
+    if (o.tier !== undefined && o.tier !== "A" && o.tier !== "B") {
+      failures.push({
+        kind: "shapeb-schema-violation",
+        detail: `assembly entry "${id}" tier must be "A" or "B" (got ${JSON.stringify(o.tier)})`,
+      });
+    }
+    if (typeof o.key === "string") {
+      if (seen.has(o.key)) {
+        failures.push({ kind: "shapeb-duplicate-key", detail: `assembly manifest has duplicate key "${o.key}"` });
+      }
+      seen.add(o.key);
+    }
+  }
+  return failures;
+}
+
+/**
+ * Shape-B Pass 1 — tamper detection: recompute SHA-256 of each `value` and compare to `hash`.
+ * The manifest itself is the source-of-truth for the prose, so the guard protects the file from edits
+ * that change a value without re-running the hash (i.e., un-attested prose changes).
+ */
+function verifyShapeBHashes(m: AssemblyManifest): VerifyFailure[] {
+  const failures: VerifyFailure[] = [];
+  for (const entry of m.entries) {
+    if (typeof entry.value !== "string" || typeof entry.hash !== "string") continue; // schema pass reports
+    const live = sha256(entry.value);
+    if (live !== entry.hash) {
+      failures.push({
+        kind: "shapeb-hash-mismatch",
+        detail:
+          `assembly key "${entry.key}" value/hash mismatch. Computed: ${live}. Stored: ${entry.hash}. ` +
+          `Source ruling: ${entry.source_ruling}. (Run \`npm run lockedprose:hash\` only after broker re-ratification.)`,
+      });
+    }
+  }
+  return failures;
+}
+
+/**
+ * Shape-B Pass 2 — dangling LockedKey check. Scan lib/, components/, app/ for `// LockedKey: <KEY>`
+ * comments and confirm each cited KEY resolves to an entry in the assembly manifest. Mirrors the
+ * Tier-2 `// Source: <file>.md` scanner (ruling §2.4 item 4).
+ */
+function verifyDanglingLockedKeys(validKeys: Set<string>): VerifyFailure[] {
+  const failures: VerifyFailure[] = [];
+  const files: string[] = [];
+  for (const dir of SCAN_DIRS) walkDir(join(REPO_ROOT, dir), files);
+  const re = /\/\/\s*LockedKey:\s*([A-Za-z0-9_]+)/g;
+  for (const file of files) {
+    let src: string;
+    try {
+      src = readFileSync(file, "utf8");
+    } catch (err) {
+      failures.push({ kind: "unreadable-file", detail: `${file}: ${(err as Error).message}` });
+      continue;
+    }
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src)) !== null) {
+      const key = m[1];
+      if (!validKeys.has(key)) {
+        const line = src.slice(0, m.index).split("\n").length;
+        failures.push({
+          kind: "dangling-locked-key",
+          detail:
+            `${relative(REPO_ROOT, file)}:${line} references // LockedKey: ${key} ` +
+            `which does not resolve to an entry in locked_prose_manifest_phase2_assembly.json.`,
+        });
+      }
+    }
+  }
+  return failures;
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
 function main(): number {
+  // --- Shape A: original hash-attested manifest (prose in .ts exports) ---
   let manifest: Manifest;
   try {
     manifest = readManifest();
   } catch (err) {
-    console.error(`[verify-locked-prose] FATAL: ${(err as Error).message}`);
+    console.error(`[verify-locked-prose] FATAL (shape A): ${(err as Error).message}`);
     return 2;
   }
 
+  // --- Shape B: assembly manifest (prose in the manifest itself) ---
+  let assembly: AssemblyManifest | null = null;
+  try {
+    assembly = readAssemblyManifest();
+  } catch (err) {
+    // The assembly manifest is required once it exists in the repo. If it's genuinely absent
+    // (e.g. running on a pre-Phase-1.5 checkout), shape-A-only verification still proceeds.
+    if (existsSync(ASSEMBLY_MANIFEST_PATH)) {
+      console.error(`[verify-locked-prose] FATAL (shape B): ${(err as Error).message}`);
+      return 2;
+    }
+    console.warn("[verify-locked-prose] note: assembly manifest absent — shape-A-only run.");
+  }
+
   console.log(
-    `[verify-locked-prose] manifest ${manifest.manifest_version} ` +
-      `(${manifest.entries.length} entries, guard_status=${manifest.guard_status})`
+    `[verify-locked-prose] shape A: ${manifest.manifest_version} ` +
+      `(${manifest.entries.length} entries)` +
+      (assembly
+        ? ` | shape B: ${assembly.manifest_version} (${assembly.entries.length} entries, role=${assembly.manifest_role})`
+        : " | shape B: absent")
   );
 
   const failures: VerifyFailure[] = [
+    // Shape A passes (unchanged).
     ...verifyTierABEntries(manifest),
     ...verifyTierCEntries(manifest),
     ...verifySourceDeterminations(manifest),
+    // Tier-2 dangling `// Source: <file>.md` scanner (now also scans app/).
     ...verifyDanglingReferences(),
   ];
 
+  if (assembly) {
+    const schemaFailures = validateShapeBSchema(assembly);
+    failures.push(...schemaFailures);
+    // Only run hash + key-resolution passes if the schema is structurally sound.
+    if (schemaFailures.length === 0) {
+      const validKeys = new Set(assembly.entries.map((e) => e.key));
+      failures.push(...verifyShapeBHashes(assembly));
+      failures.push(...verifyDanglingLockedKeys(validKeys));
+    }
+  }
+
   if (failures.length === 0) {
+    const total = manifest.entries.length + (assembly ? assembly.entries.length : 0);
     console.log(
-      `[verify-locked-prose] PASS — ${manifest.entries.length} locked ` +
-        `constants verified; no dangling references.`
+      `[verify-locked-prose] PASS — ${total} locked entries verified across ` +
+        `${assembly ? "two manifests" : "one manifest"}; no dangling references.`
     );
     return 0;
   }
@@ -563,11 +753,12 @@ function main(): number {
   }
   console.error(
     "\nThis is a HARD CI FAIL per " +
-      "locked_prose_ci_guard_scope_broker_determination_2026-06-15.md §3.3. " +
-      "Resolve by (a) authoring a broker determination, (b) updating " +
-      "docs/compliance/locked_prose_manifest.json, (c) bumping any coupled " +
-      "version stamp, and (d) referencing the determination filename in " +
-      "the PR description."
+      "locked_prose_ci_guard_scope_broker_determination_2026-06-15.md §3.3 " +
+      "(extended by locked_prose_manifest_schema_reconciliation_broker_ruling_2026-06-29.md §2.4). " +
+      "Resolve by (a) authoring/citing a broker determination, (b) updating the relevant manifest " +
+      "(shape A: docs/compliance/locked_prose_manifest.json; shape B: " +
+      "docs/compliance/locked_prose_manifest_phase2_assembly.json), (c) re-hashing any edited shape-B " +
+      "value after broker re-ratification, and (d) referencing the determination filename in the PR."
   );
   return 1;
 }

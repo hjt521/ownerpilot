@@ -18,5 +18,7 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install
-      - name: Verify locked compliance prose matches the manifest
+      - name: Verify locked compliance prose matches the manifest (shape A + shape B)
         run: npm run ci:verify-locked-prose
+      - name: Locked-prose guard unit tests (two-manifest, shape-aware)
+        run: npm run ci:test-locked-prose-guard

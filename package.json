@@ -20,7 +20,10 @@
     "build:edge-core": "node scripts/build_edge_core.mjs",
     "build:parcel-health-core": "node scripts/build_parcel_health_core.mjs",
     "ci:verify-edge-core-sync": "npm run build:edge-core && git diff --exit-code supabase/functions/rtc-refresh/_core/",
-    "ci:verify-parcel-health-core-sync": "npm run build:parcel-health-core && git diff --exit-code supabase/functions/parcel-health/_core/"
+    "ci:verify-parcel-health-core-sync": "npm run build:parcel-health-core && git diff --exit-code supabase/functions/parcel-health/_core/",
+    "lockedprose:verify": "tsx scripts/ci/verify_locked_prose.ts",
+    "lockedprose:hash": "node scripts/lockedprose_hash.mjs",
+    "ci:test-locked-prose-guard": "node scripts/ci/verify_locked_prose.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
