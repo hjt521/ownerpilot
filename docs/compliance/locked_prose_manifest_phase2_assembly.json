@@ -1,0 +1,524 @@
+{
+  "manifest_version": "v1",
+  "manifest_role": "runtime-source",
+  "generated_at": "2026-06-30T03:51:47Z",
+  "guard_status": "live",
+  "broker_authority": "CalDRE B9445457",
+  "authoring_authority": "Jack Taglyan (broker) authors all locked prose; engineering computes hashes only",
+  "guard_design": "Shape B: prose lives in this manifest (runtime source); CI Guard A hashes each entry.value and compares to entry.hash (tamper detection). See locked_prose_manifest_schema_reconciliation_broker_ruling_2026-06-29.md.",
+  "tier_rationale": "Tier A = legally load-bearing (clauses on face of notice, disclaimers, consent/privacy/refusal copy, broker/counsel routing, transactional legal emails). Tier B = UI chrome/labels/marketing. Per ruling §2.4, uncertain->A.",
+  "source_rulings": [
+    "G1_G8_omnibus_pre_ruling_2026-06-29.md",
+    "locked_prose_broker_review_status_states_copy_conflict_broker_ruling_2026-06-29.md",
+    "la_notice_production_gap_broker_ruling_2026-06-28.md",
+    "la_notice_production_gap_broker_ruling_2026-06-28_erratum_artifact_drop_2026-06-28.md",
+    "deploy_readiness_capstone_acceptance_and_external_inputs_broker_ruling_2026-06-29.md",
+    "locked_prose_manifest_schema_reconciliation_broker_ruling_2026-06-29.md"
+  ],
+  "entries": [
+    {
+      "key": "BROKER_CONFIRM_REQUEST_PROMPT",
+      "version": "v1",
+      "tier": "A",
+      "value": "We couldn't automatically confirm which city governs this address. You can request a review by our California licensed real estate broker — we'll check parcel and jurisdiction records and confirm whether this property is in the City of Los Angeles.",
+      "hash": "941a391a0cbf58b616f702f350bc1089361f2ad79af06851b0e3fbb8c96d1db8",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §2.A",
+      "lane": "5"
+    },
+    {
+      "key": "BROKER_CONFIRM_REQUEST_BUTTON",
+      "version": "v1",
+      "tier": "B",
+      "value": "Request broker review",
+      "hash": "ae616484413b16e4c6fdacd990da8a2827c6f4cff57be60576d0adeb0cfe067a",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §2.B",
+      "lane": "5"
+    },
+    {
+      "key": "BROKER_CONFIRM_EMAIL_FIELD",
+      "version": "v1",
+      "tier": "B",
+      "value": "Email (optional) — so we can tell you when the review is done. We collect this email only to notify you when your broker review completes. We do not sell or share it, and we do not add you to marketing emails. We delete it 90 days after your request resolves.",
+      "hash": "42d9ba595ac4e640c4097fcf701017efb5d134205d7557e27bac325416897563",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §2.C",
+      "lane": "5",
+      "note": "Compliance-load-bearing (CCPA notice-at-collection). CI guard covers every word."
+    },
+    {
+      "key": "BROKER_CONFIRM_SAVE_LINK_NOTICE",
+      "version": "v1",
+      "tier": "B",
+      "value": "Your request is in. Save this page — bookmark it, or copy the URL somewhere safe. It's the only way to check your review status. We can't resend the link if you lose it.",
+      "hash": "dfb7e89804dff5ec92888dad103bf49aa87505a02854ed15ddf28d4da0c3e566",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §2.D",
+      "lane": "5"
+    },
+    {
+      "key": "BROKER_CONFIRM_CANCEL_CONFIRM",
+      "version": "v1",
+      "tier": "B",
+      "value": "Cancel this broker review request? You can submit a new one later.",
+      "hash": "0f54191842fd031e3d7eaac92ec0d4d6593dc3458ad7636cf76147e98ad77acd",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §2.H",
+      "lane": "5"
+    },
+    {
+      "key": "BROKER_CONFIRM_CHECK_STATUS_H1",
+      "version": "v1",
+      "tier": "B",
+      "value": "Check your broker review status",
+      "hash": "c8c8118104ac7981cb872bda517f165af81162c44de682f88962e3f71ba05583",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §3.3",
+      "lane": "5"
+    },
+    {
+      "key": "BROKER_CONFIRM_CHECK_STATUS_INTRO",
+      "version": "v1",
+      "tier": "B",
+      "value": "If you have the link we gave you when you requested a broker review, paste it below to check the status.",
+      "hash": "dcd595469719c90aa70f7a148fbd3a5164a153ede47ec87bcf1e7d996cd3fc1a",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §3.3",
+      "lane": "5"
+    },
+    {
+      "key": "BROKER_CONFIRM_CHECK_STATUS_FIELD",
+      "version": "v1",
+      "tier": "B",
+      "value": "Your broker review link",
+      "hash": "6abb03c9098b2c24a97f68756836656b9b396cbc7fa88f34a4f0a632b28f8301",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §3.3",
+      "lane": "5"
+    },
+    {
+      "key": "BROKER_CONFIRM_CHECK_STATUS_BUTTON",
+      "version": "v1",
+      "tier": "B",
+      "value": "Check status",
+      "hash": "69cd3590300a68c6ec0a910990164d492a4ff779ce9ddc471acbd87247332600",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §3.3",
+      "lane": "5"
+    },
+    {
+      "key": "BROKER_CONFIRM_CHECK_STATUS_ERROR",
+      "version": "v1",
+      "tier": "B",
+      "value": "We couldn't read that link. Make sure you pasted the full URL we sent when you submitted your request. If you lost the link entirely, we can't recover it — you'll need to submit a new request.",
+      "hash": "b82b162e1dbb2da7c6c2d1537d3b854a9ee057f322c8101e4778ad1e05e4180c",
+      "source_ruling": "decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md §3.3",
+      "lane": "5"
+    },
+    {
+      "key": "ROUTE_TO_COUNSEL_HEADING",
+      "version": "v1",
+      "tier": "A",
+      "value": "Time to talk to a California licensed attorney",
+      "hash": "7288dac5581691ecdd482638d077ce7be5c1f0e7fc5fe6f0ff915f99dcba3f94",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 11",
+      "lane": "5/8"
+    },
+    {
+      "key": "ROUTE_TO_COUNSEL_BODY",
+      "version": "v1",
+      "tier": "A",
+      "value": "Your situation falls outside what OwnerPilot can prepare under California broker-supervised document preparation rules. This isn't a refusal — it's a recommendation. The kinds of situations that need licensed legal counsel include: bankruptcy filings, tenant death or successor questions, subsidized housing disputes, mobilehome parks, commercial tenancies, and any case where a notice might not fit cleanly within the standard California statutory paths.",
+      "hash": "a97f5236bd98e5ca56732d2c0eceb353462b76bffa23ab3ebe9aed8606f7f5ff",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 11",
+      "lane": "5/8"
+    },
+    {
+      "key": "ROUTE_TO_COUNSEL_FEE_DISCLAIMER",
+      "version": "v1",
+      "tier": "A",
+      "value": "OwnerPilot does not sell, bundle, or take referral fees from any attorney. The resources below are public starting points, not endorsements.",
+      "hash": "e30d5152514100fe0b56fb982b50a8583e3ab2699deee07067ae4788f2735da7",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 11",
+      "lane": "5/8"
+    },
+    {
+      "key": "ROUTE_TO_COUNSEL_RESOURCES",
+      "version": "v1",
+      "tier": "A",
+      "value": "California State Bar Lawyer Referral Service\n- Phone: 866-442-2529\n- Web: calbar.ca.gov/Public/Need-Legal-Help\nLos Angeles County Bar Association\n- Phone: 213-243-1525\n- Web: lacba.org/lris\nTenant resources (for landlords navigating tenant-side issues):\n- California Department of Consumer Affairs: dca.ca.gov\n- California Courts Self-Help: courts.ca.gov/selfhelp",
+      "hash": "ef6290504d0dcbc4cda2256f85253a86d87377c9e9d155703487ef73bff25af2",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 11",
+      "lane": "5/8",
+      "note": "Contains phone/URL data — verify against live referral listings before lock."
+    },
+    {
+      "key": "ROUTE_TO_COUNSEL_CTA",
+      "version": "v1",
+      "tier": "A",
+      "value": "Return to your notice draft",
+      "hash": "7c1dbddaadfa4378e925d9ffbf7cfdf306a00a6f7e65d697c668b0d5a556825f",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 11",
+      "lane": "5/8"
+    },
+    {
+      "key": "CONSENT_BANNER_BODY",
+      "version": "v1",
+      "tier": "A",
+      "value": "We use cookies to keep the site working and to measure how you use it. You can accept all, reject non-essential, or pick what to allow. We never sell your information.",
+      "hash": "46c59ab6aca42abf6ac9b32800fcfdce73f7cc7c11aefd0db7bc38367607c99b",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 9",
+      "lane": "6"
+    },
+    {
+      "key": "DISCLAIMER_BROKER_SUPERVISED",
+      "version": "v1",
+      "tier": "A",
+      "value": "OwnerPilot is operated under California real estate broker supervision (CalDRE B9445457). We are not a law firm and do not provide legal advice.",
+      "hash": "b6ed63af1d4ff1fc6cfaf137e792c7b3ff901b1b1955d8eb6475b2bd52938817",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md (Surface 8) / marketing_copy_compliance_polish_broker_ruling_2026-06-28.md §2.1 Surface 8 / §2.1",
+      "lane": "6"
+    },
+    {
+      "key": "DISCLAIMER_DO_NOT_SELL_HEADER",
+      "version": "v1",
+      "tier": "A",
+      "value": "Do Not Sell or Share My Personal Information",
+      "hash": "4603e3653d3f075f8fa248a0e82e47e547d7844864e2802e0efcab7da8946152",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 8",
+      "lane": "6"
+    },
+    {
+      "key": "CHAT_LANDING_DISCLAIMER",
+      "version": "v1",
+      "tier": "A",
+      "value": "OwnerPilot AI provides general property-owner workflow guidance and document-preparation support. It does not provide legal advice, legal strategy, or representation.",
+      "hash": "20a95834ffb95c889b0fbdab34e18eb1d02dcf70271177d4423d8b9d7df9af5c",
+      "source_ruling": "marketing_copy_compliance_polish_broker_ruling_2026-06-28.md §2.2 (per Lane 8 Surface 10 manifest note) §2.2",
+      "lane": "6/8"
+    },
+    {
+      "key": "HERO_HEADLINE",
+      "version": "v1",
+      "tier": "B",
+      "value": "Tell us what's happening with your tenant. We'll handle the paperwork.",
+      "hash": "4bde2d8bec38b48d9716f22b716e5c057473d1b58a999b24c80bceec05dbfbe4",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 1",
+      "lane": "8"
+    },
+    {
+      "key": "HERO_SUBHEAD",
+      "version": "v1",
+      "tier": "B",
+      "value": "California broker-supervised document preparation for landlords. Chat with our AI, confirm the details, get the right notice for your jurisdiction.",
+      "hash": "7a6a82e4882156c672965de0273aa8000f88e115611477ea2a46edf613e9ee43",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 1",
+      "lane": "8"
+    },
+    {
+      "key": "HERO_CTA",
+      "version": "v1",
+      "tier": "B",
+      "value": "Start a notice",
+      "hash": "fe370ae846b110ab452648bf43e8eda2e965d04ff422e29dac45ed290bda7c4c",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 1",
+      "lane": "8"
+    },
+    {
+      "key": "EMAIL_TX_BROKER_CONFIRM_SUBMITTED",
+      "version": "v1",
+      "tier": "A",
+      "value": "Hi,\n\nWe received your jurisdiction review request for the property you submitted on OwnerPilot. Our California licensed real estate broker (CalDRE B9445457) will review it and confirm the governing jurisdiction — usually within 24 hours.\n\nYou'll receive a follow-up email once the review is complete. You can also check the status anytime at: {{statusUrl}}\n\nIf you have questions about your notice draft, you can keep editing it in the meantime — we just hold off on producing the final PDF until the jurisdiction is confirmed.\n\nWe will delete this email address 90 days after your request is resolved.\n\n— The OwnerPilot team\nCalifornia broker-supervised. CalDRE B9445457. Not a law firm.",
+      "hash": "d48639da65cb4f3c431fd726bc035d55a95e25f5a81d072d4fb40dad64b04e10",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 14",
+      "subject": "Your jurisdiction review request — OwnerPilot",
+      "lane": "5/8"
+    },
+    {
+      "key": "EMAIL_TX_BROKER_CONFIRM_CONFIRMED_LA",
+      "version": "v1",
+      "tier": "A",
+      "value": "Hi,\n\nOur broker has confirmed your property is within the City of Los Angeles. You can now proceed to produce your notice.\n\nContinue to your draft: {{statusUrl}}\n\nThis confirmation is valid for 30 days. If you don't produce your notice within that window, you'll need to resubmit for a fresh review.\n\n— The OwnerPilot team\nCalifornia broker-supervised. CalDRE B9445457. Not a law firm.",
+      "hash": "ed7e9a411f9ae061359a454fbc0742522867af87035c993e411a2a69b575220c",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 14",
+      "subject": "Your jurisdiction is confirmed — OwnerPilot",
+      "lane": "5/8"
+    },
+    {
+      "key": "EMAIL_TX_BROKER_CONFIRM_NOT_LA_OR_INCONCLUSIVE",
+      "version": "v1",
+      "tier": "A",
+      "value": "Hi,\n\nOur broker has reviewed your address and determined this situation falls outside our current document-preparation scope. This isn't a refusal — it's a recommendation that you consult a California licensed attorney to make sure you're producing the right form for your situation.\n\nSee the resources we've put together for you here: {{routeToCounselUrl}}\n\nWe do not sell, bundle, or take referral fees from any attorney. These are public resources, not endorsements.\n\n— The OwnerPilot team\nCalifornia broker-supervised. CalDRE B9445457. Not a law firm.",
+      "hash": "4c890170127e355017f4a50ff195b807990a1455f465eb6dd7e48434764de198",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 14",
+      "subject": "Your jurisdiction review — next steps",
+      "lane": "5/8"
+    },
+    {
+      "key": "EMAIL_TX_BROKER_CONFIRM_EXPIRED",
+      "version": "v1",
+      "tier": "A",
+      "value": "Hi,\n\nYour jurisdiction review request timed out without resolution. We've reset your draft on our end. You can resubmit a fresh review by re-entering the property address on the chat flow: {{chatUrl}}\n\nWe apologize for the delay. If you'd like to skip the review and consult a California licensed attorney directly, you can find resources here: {{routeToCounselUrl}}\n\n— The OwnerPilot team\nCalifornia broker-supervised. CalDRE B9445457. Not a law firm.",
+      "hash": "25802473dd9337d5cecfe4264751e965bf4b6e6d2ce01396916dba0c1c67ae62",
+      "source_ruling": "lane8_marketing_copy_materialized_2026-06-29.md Surface 14",
+      "subject": "Your jurisdiction review timed out",
+      "lane": "5/8"
+    },
+    {
+      "key": "BROKER_REVIEW_PENDING",
+      "version": "v1",
+      "tier": "A",
+      "value": "Broker review in progress. Expected by {deadline}. You can keep editing your notice; producing is paused until the review completes.",
+      "hash": "1c4434d65bb646953af736dcf99d10091567c67a4bac9b51ba2a7cdc90fb1f98",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "supersedes": "lane8_marketing_copy_materialized_2026-06-29.md Surface 12 (descriptive marketing only; not locked)"
+    },
+    {
+      "key": "BROKER_REVIEW_CONFIRMED_LA",
+      "version": "v1",
+      "tier": "A",
+      "value": "Confirmed — this property is in the City of Los Angeles. You can continue.",
+      "hash": "3f26ea0bd96af8ae20b0ce1751a8e5cf7ce4856b28cf2c3ea3cd7181f5c218d8",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "supersedes": "lane8_marketing_copy_materialized_2026-06-29.md Surface 12 (descriptive marketing only; not locked)"
+    },
+    {
+      "key": "BROKER_REVIEW_NOT_LA",
+      "version": "v1",
+      "tier": "A",
+      "value": "After review, we found this property is not in the City of Los Angeles. For jurisdiction-specific guidance on the city or county that does govern, please consult a California attorney.",
+      "hash": "b65c8ec4d094d60a3a31f0ca47ad76b47c36ac527ee613b4fe7deeaa1d5716dd",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "supersedes": "lane8_marketing_copy_materialized_2026-06-29.md Surface 12 (descriptive marketing only; not locked)"
+    },
+    {
+      "key": "BROKER_REVIEW_INCONCLUSIVE",
+      "version": "v1",
+      "tier": "A",
+      "value": "Our broker review couldn't reach a clear conclusion on which city governs this address. For jurisdiction-specific guidance, please consult a California attorney.",
+      "hash": "6761d6a88d5cd73996c121be25b91dd4c31c078de05e63215a3c4a2096cd51d7",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "supersedes": "lane8_marketing_copy_materialized_2026-06-29.md Surface 12 (descriptive marketing only; not locked)"
+    },
+    {
+      "key": "BROKER_REVIEW_EXPIRED",
+      "version": "v1",
+      "tier": "A",
+      "value": "Our broker review didn't resolve within the expected window. We're sorry for the wait. For jurisdiction-specific guidance, please consult a California attorney.",
+      "hash": "b43725a2ea3993363cf4f36dab46bdd396363b85a9126a7ea48d1d0accabbc73",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "supersedes": "lane8_marketing_copy_materialized_2026-06-29.md Surface 12 (descriptive marketing only; not locked)"
+    },
+    {
+      "key": "ROUTE_TO_COUNSEL_PREAMBLE_NOT_LA",
+      "version": "v1",
+      "tier": "A",
+      "value": "After review, we found this property is not in the City of Los Angeles. For jurisdiction-specific guidance on the city or county that does govern, please consult a California attorney.",
+      "hash": "b65c8ec4d094d60a3a31f0ca47ad76b47c36ac527ee613b4fe7deeaa1d5716dd",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "supersedes": "lane8_marketing_copy_materialized_2026-06-29.md Surface 12 (descriptive marketing only; not locked)"
+    },
+    {
+      "key": "ROUTE_TO_COUNSEL_PREAMBLE_INCONCLUSIVE",
+      "version": "v1",
+      "tier": "A",
+      "value": "Our broker review couldn't reach a clear conclusion on which city governs this address. For jurisdiction-specific guidance, please consult a California attorney.",
+      "hash": "6761d6a88d5cd73996c121be25b91dd4c31c078de05e63215a3c4a2096cd51d7",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "supersedes": "lane8_marketing_copy_materialized_2026-06-29.md Surface 12 (descriptive marketing only; not locked)"
+    },
+    {
+      "key": "ROUTE_TO_COUNSEL_PREAMBLE_EXPIRED",
+      "version": "v1",
+      "tier": "A",
+      "value": "Our broker review didn't resolve within the expected window. We're sorry for the wait. For jurisdiction-specific guidance, please consult a California attorney.",
+      "hash": "b43725a2ea3993363cf4f36dab46bdd396363b85a9126a7ea48d1d0accabbc73",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "supersedes": "lane8_marketing_copy_materialized_2026-06-29.md Surface 12 (descriptive marketing only; not locked)"
+    },
+    {
+      "key": "BROKER_REVIEW_CANCELLED",
+      "version": "v1",
+      "tier": "A",
+      "value": "Cancel this broker review request? You can submit a new one later.",
+      "hash": "0f54191842fd031e3d7eaac92ec0d4d6593dc3458ad7636cf76147e98ad77acd",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "supersedes": "lane8_marketing_copy_materialized_2026-06-29.md Surface 12 (descriptive marketing only; not locked)"
+    },
+    {
+      "key": "BROKER_REVIEW_COUNSEL_CTA",
+      "version": "v1",
+      "tier": "A",
+      "value": "Find a California landlord-tenant attorney",
+      "hash": "4ea6ff1b893f1acf4d450f0f2a5b8818945441919d4de28cbcd7e753bd021441",
+      "source_ruling": "unspecified",
+      "lane": "5",
+      "note": "Shared status-page route-to-counsel CTA; distinct from ROUTE_TO_COUNSEL_CTA ('Return to your notice draft', Lane 8 Surface 11). Added to render the §2.G strings; flag for broker confirm if a separate ID is unwanted."
+    },
+    {
+      "key": "ES_REFUSAL_UNSUPPORTED_LANG_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "Por ahora OwnerPilot opera solo en inglés. Para asistencia en español sobre temas de inquilinos en California, consulte a un abogado licenciado en California o visite los recursos de la siguiente página.",
+      "hash": "b2608a1fccf1a73e70ed9ff8bc8235e1467c09202b84a7f97d05c5e0c3c9499b",
+      "source_ruling": "unspecified",
+      "lane": "3",
+      "note": "The ONLY ES-language string shipped in v1 (English-only). All other Lane 3/4 PROVISIONAL ES strings removed."
+    },
+    {
+      "key": "PRIVACY_REQUEST_BODY",
+      "version": "v1",
+      "tier": "A",
+      "value": "California residents have specific rights under the California Consumer Privacy Act (CCPA) and the California Privacy Rights Act (CPRA) regarding personal information that OwnerPilot collects, uses, and shares. You can exercise the following rights on this page:\n\n— Right to Know what personal information OwnerPilot has collected about you in the past twelve months, including the categories of information, the sources, the business purposes for which it is used, and the categories of third parties with whom it is shared.\n\n— Right to Delete the personal information OwnerPilot has collected about you, subject to specific exceptions required or permitted by law (for example, information needed to complete a transaction you requested, comply with a legal obligation, or detect security incidents).\n\n— Right to Correct inaccurate personal information that OwnerPilot maintains about you.\n\n— Right to Opt Out of the sale or sharing of your personal information. OwnerPilot does not sell personal information for money, and we do not share personal information with third parties for cross-context behavioral advertising. Submitting an opt-out request here ensures any future change to our practices will exclude you by default.\n\n— Right to Limit the use of sensitive personal information beyond what is reasonably necessary to provide the service you requested.\n\n— Right to Non-Discrimination for exercising any of the rights above. OwnerPilot will not deny service, charge different prices, or provide a different level of quality because you exercise these rights.\n\nTo submit a request, select the right you wish to exercise from the menu below and provide a contact email address. OwnerPilot will acknowledge receipt within ten (10) business days and substantively respond within forty-five (45) calendar days, in accordance with CCPA timelines, with one possible forty-five (45) day extension if reasonably necessary and with notice to you.\n\nIf you are submitting on behalf of another California resident, you must include their written authorization. OwnerPilot may require additional verification before fulfilling a request to protect against fraudulent or unauthorized submissions.\n\nQuestions about this page or your rights can be sent to the contact address listed in our Privacy Policy.",
+      "hash": "f6b4037b374689cd8edf51c5fd806d52bfcc256ed2c36f2be3bfbc6f79994c9e",
+      "source_ruling": "unspecified",
+      "lane": "6"
+    },
+    {
+      "key": "CLAUSE_PAYMENT_RECEIVED_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "This document acknowledges that the rental payment described above has been received by the property owner or the owner's authorized agent. Receipt of this payment resolves the amount stated. This acknowledgment does not waive any other right the property owner may have under the lease agreement or applicable law, including the right to enforce other lease terms or pursue separate matters not addressed by this payment. If you have a question about whether a specific issue is resolved by this acknowledgment, contact the property owner in writing.",
+      "hash": "a5b0d78415b40f1469dffd04348361c322c958c0de30c26694cd6635887b509d",
+      "source_ruling": "unspecified",
+      "lane": "4/2"
+    },
+    {
+      "key": "CLAUSE_POST_DEADLINE_ACCEPTANCE_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "The property owner has elected to accept the rental payment described above even though it was tendered after the deadline stated in the prior notice. By accepting this payment, the property owner is not waiving the right to enforce future lease obligations on time, and is not waiving any right to act on unrelated lease violations. Acceptance of this single late payment does not establish a pattern, course of dealing, or modification of the lease. Future rent remains due on the original schedule under the lease.",
+      "hash": "eba092c5c7b513374d3b44ab44ef39387521bcc03ded8219add391c30bb5a1d4",
+      "source_ruling": "unspecified",
+      "lane": "4/2"
+    },
+    {
+      "key": "CLAUSE_PAYMENT_PLAN_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "The property owner and the tenant have agreed to the payment schedule shown above for the past-due amount stated. The tenant agrees to make each scheduled payment in full and on the date listed. Current rent continues to be due in full on its regular due date under the lease and is separate from the scheduled payments in this plan. If a scheduled payment under this plan is missed or is paid in an amount less than the scheduled amount, the property owner may treat the full remaining balance under this plan as immediately due and may proceed with any remedy available under the lease and California law for nonpayment of rent. This payment plan does not extend, modify, or waive any other obligation under the lease.",
+      "hash": "2665f831d13c25b98f149f826a29652c931042f1ee6a8b92f5e54e883134a2d4",
+      "source_ruling": "unspecified",
+      "lane": "4/2"
+    },
+    {
+      "key": "CLAUSE_MOVE_OUT_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "The tenant has indicated an intent to vacate the rental property on the move-out date stated above. The tenant agrees to return possession of the property to the property owner on that date in the condition required by the lease, ordinary wear and tear excepted. The property owner agrees that the tenant remains in lawful possession of the property until the stated move-out date and that the property owner will not change locks, remove the tenant's belongings, shut off utilities, or take any other action to recover possession before that date except by a court order. A security deposit accounting will be provided under California Civil Code § 1950.5 after possession is returned. This document does not waive any claim either party may have arising from the lease before the move-out date.",
+      "hash": "3fbec791b95e918a200125c24ff74d62b50ea55adb326f496ea09ead7da742ef",
+      "source_ruling": "unspecified",
+      "lane": "4/2"
+    },
+    {
+      "key": "CLAUSE_MOVE_OUT_MLT_BRANCH_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "The property owner and the tenant have mutually agreed to end the lease on the move-out date stated above. On and after that date, the lease is terminated by mutual consent, and neither party has any continuing obligation under the lease except (a) the tenant's obligation to return possession on the stated date, (b) the property owner's obligation to account for the security deposit under California Civil Code § 1950.5, and (c) any obligation expressly listed in writing on this document under \"Carve-outs.\" Each party releases the other from any unknown claim arising out of the lease through the move-out date, except for the items listed under \"Carve-outs.\" Each party has had the opportunity to review this mutual termination before signing. The property owner will not change locks, remove belongings, shut off utilities, or take any other action to recover possession before the move-out date except by a court order.",
+      "hash": "be68dbee0d40a76dbc8063e0510f83e713acdf1f4be301ea53aadb7acd9a6a45",
+      "source_ruling": "unspecified",
+      "lane": "4/2"
+    },
+    {
+      "key": "CLAUSE_SURRENDER_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "The tenant has voluntarily surrendered possession of the rental property to the property owner on the surrender date stated above. The tenant represents that the tenant has removed all personal belongings from the property, that the property has been left in the condition described above, and that the tenant no longer claims any right of possession. The property owner accepts the surrender of the property on the stated date. A security deposit accounting will be provided under California Civil Code § 1950.5 within the time required by that section. Acceptance of surrender does not waive any claim the property owner may have for unpaid rent, damage beyond ordinary wear and tear, or any other obligation arising under the lease before the surrender date.",
+      "hash": "3918edbccd6fb84e40c69adce8a31a27931722a31dfe29446191dd5092156b1f",
+      "source_ruling": "unspecified",
+      "lane": "4/2"
+    },
+    {
+      "key": "CLAUSE_UD_INTAKE_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "The information captured in this intake will be used to assist the property owner in deciding next steps for an unlawful detainer matter under California Code of Civil Procedure § 1161 and related sections. This intake is not a court filing, is not legal advice, and does not initiate any legal action. The property owner is solely responsible for any decision to file or not file an unlawful detainer action. OwnerPilot AI is operated by a California licensed real estate broker; OwnerPilot AI does not represent the property owner in court and does not act as the property owner's attorney. The property owner is encouraged to consult an attorney before filing.",
+      "hash": "ad0e95e33af8000a5df966aea35ea3544e590e9b155398ccdf82c40e5c081e5b",
+      "source_ruling": "unspecified",
+      "lane": "4/2"
+    },
+    {
+      "key": "CLAUSE_SM_3DAY_PAY_OR_QUIT_OVERLAY_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "This notice is issued under California Code of Civil Procedure § 1161(2) and is subject to the requirements of the Santa Monica Rent Control Charter Amendment, codified at Santa Monica Municipal Code Chapter 4.36. The rental property is located within the City of Santa Monica and is subject to local rent control. The amount stated above as rent due reflects the maximum allowable rent under Santa Monica Rent Control Board regulations applicable to this unit; if the tenant believes the amount stated exceeds the maximum allowable rent, the tenant may contact the Santa Monica Rent Control Board. This notice does not waive any right the tenant has under Santa Monica Municipal Code Chapter 4.36, including just-cause-for-eviction protections.",
+      "hash": "c262fa14e3c08e74d3fb831e28cb92eef89a311540f0d065e4b3993dcf6e264e",
+      "source_ruling": "unspecified",
+      "lane": "6-SM"
+    },
+    {
+      "key": "CLAUSE_SM_TERMINATION_JUST_CAUSE_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "This notice terminates the tenancy described above under California Civil Code § 1946.1 and is also subject to the just-cause-for-eviction requirements of Santa Monica Municipal Code § 4.36.020. The property owner asserts the just cause stated above. The tenant may contest the stated just cause before the Santa Monica Rent Control Board or in a court of competent jurisdiction. This notice does not waive any right the tenant has under Santa Monica Municipal Code Chapter 4.36. If the stated just cause requires relocation assistance under Santa Monica Municipal Code, the property owner will provide that assistance as required by ordinance; the calculation and timing of relocation assistance are governed by Santa Monica Rent Control Board regulations.",
+      "hash": "062131062d06e2fd0181194c9d3024d64da1dc30e1ebefeacaa89f1bdc7085d8",
+      "source_ruling": "unspecified",
+      "lane": "6-SM"
+    },
+    {
+      "key": "CLAUSE_SM_RENT_CONTROL_STATUS_DISCLOSURE_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "This unit is subject to the Santa Monica Rent Control Charter Amendment, codified at Santa Monica Municipal Code Chapter 4.36. As a tenant of a rent-controlled unit, you have rights under local law that may include limits on rent increases, just-cause-for-eviction protections, and the right to receive relocation assistance in certain situations. The Santa Monica Rent Control Board administers these protections and can be contacted for questions about your rights, the maximum allowable rent for your unit, or any other matter under Chapter 4.36. This disclosure is informational and does not modify the lease.",
+      "hash": "bbd877c0adb7364216e87a4b2c1dfa3fcfcfebcac15d3b0c14b7d9dda3aa57c5",
+      "source_ruling": "unspecified",
+      "lane": "6-SM"
+    },
+    {
+      "key": "MAGIC_LINK_EMAIL_BODY_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "Hi,\n\nYou started a session on OwnerPilot AI and asked us to send you a link to claim it.\n\nClick the link below to access your saved progress and any documents you produced:\n\n{{claim_url}}\n\nThis link expires in 30 minutes and can be used only once.\n\nIf you didn't ask for this link, you can ignore this email — no action is needed and nothing was sent in your name.\n\nQuestions: reply to this email and we'll get back to you.\n\n— OwnerPilot AI\nOperated by Jack Taglyan, California Licensed Real Estate Broker (CalDRE B9445457)",
+      "hash": "5aacae94f47013ca7be054fa61715069bb7611bfa8422e9486adf2cb8524b333",
+      "source_ruling": "unspecified",
+      "subject": "Your OwnerPilot AI claim link",
+      "lane": "3"
+    },
+    {
+      "key": "COURTESY_REMINDER_FRIENDLY_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "Hi {{tenant_first_name}}, this is a friendly reminder that the rent payment of {{amount_due}} for {{property_address}} was due on {{due_date}}. If you've already sent it, thank you — please disregard. If not, would you let me know when I can expect it? I'd rather hear from you than not. Thanks. — {{owner_first_name}}",
+      "hash": "3cf2c8fba6b19f1e4f69bfa0e4305c0a0f532b7f9790807149e84415cc2ef15d",
+      "source_ruling": "unspecified",
+      "lane": "1.4"
+    },
+    {
+      "key": "COURTESY_REMINDER_FIRM_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "{{tenant_first_name}}, the rent payment of {{amount_due}} for {{property_address}}, due on {{due_date}}, has not been received as of {{current_date}}. Please send the payment or contact me with a specific date you'll send it. If I don't hear back, I'll need to consider next steps under the lease. — {{owner_first_name}}",
+      "hash": "48305a63016814e244a9c463bf3f68fa3033c81e52ee610110d62b38dfb066c1",
+      "source_ruling": "unspecified",
+      "lane": "1.4"
+    },
+    {
+      "key": "COURTESY_REMINDER_FORMAL_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "{{tenant_first_name}}: Rent for {{property_address}} in the amount of {{amount_due}} was due on {{due_date}}. As of {{current_date}}, the payment has not been received. Please remit the amount due, or respond in writing with the date you intend to remit. This message is a courtesy reminder only and is not a formal notice under California law; nothing in this message waives any right under the lease or under applicable law. — {{owner_first_name}}",
+      "hash": "f4732ac26b385646d668a14756dceea47ebab92edf1f88c85d242b2094a568b1",
+      "source_ruling": "unspecified",
+      "lane": "1.4"
+    },
+    {
+      "key": "COURTESY_REMINDER_DISCLAIMER_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "This is a courtesy reminder only. It is not a 3-day notice and is not a legal notice under California law. If you need to send a legal notice, OwnerPilot AI can help you produce one.",
+      "hash": "2e609e0ad7fc0d652b1e7cd7b228192d92bc42809707735284ff25418a563ed7",
+      "source_ruling": "unspecified",
+      "lane": "1.4"
+    },
+    {
+      "key": "SM_PRODUCE_BLOCKED_PENDING_REGISTRATION_CHECK_V1",
+      "version": "v1",
+      "tier": "A",
+      "value": "We can't produce this notice automatically right now because we need to verify the rent-registration status of your Santa Monica property with the Santa Monica Rent Control Board. Your information is saved. A reviewer will contact you within one business day with next steps.",
+      "hash": "4e7d8f7e083b1b44dfdf782a874b942e38e227b326421a4cf272256c9f07a7fe",
+      "source_ruling": "unspecified",
+      "lane": "6-SM"
+    }
+  ]
+}
