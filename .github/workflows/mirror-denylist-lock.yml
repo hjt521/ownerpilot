@@ -1,0 +1,20 @@
+name: mirror-denylist-lock
+# Guard H — the Notion automation mirror must scrub before write: the scrub gate precedes the write,
+# and the write uses the scrubbed payload (no raw-payload bypass). Enforces the A15 PII denylist on
+# anything mirrored off-platform. HARD FAIL on violation.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-mirror-denylist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Verify mirror scrub-before-write
+        run: npm run ci:verify-mirror-denylist

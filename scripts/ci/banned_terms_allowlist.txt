@@ -1,0 +1,32 @@
+# Banned-term allow-list — legitimate uses classified in the banned-term audit §1 (broker-ratified 2026-06-29).
+# Format: relativepath::lowercased_canonical_term   # reason
+# Each entry MUST carry a reason. Keyed by file+term (not line numbers — they drift). Adding an entry is a
+# compliance decision; new entries beyond the audit's 7 require broker sign-off.
+
+# --- persona-prompt ban-list instructions (model's own "never say" list; not owner-facing copy) ---
+app/api/chat/route.ts::ai lawyer              # persona ban-list: instructs the model never to say it
+app/api/chat/route.ts::official legal opinion # persona ban-list: instructs the model never to say it
+app/api/chat/route.ts::partner attorney       # persona ban-list + affirmative-disclaimer ("no partner attorney")
+app/api/chat/route.ts::in-house counsel       # persona ban-list + affirmative-disclaimer ("no in-house lawyer")
+app/api/chat/route.ts::in-house lawyer        # affirmative-disclaimer context ("no in-house lawyer")
+app/api/chat/route.ts::our attorney           # affirmative-disclaimer context (what OwnerPilot is NOT)
+app/api/chat/route.ts::guaranteed valuation   # persona ban-list: instructs the model never to say it
+
+# --- wall-posture copy (marketing-polish §3) ---
+app/our-approach/page.tsx::our attorney       # wall posture: "Your attorney works for you, not for us"
+
+# --- negating-disclaimer copy on our-approach (audit catch-up sweep) ---
+# Ratified per banned_term_allowlist_our_approach_negating_disclaimer_broker_ruling_2026-06-29.md.
+# Negating-disclaimer: "There is no \"in-house lawyer.\"" — affirmatively states OwnerPilot does NOT
+# have one. Same compliance category as app/api/chat/route.ts:139,158,198 (audit §1.4).
+# Locked source: ownerpilot_about_our_approach.md.
+app/our-approach/page.tsx::in-house lawyer    # negating disclaimer ("There is no in-house lawyer")
+
+# --- code-comment technical uses (not owner-facing copy) ---
+app/api/notice/geocode/route.ts::enforceable          # if present as code comment, technical sense — verify on add
+lib/jurisdiction/detectJurisdiction.ts::enforceable   # code comment, technical sense
+lib/jurisdiction/resolveLaAddress.ts::enforceable     # code comment, technical sense
+
+# NOTE: "guarantee/guarantees" code-comment uses (geocode/detectJurisdiction/resolveLaAddress) are NOT in the
+# PATTERNS list above (only the compound "guaranteed valuation" is banned), so they need no allow-list entry.
+# "may not be verified" (notice-flow.tsx) is an accuracy hedge, not a "Verified badge" — not matched, no entry needed.

@@ -1,0 +1,20 @@
+name: preconsent-analytics-lock
+# Guard G — no analytics/measurement scripts may mount before Cookiebot consent (GA4-deletion ruling §4.5).
+# Scans for pre-consent analytics mounts. HARD FAIL on violation. (Script ships with lane7; becomes
+# meaningful once Lane 6 analytics lands — passes trivially before that.)
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-no-preconsent-analytics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Verify no pre-consent analytics mount
+        run: npm run ci:verify-no-preconsent-analytics
