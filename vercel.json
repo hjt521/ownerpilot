@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/mirror-queue-depth-check",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/privacy-ack-send",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
