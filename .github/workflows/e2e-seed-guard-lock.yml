@@ -1,0 +1,25 @@
+name: e2e-seed-guard-lock
+# E4-S6 — the preview-only /api/test/seed-session endpoint must keep all four runtime locks
+# (prod-404, E2E_RUN_ACTIVE gate, TEST_SEED_SECRET, strict counsel-trigger validation). Static guard;
+# the script uses only Node built-ins (no npm install → fast + self-contained, C-R4). HARD FAIL if any
+# lock is removed; the failure message names which of the four locks is missing (C-R5).
+#
+# Runs on EVERY pull_request + push to main (NOT path-filtered). Rationale (C-R1 divergence, flagged for
+# ratification): a path-filtered workflow that is also a REQUIRED status check (C-R2) deadlocks PRs that
+# don't touch the filtered paths — GitHub never reports the check and blocks the merge. The guard runs in
+# <5s with zero deps, so always-running costs effectively nothing and keeps the required-check enforcement
+# working. If literal C-R1 path-filtering is preferred, switch to the always-report skip-job pattern.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-e2e-seed-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify seed-session locks present (E4-S6)
+        run: node scripts/ci/verify_e2e_seed_guard.mjs
