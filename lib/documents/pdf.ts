@@ -3,13 +3,16 @@
 // Reuses the repo's existing PDF mechanism (the Phase 2D RTC packet pipeline). The render interface is stable;
 // the concrete renderer (e.g. the existing server PDF util) is injected so this module has no hard PDF dep.
 
-import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import { DocumentRender, type DocumentRenderProps } from './DocumentRender';
 import { serviceClient } from '@/lib/chat/session';
 
-/** Render the document to HTML (the PDF renderer consumes this; reuse the repo's html→pdf util). */
-export function renderDocumentHtml(props: DocumentRenderProps): string {
+/** Render the document to HTML (the PDF renderer consumes this; reuse the repo's html→pdf util).
+ *  `react-dom/server` is imported dynamically (not at module top) so this server-only util stays out of
+ *  the App Router's static import graph — Turbopack hard-errors on a top-level react-dom/server import
+ *  reachable from a route. Loaded lazily at call time on the Node runtime. */
+export async function renderDocumentHtml(props: DocumentRenderProps): Promise<string> {
+  const { renderToStaticMarkup } = await import('react-dom/server');
   return renderToStaticMarkup(createElement(DocumentRender, props));
 }
 
@@ -25,7 +28,7 @@ export async function produceDocument(
   htmlToPdf: HtmlToPdf,
   sb = serviceClient(),
 ): Promise<StoredDocument> {
-  const html = renderDocumentHtml(props);
+  const html = await renderDocumentHtml(props);
   const pdf = await htmlToPdf(html);
   const storagePath = `resolution_documents/${meta.userId}/${Date.now()}_${meta.fileName}`;
   const up = await sb.storage.from('documents').upload(storagePath, pdf, { contentType: 'application/pdf', upsert: false });

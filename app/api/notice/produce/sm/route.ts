@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
   // Render the SM form (locked SM clause + disclaimer + broker attribution). No RTC for SM v1.
   const sm = resolveSmForm(parsed.data.form);
-  const html = renderDocumentHtml({ path: 'payment_received', payload: {} }); // placeholder render call shape
+  const html = await renderDocumentHtml({ path: 'payment_received', payload: {} }); // placeholder render call shape
   void html; void sm; void cityConfig('santa_monica');
   // NOTE: the SM render binds resolveSmForm() output into the shared DocumentRender composition (title/clause/
   // disclaimer/attribution). The html→pdf util + storage are the same as Group 2's produceDocument(); wired at
