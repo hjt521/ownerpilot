@@ -1,0 +1,12 @@
+{
+  "file": "lib/chat/persona.ts",
+  "constant": "OWNERPILOT_PERSONA_SYSTEM_PROMPT",
+  "sha256": "f3991a92499d6621ca1b0bea73f61de0485bbb06c69cb43a357dd901ed4b5451",
+  "bytes": 6266,
+  "status": "LOCKED",
+  "approvedBy": "operator",
+  "approvedOn": "2026-06-30",
+  "sourceRevision": "Lane 3 / Ruling 1 persona ratification (lib/chat/persona.ts)",
+  "note": "Re-locked via --write. Commit this file alongside the route change. A change to SYSTEM_PROMPT requires operator re-review before re-locking (drift ruling 2026-06-06 §4).",
+  "lockedAt": "2026-06-30T07:37:02.331Z"
+}

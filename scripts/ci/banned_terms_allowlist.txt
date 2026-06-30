@@ -22,10 +22,27 @@ app/our-approach/page.tsx::our attorney       # wall posture: "Your attorney wor
 # Locked source: ownerpilot_about_our_approach.md.
 app/our-approach/page.tsx::in-house lawyer    # negating disclaimer ("There is no in-house lawyer")
 
+# --- Lane 3 persona ban-list (model's own "never say" list + substitution guide; NOT owner-facing copy) ---
+# Ratified: Lane 3 / Ruling 1 persona ratification (§1 ban-list retained verbatim, §6 banned-term self-check,
+# §90 forward-guard directs the lint to scan lib/chat/persona.ts) + persona_banlist_lane3_allowlist_broker_ruling_2026-06-29.md.
+# Audit §1.4 persona-ban-list category. The AI-first persona (lib/chat/persona.ts) is broker-locked; these strings
+# appear only inside model instructions, never as owner-facing claims.
+lib/chat/persona.ts::legally compliant      # persona never-say list (+ substitution guide)
+lib/chat/persona.ts::court-ready            # persona never-say list (+ substitution guide)
+lib/chat/persona.ts::future-proof           # persona never-say list
+lib/chat/persona.ts::attorney-drafted       # persona never-say list
+lib/chat/persona.ts::enforceable            # persona never-say list (badge/claim sense)
+lib/chat/persona.ts::ai lawyer              # persona never-say list
+lib/chat/persona.ts::official legal opinion # persona never-say list
+lib/chat/persona.ts::in-house counsel       # persona never-say list
+lib/chat/persona.ts::our attorney           # persona never-say list
+lib/chat/persona.ts::compliance officer     # persona substitution guide ("compliance officer -> broker of record")
+
 # --- code-comment technical uses (not owner-facing copy) ---
 app/api/notice/geocode/route.ts::enforceable          # if present as code comment, technical sense — verify on add
 lib/jurisdiction/detectJurisdiction.ts::enforceable   # code comment, technical sense
 lib/jurisdiction/resolveLaAddress.ts::enforceable     # code comment, technical sense
+lib/riskpath/paths.ts::attorney-drafted               # code comment: inert slot pending broker ruling (audit §1.4)
 
 # NOTE: "guarantee/guarantees" code-comment uses (geocode/detectJurisdiction/resolveLaAddress) are NOT in the
 # PATTERNS list above (only the compound "guaranteed valuation" is banned), so they need no allow-list entry.
