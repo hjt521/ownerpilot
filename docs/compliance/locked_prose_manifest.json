@@ -428,6 +428,60 @@
       "hash": "7a96f5c6c432f5439086c011a74c92959f5668fafc26be17a18f8786aeec76f0",
       "source_determination": "docs/compliance/pr_b_staleness_scope_omnibus_broker_ruling_2026-07-01.md",
       "source_section": "§6.2"
+    },
+    {
+      "constant": "chatLahdFilingChecklistHeader",
+      "tier": "A",
+      "file": "lib/chat/lahdFilingCopy.ts",
+      "verbatim": "LAHD filing — required within 3 business days of service",
+      "hash": "4356f33d98a65cfa8ed243aeb51899eca2f88a0fcf8c9c968a23065c739f9eac",
+      "source_determination": "docs/compliance/pr_c_lahd_checklist_scope_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§5.1"
+    },
+    {
+      "constant": "chatLahdFilingChecklistBody",
+      "tier": "A",
+      "file": "lib/chat/lahdFilingCopy.ts",
+      "verbatim": "California law requires you to file a copy of the served notice with the Los Angeles Housing Department (LAHD) within 3 business days of serving the tenant. Failure to file gives the tenant an affirmative defense in an eviction proceeding.",
+      "hash": "b398b1e0c11c4f7e82993cfe904d7daec12ca41ec7ac7d8efb1c528725bee121",
+      "source_determination": "docs/compliance/pr_c_lahd_checklist_scope_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§5.2"
+    },
+    {
+      "constant": "chatLahdFilingChannelsPreferred",
+      "tier": "A",
+      "file": "lib/chat/lahdFilingCopy.ts",
+      "verbatim": "Preferred: upload the served notice at [housing.lacity.gov/eviction-notices](https://housing.lacity.gov/eviction-notices) → Submit New Notice. Requires a free Angeleno Account.",
+      "hash": "155eaf3ea0504178861b630fa713708886ccf41724d54a6e8595bc7afd1c746c",
+      "source_determination": "docs/compliance/pr_c_lahd_checklist_scope_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§5.3"
+    },
+    {
+      "constant": "chatLahdFilingChannelsAlternative",
+      "tier": "A",
+      "file": "lib/chat/lahdFilingCopy.ts",
+      "verbatim": "Alternative: mail a paper copy of the served notice plus the LAHD Eviction Notice Filing Cover Sheet to LAHD Eviction Filing Section, PO BOX 17850, Los Angeles, CA 90057.",
+      "hash": "624b25f77a2a419d26084b688f91f1fc5f3b5a627421cffc8367c4c6b5e90be3",
+      "source_determination": "docs/compliance/pr_c_lahd_checklist_scope_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§5.4"
+    },
+    {
+      "constant": "chatLahdFilingCoverSheetLabel",
+      "tier": "A",
+      "file": "lib/chat/lahdFilingCopy.ts",
+      "verbatim": "Download pre-filled LAHD cover sheet (for mail filing)",
+      "hash": "732ac43c1fbfef0ea513e8c9999a9d5f0896862e47d1eb4da8605b2a773aa40f",
+      "source_determination": "docs/compliance/pr_c_lahd_checklist_scope_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§5.5"
+    },
+    {
+      "constant": "chatLahdFilingRecordButton",
+      "tier": "A",
+      "file": "lib/chat/lahdFilingCopy.ts",
+      "verbatim": "I filed this notice with LAHD",
+      "hash": "7fe7525ddf35138300e4e6d10dda709b0142206bb03c84246c9f8ef0ff6b2133",
+      "source_determination": "docs/compliance/pr_c_lahd_checklist_scope_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§5.6"
     }
   ]
 }
