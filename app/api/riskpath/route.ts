@@ -13,7 +13,9 @@ import type { ProductionSnapshot } from '@/lib/flow/noticeFlowState';
 import type { IntakeState } from '@/lib/chat/intakeSchema';
 
 const COOKIE = 'op_chat_token';
-// serviceDate/serviceMethod are excluded from staleness — the value only needs to assemble a valid NoticeFlowData.
+// serviceDate/serviceMethod are excluded from the staleness comparison (lib/flow/escalation.ts evaluateStaleness
+// omits them), so this placeholder ONLY assembles a valid NoticeFlowData and DOES NOT AFFECT THE VERDICT.
+// Do not propagate this value into any comparison path (§5.3 countersign note).
 const PLACEHOLDER_SERVICE_DATE = '2026-01-01';
 
 export async function GET(req: NextRequest) {
