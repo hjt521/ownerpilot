@@ -2,6 +2,7 @@ import {
   computeCompliancePeriod,
   CompliancePeriodResult,
 } from './computeCompliancePeriod';
+import { getVerifiedHolidaySet } from './holidays';
 
 /**
  * FICTIONAL TEST FIXTURES — NOT AUTHORITATIVE HOLIDAY DATA.
@@ -161,6 +162,35 @@ console.log('\n8. Bad input is rejected');
     threw2 = true;
   }
   check('rejects impossible calendar date', threw2);
+}
+
+console.log('\n9. [REGRESSION — lahd_eviction…3day_count_defect_broker_ruling_2026-06-30] real CA calendar');
+{
+  // Uses the PRODUCTION verified holiday set (not fixtures): July 3, 2026 is the observed
+  // Independence Day judicial holiday (Jul 4 = Sat, CRC 1.11).
+  const holidays = getVerifiedHolidaySet(2026);
+  check('verified set includes 2026-07-03 (Independence Day observed)', holidays.has('2026-07-03'));
+
+  // Mandated regression: service Tuesday Jun 30 2026 -> expiration Monday Jul 6 2026.
+  // Wed Jul 1 (1), Thu Jul 2 (2), Fri Jul 3 SKIP (holiday), Sat/Sun skip, Mon Jul 6 (3).
+  const served0630 = computeCompliancePeriod({
+    serviceDate: '2026-06-30',
+    serviceMethod: 'personal',
+    holidays,
+  });
+  eq('service 2026-06-30 -> expiration 2026-07-06', served0630.expirationDate, '2026-07-06');
+  eq('countedDays skip Jul 3 holiday', served0630.countedDays, ['2026-07-01', '2026-07-02', '2026-07-06']);
+
+  // Control: the engine is correct for the OTHER date too. A notice computed for service
+  // 2026-06-29 correctly expires 2026-07-02 (the count finishes before reaching Jul 3, so the
+  // holiday is irrelevant). This isolates the production defect to the serviceDate VALUE
+  // (Jun 29 computed, Jun 30 served) — NOT the engine and NOT the holiday data.
+  const served0629 = computeCompliancePeriod({
+    serviceDate: '2026-06-29',
+    serviceMethod: 'personal',
+    holidays,
+  });
+  eq('service 2026-06-29 -> expiration 2026-07-02 (engine correct for its input)', served0629.expirationDate, '2026-07-02');
 }
 
 console.log(`\n${'-'.repeat(40)}`);
