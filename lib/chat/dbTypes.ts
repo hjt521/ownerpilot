@@ -22,7 +22,9 @@ export interface TranscriptTurn {
   ts: string;
   // Ruling 2: fine-grained persona category (e.g. 'settlement_negotiation'). Non-sensitive
   // categorical tag — ALLOWED in lane Q analytics; not redacted like `content`. See lib/chat/refusalBank.ts.
-  metadata?: { refusal_category?: string };
+  // Lane 2E: `capture` carries the deterministic scripted-capture cursor (Fork A) on server-emitted
+  // assistant turns — no new column; intake_state stays clean. See lib/chat/scriptedCapture.ts.
+  metadata?: { refusal_category?: string; capture?: import('./scriptedCapture').CaptureCursor | null };
 }
 
 export interface ChatSessionRow {

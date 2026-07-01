@@ -112,3 +112,66 @@ the owner to /chat/review.
 ALWAYS END A REFUSAL WITH A POSITIVE OPTION:
 The owner came to you because they need help. After any refusal, offer the thing
 you CAN do. Do not leave them at a dead end.`;
+
+// ===========================================================================
+// LANE 2E — Deterministic scripted capture-turn prose (Fork A).
+// Source: lane2e_persona_prose_broker_ruling_2026-07-01.md (verbatim strings, §§2-5).
+// Mechanism: lane2e_persona_render_mechanism_broker_ruling_2026-07-01.md (Fork A — server emits
+// these verbatim; the LLM is NOT called for the four capture categories; parsing is deterministic).
+//
+// Each constant below is a FLAT string literal so the Shape-A locked-prose guard
+// (scripts/ci/verify_locked_prose.ts) can extract + hash it. {{value_slot}} markers are literal owner-slot
+// interpolation points filled at emit time by lib/chat/scriptedCapture.ts (owner-supplied values only —
+// NOT runtime templating of the prose itself). These are appended AFTER OWNERPILOT_PERSONA_SYSTEM_PROMPT,
+// so persona.lock.json (which hashes only that literal) is NOT re-locked by Lane 2E.
+// EN strings are Tier-A ratified v1. ES strings are PROVISIONAL — pending native review (§§2.5/3.5/4.5/5.6).
+// ===========================================================================
+
+// --- §2 rent periods (manifest: chatIntakeRentPeriodsPrompt + neighbors) ---
+export const chatIntakeRentPeriodsPrompt = `Now I need the specific date range for each rent period you want on the notice. For each one, I need the day the period started, the day it ended, and how much rent is owed for it. Let's do them one at a time — what's the start date of the earliest period you want on this notice?`;
+export const chatIntakeRentPeriodsEndDateAsk = `Got it. What's the end date of that period?`;
+export const chatIntakeRentPeriodsAmountAsk = `And how much rent is owed for {{period_start_date}} through {{period_end_date}}?`;
+export const chatIntakeRentPeriodsContinuation = `That period is recorded. Is there another period you want to include on this notice, or is this everything?`;
+export const chatIntakeRentPeriodsNextPeriodAsk = `Okay — what's the start date of the next period?`;
+export const chatIntakeRentPeriodsReAskStartAfterEnd = `That start date is after the end date you gave me. Can you double-check the dates for this period?`;
+export const chatIntakeRentPeriodsReAskLabel = `I need the actual start and end dates for that period — the notice has to show the exact date range, not just the month name.`;
+export const chatIntakeRentPeriodsReAskAmount = `That amount doesn't look right. What's the actual amount owed for {{period_start_date}} through {{period_end_date}}?`;
+// PROVISIONAL — pending native review (§2.5)
+export const chatIntakeRentPeriodsPromptEs = `Ahora necesito el rango de fechas específico para cada período de renta que quieras incluir en el aviso. Para cada uno, necesito el día en que empezó el período, el día en que terminó, y cuánto se debe. Vamos a hacerlos uno por uno — ¿cuál es la fecha de inicio del período más antiguo que quieres incluir en este aviso?`;
+
+// --- §3 signer capacity (manifest: chatIntakeSignerCapacityPrompt + neighbors) ---
+export const chatIntakeSignerCapacityPrompt = `Thanks. One more thing about who's signing the notice — are you signing as the individual owner yourself, or on behalf of a company, LLC, or trust that owns the property?`;
+export const chatIntakeSignerIndividualAck = `Got it. The notice will show you signing in your own name as the owner.`;
+export const chatIntakeSignerEntityNameAsk = `Okay — I need a few details about the entity. What's the full legal name of the company, LLC, or trust that owns the property?`;
+export const chatIntakeSignerEntityTitleAsk = `And what's your title or role with {{entity_name}}? For example: Manager, Managing Member, Officer, Trustee, or authorized agent.`;
+export const chatIntakeSignerEntityConfirm = `So I'll record you as signing on behalf of {{entity_name}} in your role as {{title}}. Is that right?`;
+export const chatIntakeSignerReAskDontKnowTitle = `That's okay — I need to know your role because California law requires the signer's authority to be shown on the notice. If you're not sure, the person who set up the {{entity_type_owner_used}} — or your attorney — can tell you. I can pause here and you can come back when you have it.`;
+export const chatIntakeSignerReAskAmbiguous = `Just to be sure — is the property owned by you personally, or is it owned by the LLC and you're signing for the LLC? Those are two different signatures.`;
+// PROVISIONAL — pending native review (§3.5)
+export const chatIntakeSignerCapacityPromptEs = `Gracias. Una cosa más sobre quién va a firmar el aviso — ¿vas a firmar como propietario individual tú mismo, o en nombre de una compañía, LLC, o fideicomiso dueño de la propiedad?`;
+
+// --- §4 personal delivery (manifest: chatIntakePersonalDeliveryPrompt + neighbors) ---
+export const chatIntakePersonalDeliveryPrompt = `Because you're planning to serve this notice in person, California requires the notice to say when someone can hand a rent payment back to you — the days of the week and the hours of the day. What days of the week are you available to accept payment in person? For example: Monday through Friday, or specific days.`;
+export const chatIntakePersonalDeliveryHoursAsk = `And during those days, what hours are you available to accept payment? I need a start time and an end time — for example, 9:00 AM to 5:00 PM.`;
+export const chatIntakePersonalDeliveryConfirm = `So the notice will say you can accept payment in person {{days_summary}}, from {{hours_start}} to {{hours_end}}. Is that right?`;
+export const chatIntakePersonalDeliveryReAskZeroDays = `California law requires the notice to name real days and hours when a tenant can hand you a payment in person. If there truly are no days when you're available, you'll need to choose a different service method — either substituted service through someone else at the property, or posting-and-mailing. Want to change the service method?`;
+export const chatIntakePersonalDeliveryReAskHours = `Those hours don't add up — the end time needs to be later than the start time. Can you give me the actual hours again?`;
+// PROVISIONAL — pending native review (§4.5)
+export const chatIntakePersonalDeliveryPromptEs = `Como piensas entregar este aviso en persona, California requiere que el aviso indique cuándo alguien puede entregarte un pago de renta en mano — los días de la semana y las horas del día. ¿Qué días de la semana estás disponible para aceptar el pago en persona? Por ejemplo: de lunes a viernes, o días específicos.`;
+
+// --- §5 preflight dispute (manifest: chatIntakePreflightDisputePrompt + neighbors) ---
+export const chatIntakePreflightDisputePrompt = `Before I put the notice together, I need to check three quick things with you. These affect whether a 3-day notice is the right tool for this situation, or whether you should talk to a lawyer first. For each one, tell me yes, no, or "not sure" — "not sure" is a real answer, so please use it if you don't know.`;
+export const chatIntakePreflightDisputeQ1 = `Question 1: Has the tenant told you they disagree with the amount you're claiming they owe — either the dollar amount, the period, or that anything is owed at all? Yes, no, or not sure?`;
+export const chatIntakePreflightDisputeQ2 = `Question 2: Has the tenant told you they're withholding rent because of something the property is missing or something you agreed to provide but haven't — utilities, repairs, appliances, a service, anything like that? Yes, no, or not sure?`;
+export const chatIntakePreflightDisputeQ3 = `Question 3: Has the tenant told you the property has a serious habitability problem — no heat, no hot water, mold, pests, a code violation, anything they've raised as making the place unlivable? Yes, no, or not sure?`;
+export const chatIntakePreflightDisputeReAsk = `I want to make sure I've got this right — for this question, is the answer yes, no, or "not sure"?`;
+// PROVISIONAL — pending native review (§5.6)
+export const chatIntakePreflightDisputePromptEs = `Antes de armar el aviso, necesito verificar tres cosas rápidas contigo. Estas afectan si un aviso de 3 días es la herramienta correcta para esta situación, o si deberías hablar con un abogado primero. Para cada una, dime sí, no, o "no estoy seguro" — "no estoy seguro" es una respuesta real, así que úsala si no sabes.`;
+
+// --- PROPOSED strings (NOT yet manifest-locked) — engineering proposes per render ruling §3.1 + §3;
+//     broker ratifies in the Lane 2E attestation, then these graduate into the manifest. Kept out of
+//     locked_prose_manifest.json until ratified so they are not attested as ratified prose. ---
+// PROPOSED (§3.1 continuation ambiguity re-ask):
+export const chatIntakeRentPeriodsReAskContinuationProposed = `Sorry — I didn't catch whether you want to add another period. Is there another rent period to include on this notice, or is this everything?`;
+// PROPOSED (§3 two-attempt escalation → save-and-resume):
+export const chatIntakeCaptureEscalationProposed = `Let's not get stuck here. I'll save what we have so far so you don't lose it — you can come back and finish this step anytime. Would you like me to email you a link to pick up where you left off?`;

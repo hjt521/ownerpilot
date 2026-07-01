@@ -104,6 +104,267 @@
       "version_stamp": "intendedServiceDateCopyVersion=v1",
       "source_determination": "docs/compliance/daycount_defect_workflow_fork_broker_ruling_2026-06-30.md",
       "source_section": "§2.4"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsPrompt",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Now I need the specific date range for each rent period you want on the notice. For each one, I need the day the period started, the day it ended, and how much rent is owed for it. Let's do them one at a time — what's the start date of the earliest period you want on this notice?",
+      "hash": "cb862f38f927fcfcb33d47a823f3c7b91f0d0766b4bcddfa8305c1a62b620220",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§2.1"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsEndDateAsk",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Got it. What's the end date of that period?",
+      "hash": "d1fd268bd6e8da4e91292c3fd09c9494fe7b3984264306c20abd098f1b331072",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§2.2"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsAmountAsk",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "And how much rent is owed for {{period_start_date}} through {{period_end_date}}?",
+      "hash": "e8c9c6af3905ce7ff4b42123a7579f30877b86d0d7dc966a264c0053095f17e5",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§2.2"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsContinuation",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "That period is recorded. Is there another period you want to include on this notice, or is this everything?",
+      "hash": "69f492441a57b03614de876d4e96b5fb8e7889e18e15119c6159afa1c46e15c6",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§2.3"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsNextPeriodAsk",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Okay — what's the start date of the next period?",
+      "hash": "f8f2de7ce469e058fc25ef688dc343e069cffcf68936352fcc26c577a6088595",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§2.3"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsReAskStartAfterEnd",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "That start date is after the end date you gave me. Can you double-check the dates for this period?",
+      "hash": "63b80da85cf884bdf02fad0dd1dc717fd47d2a7bce9bc1546ce41f99f8b59b6c",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§2.4"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsReAskLabel",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "I need the actual start and end dates for that period — the notice has to show the exact date range, not just the month name.",
+      "hash": "0119cc9abc02a110ae92e505c940bb4bd6740a6ff1df5fd5915dff7b57d1cb8d",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§2.4"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsReAskAmount",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "That amount doesn't look right. What's the actual amount owed for {{period_start_date}} through {{period_end_date}}?",
+      "hash": "86788152b76625e9debea58b67bdc8a102e1d4494578269e38ba333de31c8f59",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§2.4"
+    },
+    {
+      "constant": "chatIntakeSignerCapacityPrompt",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Thanks. One more thing about who's signing the notice — are you signing as the individual owner yourself, or on behalf of a company, LLC, or trust that owns the property?",
+      "hash": "e2bd6b2b40f562657ed7da5267cf24fe20d3810bf424b5360d4c793af3d3d43a",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§3.1"
+    },
+    {
+      "constant": "chatIntakeSignerIndividualAck",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Got it. The notice will show you signing in your own name as the owner.",
+      "hash": "b2d539d61e7266a63d1b730e307b1c055406131bb8fe0e93db5bae9b8c94b5d8",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§3.2"
+    },
+    {
+      "constant": "chatIntakeSignerEntityNameAsk",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Okay — I need a few details about the entity. What's the full legal name of the company, LLC, or trust that owns the property?",
+      "hash": "561b8bbe2630ef61d3d661f2e1a47d12144e2bf68ea298445ce6cd61ec1f6084",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§3.3"
+    },
+    {
+      "constant": "chatIntakeSignerEntityTitleAsk",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "And what's your title or role with {{entity_name}}? For example: Manager, Managing Member, Officer, Trustee, or authorized agent.",
+      "hash": "d1018f95161187986456673f92964b4ce90bc850c2e8569c3c550685a9bbb370",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§3.3"
+    },
+    {
+      "constant": "chatIntakeSignerEntityConfirm",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "So I'll record you as signing on behalf of {{entity_name}} in your role as {{title}}. Is that right?",
+      "hash": "8fb2c8ebdd4b4783e42f460520869d06b74473feb04bd48a0994471c6dcde280",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§3.3"
+    },
+    {
+      "constant": "chatIntakeSignerReAskDontKnowTitle",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "That's okay — I need to know your role because California law requires the signer's authority to be shown on the notice. If you're not sure, the person who set up the {{entity_type_owner_used}} — or your attorney — can tell you. I can pause here and you can come back when you have it.",
+      "hash": "c583d8ca9e16d25590d7dd4fc56feb8a896525dea57a270ea53af5dfbf689d1b",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§3.4"
+    },
+    {
+      "constant": "chatIntakeSignerReAskAmbiguous",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Just to be sure — is the property owned by you personally, or is it owned by the LLC and you're signing for the LLC? Those are two different signatures.",
+      "hash": "a2345bf5290d5d1cab6009ad989d0f0986ed12010a3f78b294681cf52a8b18e7",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§3.4"
+    },
+    {
+      "constant": "chatIntakePersonalDeliveryPrompt",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Because you're planning to serve this notice in person, California requires the notice to say when someone can hand a rent payment back to you — the days of the week and the hours of the day. What days of the week are you available to accept payment in person? For example: Monday through Friday, or specific days.",
+      "hash": "c11d538552b7d2fc15fb0453b713239d9c6dc989768537b7cb088311de02ae91",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§4.1"
+    },
+    {
+      "constant": "chatIntakePersonalDeliveryHoursAsk",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "And during those days, what hours are you available to accept payment? I need a start time and an end time — for example, 9:00 AM to 5:00 PM.",
+      "hash": "c107f0a613c3e2d636b71ee4b0313d6548532b19d5d79f7bd0704ac0b788506f",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§4.2"
+    },
+    {
+      "constant": "chatIntakePersonalDeliveryConfirm",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "So the notice will say you can accept payment in person {{days_summary}}, from {{hours_start}} to {{hours_end}}. Is that right?",
+      "hash": "349c15fc92d6b086693abe69ec3355b3578c06d4d4aefa8c654a4faaaa84cb16",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§4.3"
+    },
+    {
+      "constant": "chatIntakePersonalDeliveryReAskZeroDays",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "California law requires the notice to name real days and hours when a tenant can hand you a payment in person. If there truly are no days when you're available, you'll need to choose a different service method — either substituted service through someone else at the property, or posting-and-mailing. Want to change the service method?",
+      "hash": "5bb9796e9af07a42e21d07d1f91d92844a0eaf6314268636e1ae655914e5f6ba",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§4.4"
+    },
+    {
+      "constant": "chatIntakePersonalDeliveryReAskHours",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Those hours don't add up — the end time needs to be later than the start time. Can you give me the actual hours again?",
+      "hash": "05da04b1c4a5dff6546ee8823eec6bf60c55abdbf546bca8814f10ff00034e8c",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§4.4"
+    },
+    {
+      "constant": "chatIntakePreflightDisputePrompt",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Before I put the notice together, I need to check three quick things with you. These affect whether a 3-day notice is the right tool for this situation, or whether you should talk to a lawyer first. For each one, tell me yes, no, or \"not sure\" — \"not sure\" is a real answer, so please use it if you don't know.",
+      "hash": "ad938aec7aa3400c609ea00d9da5e72a55b2a7107ee88c113493ba3bba7db1b8",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§5.1"
+    },
+    {
+      "constant": "chatIntakePreflightDisputeQ1",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Question 1: Has the tenant told you they disagree with the amount you're claiming they owe — either the dollar amount, the period, or that anything is owed at all? Yes, no, or not sure?",
+      "hash": "05c7713b655cfbd8d83abbd510d20abcf5061e508609142fefeb7a706c49c0e1",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§5.2"
+    },
+    {
+      "constant": "chatIntakePreflightDisputeQ2",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Question 2: Has the tenant told you they're withholding rent because of something the property is missing or something you agreed to provide but haven't — utilities, repairs, appliances, a service, anything like that? Yes, no, or not sure?",
+      "hash": "9002dbdadcb54920ea78b51da90526ff5d2da3ee7737c69178ee8b64805fcd88",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§5.2"
+    },
+    {
+      "constant": "chatIntakePreflightDisputeQ3",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Question 3: Has the tenant told you the property has a serious habitability problem — no heat, no hot water, mold, pests, a code violation, anything they've raised as making the place unlivable? Yes, no, or not sure?",
+      "hash": "9ac2429b0a55f065649fcf9930b3f76ee811c6020cdac4dfd9639cfa550f5950",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§5.2"
+    },
+    {
+      "constant": "chatIntakePreflightDisputeReAsk",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "I want to make sure I've got this right — for this question, is the answer yes, no, or \"not sure\"?",
+      "hash": "ac8cb33c2ef45186415189383769d3932b972784a77a81350d820cca858be2ef",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§5.3"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsPromptEs",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Ahora necesito el rango de fechas específico para cada período de renta que quieras incluir en el aviso. Para cada uno, necesito el día en que empezó el período, el día en que terminó, y cuánto se debe. Vamos a hacerlos uno por uno — ¿cuál es la fecha de inicio del período más antiguo que quieres incluir en este aviso?",
+      "hash": "97185cca48994409b56b2dca4c2883600a2076bafb5bfd9c0690a3a4e96fb87a",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§2.5 (PROVISIONAL)"
+    },
+    {
+      "constant": "chatIntakeSignerCapacityPromptEs",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Gracias. Una cosa más sobre quién va a firmar el aviso — ¿vas a firmar como propietario individual tú mismo, o en nombre de una compañía, LLC, o fideicomiso dueño de la propiedad?",
+      "hash": "0e3124760e68e39af27d3849c984ef2a48053c795f4e6c5dece6ddfc123af66e",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§3.5 (PROVISIONAL)"
+    },
+    {
+      "constant": "chatIntakePersonalDeliveryPromptEs",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Como piensas entregar este aviso en persona, California requiere que el aviso indique cuándo alguien puede entregarte un pago de renta en mano — los días de la semana y las horas del día. ¿Qué días de la semana estás disponible para aceptar el pago en persona? Por ejemplo: de lunes a viernes, o días específicos.",
+      "hash": "36e163c4f679dfb654dd146eca80e03d58ddae9903c6e1bf40489a08e5588abb",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§4.5 (PROVISIONAL)"
+    },
+    {
+      "constant": "chatIntakePreflightDisputePromptEs",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Antes de armar el aviso, necesito verificar tres cosas rápidas contigo. Estas afectan si un aviso de 3 días es la herramienta correcta para esta situación, o si deberías hablar con un abogado primero. Para cada una, dime sí, no, o \"no estoy seguro\" — \"no estoy seguro\" es una respuesta real, así que úsala si no sabes.",
+      "hash": "f452326a23c671e7bc8b8891de695dcbc1020286ec5597b7804c19ca96c90bdb",
+      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
+      "source_section": "§5.6 (PROVISIONAL)"
     }
   ]
 }
