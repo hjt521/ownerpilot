@@ -35,6 +35,13 @@ export function missingRequiredFields(state: IntakeState): IntakeField[] {
       if (isEmpty(state[f]?.value)) missing.push(f);
     }
   }
+
+  // Lane 2E conditional: personal-delivery days/hours required only when the service method is personal
+  // (personal delivery is where those hours print on the face). Ruling 2026-07-01 §4.
+  const serviceMethod = state['preferred_service_method']?.value;
+  if (serviceMethod === 'personal' && isEmpty(state['personal_delivery']?.value)) {
+    missing.push('personal_delivery');
+  }
   return missing;
 }
 
