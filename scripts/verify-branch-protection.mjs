@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// Verifies 18 Required guards on main per broker ruling 2026-07-01 §7 (18th = review-produce-parity,
-// pr_a3_5_2_core_countersign_and_open_items_broker_ruling_2026-07-01.md §3.3).
-// Invoked by broker to confirm 18/18 after §3.3 branch-protection toggle.
+// Verifies 11 Required checks on main — the curated compliance-critical set ruled in
+// gate2_baseline_correction_addendum_2026-07-01.md (Option (c)). Supersedes the earlier 17/18/19 chain, which the
+// "main protection" ruleset never actually enforced (reconciliation 2026-07-01 found only 5 enforced).
+// Invoked by broker to confirm 11/11 after the ruleset required_status_checks PATCH.
 //
 // verify-branch-protection.mjs — P1 one-shot (broker-authorized; NOT wired into CI — the daily-CI form is
 // Gate-3 scope per e2e_gate2_deviations_and_ci_wiring_broker_ruling_2026-06-30).
 //
-// Deterministically confirms that all 16 expected compliance checks are Required on `main`, so the runbook's
+// Deterministically confirms that all 11 expected compliance checks are Required on `main`, so the runbook's
 // P1 gate becomes pass/fail instead of an eyeball check.
 //
 // Usage (pipe the gh api output in, or pass a saved file):
@@ -17,37 +18,28 @@
 // prefix-tolerant: GitHub may store a context as the bare job id ("verify-banned-terms") or as
 // "workflow / job"; both normalize to the job id before the set-diff.
 //
-// Output: one copy-pasteable line. Exit 0 iff all 16 present and nothing unexpected; exit 1 otherwise.
+// Output: one copy-pasteable line. Exit 0 iff all 11 present and nothing unexpected; exit 1 otherwise.
 
 import { readFileSync } from 'node:fs';
 
-// The 18 expected Required checks = 2 pre-existing + 14 audit gaps + fetch-binding (promoted per G14 v2 Fork 1,
-// §4.9: runtime-crash guards on customer-facing rails count as compliance-relevant) + review-produce-parity
-// (PR-A3 §5.2 wizard-parity; structural-parity guards are branch-protection-eligible on first observed pass —
-// countersign ruling §3.3/§5). Job ids verified verbatim from .github/workflows/*.yml (keep in sync with the audit).
+// The 11 expected Required checks — Option (c) curated set (gate2_baseline_correction_addendum_2026-07-01.md):
+// the 5 the "main protection" ruleset already enforced + 6 compliance-critical guards promoted to Required. The
+// other 8 audit-gap checks are advisory-tier (fast-follow GATE2-ADVISORY-PROMOTION-2026Q3). This list MUST equal
+// the ruleset's required_status_checks (helper == GitHub). Job ids verbatim from .github/workflows/*.yml.
 const EXPECTED = [
-  // pre-existing
+  // 5 previously enforced by the "main protection" ruleset
   'test-and-typecheck',
   'verify-locked-prose',
-  // 14 promoted compliance guards
   'verify-system-prompt-lock',
-  'verify-banned-terms',
-  'verify-analytics-no-pii',
-  'verify-no-preconsent-analytics',
-  'verify-mirror-denylist',
-  'verify-broker-confirm-sla-sync',
-  'verify-normalize-identical-to-resolver',
   'verify-classifier-lock',
-  'verify-geocode-failure-event',
-  'verify-no-operator-secrets',
   'verify-no-live-cliff',
-  'verify-edge-core-sync',
-  'verify-parcel-health-core-sync',
+  // 6 compliance-critical, promoted to Required per the baseline-correction addendum
+  'verify-banned-terms',
+  'verify-no-operator-secrets',
   'verify-e2e-seed-guard',
-  // promoted per Fork 1 (G14 v2)
   'verify-fetch-binding',
-  // PR-A3 §5.2 wizard-parity (countersign ruling §3.3)
   'verify-review-produce-parity',
+  'synthetic-daycount-jul2026',
 ];
 
 const norm = (s) => String(s).includes(' / ') ? s.split(' / ').pop().trim() : String(s).trim();
