@@ -60,6 +60,8 @@ export interface RiskPathRecordRow {
   transcript_snapshot: TranscriptTurn[] | null;  // Option B (LOCKED): frozen at notice generation
   transcript_snapshot_at: string | null;
   counsel_route_trigger: string | null;
+  // PR-A3 §5.2 produce-audit (migration 034): LaProduceAuditFields blob persisted at LA produce time.
+  produce_audit?: Record<string, unknown> | null;
   retention_class: string;
   legal_hold: boolean;
   legal_hold_ref: string | null;
