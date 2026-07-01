@@ -53,6 +53,19 @@ console.log('\n=== Regression: 2026 unchanged; unverified years still throw ===\
   check('unverified year (2099) still throws (gate intact)', threw);
 }
 
+console.log('\n=== Shift-date invariants (deploy-time guard, lahd 3-day-count ruling 2026-06-30 §6) ===\n');
+{
+  // The CRC 1.11 weekend-shift dates that a from-memory or stale table is most likely to miss,
+  // and whose absence silently produces a wrong day-count. A missing entry here = a wrong notice.
+  const y2026 = getVerifiedHolidaySet(2026);
+  check('2026-07-03 present (Independence Day observed; Jul 4 = Sat) — THE defect date',
+    y2026.has('2026-07-03') && !y2026.has('2026-07-04'));
+  const y2027 = getVerifiedHolidaySet(2027);
+  check('2027-07-05 present (Independence Day observed; Jul 4 = Sun)', y2027.has('2027-07-05'));
+  check('2027-12-24 present (Christmas observed; Dec 25 = Sat)', y2027.has('2027-12-24'));
+  check('2027-12-31 present (NYD-2028 observed early; Jan 1 2028 = Sat)', y2027.has('2027-12-31'));
+}
+
 console.log('\n=== Cross-year count: the Dec-31 holiday matters (packet downstream check) ===\n');
 {
   // Service Thu 2027-12-30 (personal). Count excludes the service day, then walks
