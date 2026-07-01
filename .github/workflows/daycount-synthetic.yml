@@ -1,0 +1,21 @@
+name: daycount-synthetic
+# SC-DAYCOUNT-JUL2026 — end-to-end day-count / produce-face regression synthetic.
+# Source: lahd_eviction_filing_cover_sheet_and_3day_count_defect_broker_ruling_2026-06-30.md §4 + §6 [MUST FIX].
+# Guards service 2026-06-30 -> expiration 2026-07-06 across the day-count engine, the verified holiday table, and
+# the notice-template renderer. Needs no database — runs on every PR + push to main (§4 "every CI commit").
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  synthetic-daycount-jul2026:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: SC-DAYCOUNT-JUL2026 synthetic
+        run: npm run synthetic:daycount:jul2026
