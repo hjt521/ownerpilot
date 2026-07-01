@@ -11,6 +11,7 @@ import { missingRequiredFields } from '@/lib/chat/intakeMerge';
 import { evaluateProduceEligibility } from '@/lib/riskpath/produceGate';
 import { buildRiskPathInsert } from '@/lib/riskpath/noticeGenerationEvent';
 import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
+import { validateIntendedServiceDate } from '@/lib/dates/intendedServiceDate';
 import type { IntakeState } from '@/lib/chat/intakeSchema';
 
 const COOKIE = 'op_chat_token';
@@ -44,12 +45,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: gate.reason }, { status: 409 });
   }
 
+  // PR-A2 (daycount ruling §2.3 req 1 + req 3): the facial serviceDate IS the Review-captured intendedServiceDate.
+  // Validated at the produce gate — no silent fallback to a generation-date proxy (the original defect class).
+  const intendedServiceDate = req.nextUrl.searchParams.get('intendedServiceDate');
+  const sdCheck = validateIntendedServiceDate(intendedServiceDate);
+  if (!sdCheck.ok) {
+    return NextResponse.json({ error: 'invalid_service_date', detail: sdCheck.message }, { status: 400 });
+  }
+
   // (2) G3 — call the existing Phase 2D LA produce rail (env-flagged + Decision 2 freshness inside the rail).
+  // serviceDate is carried through so the rail/renderer computes facial dates against it (Dated = serviceDate).
   const base = process.env.NEXT_PUBLIC_APP_URL ?? '';
   const railRes = await fetch(`${base}/api/notice/produce`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-internal-invoke': process.env.INTERNAL_INVOKE_SECRET ?? '' },
-    body: JSON.stringify({ source: 'chat', payload: flattenIntake(session.intake_state ?? {}) }),
+    body: JSON.stringify({ source: 'chat', payload: { ...flattenIntake(session.intake_state ?? {}), serviceDate: intendedServiceDate } }),
   });
   if (!railRes.ok) {
     // The rail surfaces NOT_YET_AVAILABLE / stale / ATTACHMENT_FAILED with its existing copy — pass it through.
