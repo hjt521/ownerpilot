@@ -168,10 +168,15 @@ export const chatIntakePreflightDisputeReAsk = `I want to make sure I've got thi
 // PROVISIONAL — pending native review (§5.6)
 export const chatIntakePreflightDisputePromptEs = `Antes de armar el aviso, necesito verificar tres cosas rápidas contigo. Estas afectan si un aviso de 3 días es la herramienta correcta para esta situación, o si deberías hablar con un abogado primero. Para cada una, dime sí, no, o "no estoy seguro" — "no estoy seguro" es una respuesta real, así que úsala si no sabes.`;
 
-// --- PROPOSED strings (NOT yet manifest-locked) — engineering proposes per render ruling §3.1 + §3;
-//     broker ratifies in the Lane 2E attestation, then these graduate into the manifest. Kept out of
-//     locked_prose_manifest.json until ratified so they are not attested as ratified prose. ---
-// PROPOSED (§3.1 continuation ambiguity re-ask):
-export const chatIntakeRentPeriodsReAskContinuationProposed = `Sorry — I didn't catch whether you want to add another period. Is there another rent period to include on this notice, or is this everything?`;
-// PROPOSED (§3 two-attempt escalation → save-and-resume):
-export const chatIntakeCaptureEscalationProposed = `Let's not get stuck here. I'll save what we have so far so you don't lose it — you can come back and finish this step anytime. Would you like me to email you a link to pick up where you left off?`;
+// --- Guardrail re-asks RATIFIED verbatim by lane2e_fork_a_countersign_and_open_items_omnibus_broker_ruling_2026-07-01.md §3
+//     (were engineering-proposed in the Fork A attestation; ratified as-written, now manifest-locked). ---
+// §3.1 continuation-ambiguity re-ask:
+export const chatIntakeRentPeriodsReAskContinuation = `Sorry — I didn't catch whether you want to add another period. Is there another rent period to include on this notice, or is this everything?`;
+// §3.2 two-attempt escalation → save-and-resume:
+export const chatIntakeCaptureEscalation = `Let's not get stuck here. I'll save what we have so far so you don't lose it — you can come back and finish this step anytime. Would you like me to email you a link to pick up where you left off?`;
+
+// --- §4 entity entityType capture — RULED (omnibus §4). Option (a): a ratified prompt asks the owner
+//     directly (no name-inference, no render-derivation). Placed after entity name, before title. EN ratified
+//     now; ES awaits the general ES ratification pass (omnibus §4.7). ---
+export const chatIntakeSignerEntityTypePrompt = `Got it — {{entityName}}. What kind of entity is that? An LLC, a corporation, a limited partnership, a general partnership, a trust, or something else?`;
+export const chatIntakeSignerEntityTypeReAsk = `Sorry — I want to make sure I record this correctly. Is {{entityName}} an LLC, a corporation, a limited partnership, a general partnership, a trust, or something else?`;

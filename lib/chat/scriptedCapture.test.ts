@@ -5,15 +5,16 @@
 
 import {
   parseFullDate, parseAmount, parseTriState, parseContinuation, parseIndividualOrEntity,
-  parseTitleToCapacity, parseConfirm, parseDays, parseHours,
+  parseTitleToCapacity, parseEntityType, parseConfirm, parseDays, parseHours,
   beginCapture, stepCapture, fillSlots, type CaptureCursor,
 } from './scriptedCapture';
 import {
   chatIntakeRentPeriodsPrompt, chatIntakeRentPeriodsEndDateAsk, chatIntakeRentPeriodsReAskStartAfterEnd,
   chatIntakeRentPeriodsReAskLabel, chatIntakeSignerCapacityPrompt, chatIntakeSignerReAskAmbiguous,
+  chatIntakeSignerEntityTypeReAsk,
   chatIntakePersonalDeliveryPrompt, chatIntakePersonalDeliveryReAskZeroDays, chatIntakePersonalDeliveryReAskHours,
   chatIntakePreflightDisputePrompt, chatIntakePreflightDisputeQ1, chatIntakePreflightDisputeQ2,
-  chatIntakePreflightDisputeQ3, chatIntakePreflightDisputeReAsk, chatIntakeCaptureEscalationProposed,
+  chatIntakePreflightDisputeQ3, chatIntakePreflightDisputeReAsk, chatIntakeCaptureEscalation,
 } from './persona';
 import { rentPeriodSchema, signerCaptureSchema, personalDeliverySchema, preflightDisputeSchema } from './intakeSchema';
 import type { IntakeState } from './intakeSchema';
@@ -64,6 +65,16 @@ check('title: "property manager" -> broker_or_manager', parseTitleToCapacity('pr
 check("title: \"I don't know\" -> dont_know", parseTitleToCapacity("I don't know my title") === 'dont_know');
 check('title: unrecognized -> null', parseTitleToCapacity('grand poobah') === null);
 
+check('entityType: llc', parseEntityType("it's an LLC") === 'llc');
+check('entityType: corporation', parseEntityType('a corporation') === 'corporation');
+check('entityType: incorporated -> corporation', parseEntityType('we are incorporated') === 'corporation');
+check('entityType: limited partnership -> lp (before gp)', parseEntityType('a limited partnership') === 'lp');
+check('entityType: general partnership -> gp', parseEntityType('general partnership') === 'gp');
+check('entityType: trust', parseEntityType('a family trust') === 'trust');
+check('entityType: "something else" -> other', parseEntityType('something else') === 'other');
+check('entityType: llc wins over corp when both present', parseEntityType('LLC — well, kind of a corp') === 'llc');
+check('entityType: unclassifiable -> null', parseEntityType('a widget') === null);
+
 check('days: real days preserved', parseDays('Monday through Friday') === 'Monday through Friday');
 check('days: zero-day -> null', parseDays('no days') === null);
 check("days: \"I'm not available\" -> null", parseDays("I'm not available") === null);
@@ -106,16 +117,19 @@ check('emit: dispute framing+Q1 verbatim', beginCapture('preflight_dispute').rep
   const ind = stepCapture(c, 'just myself as the owner', OWNER);
   check('signer: individual completes with valid signer_capacity', ind.kind === 'complete' && signerCaptureSchema.safeParse(ind.extracted?.value).success);
 
-  // entity path
+  // entity path: capacity -> name -> entityType -> title -> confirm (omnibus §4)
   t = stepCapture(c, 'on behalf of my LLC', OWNER); c = t.nextCursor as CaptureCursor;   // -> entity name ask
-  t = stepCapture(c, 'PTAG L LLC', OWNER); c = t.nextCursor as CaptureCursor;            // -> title ask
+  t = stepCapture(c, 'PTAG L LLC', OWNER);                                               // -> entityType ask
+  check('signer: entityType prompt emitted after name (slot filled)', t.reply.includes('PTAG L LLC') && t.reply.includes('a general partnership'));
+  c = t.nextCursor as CaptureCursor;
+  check('signer: entityType unclassifiable -> re-ask verbatim', stepCapture(c, 'a widget', OWNER).reply === fillSlots(chatIntakeSignerEntityTypeReAsk, { entityName: 'PTAG L LLC' }));
+  t = stepCapture(c, "it's an LLC", OWNER); c = t.nextCursor as CaptureCursor;            // -> title ask
   t = stepCapture(c, 'Manager', OWNER); c = t.nextCursor as CaptureCursor;               // -> confirm
   t = stepCapture(c, 'yes', OWNER);
   const ev = t.extracted?.value as Record<string, unknown>;
   const ident = ev.landlordIdentity as Record<string, unknown>;
-  check('signer: entity confirm completes', t.kind === 'complete' && ev.capacity === 'officer_member_trustee' && ident.entityLegalName === 'PTAG L LLC');
-  check('signer: entityType NOT fabricated (gap surfaced)', ident.entityType === undefined && t.gap === 'entity_entityType_uncaptured');
-  check('signer: entity value FAILS schema until entityType ruling (honest incompleteness)', signerCaptureSchema.safeParse(ev).success === false);
+  check('signer: entity completes with capacity + entityType captured', t.kind === 'complete' && ev.capacity === 'officer_member_trustee' && ident.entityLegalName === 'PTAG L LLC' && ident.entityType === 'llc');
+  check('signer: entity value now PASSES signerCaptureSchema (gap closed)', signerCaptureSchema.safeParse(ev).success === true);
 }
 
 // --- Personal delivery walk ------------------------------------------------
@@ -151,7 +165,7 @@ check('emit: dispute framing+Q1 verbatim', beginCapture('preflight_dispute').rep
   let t = beginCapture('preflight_dispute'); const c0 = t.nextCursor as CaptureCursor;
   const r1 = stepCapture(c0, 'sometimes', EMPTY);                    // fail 1 -> re-ask
   const r2 = stepCapture(r1.nextCursor as CaptureCursor, 'eh', EMPTY); // fail 2 -> escalate
-  check('escalate: 2 failed attempts -> save-and-resume', r2.kind === 'escalate' && r2.nextCursor === null && r2.reply === chatIntakeCaptureEscalationProposed);
+  check('escalate: 2 failed attempts -> save-and-resume', r2.kind === 'escalate' && r2.nextCursor === null && r2.reply === chatIntakeCaptureEscalation);
 }
 
 console.log(`\n${'-'.repeat(44)}\n  ${passed} passed, ${failed} failed\n${'-'.repeat(44)}`);
