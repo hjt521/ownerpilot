@@ -13,6 +13,9 @@ const LABELS: Record<IntakeField, string> = {
   rent_period: 'Rent period', rent_amount_due: 'Amount due', payment_methods_accepted: 'Payment methods',
   payee_bank_name: 'Bank name', payee_bank_address: 'Bank address', payee_account_number: 'Account number',
   preferred_service_method: 'Service method', language_preference: 'Language', courtesy_reminder_first: 'Courtesy reminder first',
+  // Lane 2E produce-completeness fields (labels keep the LABELS map exhaustive over IntakeField).
+  rent_periods: 'Rent periods', signer_capacity: 'Signer', personal_delivery: 'Personal-delivery days/hours',
+  preflight_dispute: 'Dispute check',
 };
 
 const GROUPS: { heading: string; fields: IntakeField[] }[] = [

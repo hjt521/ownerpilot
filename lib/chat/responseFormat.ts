@@ -31,6 +31,8 @@ export const RESPONSE_FORMAT = {
                   'landlord_mailing_address', 'rent_period', 'rent_amount_due', 'payment_methods_accepted',
                   'payee_bank_name', 'payee_bank_address', 'payee_account_number', 'preferred_service_method',
                   'language_preference', 'courtesy_reminder_first',
+                  // Lane 2E produce-completeness (ruling 2026-07-01 §4). Keep in lockstep with intakeSchema.ts.
+                  'rent_periods', 'signer_capacity', 'personal_delivery', 'preflight_dispute',
                 ],
               },
               value: {},
