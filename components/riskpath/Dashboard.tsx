@@ -3,8 +3,13 @@
 // from the current intake; the owner can dismiss (recorded as a §5 acknowledgment) or go to Review to re-produce.
 
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { statusMeta, type StatusTone } from '@/lib/riskpath/statusLabels';
+import {
+  chatLahdFilingChecklistHeader, chatLahdFilingChecklistBody,
+  chatLahdFilingChannelsPreferred, chatLahdFilingChannelsAlternative,
+  chatLahdFilingCoverSheetLabel, chatLahdFilingRecordButton,
+} from '@/lib/chat/lahdFilingCopy';
 
 interface Staleness {
   hasSnapshot: boolean;
@@ -13,10 +18,96 @@ interface Staleness {
   changedFields?: string[];
   warning?: string | null;
 }
+interface LahdState {
+  eligible: boolean;
+  latestFiling?: { filing_date: string; filing_channel: string } | null;
+}
 interface RecordVM {
   id: string; current_state: string; notice_document_id: string | null;
   counsel_route_trigger: string | null; created_at: string; updated_at: string;
   staleness?: Staleness;
+  lahd?: LahdState;
+}
+
+/** Render locked copy that contains a single markdown [label](url) link as text + an anchor (trusted content). */
+function withMarkdownLinks(text: string): ReactNode {
+  const m = text.match(/^([^[]*)\[([^\]]+)\]\(([^)]+)\)(.*)$/);
+  if (!m) return text;
+  return (
+    <>
+      {m[1]}
+      <a href={m[3]} target="_blank" rel="noopener noreferrer" className="underline">{m[2]}</a>
+      {m[4]}
+    </>
+  );
+}
+
+const CHANNEL_LABEL: Record<string, string> = {
+  online_portal: 'the LAHD online portal',
+  mail_with_cover_sheet: 'mail with the cover sheet',
+  other: 'another method',
+};
+
+/** PR-C §7.3 — LAHD filing section on the riskpath row (LA-eligible rows only). */
+function LahdFilingSection({ record }: { record: RecordVM }) {
+  const [filed, setFiled] = useState(record.lahd?.latestFiling ?? null);
+  const [date, setDate] = useState('');
+  const [channel, setChannel] = useState<'online_portal' | 'mail_with_cover_sheet' | 'other'>('online_portal');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function record_() {
+    setErr(null);
+    if (!date) { setErr('Enter the date you filed.'); return; }
+    setBusy(true);
+    const r = await fetch(`/api/notices/${record.id}/lahd-filing-record`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filing_date: date, filing_channel: channel }),
+    }).catch(() => null);
+    setBusy(false);
+    if (!r || !r.ok) { setErr('Could not record the filing. Please try again.'); return; }
+    setFiled({ filing_date: date, filing_channel: channel });
+  }
+
+  return (
+    <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 p-3" data-testid="lahd-filing-section">
+      <p className="text-sm font-semibold text-blue-900">{chatLahdFilingChecklistHeader}</p>
+      {filed ? (
+        <p className="mt-1 text-sm text-blue-900">Filed on {filed.filing_date} via {CHANNEL_LABEL[filed.filing_channel] ?? filed.filing_channel}.</p>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-blue-900 leading-relaxed">{chatLahdFilingChecklistBody}</p>
+          <ul className="mt-2 space-y-1 text-sm text-blue-900">
+            <li>{withMarkdownLinks(chatLahdFilingChannelsPreferred)}</li>
+            <li>{withMarkdownLinks(chatLahdFilingChannelsAlternative)}</li>
+          </ul>
+          <a href={`/api/notices/${record.id}/lahd-cover-sheet`} target="_blank" rel="noopener noreferrer"
+             className="mt-2 inline-block min-h-[44px] text-sm font-medium text-blue-900 underline">
+            {chatLahdFilingCoverSheetLabel}
+          </a>
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <label className="text-xs text-blue-900">Date filed
+              <input type="date" value={date} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)}
+                className="mt-1 block min-h-[44px] rounded border border-blue-300 px-2 py-1 text-sm" />
+            </label>
+            <label className="text-xs text-blue-900">How
+              <select value={channel} onChange={(e) => setChannel(e.target.value as typeof channel)}
+                className="mt-1 block min-h-[44px] rounded border border-blue-300 px-2 py-1 text-sm">
+                <option value="online_portal">Online portal</option>
+                <option value="mail_with_cover_sheet">Mail with cover sheet</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <button onClick={record_} disabled={busy}
+              className="min-h-[44px] rounded-md bg-blue-900 px-4 py-2 text-sm text-white disabled:opacity-40">
+              {chatLahdFilingRecordButton}
+            </button>
+          </div>
+          {err && <p className="mt-1 text-sm text-red-600">{err}</p>}
+        </>
+      )}
+    </div>
+  );
 }
 
 const TONE_CLASS: Record<StatusTone, string> = {
@@ -90,6 +181,7 @@ export function Dashboard() {
                   <p className="text-sm text-neutral-700 leading-relaxed">{STALENESS_FALLBACK}</p>
                 </div>
               )}
+              {r.lahd?.eligible && <LahdFilingSection record={r} />}
               <div className="flex items-center justify-between gap-3">
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${TONE_CLASS[meta.tone]}`}>{meta.label}</span>
                 <span className="text-xs text-neutral-400">{new Date(r.created_at).toLocaleDateString()}</span>

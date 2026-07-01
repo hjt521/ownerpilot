@@ -28,13 +28,27 @@ export async function GET(req: NextRequest) {
   }
   const { data, error } = await sb
     .from('riskpath_records')
-    .select('id, current_state, notice_document_id, counsel_route_trigger, created_at, updated_at, chat_session_id, produce_snapshot')
+    .select('id, current_state, notice_document_id, counsel_route_trigger, created_at, updated_at, chat_session_id, produce_snapshot, produce_audit')
     .eq('user_id', session.user_id)
     .is('soft_deleted_at', null)
     .order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: 'could not load records' }, { status: 500 });
 
   const rows = (data ?? []) as Array<Record<string, unknown>>;
+
+  // PR-C Surface: the most-recent LAHD filing-completion record per row (§6.2 read-latest). One query.
+  const riskpathIds = rows.map((r) => r.id) as string[];
+  const latestFilingByRiskpath = new Map<string, { filing_date: string; filing_channel: string }>();
+  if (riskpathIds.length) {
+    const { data: filings } = await sb
+      .from('lahd_filing_records')
+      .select('riskpath_id, filing_date, filing_channel, filed_at')
+      .in('riskpath_id', riskpathIds)
+      .order('filed_at', { ascending: false });
+    for (const f of (filings ?? []) as Array<{ riskpath_id: string; filing_date: string; filing_channel: string }>) {
+      if (!latestFilingByRiskpath.has(f.riskpath_id)) latestFilingByRiskpath.set(f.riskpath_id, { filing_date: f.filing_date, filing_channel: f.filing_channel });
+    }
+  }
   // Load each row's session intake_state once (staleness compares current intake vs the row's produce_snapshot).
   const sessionIds = [...new Set(rows.map((r) => r.chat_session_id).filter(Boolean))] as string[];
   const intakeById = new Map<string, IntakeState>();
@@ -62,10 +76,18 @@ export async function GET(req: NextRequest) {
       }
       staleness = { hasSnapshot: true, stale, reason, changedFields, warning };
     }
-    // Do not leak the snapshot or session id to the client — only the verdict.
-    const { chat_session_id: _c, produce_snapshot: _p, ...pub } = r;
-    void _c; void _p;
-    return { ...pub, staleness };
+    // PR-C: LAHD filing state. `eligible` = the row is a City-of-LA produce with a recorded LAHD acknowledgment
+    // (produce_audit present — the durable confirmed_la signal; §7.4 LA-scoped render). `latestFiling` is the most-
+    // recent owner-attested filing record, or null. (As-built deviation: the row does not store the jurisdiction
+    // verdict; produce_audit presence is the equivalent LA-produce signal — see the PR-C attestation.)
+    const lahd = {
+      eligible: r.produce_audit != null,
+      latestFiling: latestFilingByRiskpath.get(r.id as string) ?? null,
+    };
+    // Do not leak the snapshot, audit, or session id to the client — only the verdicts.
+    const { chat_session_id: _c, produce_snapshot: _p, produce_audit: _a, ...pub } = r;
+    void _c; void _p; void _a;
+    return { ...pub, staleness, lahd };
   });
 
   return NextResponse.json({ records });
