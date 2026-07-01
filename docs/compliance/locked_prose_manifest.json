@@ -365,6 +365,42 @@
       "hash": "f452326a23c671e7bc8b8891de695dcbc1020286ec5597b7804c19ca96c90bdb",
       "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
       "source_section": "§5.6 (PROVISIONAL)"
+    },
+    {
+      "constant": "chatIntakeRentPeriodsReAskContinuation",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Sorry — I didn't catch whether you want to add another period. Is there another rent period to include on this notice, or is this everything?",
+      "hash": "9185c441e5a05ea9fc17344edca0bd92d72fa723ea7a63677067e26ba0f9a6fe",
+      "source_determination": "docs/compliance/lane2e_fork_a_countersign_and_open_items_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§3.1"
+    },
+    {
+      "constant": "chatIntakeCaptureEscalation",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Let's not get stuck here. I'll save what we have so far so you don't lose it — you can come back and finish this step anytime. Would you like me to email you a link to pick up where you left off?",
+      "hash": "a4530657a1458dc859fa21131c7f8d2d1519b4ff9ecc0e7e77415d296f3355f7",
+      "source_determination": "docs/compliance/lane2e_fork_a_countersign_and_open_items_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§3.2"
+    },
+    {
+      "constant": "chatIntakeSignerEntityTypePrompt",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Got it — {{entityName}}. What kind of entity is that? An LLC, a corporation, a limited partnership, a general partnership, a trust, or something else?",
+      "hash": "34f45a97c9ffddf0185ae41a98b90170f9bcf2771a9a3c4218a18878e592dc93",
+      "source_determination": "docs/compliance/lane2e_fork_a_countersign_and_open_items_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§4.2"
+    },
+    {
+      "constant": "chatIntakeSignerEntityTypeReAsk",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Sorry — I want to make sure I record this correctly. Is {{entityName}} an LLC, a corporation, a limited partnership, a general partnership, a trust, or something else?",
+      "hash": "62991c02e0dd21a44c7fd49a607d2fd118884cbb79ac634362f02f8bf5d8006d",
+      "source_determination": "docs/compliance/lane2e_fork_a_countersign_and_open_items_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§4.4"
     }
   ]
 }

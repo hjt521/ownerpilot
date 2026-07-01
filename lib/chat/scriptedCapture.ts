@@ -22,10 +22,12 @@ import {
   chatIntakeRentPeriodsReAskStartAfterEnd,
   chatIntakeRentPeriodsReAskLabel,
   chatIntakeRentPeriodsReAskAmount,
-  chatIntakeRentPeriodsReAskContinuationProposed,
+  chatIntakeRentPeriodsReAskContinuation,
   chatIntakeSignerCapacityPrompt,
   chatIntakeSignerIndividualAck,
   chatIntakeSignerEntityNameAsk,
+  chatIntakeSignerEntityTypePrompt,
+  chatIntakeSignerEntityTypeReAsk,
   chatIntakeSignerEntityTitleAsk,
   chatIntakeSignerEntityConfirm,
   chatIntakeSignerReAskDontKnowTitle,
@@ -40,7 +42,7 @@ import {
   chatIntakePreflightDisputeQ2,
   chatIntakePreflightDisputeQ3,
   chatIntakePreflightDisputeReAsk,
-  chatIntakeCaptureEscalationProposed,
+  chatIntakeCaptureEscalation,
 } from './persona';
 
 // ---------------------------------------------------------------------------
@@ -208,6 +210,24 @@ export function parseTitleToCapacity(input: string): SignerCapacityValue | 'dont
   return null;
 }
 
+export type EntityTypeValue = 'llc' | 'corporation' | 'lp' | 'gp' | 'trust' | 'other';
+
+/**
+ * Entity-type classification (omnibus ruling §4.3). Ordering matters: 'llc' before 'corporation'; 'lp'
+ * (limited partnership) before 'gp' (general partnership) since both contain "partnership"; partnership
+ * branches before 'trust'. Owner is the only source — never inferred from the entity name (§3.4/§4).
+ */
+export function parseEntityType(input: string): EntityTypeValue | null {
+  const s = ` ${input.trim().toLowerCase()} `;
+  if (includesAny(s, ['llc', 'l.l.c', 'l.l.c.', 'limited liability company'])) return 'llc';
+  if (includesAny(s, ['corporation', 'incorporated', 'corp', 'inc'])) return 'corporation';
+  if (includesAny(s, ['limited partnership', 'lp', 'l.p', 'l.p.'])) return 'lp';
+  if (includesAny(s, ['general partnership', 'gp', 'g.p', 'g.p.'])) return 'gp';
+  if (includesAny(s, ['trust'])) return 'trust';
+  if (includesAny(s, ['other', 'something else', 'different', 'none of'])) return 'other';
+  return null;
+}
+
 export function parseConfirm(input: string): 'yes' | 'no' | null {
   const s = ` ${input.trim().toLowerCase()} `;
   if (includesAny(s, ['yes', 'right', 'correct', "that's right", 'thats right', 'yep', 'yeah', 'confirmed', 'exactly', 'true'])) return 'yes';
@@ -311,8 +331,8 @@ export function beginCapture(category: CaptureCategory): ScriptedTurn {
 function reask(cursor: CaptureCursor, reply: string, step = cursor.step): ScriptedTurn {
   const attempts = cursor.attempts + 1;
   if (attempts >= MAX_ATTEMPTS) {
-    // Two failed attempts on the same field → save-and-resume escalation (ruling §3; PROPOSED string).
-    return { reply: chatIntakeCaptureEscalationProposed, kind: 'escalate', nextCursor: null };
+    // Two failed attempts on the same field → save-and-resume escalation (ruling §3; ratified omnibus §3.2).
+    return { reply: chatIntakeCaptureEscalation, kind: 'escalate', nextCursor: null };
   }
   return { reply, kind: 'reask', nextCursor: { ...cursor, step, attempts } };
 }
@@ -366,7 +386,7 @@ function stepRentPeriods(cursor: CaptureCursor, msg: string): ScriptedTurn {
   }
   // awaiting_continuation
   const cont = parseContinuation(msg);
-  if (cont === null) return reask(cursor, chatIntakeRentPeriodsReAskContinuationProposed);
+  if (cont === null) return reask(cursor, chatIntakeRentPeriodsReAskContinuation);
   if (cont === 'more') {
     return advance(cursor, 'awaiting_start', { completed }, chatIntakeRentPeriodsNextPeriodAsk);
   }
@@ -398,7 +418,14 @@ function stepSigner(cursor: CaptureCursor, msg: string, state: IntakeState): Scr
     const name = msg.trim();
     if (!name) return reask(cursor, chatIntakeSignerEntityNameAsk);
     scratch.entityName = name;
-    return advance(cursor, 'awaiting_entity_title', scratch, fillSlots(chatIntakeSignerEntityTitleAsk, { entity_name: name }));
+    // Omnibus §4: ask entityType directly (after name, before title) — never inferred from the name.
+    return advance(cursor, 'awaiting_entity_type', scratch, fillSlots(chatIntakeSignerEntityTypePrompt, { entityName: name }));
+  }
+  if (cursor.step === 'awaiting_entity_type') {
+    const et = parseEntityType(msg);
+    if (et === null) return reask(cursor, fillSlots(chatIntakeSignerEntityTypeReAsk, { entityName: String(scratch.entityName) }));
+    scratch.entityType = et;
+    return advance(cursor, 'awaiting_entity_title', scratch, fillSlots(chatIntakeSignerEntityTitleAsk, { entity_name: String(scratch.entityName) }));
   }
   if (cursor.step === 'awaiting_entity_title') {
     const cap = parseTitleToCapacity(msg);
@@ -419,20 +446,16 @@ function stepSigner(cursor: CaptureCursor, msg: string, state: IntakeState): Scr
     const confirm = fillSlots(chatIntakeSignerEntityConfirm, { entity_name: String(scratch.entityName), title: String(scratch.title) });
     return reask(cursor, confirm);
   }
-  if (c === 'no') return advance(cursor, 'awaiting_entity_title', { entityName: scratch.entityName }, fillSlots(chatIntakeSignerEntityTitleAsk, { entity_name: String(scratch.entityName) }));
-  // confirmed. NOTE (Fork-A capture gap): signerCaptureSchema requires entityType (llc/corporation/lp/gp/
-  // trust/other), but the ratified §3 prose does not ask it and §3.4 PROHIBITS inferring it from the entity
-  // name. We do NOT fabricate or infer it. The entity value is emitted WITHOUT entityType and flagged; the
-  // Lane 2E attestation surfaces this to the broker for a ruling (new ratified entityType prompt, or a
-  // corporate-landlord render-derivation ruling). Individual-path signer capture is complete and unaffected.
+  if (c === 'no') return advance(cursor, 'awaiting_entity_title', { entityName: scratch.entityName, entityType: scratch.entityType }, fillSlots(chatIntakeSignerEntityTitleAsk, { entity_name: String(scratch.entityName) }));
+  // confirmed — entityType is captured (omnibus §4), so the entity value is now schema-valid.
   const value = {
     capacity: scratch.capacity as SignerCapacityValue,
-    landlordIdentity: { type: 'entity', entityLegalName: String(scratch.entityName) },
+    landlordIdentity: { type: 'entity', entityLegalName: String(scratch.entityName), entityType: scratch.entityType as EntityTypeValue },
     signerName: ownerName,
     signerTitle: String(scratch.title),
   };
   return { reply: chatIntakeSignerIndividualAck, kind: 'complete', nextCursor: null,
-    extracted: { field: 'signer_capacity', value }, gap: 'entity_entityType_uncaptured' };
+    extracted: { field: 'signer_capacity', value } };
 }
 
 // --- §4 personal delivery ---
