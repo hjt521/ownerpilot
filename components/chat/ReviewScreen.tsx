@@ -12,6 +12,14 @@ import { computeCompliancePeriod } from '@/lib/dates/computeCompliancePeriod';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import { validateIntendedServiceDate, MAX_LEAD_DAYS } from '@/lib/dates/intendedServiceDate';
 import { intendedServiceDateExplainer } from '@/lib/flow/intendedServiceDateCopy';
+// PR-A3 §5.2 core — client produce path (Fork B(ii) rail-caller + Fork A(iii) client verdict resolution).
+// Source: pr_a3_produce_handoff_fork_ruling_2026-07-01.md.
+import { planProduce, type ProducePlan } from '@/lib/chat/reviewProduce';
+import { renderNotice } from '@/lib/produce/renderNotice';
+import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
+import { LaProducePanel } from '@/components/la-produce-panel';
+import { isLaProductionUnblocked } from '@/lib/jurisdiction/laRtcRules';
+import { boundFetch } from '@/lib/http/boundFetch';
 
 interface ReviewField { field: string; label: string; display: string; sensitive: boolean; }
 interface ReviewGroup { heading: string; fields: ReviewField[]; }
@@ -55,6 +63,40 @@ export function ReviewScreen() {
   const [serviceDate, setServiceDate] = useState<string>(today);
   const [expiration, setExpiration] = useState<string | null>(null);
   const [dateErr, setDateErr] = useState<string | null>(null);
+
+  // PR-A3 §5.2 core — produce mode. idle → working (POST from-chat + resolve verdict) → ready (LA overlay or
+  // stub) | error. The LLM/produce rail is never called until the owner clicks Generate.
+  const [produce, setProduce] = useState<
+    { phase: 'idle' | 'working' | 'ready' | 'error'; plan?: ProducePlan; error?: string }
+  >({ phase: 'idle' });
+
+  async function onGenerate() {
+    setProduce({ phase: 'working' });
+    try {
+      const r = await fetch('/api/notice/produce/from-chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ intendedServiceDate: serviceDate }),
+      });
+      if (r.status === 409) {
+        const j = await r.json().catch(() => ({}));
+        if (j.error === 'routed_to_counsel' && typeof j.href === 'string') { window.location.href = j.href; return; }
+        setProduce({ phase: 'error', error: 'This notice needs review before it can be produced.' });
+        return;
+      }
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        setProduce({ phase: 'error', error: j.detail ?? j.error ?? 'We couldn’t start producing the notice. Please try again.' });
+        return;
+      }
+      const env = await r.json();
+      // Fork A(iii): resolve jurisdiction client-side reusing the wizard resolver; Fork B(ii): the rail is
+      // called client-side (inside LaProducePanel) for the confirmed_la branch.
+      const plan = await planProduce(env, { isGateOpen: isLaProductionUnblocked, fetchImpl: boundFetch });
+      setProduce({ phase: 'ready', plan });
+    } catch {
+      setProduce({ phase: 'error', error: 'Something went wrong producing the notice. Please try again.' });
+    }
+  }
 
   async function load() {
     const r = await fetch('/api/chat/review');
@@ -147,11 +189,13 @@ export function ReviewScreen() {
       )}
 
       <div className="mt-8 flex flex-col gap-3">
-        {/* Group 4 — notice-rail produce. intendedServiceDate carried through as the facial serviceDate. */}
-        <button disabled={!canGenerate}
-          onClick={() => { window.location.href = `/api/notice/produce/from-chat?intendedServiceDate=${encodeURIComponent(serviceDate)}`; }}
+        {/* PR-A3 §5.2 core — produce path. POSTs the from-chat envelope (§5.1), resolves the jurisdiction
+            verdict client-side (Fork A(iii)), then renders: LA overlay for confirmed_la (Fork B(ii) rail-caller
+            inside LaProducePanel), or a stub for the non-LA / manual-review / unresolved branches this pass. */}
+        <button disabled={!canGenerate || produce.phase === 'working'}
+          onClick={onGenerate}
           className="min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white disabled:opacity-40">
-          Generate notice PDF
+          {produce.phase === 'working' ? 'Preparing your notice…' : 'Generate notice PDF'}
         </button>
         {/* Group 3 — magic-link send-draft */}
         <button onClick={() => { window.location.href = '/chat/review?send=1'; }}
@@ -159,6 +203,72 @@ export function ReviewScreen() {
           Send myself this draft
         </button>
       </div>
+
+      {produce.phase === 'error' && (
+        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{produce.error}</p>
+          <button onClick={onGenerate} className="mt-2 min-h-[44px] text-sm underline">Try again</button>
+        </div>
+      )}
+
+      {produce.phase === 'ready' && produce.plan && (
+        produce.plan.route.kind === 'la_overlay'
+          ? <LaProduceMount plan={produce.plan} />
+          : <ProduceStub reason={produce.plan.route.reason} />
+      )}
     </main>
+  );
+}
+
+/**
+ * LA green path (§5.2 core): render the notice from the chat-assembled NoticeFlowData (wizard parity — same
+ * renderNotice) and mount the server-gated LaProducePanel (verify-la → la-packet → LAHD prompt → print).
+ */
+function LaProduceMount({ plan }: { plan: ProducePlan }) {
+  const [, setProduced] = useState(false);
+  let html: string | null = null;
+  let model: ReturnType<typeof renderNotice>['model'] | null = null;
+  let renderErr: string | null = null;
+  try {
+    const rendered = renderNotice({ data: plan.data, dates: plan.dates });
+    model = rendered.model;
+    html = buildNoticeDocumentHtml(model);
+  } catch {
+    renderErr = 'The notice could not be generated. Please review your entries.';
+  }
+  if (renderErr || !model || !html) {
+    return <p className="mt-6 text-sm text-red-600">{renderErr ?? 'The notice could not be generated.'}</p>;
+  }
+  return (
+    <section className="mt-8">
+      <LaProducePanel
+        model={model}
+        data={plan.data}
+        noticeDocHtml={html}
+        baseName={plan.baseName}
+        verdictSource="live_resolver"
+        onProduced={() => setProduced(true)}
+        // TODO(§5.2 fast-follow, pr_a3_produce_handoff_fork_ruling_2026-07-01.md §5): persist the LA produce
+        // audit (RTC hashes + LAHD ack) onto the riskpath record via a produce-audit endpoint. Deferred + flagged
+        // in the §5.2 core attestation — captured here, not silently dropped.
+        onAudit={() => {}}
+      />
+    </section>
+  );
+}
+
+/**
+ * §5.2-core stub for the non-LA / manual-review / unresolved / gate-closed branches: WIRED and routed
+ * correctly, intentionally minimal. Full branch UX + copy, non-LA production, broker-confirm (Decision B), and
+ * the save-and-resume link (chatIntakeCaptureEscalation) are the fast-follow (fork ruling §5).
+ */
+function ProduceStub({ reason }: { reason: string }) {
+  return (
+    <section className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid={`produce-stub-${reason}`}>
+      <p className="text-sm text-neutral-700">
+        We can’t finish producing this notice automatically in this version. We’ve saved your details — you can
+        come back and pick up where you left off.
+      </p>
+    </section>
   );
 }
