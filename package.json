@@ -29,6 +29,7 @@
     "ci:verify-no-preconsent-analytics": "node scripts/ci/check_no_preconsent_analytics.mjs",
     "synthetic:a14:503": "tsx scripts/synthetic/a14_503_enqueue_drain_resolve.ts",
     "synthetic:a14:exhaust": "tsx scripts/synthetic/a14_exhausted_retry.ts",
+    "synthetic:daycount:jul2026": "tsx scripts/synthetic/sc_daycount_jul2026.ts",
     "ci:verify-e2e-seed-guard": "node scripts/ci/verify_e2e_seed_guard.mjs",
     "ci:verify-analytics-no-pii": "node scripts/verify-analytics-no-pii.mjs",
     "ci:verify-broker-confirm-sla-sync": "node scripts/verify-broker-confirm-sla-sync.mjs",

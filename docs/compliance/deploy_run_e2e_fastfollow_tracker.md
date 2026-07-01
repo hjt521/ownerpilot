@@ -21,7 +21,7 @@ Governing rulings:
 
 ## Non-E2E deferred items (PR-C omnibus §6 / §4)
 
-- **`SC-DAYCOUNT-JUL2026` A14 synthetic-catalog entry** — the day-count engine regression is unit-covered (`computeCompliancePeriod.test.ts`), but the named end-to-end A14 synthetic (cover-sheet ruling §6 [MUST FIX]) is not in `scripts/synthetic/`. Its own slice.
+- **`SC-DAYCOUNT-JUL2026` A14 synthetic-catalog entry — DONE (2026-07-01).** `scripts/synthetic/sc_daycount_jul2026.ts` asserts service `2026-06-30` → expiration `2026-07-06` end-to-end (day-count engine + verified holiday table + `renderNotice` + `buildNoticeDocumentHtml` rendered face; also asserts the face does NOT print the `2026-07-02` defect). No DB. Runs on every PR + push to main via `.github/workflows/daycount-synthetic.yml` (job `synthetic-daycount-jul2026`) and `npm run synthetic:daycount:jul2026`. 5/0. Cover-sheet ruling §6 [MUST FIX] closed. (Broker may add `synthetic-daycount-jul2026` to branch-protection required-checks.)
 - **(C) 3-business-day deadline computation** — blocked on the LA city business-day calendar pull (2026-06-18 §7); adds a computed date to the LAHD section when it lands.
 - **Filed-PDF / receipt-number evidence upload** — distinct compliance-surface class (storage/access ruling); PR-C ships owner-attested status only.
 - **Non-LA jurisdiction filing blocks** — parallel `chat<Jurisdiction>Filing*` copy per the supplemental-docs matrix.
