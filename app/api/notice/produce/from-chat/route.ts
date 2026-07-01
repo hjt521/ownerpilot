@@ -1,9 +1,11 @@
-// app/api/notice/produce/from-chat/route.ts — Group 4 notice-rail integration.
-// Orchestrates produce from a completed chat session:
-//   1. G4 server-side hard-stop: read chat_sessions.counsel_route_trigger + completion → evaluateProduceEligibility.
-//   2. G3: invoke the EXISTING Phase 2D LA produce rail server-to-server (env-flag + Decision 2 freshness passthrough,
-//      unmodified). No second gate, no new flag. Frozen rail files are NOT edited — called as a service.
-//   3. On success: write riskpath_records via the lane-4 Option-B snapshot (captured_payload + transcript_snapshot).
+// app/api/notice/produce/from-chat/route.ts — Group 4 notice-rail integration (PR-A3 scope-down).
+// Per pr_a3_produce_handoff_fork_ruling_2026-07-01.md §2.1/§5.1, from-chat's server-side scope is exactly three
+// things — it does NOT call the produce rail:
+//   1. G4 server-side counsel hard-stop (unchanged).
+//   2. intendedServiceDate validation (delegates to the PR-A2 validator).
+//   3. Riskpath insert (unchanged shape; noticeDocumentId null under client-render — no server document row).
+// It returns a produce-ready envelope; the Review step resolves the verdict (Fork A) and calls
+// runLaProduceSequence (Fork B/B(ii)) client-side, then renders the notice body client-side.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { loadSession, serviceClient } from '@/lib/chat/session';
@@ -12,13 +14,20 @@ import { evaluateProduceEligibility } from '@/lib/riskpath/produceGate';
 import { buildRiskPathInsert } from '@/lib/riskpath/noticeGenerationEvent';
 import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
 import { validateIntendedServiceDate } from '@/lib/dates/intendedServiceDate';
+import { lahdFilingPromptCopyVersion } from '@/lib/copy/lahd/lahdFilingPromptCopy';
 import type { IntakeState } from '@/lib/chat/intakeSchema';
 
 const COOKIE = 'op_chat_token';
 
-/** Flatten intake_state {field:{value}} → {field:value} for the produce rail payload. */
+/** Flatten intake_state {field:{value}} → {field:value} for the client to build the notice model. */
 function flattenIntake(state: IntakeState): Record<string, unknown> {
   return Object.fromEntries(Object.entries(state).map(([k, v]) => [k, v?.value]));
+}
+
+function slugBaseName(payload: Record<string, unknown>): string {
+  const addr = typeof payload.property_address === 'string' ? payload.property_address : '';
+  const slug = addr.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  return slug || 'notice';
 }
 
 export async function POST(req: NextRequest) {
@@ -31,8 +40,7 @@ export async function POST(req: NextRequest) {
 
   const intakeComplete = missingRequiredFields(session.intake_state ?? {}).length === 0;
 
-  // (1) G4 hard-stop. Counsel-route precedence; freshness re-checked by the rail in (2), pre-passed true here so
-  // the rail is the authoritative freshness gate (G3) — we only block early on counsel + completeness.
+  // (1) G4 hard-stop (unchanged). Counsel-route precedence + completeness.
   const gate = evaluateProduceEligibility({
     intakeComplete,
     counselTrigger: (session as { counsel_route_trigger?: string | null }).counsel_route_trigger ?? null,
@@ -45,41 +53,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: gate.reason }, { status: 409 });
   }
 
-  // PR-A2 (daycount ruling §2.3 req 1 + req 3): the facial serviceDate IS the Review-captured intendedServiceDate.
-  // Validated at the produce gate — no silent fallback to a generation-date proxy (the original defect class).
-  const intendedServiceDate = req.nextUrl.searchParams.get('intendedServiceDate');
-  const sdCheck = validateIntendedServiceDate(intendedServiceDate);
+  // (2) intendedServiceDate validated per broker ruling 2026-07-01 §1.2(2); delegates to PR-A2 validator
+  // (lib/dates/intendedServiceDate.ts). Do not duplicate range/back-date logic here.
+  const body = (await req.json().catch(() => ({}))) as { intendedServiceDate?: string };
+  const sdCheck = validateIntendedServiceDate(body.intendedServiceDate);
   if (!sdCheck.ok) {
     return NextResponse.json({ error: 'invalid_service_date', detail: sdCheck.message }, { status: 400 });
   }
+  const intendedServiceDate = body.intendedServiceDate as string;
 
-  // (2) G3 — call the existing Phase 2D LA produce rail (env-flagged + Decision 2 freshness inside the rail).
-  // serviceDate is carried through so the rail/renderer computes facial dates against it (Dated = serviceDate).
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? '';
-  const railRes = await fetch(`${base}/api/notice/produce`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-internal-invoke': process.env.INTERNAL_INVOKE_SECRET ?? '' },
-    body: JSON.stringify({ source: 'chat', payload: { ...flattenIntake(session.intake_state ?? {}), serviceDate: intendedServiceDate } }),
-  });
-  if (!railRes.ok) {
-    // The rail surfaces NOT_YET_AVAILABLE / stale / ATTACHMENT_FAILED with its existing copy — pass it through.
-    const detail = await railRes.json().catch(() => ({}));
-    return NextResponse.json({ error: 'produce_unavailable', detail }, { status: railRes.status });
-  }
-  const rail = (await railRes.json()) as { pdfUrl?: string; documentId?: string };
+  // Dangling POST to /api/notice/produce (no route) removed per broker ruling 2026-07-01 §1.2(3)
+  // as corrected by pr_a3_produce_handoff_fork_ruling_2026-07-01.md §4.
+  // Ratified rail is verify-la (POST) + la-packet (GET), called client-side by
+  // runLaProduceSequence from the Review step. No server rail-caller exists or will be created.
 
-  // (3) Option B — durable evidence record at notice generation.
+  // (3) Riskpath insert (unchanged shape). noticeDocumentId is null: the notice body is client-rendered,
+  // so there is no server-side document row at this boundary.
   const insert = buildRiskPathInsert({
     session: {
       id: session.id, user_id: session.user_id, property_id: session.property_id,
       intake_state: session.intake_state ?? {}, transcript: session.transcript ?? [],
     },
-    noticeDocumentId: rail.documentId ?? null,
+    noticeDocumentId: null,
     initialState: 'notice_created',
   });
   const tagged = { ...insert, ...e2eTagFromHeaders(req.headers) };
   const { data: rec, error } = await sb.from('riskpath_records').insert(tagged).select('id').single();
   if (error) return NextResponse.json({ error: 'record_write_failed', detail: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, pdfUrl: rail.pdfUrl ?? null, riskpathId: rec.id });
+  // Produce-ready envelope (broker ruling 2026-07-01 §5.1(4)). Everything runLaProduceSequence needs EXCEPT
+  // verdict/verdictSource (Review resolves, Fork A) and intendedServiceDate (PR-A2 Review state), plus the flat
+  // payload (with serviceDate = intendedServiceDate) the Review step builds the notice model from.
+  const payload = { ...flattenIntake(session.intake_state ?? {}), serviceDate: intendedServiceDate };
+  return NextResponse.json({
+    ok: true,
+    riskpathId: rec.id,
+    lahdCopyVersion: lahdFilingPromptCopyVersion,
+    baseName: slugBaseName(payload),
+    payload,
+  });
 }
