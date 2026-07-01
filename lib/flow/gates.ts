@@ -35,7 +35,7 @@ import {
   V4_WORDING_SIGNED_OFF,
   GEOCODING_LIVE,
 } from './templateVersion';
-import { validateSigningDate, getSuccessfulAttempt, deriveComplianceInputs } from './escalation';
+import { getSuccessfulAttempt, deriveComplianceInputs } from './escalation';
 
 // --- 1. Dispute hard-block -------------------------------------------------
 
@@ -478,26 +478,12 @@ const jur = detectJurisdiction({ address: data.propertyAddress, city: data.prope
     }
   }
 
-  // (g2) Signing (execution) date present, and not after the service date
-  //      (attorney ruling B1, 2026-06-02). The face "Dated:" line reads this
-  //      value, so production must fail closed when it is missing or invalid.
-  //      The >30-day-before case is a soft warning in the UI, not a blocker.
-  if (!data.signingDate) {
-    blockers.push({
-      code: 'SIGNING_DATE_MISSING',
-      message: 'A signing (execution) date for the notice is required.',
-    });
-  } else {
-    const sd = validateSigningDate(data.signingDate, data.serviceDate);
-    if (!sd.ok) {
-      blockers.push({
-        code: 'SIGNING_AFTER_SERVICE',
-        message:
-          sd.error ??
-          'The signing date cannot be after the first service date.',
-      });
-    }
-  }
+  // Gate g2 previously enforced "signing date ≤ service date" under the B1 rule.
+  // Under the facial-coherence principle (daycount_defect_workflow_fork_broker_ruling_2026-06-30.md §2.3 req 3),
+  // signing date and service date are the same value (intendedServiceDate).
+  // The gate is retained as a no-op anchor for the production rail's gate
+  // chain; its compliance work has migrated into the validator and the
+  // "no divergence" assertion in renderNotice.
 
   // (h) v4 wording sign-off gate — fails closed until the attorney signs off.
   if (!V4_WORDING_SIGNED_OFF) {

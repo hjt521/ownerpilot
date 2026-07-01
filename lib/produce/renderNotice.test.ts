@@ -14,6 +14,7 @@
 import {
   derivePayeeName,
   renderNotice,
+  formatNoticeDate,
   type ComputedNoticeDates,
 } from './renderNotice';
 import type { NoticeFlowData } from '../flow/noticeFlowState';
@@ -205,6 +206,27 @@ function entityData(over: Partial<NoticeFlowData> = {}): NoticeFlowData {
   const tail = out.noticeText.split('\n').slice(-2);
   check('individual still renders name + role', tail[0] === 'Maria Lopez' && tail[1] === 'Owner', tail.join(' | '));
   check('individual has no entity sub-model', out.model.signature.entity === undefined);
+}
+
+console.log('\n=== B1 supersession: Dated == serviceDate == intendedServiceDate (no divergence) ===\n');
+{
+  // Divergent inputs prove the rule: serviceDate Jun 30, signingDate Jun 20. Under the superseded B1 rule
+  // the Dated line would have shown Jun 20 (signing). Under facial coherence it must show Jun 30 (service).
+  const out = renderNotice({
+    data: renderable({ ...individual(['Maria Lopez']), serviceDate: '2026-06-30', signingDate: '2026-06-20' }),
+    dates,
+  });
+  const datedLine = out.noticeText.split('\n').find((l) => l.startsWith('Dated:'));
+  check('Dated line prints the SERVICE date (Jun 30), not the signing date (Jun 20)',
+    datedLine === `Dated: ${formatNoticeDate('2026-06-30')}`, datedLine);
+  check('Dated line does NOT print the old signing date (Jun 20)',
+    !out.noticeText.includes(formatNoticeDate('2026-06-20')));
+  // No-divergence invariant on the audit record.
+  check('audit signing_date == date_of_service (no divergence)',
+    out.variablesUsed.signing_date === out.variablesUsed.date_of_service);
+  check('audit signing_date == serviceDate value', out.variablesUsed.signing_date === '2026-06-30');
+  check('model.signature.datedFormatted == formatted serviceDate',
+    out.model.signature.datedFormatted === formatNoticeDate('2026-06-30'));
 }
 
 console.log(`\n${'-'.repeat(40)}`);
