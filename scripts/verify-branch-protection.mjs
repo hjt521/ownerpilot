@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Verifies 17 Required guards on main per broker ruling 2026-07-01 §7.
-// Invoked by broker to confirm 17/17 after §3.3 branch-protection toggle.
+// Verifies 18 Required guards on main per broker ruling 2026-07-01 §7 (18th = review-produce-parity,
+// pr_a3_5_2_core_countersign_and_open_items_broker_ruling_2026-07-01.md §3.3).
+// Invoked by broker to confirm 18/18 after §3.3 branch-protection toggle.
 //
 // verify-branch-protection.mjs — P1 one-shot (broker-authorized; NOT wired into CI — the daily-CI form is
 // Gate-3 scope per e2e_gate2_deviations_and_ci_wiring_broker_ruling_2026-06-30).
@@ -20,9 +21,10 @@
 
 import { readFileSync } from 'node:fs';
 
-// The 17 expected Required checks = 2 pre-existing + 14 audit gaps + fetch-binding (promoted per G14 v2 Fork 1,
-// §4.9: runtime-crash guards on customer-facing rails count as compliance-relevant). Job ids verified verbatim
-// from .github/workflows/*.yml at main 742181c (re-cross-checked at run time — keep in sync with the audit).
+// The 18 expected Required checks = 2 pre-existing + 14 audit gaps + fetch-binding (promoted per G14 v2 Fork 1,
+// §4.9: runtime-crash guards on customer-facing rails count as compliance-relevant) + review-produce-parity
+// (PR-A3 §5.2 wizard-parity; structural-parity guards are branch-protection-eligible on first observed pass —
+// countersign ruling §3.3/§5). Job ids verified verbatim from .github/workflows/*.yml (keep in sync with the audit).
 const EXPECTED = [
   // pre-existing
   'test-and-typecheck',
@@ -44,6 +46,8 @@ const EXPECTED = [
   'verify-e2e-seed-guard',
   // promoted per Fork 1 (G14 v2)
   'verify-fetch-binding',
+  // PR-A3 §5.2 wizard-parity (countersign ruling §3.3)
+  'verify-review-produce-parity',
 ];
 
 const norm = (s) => String(s).includes(' / ') ? s.split(' / ').pop().trim() : String(s).trim();

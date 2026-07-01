@@ -1,0 +1,21 @@
+name: review-produce-parity-lock
+# PR-A3 §5.2 wizard-parity guard — the chat Review produce path (components/chat/ReviewScreen.tsx +
+# lib/chat/reviewProduce.ts) must render through the SAME toNoticeFlowData / renderNotice / buildNoticeDocumentHtml /
+# LaProducePanel / runJurisdictionResolution the wizard uses, so a chat-produced notice can never drift from a
+# wizard-produced one. HARD FAIL on divergence. Dependency-free (Node built-ins) — no npm install needed.
+# Ruling: pr_a3_5_2_core_countersign_and_open_items_broker_ruling_2026-07-01.md §3 (add to CI + required-checks).
+# No path filter on purpose (mirrors locked-prose-lock.yml / banned-terms-lock.yml): always runs.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-review-produce-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify review→produce parity (chat reuses wizard surface)
+        run: node scripts/ci/verify_review_produce_parity.mjs
