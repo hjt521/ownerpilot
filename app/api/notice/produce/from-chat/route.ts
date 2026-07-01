@@ -16,8 +16,24 @@ import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
 import { validateIntendedServiceDate } from '@/lib/dates/intendedServiceDate';
 import { lahdFilingPromptCopyVersion } from '@/lib/copy/lahd/lahdFilingPromptCopy';
 import type { IntakeState } from '@/lib/chat/intakeSchema';
+// PR-B staleness guard — Surface 1 (Fork 1 §3 write + Fork 2 §4.1 pre-produce gate).
+// Source: pr_b_staleness_scope_omnibus_broker_ruling_2026-07-01.md §§3-4.
+import { toNoticeFlowData } from '@/lib/chat/toNoticeFlowData';
+import { captureProductionSnapshot } from '@/lib/flow/escalation';
+import { checkStaleness } from '@/lib/chat/stalenessCheck';
+import type { ProductionSnapshot } from '@/lib/flow/noticeFlowState';
 
 const COOKIE = 'op_chat_token';
+
+/** Best-effort capture of the produce-time face snapshot from the current intake (§3.1 write path). Returns null
+ *  if the notice model can't be assembled (the row then lacks produce_snapshot → the §4.4 fallback covers it). */
+function produceSnapshotFor(state: IntakeState, serviceDate: string): ProductionSnapshot | null {
+  try {
+    return captureProductionSnapshot(toNoticeFlowData(state, serviceDate));
+  } catch {
+    return null;
+  }
+}
 
 /** Flatten intake_state {field:{value}} → {field:value} for the client to build the notice model. */
 function flattenIntake(state: IntakeState): Record<string, unknown> {
@@ -55,12 +71,41 @@ export async function POST(req: NextRequest) {
 
   // (2) intendedServiceDate validated per broker ruling 2026-07-01 §1.2(2); delegates to PR-A2 validator
   // (lib/dates/intendedServiceDate.ts). Do not duplicate range/back-date logic here.
-  const body = (await req.json().catch(() => ({}))) as { intendedServiceDate?: string };
+  const body = (await req.json().catch(() => ({}))) as { intendedServiceDate?: string; acknowledgedStaleness?: boolean };
   const sdCheck = validateIntendedServiceDate(body.intendedServiceDate);
   if (!sdCheck.ok) {
     return NextResponse.json({ error: 'invalid_service_date', detail: sdCheck.message }, { status: 400 });
   }
   const intendedServiceDate = body.intendedServiceDate as string;
+
+  // PR-B Surface 1 (§4.1): warn-then-require-new-row. Before producing a NEW row, compare the current face
+  // against the most-recent prior produced row's snapshot for this session. If drifted and the owner has not yet
+  // acknowledged, return 409 with the staleness details (no insert); the client shows the ratified warning +
+  // records the acknowledgment (POST /staleness-ack), then re-POSTs with acknowledgedStaleness=true.
+  const currentSnapshot = produceSnapshotFor(session.intake_state ?? {}, intendedServiceDate);
+  if (currentSnapshot && !body.acknowledgedStaleness) {
+    const { data: prior } = await sb
+      .from('riskpath_records')
+      .select('id, produce_snapshot')
+      .eq('chat_session_id', session.id)
+      .is('soft_deleted_at', null)
+      .not('produce_snapshot', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (prior?.produce_snapshot) {
+      const staleness = checkStaleness(
+        toNoticeFlowData(session.intake_state ?? {}, intendedServiceDate),
+        prior.produce_snapshot as ProductionSnapshot,
+      );
+      if (staleness.stale) {
+        return NextResponse.json(
+          { error: 'stale_notice', priorRiskpathId: prior.id, staleness: { reason: staleness.reason, changedFields: staleness.changedFields, warning: staleness.warning } },
+          { status: 409 },
+        );
+      }
+    }
+  }
 
   // Dangling POST to /api/notice/produce (no route) removed per broker ruling 2026-07-01 §1.2(3)
   // as corrected by pr_a3_produce_handoff_fork_ruling_2026-07-01.md §4.
@@ -77,7 +122,8 @@ export async function POST(req: NextRequest) {
     noticeDocumentId: null,
     initialState: 'notice_created',
   });
-  const tagged = { ...insert, ...e2eTagFromHeaders(req.headers) };
+  // PR-B §3.1 write path: persist the produce-time face snapshot durably on the row (Fork 1 → 1A).
+  const tagged = { ...insert, produce_snapshot: currentSnapshot, ...e2eTagFromHeaders(req.headers) };
   const { data: rec, error } = await sb.from('riskpath_records').insert(tagged).select('id').single();
   if (error) return NextResponse.json({ error: 'record_write_failed', detail: error.message }, { status: 500 });
 

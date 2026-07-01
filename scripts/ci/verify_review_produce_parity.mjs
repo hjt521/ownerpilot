@@ -24,6 +24,8 @@ import { resolve } from 'node:path';
 const ROOT = resolve(process.env.REVIEW_PARITY_REPO_ROOT ?? resolve(new URL('..', import.meta.url).pathname, '..'));
 const REVIEW = resolve(ROOT, 'components/chat/ReviewScreen.tsx');
 const ORCH = resolve(ROOT, 'lib/chat/reviewProduce.ts');
+const FROMCHAT = resolve(ROOT, 'app/api/notice/produce/from-chat/route.ts');
+const STALENESS = resolve(ROOT, 'lib/chat/stalenessCheck.ts');
 
 const failures = [];
 function read(p) {
@@ -58,8 +60,23 @@ forbid(review, /const\s+NOTICE_PROSE\b/, 'ReviewScreen.tsx must NOT inline a cop
 forbid(review, /onAudit=\{\s*\(\s*\)\s*=>\s*\{\s*\}\s*\}/, 'ReviewScreen.tsx onAudit must NOT be a no-op — persist the LA produce audit (ruling §2.5)');
 requireContains(review, 'produce-audit', 'ReviewScreen.tsx onAudit must POST the audit to the produce-audit endpoint');
 
+// PR-B staleness parity (ruling §3.1): the chat produce path must (i) call captureProductionSnapshot unchanged,
+// (ii) write it onto produce_snapshot, (iii) the guard must READ produce_snapshot (durable 1A), never derive
+// on the fly. And the staleness comparison must reuse the wizard's evaluateStaleness engine.
+const fromchat = read(FROMCHAT);
+requireContains(fromchat, 'captureProductionSnapshot(', 'from-chat must call the shared captureProductionSnapshot (§3.1)');
+requireContains(fromchat, 'produce_snapshot:', 'from-chat must WRITE the snapshot onto produce_snapshot (Fork 1 → 1A durable persistence)');
+requireContains(fromchat, "'produce_snapshot'", 'from-chat staleness gate must READ produce_snapshot from the prior row (not derive-on-the-fly)');
+requireContains(fromchat, 'checkStaleness(', 'from-chat must use the shared staleness comparison');
+forbid(fromchat, /function\s+captureProductionSnapshot\b/, 'from-chat must NOT re-implement captureProductionSnapshot');
+
+const staleness = read(STALENESS);
+requireContains(staleness, "from '@/lib/flow/escalation'", 'stalenessCheck must reuse the wizard evaluateStaleness engine');
+requireContains(staleness, 'evaluateStaleness(', 'stalenessCheck must call the shared evaluateStaleness');
+forbid(staleness, /function\s+evaluateStaleness\b/, 'stalenessCheck must NOT re-implement evaluateStaleness');
+
 if (failures.length === 0) {
-  console.log('[verify-review-produce-parity] PASS — chat Review reuses the shared renderer + assembly + resolver; no divergence.');
+  console.log('[verify-review-produce-parity] PASS — chat Review reuses the shared renderer + assembly + resolver + staleness engine; no divergence.');
   process.exit(0);
 }
 console.error('[verify-review-produce-parity] FAIL — wizard-parity drift:');

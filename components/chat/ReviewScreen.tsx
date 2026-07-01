@@ -20,6 +20,7 @@ import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
 import { LaProducePanel } from '@/components/la-produce-panel';
 import { isLaProductionUnblocked } from '@/lib/jurisdiction/laRtcRules';
 import { boundFetch } from '@/lib/http/boundFetch';
+import { chatStalenessAckButton } from '@/lib/chat/stalenessCopy';
 
 interface ReviewField { field: string; label: string; display: string; sensitive: boolean; }
 interface ReviewGroup { heading: string; fields: ReviewField[]; }
@@ -64,22 +65,30 @@ export function ReviewScreen() {
   const [expiration, setExpiration] = useState<string | null>(null);
   const [dateErr, setDateErr] = useState<string | null>(null);
 
-  // PR-A3 §5.2 core — produce mode. idle → working (POST from-chat + resolve verdict) → ready (LA overlay or
-  // stub) | error. The LLM/produce rail is never called until the owner clicks Generate.
+  // PR-A3 §5.2 core — produce mode. idle → working → ready (LA overlay or stub) | error.
+  // PR-B Surface 1: a `stale` phase interposes when the face drifted since a prior produce (warn-then-require-
+  // new-row; the owner must acknowledge before a new row is produced). The produce rail is never called until
+  // the owner clicks Generate.
+  interface StaleInfo { warning: string; reason: 'AMOUNT_CHANGED' | 'FACE_FIELD_CHANGED'; changedFields: string[]; priorRiskpathId: string; }
   const [produce, setProduce] = useState<
-    { phase: 'idle' | 'working' | 'ready' | 'error'; plan?: ProducePlan; error?: string }
+    { phase: 'idle' | 'working' | 'ready' | 'error' | 'stale'; plan?: ProducePlan; error?: string; stale?: StaleInfo }
   >({ phase: 'idle' });
 
-  async function onGenerate() {
+  async function onGenerate(opts?: { acknowledged?: boolean }) {
     setProduce({ phase: 'working' });
     try {
       const r = await fetch('/api/notice/produce/from-chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intendedServiceDate: serviceDate }),
+        body: JSON.stringify({ intendedServiceDate: serviceDate, acknowledgedStaleness: opts?.acknowledged === true }),
       });
       if (r.status === 409) {
         const j = await r.json().catch(() => ({}));
         if (j.error === 'routed_to_counsel' && typeof j.href === 'string') { window.location.href = j.href; return; }
+        // PR-B Surface 1: the face drifted since the prior produce — warn + require an explicit acknowledgment.
+        if (j.error === 'stale_notice' && j.staleness?.warning) {
+          setProduce({ phase: 'stale', stale: { warning: j.staleness.warning, reason: j.staleness.reason, changedFields: j.staleness.changedFields ?? [], priorRiskpathId: j.priorRiskpathId } });
+          return;
+        }
         setProduce({ phase: 'error', error: 'This notice needs review before it can be produced.' });
         return;
       }
@@ -96,6 +105,16 @@ export function ReviewScreen() {
     } catch {
       setProduce({ phase: 'error', error: 'Something went wrong producing the notice. Please try again.' });
     }
+  }
+
+  // PR-B §5: record the staleness acknowledgment (compliance artifact) on the prior stale row before acting.
+  async function recordStalenessAck(
+    s: StaleInfo, action: 'proceed_to_reproduce' | 'cancel_at_generate',
+  ) {
+    await fetch(`/api/notices/${s.priorRiskpathId}/staleness-ack`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staleness_reason: s.reason, changed_fields: s.changedFields, action_taken: action }),
+    }).catch(() => {});
   }
 
   async function load() {
@@ -193,7 +212,7 @@ export function ReviewScreen() {
             verdict client-side (Fork A(iii)), then renders: LA overlay for confirmed_la (Fork B(ii) rail-caller
             inside LaProducePanel), or a stub for the non-LA / manual-review / unresolved branches this pass. */}
         <button disabled={!canGenerate || produce.phase === 'working'}
-          onClick={onGenerate}
+          onClick={() => onGenerate()}
           className="min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white disabled:opacity-40">
           {produce.phase === 'working' ? 'Preparing your notice…' : 'Generate notice PDF'}
         </button>
@@ -207,7 +226,27 @@ export function ReviewScreen() {
       {produce.phase === 'error' && (
         <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-sm text-red-700">{produce.error}</p>
-          <button onClick={onGenerate} className="mt-2 min-h-[44px] text-sm underline">Try again</button>
+          <button onClick={() => onGenerate()} className="mt-2 min-h-[44px] text-sm underline">Try again</button>
+        </div>
+      )}
+
+      {/* PR-B Surface 1: staleness warning — warn-then-require-new-row. The owner must acknowledge (a compliance
+          artifact) before a new notice is produced. Ratified copy (server-filled {{changedFields}}). */}
+      {produce.phase === 'stale' && produce.stale && (
+        <div className="mt-6 rounded-lg border border-amber-400 bg-amber-50 p-4" data-testid="staleness-warning">
+          <p className="text-sm text-amber-900 leading-relaxed">{produce.stale.warning}</p>
+          <div className="mt-4 flex flex-col gap-2">
+            <button
+              onClick={async () => { const s = produce.stale!; await recordStalenessAck(s, 'proceed_to_reproduce'); onGenerate({ acknowledged: true }); }}
+              className="min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white">
+              {chatStalenessAckButton}
+            </button>
+            <button
+              onClick={async () => { const s = produce.stale!; await recordStalenessAck(s, 'cancel_at_generate'); setProduce({ phase: 'idle' }); }}
+              className="min-h-[44px] text-sm underline text-neutral-600">
+              Cancel — let me review first
+            </button>
+          </div>
         </div>
       )}
 
