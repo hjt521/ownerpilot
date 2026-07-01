@@ -15,8 +15,20 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-/** Lane-2 gate flags that must be OFF during any synthetic run (flag-flips need their own ruling). */
-export const SYNTHETIC_BLOCKING_FLAGS = ['CLASSIFIER_LIVE', 'CLASSIFIER_FAIL_CLOSED', 'CLASSIFIER_AUDIT_LIVE'] as const;
+/**
+ * Flags whose ON state would alter the behavior of the Gate-2 walk surfaces, and which must therefore be
+ * confirmed unset/false before a synthetic run. Per gate2_flag_state_deviation_broker_ruling_2026-06-30 §3,
+ * the classifier flags (`CLASSIFIER_LIVE`, `CLASSIFIER_AUDIT_LIVE`, `CLASSIFIER_FAIL_CLOSED`) are EXPLICITLY
+ * EXCLUDED: the help-chatbox H1 classifier surface (lib/chat/classifierConfig.ts) is not traversed by the
+ * E2E notice walk (Perplexity is mocked) or the A14 automation-queue walk, so their ON state cannot affect
+ * Gate-2 walk-surface behavior. `CLASSIFIER_LIVE` is authorized-live since 2026-06-08; `CLASSIFIER_AUDIT_LIVE`
+ * provenance is reconciled separately (ruling §4). Do NOT re-add classifier flags here without a broker ruling.
+ *
+ * The members below are the test-infra toggles that must never be unexpectedly ON outside a controlled window
+ * (they enable mock/tag/seed and cron-pause). Every entry must justify inclusion against the §2 compliance
+ * purpose: "would its ON state alter Gate-2 walk-surface behavior?"
+ */
+export const SYNTHETIC_BLOCKING_FLAGS = ['E2E_RUN_ACTIVE', 'SYNTHETIC_RUN_ACTIVE'] as const;
 
 export const QUEUE_TABLE = 'automation_mirror_queue';
 
@@ -27,13 +39,17 @@ export function makeRunId(label: string): string {
   return `SYN-${label}-${ts}-${uuid}`;
 }
 
-/** D5: throw if any Lane-2 gate flag is ON in the shell env. Manual Vercel confirm is JT's half (F2). */
+/**
+ * D5: throw if any walk-surface-blocking flag (SYNTHETIC_BLOCKING_FLAGS) is ON in the shell env. Scoped to the
+ * compliance purpose per ruling §3.2 — classifier flags are intentionally NOT read here (off the Gate-2 walk
+ * path). Manual Vercel confirm of the same constant is JT's half (runbook P4 / F2).
+ */
 export function assertFlagsOff(): void {
   const on = SYNTHETIC_BLOCKING_FLAGS.filter((f) => process.env[f] === 'true');
   if (on.length) {
     throw new Error(
-      `D5 preflight failed — Lane-2 flag(s) ON in shell env: ${on.join(', ')}. ` +
-        `Synthetic runs require all gate flags OFF; flag-flips require their own ruling. Aborting.`,
+      `D5 preflight failed — walk-surface flag(s) ON in shell env: ${on.join(', ')}. ` +
+        `These must be unset/false outside a controlled run window. Aborting.`,
     );
   }
 }
