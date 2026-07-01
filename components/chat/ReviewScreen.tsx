@@ -248,10 +248,15 @@ function LaProduceMount({ plan }: { plan: ProducePlan }) {
         baseName={plan.baseName}
         verdictSource="live_resolver"
         onProduced={() => setProduced(true)}
-        // TODO(§5.2 fast-follow, pr_a3_produce_handoff_fork_ruling_2026-07-01.md §5): persist the LA produce
-        // audit (RTC hashes + LAHD ack) onto the riskpath record via a produce-audit endpoint. Deferred + flagged
-        // in the §5.2 core attestation — captured here, not silently dropped.
-        onAudit={() => {}}
+        // §5.2 produce-audit fast-follow (pr_a3_5_2_core_countersign_and_open_items_broker_ruling_2026-07-01.md
+        // §2): persist the LA produce audit (RTC hashes + LAHD ack) onto the riskpath record — compliance
+        // parity with the wizard's flow-state persistence. Wizard onAudit is untouched.
+        onAudit={(f) => {
+          void fetch(`/api/notices/${plan.riskpathId}/produce-audit`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ laProduceAudit: f }),
+          }).catch(() => {});
+        }}
       />
     </section>
   );

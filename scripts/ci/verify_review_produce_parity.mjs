@@ -53,6 +53,10 @@ requireContains(review, "from '@/components/la-produce-panel'", 'ReviewScreen.ts
 requireContains(review, "from '@/lib/chat/reviewProduce'", 'ReviewScreen.tsx must use the reviewProduce orchestration');
 forbid(review, /function\s+renderNotice\b/, 'ReviewScreen.tsx must NOT re-implement renderNotice');
 forbid(review, /const\s+NOTICE_PROSE\b/, 'ReviewScreen.tsx must NOT inline a copy of the locked renderer prose');
+// Produce-audit parity (countersign ruling §2.5): the chat onAudit must persist to the produce-audit endpoint,
+// never regress to a no-op — otherwise the chat path stops being compliance-equivalent to the wizard.
+forbid(review, /onAudit=\{\s*\(\s*\)\s*=>\s*\{\s*\}\s*\}/, 'ReviewScreen.tsx onAudit must NOT be a no-op — persist the LA produce audit (ruling §2.5)');
+requireContains(review, 'produce-audit', 'ReviewScreen.tsx onAudit must POST the audit to the produce-audit endpoint');
 
 if (failures.length === 0) {
   console.log('[verify-review-produce-parity] PASS — chat Review reuses the shared renderer + assembly + resolver; no divergence.');
