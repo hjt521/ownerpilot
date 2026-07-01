@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { OWNERPILOT_PERSONA_SYSTEM_PROMPT } from '@/lib/chat/persona';
 import { callPerplexity } from '@/lib/chat/perplexityClient';
 import { applyTurn } from '@/lib/chat/orchestrate';
+import { activeCursorOf, runScriptedActiveTurn, maybeBeginScripted } from '@/lib/chat/scriptedOrchestrate';
 import { loadSession, createSession, hashAnonToken, serviceClient } from '@/lib/chat/session';
 import { unsupportedLanguageNotice } from '@/lib/chat/refusalBank';
 import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
@@ -34,24 +35,37 @@ export async function POST(req: NextRequest) {
   }
   if (!session) return NextResponse.json({ error: 'session error' }, { status: 500 });
 
-  // Build the message list: locked persona (verbatim) + transcript history + this owner message.
-  const history: ChatMessage[] = (session.transcript ?? []).map((t: TranscriptTurn) => ({
-    role: t.role === 'owner' ? 'user' : 'assistant', content: t.content,
-  }));
-  const messages: ChatMessage[] = [
-    { role: 'system', content: OWNERPILOT_PERSONA_SYSTEM_PROMPT },
-    ...(language === 'es' ? [{ role: 'system' as const, content: `language_preference=es. ${unsupportedLanguageNotice()}` }] : []),
-    ...history,
-    { role: 'user', content: message },
-  ];
+  const now = new Date().toISOString();
+  const priorState = session.intake_state ?? {};
 
-  let model;
-  try { model = await callPerplexity(messages); }
-  catch (e) {
-    return NextResponse.json({ error: 'assistant unavailable', detail: (e as Error).message }, { status: 502 });
+  // Lane 2E (Fork A): if a deterministic scripted-capture cursor is active, the server parses the owner's
+  // message directly — the LLM is NOT called for the four capture categories.
+  const activeCursor = activeCursorOf(session.transcript);
+  let turn;
+  if (activeCursor) {
+    turn = runScriptedActiveTurn(priorState, message, activeCursor, now);
+  } else {
+    // Build the message list: locked persona (verbatim) + transcript history + this owner message.
+    const history: ChatMessage[] = (session.transcript ?? []).map((t: TranscriptTurn) => ({
+      role: t.role === 'owner' ? 'user' : 'assistant', content: t.content,
+    }));
+    const messages: ChatMessage[] = [
+      { role: 'system', content: OWNERPILOT_PERSONA_SYSTEM_PROMPT },
+      ...(language === 'es' ? [{ role: 'system' as const, content: `language_preference=es. ${unsupportedLanguageNotice()}` }] : []),
+      ...history,
+      { role: 'user', content: message },
+    ];
+
+    let model;
+    try { model = await callPerplexity(messages); }
+    catch (e) {
+      return NextResponse.json({ error: 'assistant unavailable', detail: (e as Error).message }, { status: 502 });
+    }
+
+    // Transition check: if the LLM just captured the last non-scripted required field, override its reply with
+    // the verbatim first scripted block (the LLM never authors a scripted prompt).
+    turn = maybeBeginScripted(applyTurn(priorState, message, model), now);
   }
-
-  const turn = applyTurn(session.intake_state ?? {}, message, model);
 
   // §E.4: if the model claimed complete prematurely, re-prompt next turn with the missing fields (do not route).
   const updated = await sb.from('chat_sessions').update({
