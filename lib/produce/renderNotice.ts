@@ -557,11 +557,15 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
   }
 
   const dateOfService = requireString(data.serviceDate, 'service date');
-  // B1 (attorney ruling 2026-06-02): the face "Dated:" line prints the SIGNING
-  // (execution) date, never the service date. serviceDate is retained here only
-  // for the audit variable (date_of_service) and the off-face compliance
-  // computation, which is performed upstream and passed in via `dates`.
-  const signingDate = requireString(data.signingDate, 'signing date');
+  // The face "Dated:" line prints intendedServiceDate.
+  // This supersedes the prior B1 rule (Dated = signing date, never service date)
+  // per daycount_defect_workflow_fork_broker_ruling_2026-06-30.md §2.3 req 3
+  // (facial-coherence principle) and pr_a_field_placement_b1_supersession_branch_split_broker_ruling_2026-06-30.md §2.
+  // Rationale: a notice computed for service-date X and dated Y (where X ≠ Y)
+  // produces facially-incorrect day-count math when served on day X. The
+  // three values (engine-input serviceDate, rendered facial serviceDate field,
+  // printed "Dated:" line) must derive from a single captured intendedServiceDate.
+  // intendedServiceDate is carried in as data.serviceDate (see produce wiring).
   const startD = formatNoticeDate(dates.compliancePeriodStartDate);
   const endD = formatNoticeDate(dates.compliancePeriodEndDate);
 
@@ -632,7 +636,7 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     '',
     NOTICE_PROSE.forfeitureElection,
     '',
-    `Dated: ${formatNoticeDate(signingDate)}`,
+    `Dated: ${formatNoticeDate(dateOfService)}`,
     '',
     '_______________________________________',
     ...(entitySignature
@@ -671,7 +675,7 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     signature: {
       name: signerName,
       roleLabel: signerRoleLabelText,
-      datedFormatted: formatNoticeDate(signingDate),
+      datedFormatted: formatNoticeDate(dateOfService),
       ...(entitySignature
         ? {
             entity: {
@@ -695,7 +699,8 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     total_rent_due: totalFormatted,
     compliance_period_start_date: dates.compliancePeriodStartDate,
     compliance_period_end_date: dates.compliancePeriodEndDate,
-    signing_date: signingDate,
+    // Facial-coherence (B1 superseded): signing date == service date == intendedServiceDate.
+    signing_date: dateOfService,
     date_of_service: dateOfService,
     payee_name: payeeName,
     payee_phone: payeePhone,

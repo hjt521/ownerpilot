@@ -26,7 +26,6 @@ import {
   NoticeFlowData,
 } from './noticeFlowState';
 import { evaluateDisputeScreen } from './gates';
-import { validateSigningDate } from './escalation';
 import { isUsPhone } from '../payments/contactValidation';
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -231,17 +230,13 @@ export function validateStep(
       // time on Serve & Track, where the successful attempt's method is the
       // operative record (broker determination 2026-06-12). The face deadline
       // is method-independent, so production does not require it.
-      // Signing (execution) date — a distinct legal fact from the service date
-      // (attorney ruling B1, 2026-06-02). It prints on the face "Dated:" line.
-      if (!validISO(data.signingDate)) {
-        issues.push('A valid signing (execution) date is required.');
-      } else {
-        // HARD error if the notice is signed AFTER the first service date. The
-        // >30-day-before case is a soft warning surfaced in the UI, NOT a block
-        // (build decision: warn, don't block).
-        const sd = validateSigningDate(data.signingDate, data.serviceDate);
-        if (!sd.ok && sd.error) issues.push(sd.error);
-      }
+      // Signing-date enforcement removed: the B1 "signing ≤ service" check is
+      // superseded by the facial-coherence principle
+      // (daycount_defect_workflow_fork_broker_ruling_2026-06-30.md §2.3 req 3;
+      // pr_a_field_placement_b1_supersession_branch_split_broker_ruling_2026-06-30.md §2.2).
+      // signing date == service date == intendedServiceDate, so the comparison is
+      // trivially true and the separate signing-date requirement no longer applies.
+      // The facial "Dated:" line derives from serviceDate in renderNotice.
       break;
     }
 

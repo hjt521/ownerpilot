@@ -294,14 +294,19 @@ export interface NoticeFlowData {
   mailingUnit?: string;
 
   // --- Notice execution + service dates (attorney ruling B1, 2026-06-02) ----
-  // BINDING: the signing date (the "Dated:" line) and the service date(s) are
-  // two distinct legal facts and must be two distinct fields. The face carries
-  // the signingDate (invariant after signing); the proof of service carries the
-  // service attempt(s); the 3-day clock runs from the day after the SUCCESSFUL
-  // service. See deriveComplianceInputs() in lib/flow/escalation.ts.
+  // SUPERSEDED (in part) — facial-coherence principle
+  // (daycount_defect_workflow_fork_broker_ruling_2026-06-30.md §2.3 req 3;
+  // pr_a_field_placement_b1_supersession_branch_split_broker_ruling_2026-06-30.md §2):
+  // the "Dated:" line now derives from the SERVICE date (== intendedServiceDate),
+  // NOT a separate signing date. The B1 "two distinct facts / Dated = signing"
+  // rule no longer governs the face. `signingDate` below is retained for backward
+  // compatibility / audit only and is no longer rendered or gate-enforced.
+  // NOT superseded: the A2 service-attempt / reasonable-diligence / staleness model
+  // and deriveComplianceInputs() below remain in force.
 
-  /** The "Dated:" line on the notice face (when the landlord executed it).
-   *  Invariant after signing; never changes on re-serve. */
+  /** LEGACY (B1-superseded): formerly the "Dated:" line source. No longer rendered
+   *  (renderNotice now prints the service date) or gate-enforced. Retained for
+   *  backward compatibility / audit; safe to omit. */
   signingDate?: string; // 'YYYY-MM-DD'
   /** Optional: where the notice was signed. Not currently shown on the face. */
   signingAddress?: string;

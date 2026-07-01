@@ -94,6 +94,16 @@
       "hash": "d24d2ae6e11f42f71b298fcbf7ca06073128065aa82e5ab71e847e28aa4b88e3",
       "source_determination": "docs/compliance/la_notice_production_gap_broker_ruling_2026-06-28_erratum_artifact_drop_2026-06-28.md",
       "source_section": "§5"
+    },
+    {
+      "constant": "intendedServiceDateExplainer",
+      "tier": "B",
+      "file": "lib/flow/intendedServiceDateCopy.ts",
+      "verbatim": "The 3-day expiration date below is calculated from the service date you select here. Pick the day you actually intend to serve this notice. If your service day changes before you serve, you will need to come back and regenerate this notice with the corrected service date — the expiration math only works for the date the notice was generated against.",
+      "hash": "62872b7c5b885b2e9c08978a683746c61f13947a72b21ce99ec6c60a7635a7b2",
+      "version_stamp": "intendedServiceDateCopyVersion=v1",
+      "source_determination": "docs/compliance/daycount_defect_workflow_fork_broker_ruling_2026-06-30.md",
+      "source_section": "§2.4"
     }
   ]
 }
