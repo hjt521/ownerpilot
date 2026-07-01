@@ -1,12 +1,22 @@
 // components/riskpath/Dashboard.tsx — claimed-only RiskPath records list with status badges + document links.
+// PR-B Surface 2 (§4.2): each row renders a staleness banner (ratified copy) when its produced face has drifted
+// from the current intake; the owner can dismiss (recorded as a §5 acknowledgment) or go to Review to re-produce.
 
 'use client';
 import { useEffect, useState } from 'react';
 import { statusMeta, type StatusTone } from '@/lib/riskpath/statusLabels';
 
+interface Staleness {
+  hasSnapshot: boolean;
+  stale: boolean;
+  reason?: 'AMOUNT_CHANGED' | 'FACE_FIELD_CHANGED' | null;
+  changedFields?: string[];
+  warning?: string | null;
+}
 interface RecordVM {
   id: string; current_state: string; notice_document_id: string | null;
   counsel_route_trigger: string | null; created_at: string; updated_at: string;
+  staleness?: Staleness;
 }
 
 const TONE_CLASS: Record<StatusTone, string> = {
@@ -16,9 +26,14 @@ const TONE_CLASS: Record<StatusTone, string> = {
   attention: 'bg-amber-50 text-amber-800',
 };
 
+// §4.4 transitional fallback (engineer-authored, not locked prose): rows produced before staleness tracking.
+const STALENESS_FALLBACK =
+  'This notice was produced before staleness tracking was enabled. If you have edited your details since producing it, please re-produce before serving.';
+
 export function Dashboard() {
   const [records, setRecords] = useState<RecordVM[] | null>(null);
   const [unauth, setUnauth] = useState(false);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('/api/riskpath').then(async (r) => {
@@ -26,6 +41,18 @@ export function Dashboard() {
       const d = await r.json(); setRecords(d.records ?? []);
     });
   }, []);
+
+  // §5: record the banner dismissal as a compliance acknowledgment, then hide it locally.
+  async function dismissStaleBanner(rec: RecordVM) {
+    const s = rec.staleness;
+    if (s?.reason) {
+      await fetch(`/api/notices/${rec.id}/staleness-ack`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staleness_reason: s.reason, changed_fields: s.changedFields ?? [], action_taken: 'dismiss_banner' }),
+      }).catch(() => {});
+    }
+    setDismissed((prev) => new Set(prev).add(rec.id));
+  }
 
   if (unauth) {
     return (
@@ -45,8 +72,24 @@ export function Dashboard() {
       <ul className="mt-6 space-y-3">
         {records?.map((r) => {
           const meta = statusMeta(r.current_state);
+          const showStaleWarning = r.staleness?.stale && r.staleness.warning && !dismissed.has(r.id);
+          const showFallback = r.staleness?.hasSnapshot === false;
           return (
             <li key={r.id} className="rounded-lg border border-neutral-200 p-4">
+              {showStaleWarning && (
+                <div className="mb-3 rounded-md border border-amber-400 bg-amber-50 p-3" data-testid="staleness-banner">
+                  <p className="text-sm text-amber-900 leading-relaxed">{r.staleness!.warning}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-4">
+                    <a href="/chat/review" className="min-h-[44px] text-sm font-medium text-amber-900 underline">Review &amp; produce a new notice</a>
+                    <button onClick={() => dismissStaleBanner(r)} className="min-h-[44px] text-sm text-neutral-600 underline">Dismiss</button>
+                  </div>
+                </div>
+              )}
+              {showFallback && (
+                <div className="mb-3 rounded-md border border-neutral-200 bg-neutral-50 p-3" data-testid="staleness-fallback">
+                  <p className="text-sm text-neutral-700 leading-relaxed">{STALENESS_FALLBACK}</p>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${TONE_CLASS[meta.tone]}`}>{meta.label}</span>
                 <span className="text-xs text-neutral-400">{new Date(r.created_at).toLocaleDateString()}</span>

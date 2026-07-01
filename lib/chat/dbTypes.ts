@@ -62,6 +62,8 @@ export interface RiskPathRecordRow {
   counsel_route_trigger: string | null;
   // PR-A3 §5.2 produce-audit (migration 034): LaProduceAuditFields blob persisted at LA produce time.
   produce_audit?: Record<string, unknown> | null;
+  // PR-B (migration 035): ProductionSnapshot captured at produce time for the serve-time staleness guard.
+  produce_snapshot?: Record<string, unknown> | null;
   retention_class: string;
   legal_hold: boolean;
   legal_hold_ref: string | null;

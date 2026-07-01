@@ -401,6 +401,33 @@
       "hash": "62991c02e0dd21a44c7fd49a607d2fd118884cbb79ac634362f02f8bf5d8006d",
       "source_determination": "docs/compliance/lane2e_fork_a_countersign_and_open_items_omnibus_broker_ruling_2026-07-01.md",
       "source_section": "§4.4"
+    },
+    {
+      "constant": "chatStalenessWarningAmountChanged",
+      "tier": "A",
+      "file": "lib/chat/stalenessCopy.ts",
+      "verbatim": "This notice is out of date. Since you produced it, the amount demanded changed ({{changedFields}}). A notice can't be re-served after its face has changed — you'll need to produce a new notice with the updated details before serving.",
+      "hash": "72632d94badc25bb040bbd7e54fa0a58eac1b1707ad14671e0a1eb2933b569af",
+      "source_determination": "docs/compliance/pr_b_staleness_scope_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§6.2"
+    },
+    {
+      "constant": "chatStalenessWarningFaceChanged",
+      "tier": "A",
+      "file": "lib/chat/stalenessCopy.ts",
+      "verbatim": "This notice is out of date. Since you produced it, something on the notice changed ({{changedFields}}). A notice can't be re-served after its face has changed — you'll need to produce a new notice with the updated details before serving.",
+      "hash": "b0d0fd7ca54e0135a408ace1c4eccd67fa83f565b807b1f1518339d6f7a4c1f1",
+      "source_determination": "docs/compliance/pr_b_staleness_scope_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§6.2"
+    },
+    {
+      "constant": "chatStalenessAckButton",
+      "tier": "A",
+      "file": "lib/chat/stalenessCopy.ts",
+      "verbatim": "I understand — take me to produce a new notice",
+      "hash": "7a96f5c6c432f5439086c011a74c92959f5668fafc26be17a18f8786aeec76f0",
+      "source_determination": "docs/compliance/pr_b_staleness_scope_omnibus_broker_ruling_2026-07-01.md",
+      "source_section": "§6.2"
     }
   ]
 }
