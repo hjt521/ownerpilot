@@ -8,6 +8,11 @@
 -- (2) staleness_acknowledgments: insert-only compliance trail of every staleness warning the owner acknowledged
 --     (§5) — makes the warn-not-block posture defensible.
 -- Both additive; nullable/new. No backfill (§3.1 / §4.4 fallback covers pre-migration rows).
+--
+-- ROLLBACK (non-destructive — §4.3; produce_snapshot is null on pre-migration rows and the §4.4 fallback
+-- handles that, so dropping loses no existing data):
+--   drop table if exists public.staleness_acknowledgments;
+--   alter table public.riskpath_records drop column if exists produce_snapshot;
 
 alter table public.riskpath_records
   add column if not exists produce_snapshot jsonb;
