@@ -519,6 +519,16 @@
       "hash": "4e7d8f7e083b1b44dfdf782a874b942e38e227b326421a4cf272256c9f07a7fe",
       "source_ruling": "unspecified",
       "lane": "6-SM"
+    },
+    {
+      "key": "PRIVACY_ACK_CCPA_TIMELINE_EN",
+      "version": "v1",
+      "tier": "A",
+      "value": "We received your privacy request on [DATE]. Under the California Consumer Privacy Act (Cal. Civ. Code §1798.130), we will respond within 45 calendar days. If we need more time, we may extend that window by up to an additional 45 days and will notify you in writing before the initial window ends. If you have questions in the meantime, reply to this email and we will follow up from privacy@ownerpilot.ai.",
+      "hash": "f9f6a69a1bef40d0600daed2d7aece6f2a9698b3b5ef0968d86d33fcf26e2905",
+      "source_ruling": "gate3_forks_C_D_B_E_F_G_omnibus_broker_ruling_2026-07-02.md",
+      "subject": "We received your privacy request — OwnerPilot AI",
+      "lane": "6-privacy"
     }
   ]
 }

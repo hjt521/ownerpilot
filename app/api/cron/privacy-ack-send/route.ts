@@ -4,17 +4,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendPrivacyAckEmail } from '@/lib/email/resend';
 
 function svc() {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
   });
-}
-
-async function sendAckEmail(to: string, requestType: string): Promise<void> {
-  // Wire to Resend (transactional). Subject/body from the locked CCPA timeline language. NEVER include other
-  // requesters' data; one email per request. Placeholder until the Resend client is wired on-branch.
-  console.info(`[privacy-ack] would send acknowledgement to ${to.replace(/(.).*(@.*)/, '$1***$2')} type=${requestType}`);
 }
 
 export async function GET(req: NextRequest) {
@@ -24,7 +19,7 @@ export async function GET(req: NextRequest) {
   const sb = svc();
   const { data: rows } = await sb
     .from('privacy_requests')
-    .select('id, contact_email, request_type')
+    .select('id, contact_email, request_type, submitted_at')
     .is('acknowledged_at', null)
     .eq('status', 'received')
     .limit(100);
@@ -32,7 +27,9 @@ export async function GET(req: NextRequest) {
   let acked = 0;
   for (const row of rows ?? []) {
     try {
-      await sendAckEmail(row.contact_email as string, row.request_type as string);
+      // Real Resend send (D1): locked CCPA timeline copy + Reply-To privacy@ownerpilot.ai. Only acknowledge
+      // (mark the row) if the send succeeds — a throw leaves the row unacknowledged for the next cron tick.
+      await sendPrivacyAckEmail(row.contact_email as string, row.submitted_at as string);
       await sb.from('privacy_requests')
         .update({ acknowledged_at: new Date().toISOString(), status: 'acknowledged' })
         .eq('id', row.id);
