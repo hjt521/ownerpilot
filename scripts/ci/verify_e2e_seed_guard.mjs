@@ -1,29 +1,49 @@
 #!/usr/bin/env node
-// E4-S6 belt-and-suspenders: static guard asserting the preview-only seed endpoint keeps all four runtime
-// locks. Fails CI if the route exists but any lock string is missing (e.g. someone removes the prod-404 check).
-// Dependency-free; intended to run as its own CI step alongside the other lock guards.
+// E4-S6 belt-and-suspenders (generalized, Gate-3 Slice 1): static guard asserting that EVERY preview-only
+// test-seed endpoint under app/api/test/*/route.ts keeps all four runtime locks. Fails CI if any such route
+// exists but drops a lock string (e.g. someone removes the prod-404 check, or adds a new unguarded seed route).
+// Shape-based iteration is the standing pattern per gate3_slice1_seed_strategy_broker_ruling_2026-07-02 §"standing
+// patterns" — new seed routes are guarded automatically, no fresh ruling needed. Dependency-free.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
-const ROUTE = 'app/api/test/seed-session/route.ts';
+const DIR = 'app/api/test';
 
-if (!existsSync(ROUTE)) {
-  console.log('verify_e2e_seed_guard: seed route absent — nothing to guard ✓');
-  process.exit(0);
-}
-
-const src = readFileSync(ROUTE, 'utf8');
-const required = [
+// The four universal locks every test-seed route must carry (S7 asserted generically via zod .strict(), since the
+// specific strict-validation symbol differs per route — e.g. seed-session uses isCounselRouteTrigger).
+const LOCKS = [
   { needle: "VERCEL_ENV === 'production'", lock: 'S2 prod-404' },
   { needle: 'E2E_RUN_ACTIVE', lock: 'S3 e2e-flag gate' },
   { needle: 'TEST_SEED_SECRET', lock: 'S4 shared secret' },
-  { needle: 'isCounselRouteTrigger', lock: 'S7 strict trigger validation' },
+  { needle: '.strict(', lock: 'S7 strict input schema' },
 ];
-const missing = required.filter((r) => !src.includes(r.needle)).map((r) => r.lock);
 
-if (missing.length) {
-  console.error('verify_e2e_seed_guard: MISSING locks →', missing.join(', '));
-  process.exit(1);
+if (!existsSync(DIR)) {
+  console.log('verify_e2e_seed_guard: no app/api/test dir — nothing to guard ✓');
+  process.exit(0);
 }
-console.log('verify_e2e_seed_guard: all four seed-session locks present ✓');
+
+const routes = readdirSync(DIR, { withFileTypes: true })
+  .filter((d) => d.isDirectory())
+  .map((d) => join(DIR, d.name, 'route.ts'))
+  .filter(existsSync);
+
+if (routes.length === 0) {
+  console.log('verify_e2e_seed_guard: no test-seed routes present — nothing to guard ✓');
+  process.exit(0);
+}
+
+let failed = false;
+for (const route of routes) {
+  const src = readFileSync(route, 'utf8');
+  const missing = LOCKS.filter((r) => !src.includes(r.needle)).map((r) => r.lock);
+  if (missing.length) {
+    console.error(`verify_e2e_seed_guard: ${route} — MISSING locks → ${missing.join(', ')}`);
+    failed = true;
+  }
+}
+
+if (failed) process.exit(1);
+console.log(`verify_e2e_seed_guard: all four locks present on ${routes.length} test-seed route(s) ✓`);
 process.exit(0);
