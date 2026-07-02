@@ -4,7 +4,7 @@
 //   - scanFreeText(text): CONTENT-pattern scan for free-text fields (Notion mirror summary/notes) — Lane 7.
 // Lane 6's lib/analytics/denylist.ts re-exports enforceDenylist from here so there is ONE denied-key list.
 
-const DENIED_KEYS = new Set([
+export const DENIED_KEYS = new Set([
   'address', 'address_raw', 'address_normalized',
   'tenant_name', 'landlord_name',
   'email', 'requester_contact',
