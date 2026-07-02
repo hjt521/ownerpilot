@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { loadSession, serviceClient } from '@/lib/chat/session';
 import { generateMagicToken, hashMagicToken, magicExpiry } from '@/lib/chat/magicLink';
 import { sendClaimEmail } from '@/lib/email/resend';
+import { isBetaAllowlisted } from '@/lib/beta/allowlist';
 
 const COOKIE = 'op_chat_token';
 const schema = z.object({ email: z.string().email() });
@@ -15,6 +16,12 @@ export async function POST(req: NextRequest) {
   if (!token) return NextResponse.json({ error: 'no session' }, { status: 404 });
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'valid email required' }, { status: 400 });
+
+  // Closed beta (B2): only allowlisted emails receive a claim link. Non-listed → surface the waitlist (no token,
+  // no email sent). Same 200 shape so allowlist membership is not revealed by the response status.
+  if (!isBetaAllowlisted(parsed.data.email)) {
+    return NextResponse.json({ ok: true, waitlisted: true });
+  }
 
   const sb = serviceClient();
   const session = await loadSession(token, sb);
