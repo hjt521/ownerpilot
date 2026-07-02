@@ -20,12 +20,16 @@ import { completeIntakeState } from '@/lib/testing/e2eIntakeFixture';
 import { buildRiskPathInsert } from '@/lib/riskpath/noticeGenerationEvent';
 import { captureProductionSnapshot } from '@/lib/flow/escalation';
 import { toNoticeFlowData } from '@/lib/chat/toNoticeFlowData';
+import { laProduceAuditSchema } from '@/lib/riskpath/produceAudit';
 
 // serviceDate is NOT part of the snapshot (lib/flow/escalation.ts omits it), so any valid date assembles a valid
 // NoticeFlowData without affecting the frozen snapshot. Fixed for determinism.
 const SNAPSHOT_SERVICE_DATE = '2026-07-10';
 
-const bodySchema = z.object({}).strict();
+// Opt-in produce_audit (Slice 2): default off preserves the Slice-1 baseline (no-audit → not LAHD-eligible);
+// withProduceAudit:true stamps a schema-valid laProduceAudit — validated through the ratified laProduceAuditSchema
+// (the same gate the produce-audit route enforces, no bypass) — so the row reads lahd.eligible=true.
+const bodySchema = z.object({ withProduceAudit: z.boolean().optional() }).strict();
 
 export async function POST(req: NextRequest) {
   // S2 — never reachable in production runtime
@@ -85,9 +89,20 @@ export async function POST(req: NextRequest) {
     noticeDocumentId: null,
     initialState: 'notice_created',
   });
+  const produceAudit = parsed.data.withProduceAudit
+    ? laProduceAuditSchema.parse({
+        rtcFormHashes: null,
+        rtcFormLastModified: null,
+        rtcRefreshRunAt: null,
+        lahdFilingPromptCopyVersion: 'Rev 2.6.2026',
+        lahdFilingPromptAcknowledgedAt: new Date().toISOString(),
+        isLaProductionUnblockedAtProduce: true,
+        cachedResolverVerdictSource: 'e2e-seed',
+      })
+    : null;
   const { data: rp, error: rErr } = await sb
     .from('riskpath_records')
-    .insert({ ...insert, produce_snapshot: snapshot, e2e_run_id: runId, synthetic_source: 'e2e' })
+    .insert({ ...insert, produce_snapshot: snapshot, produce_audit: produceAudit, e2e_run_id: runId, synthetic_source: 'e2e' })
     .select('id')
     .single();
   if (rErr || !rp) {
