@@ -44,6 +44,11 @@ import {
   chatIntakePreflightDisputeReAsk,
   chatIntakeCaptureEscalation,
 } from './persona';
+import { ff3CaptureEnabled } from './ff3Flag';
+import {
+  ff3Begin, stepFf3,
+  type Ff3Cursor, type Ff3Scratch, type Ff3Step, type Ff3Turn, type Ff3PersistPayload,
+} from './ff3ScriptedCategory';
 
 // ---------------------------------------------------------------------------
 // Cursor + result types
@@ -53,7 +58,8 @@ export type CaptureCategory =
   | 'rent_periods'
   | 'signer_capacity'
   | 'personal_delivery'
-  | 'preflight_dispute';
+  | 'preflight_dispute'
+  | 'ff3_intake';                       // Lane FF-3 structured intake — flag-gated (ruling §8), dark until countersign
 
 export interface CaptureCursor {
   category: CaptureCategory;
@@ -71,6 +77,10 @@ export interface ScriptedTurn {
   extracted?: { field: IntakeField; value: unknown };
   // Fork-A capture-completeness gap surfaced at runtime (entity signer entityType — see §note in beginCapture).
   gap?: string;
+  // Lane FF-3: typed columns to merge into the chat_sessions row (NOT intake_state). Present only for the
+  // 'ff3_intake' category; the route spreads it into the session update. Carries ff3_capture_status on every
+  // turn (in_progress / complete / awaiting_broker_review) and the five intake columns on completion.
+  ff3Persist?: Partial<Ff3PersistPayload>;
 }
 
 const MAX_ATTEMPTS = 2;
@@ -279,10 +289,19 @@ export function parseHours(input: string): ParsedHours | null {
 // Category ordering + readiness
 // ---------------------------------------------------------------------------
 
-/** The four scripted categories, in capture priority order. */
+/** The four base scripted categories, in capture priority order. FF-3 is NOT here — see scriptedCategories(). */
 export const SCRIPTED_CATEGORIES: CaptureCategory[] = [
   'signer_capacity', 'rent_periods', 'personal_delivery', 'preflight_dispute',
 ];
+
+/**
+ * The active scripted categories for this environment: the base four, plus 'ff3_intake' appended ONLY when the
+ * FF-3 flag is on (ruling §8). With the flag off — the default everywhere including prod — this returns exactly
+ * SCRIPTED_CATEGORIES, so the FF-3 wiring is inert. FF-3 runs LAST (after the base block) by design.
+ */
+export function scriptedCategories(): CaptureCategory[] {
+  return ff3CaptureEnabled() ? [...SCRIPTED_CATEGORIES, 'ff3_intake'] : [...SCRIPTED_CATEGORIES];
+}
 
 function fieldPresent(state: IntakeState, f: IntakeField): boolean {
   const v = state[f]?.value;
@@ -292,9 +311,15 @@ function fieldPresent(state: IntakeState, f: IntakeField): boolean {
 /**
  * The next scripted category whose prerequisites are met and whose value is still missing, or null.
  * Prereqs: signer needs landlord_or_owner_name; personal_delivery only when preferred_service_method==='personal'.
+ * FF-3 completeness lives in the typed column chat_sessions.ff3_capture_status (passed as ff3Status), not
+ * intake_state: 'complete' = captured; 'awaiting_broker_review' = parked (never re-asked); else it's next.
  */
-export function nextScriptedCategory(state: IntakeState): CaptureCategory | null {
-  for (const cat of SCRIPTED_CATEGORIES) {
+export function nextScriptedCategory(state: IntakeState, ff3Status?: string | null): CaptureCategory | null {
+  for (const cat of scriptedCategories()) {
+    if (cat === 'ff3_intake') {
+      if (ff3Status === 'complete' || ff3Status === 'awaiting_broker_review') continue;
+      return cat;
+    }
     if (fieldPresent(state, cat as IntakeField)) continue;
     if (cat === 'signer_capacity' && !fieldPresent(state, 'landlord_or_owner_name')) continue;
     if (cat === 'personal_delivery' && state['preferred_service_method']?.value !== 'personal') continue;
@@ -325,7 +350,36 @@ export function beginCapture(category: CaptureCategory): ScriptedTurn {
       // manifest-hashed constants joined with "\n\n" (ruling §6 concatenation convention).
       return { reply: `${chatIntakePreflightDisputePrompt}\n\n${chatIntakePreflightDisputeQ1}`, kind: 'prompt',
         nextCursor: { category, step: 'awaiting_q1', attempts: 0, scratch: {} } };
+    case 'ff3_intake':
+      // Lane FF-3 (flag-gated): delegate to the FF-3 state machine (ff3ScriptedCategory). The FF-3 cursor
+      // (step/attempts/scratch) maps 1:1 onto CaptureCursor; the typed columns ride out on ff3Persist.
+      return ff3ToScripted(ff3Begin());
   }
+}
+
+/** Adapt an FF-3 state-machine turn to the ScriptedTurn contract (cursor stored under category 'ff3_intake'). */
+function ff3ToScripted(t: Ff3Turn): ScriptedTurn {
+  const nextCursor: CaptureCursor | null = t.nextCursor
+    ? {
+        category: 'ff3_intake',
+        step: t.nextCursor.step,
+        attempts: t.nextCursor.attempts,
+        scratch: t.nextCursor.scratch as Record<string, unknown>,
+      }
+    : null;
+  // On complete: the full five-column payload (status 'complete'). On prompt/reask/escalate: just the status flip.
+  const ff3Persist: Partial<Ff3PersistPayload> = t.persist ?? { ff3_capture_status: t.captureStatus };
+  return { reply: t.reply, kind: t.kind, nextCursor, ff3Persist };
+}
+
+/** Reconstruct an FF-3 cursor from the stored CaptureCursor and step the FF-3 machine. */
+function stepFf3Category(cursor: CaptureCursor, ownerMessage: string): ScriptedTurn {
+  const ff3Cursor: Ff3Cursor = {
+    step: cursor.step as Ff3Step,
+    attempts: cursor.attempts,
+    scratch: cursor.scratch as Ff3Scratch,
+  };
+  return ff3ToScripted(stepFf3(ff3Cursor, ownerMessage));
 }
 
 function reask(cursor: CaptureCursor, reply: string, step = cursor.step): ScriptedTurn {
@@ -348,6 +402,7 @@ export function stepCapture(cursor: CaptureCursor, ownerMessage: string, state: 
     case 'signer_capacity': return stepSigner(cursor, ownerMessage, state);
     case 'personal_delivery': return stepPersonalDelivery(cursor, ownerMessage);
     case 'preflight_dispute': return stepDispute(cursor, ownerMessage);
+    case 'ff3_intake': return stepFf3Category(cursor, ownerMessage);
   }
 }
 

@@ -16,6 +16,9 @@ export interface TurnResult {
   status: ChatSessionStatus;                 // 'intake_complete' when complete, else 'active'
   transcriptAdditions: TranscriptTurn[];     // owner turn + assistant turn
   routeToReview: boolean;                    // true → server routes owner to /chat/review
+  // Lane FF-3 (flag-gated): typed columns to merge into the chat_sessions row this turn (ff3_capture_status +,
+  // on completion, the five intake columns). Undefined for every non-FF-3 turn — the route writes nothing extra.
+  ff3Persist?: Record<string, unknown>;
 }
 
 /** Apply one chat turn. `now` injectable for deterministic tests. */
