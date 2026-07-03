@@ -585,6 +585,15 @@
       "hash": "7099a36df804c526491f5cd97c65b3eb22146b198e2435e833f2b63a98bf6000",
       "source_ruling": "gate3_wave3_wiring_and_ff3_omnibus_broker_ruling_2026-07-03.md §1.3",
       "lane": "FF-3-intake"
+    },
+    {
+      "key": "serve_time_stale_facial_dates_guard_block",
+      "version": "v1",
+      "tier": "A",
+      "value": "This notice's expiration date was calculated for service on {intendedServiceDate}. You're attempting to log service on {actualServiceDate}. Because the day-count math is calculated from the service date, the expiration date printed on this notice is wrong for the day you're actually serving. You must regenerate the notice with the correct service date before you can log this service.",
+      "hash": "d6684b26cc5731f4a1441147605a2ee56ddc478b16365d9a9c130992cbf4f96d",
+      "source_ruling": "pr_a_field_placement_b1_supersession_branch_split_broker_ruling_2026-06-30.md §4.2",
+      "lane": "PR-B-serve-time"
     }
   ]
 }

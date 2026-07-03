@@ -36,7 +36,7 @@ function fullData(): NoticeFlowData {
     signerName: 'Owner Name',
     // Stage-1 identity slice (canonical signerCapacity; signerRole removed in Defect #3).
     ...individualLandlord('owner', { names: ['Owner Name'] }),
-    signingDate: '2026-06-01', // B1: execution date, distinct from service date
+    signingDate: '2026-06-01', // B1 SUPERSEDED — signing == service == intendedServiceDate (facial coherence; pr_a_field_placement_b1_supersession_branch_split_broker_ruling_2026-06-30 §2)
     serviceDate: '2026-06-01',
     serviceMethod: 'personal',
   };
