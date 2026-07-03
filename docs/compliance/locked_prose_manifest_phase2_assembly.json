@@ -558,6 +558,15 @@
       "source_determination": "ff4_fmr_gate_quantity_reconciliation_broker_ruling_2026-07-03.md §2.3",
       "portal_text_verbatim": "Landlords may not evict a tenant who falls behind in rent unless the tenant owes an amount higher than the Fair Market Rent (FMR).",
       "lane": "FF-4-fmr"
+    },
+    {
+      "key": "POST_FILING_CONFIRMATION_CARD_EN",
+      "version": "v1",
+      "tier": "A",
+      "value": "Your notice was filed with LAHD. Record number ${efs_record_number}. LAHD sends a bilingual confirmation email (English and Spanish) from donotreplylahd@lahdsystems.lacity.org — check spam if you don't see it within an hour. For the next 60 days, you can edit the tenant's unit number, phone, email, and name through LAHD. All other fields (property, notice details, rent amount, just cause, signature) are locked. To edit locked fields after 60 days, contact LAHD at (866) 557-7368.",
+      "hash": "8da5c3c6cabdb7fcfe822af2c6f3d73580f8fa012be59ca6ee6ee734233b8648",
+      "source_ruling": "claude_code_master_prompt_omnibus_gate3_ownerpilot_productization_2026-07-02.md",
+      "lane": "W4-post-filing"
     }
   ]
 }
