@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { loadSession, serviceClient } from '@/lib/chat/session';
+import { fetchActiveHold, isHoldActive, activeHoldBannerMessage } from '@/lib/dns/holds';
 import { missingRequiredFields } from '@/lib/chat/intakeMerge';
 import { evaluateProduceEligibility } from '@/lib/riskpath/produceGate';
 import { buildRiskPathInsert } from '@/lib/riskpath/noticeGenerationEvent';
@@ -53,6 +54,16 @@ export async function POST(req: NextRequest) {
   const session = await loadSession(token, sb);
   if (!session) return NextResponse.json({ error: 'no session' }, { status: 404 });
   if (!session.user_id) return NextResponse.json({ error: 'claim your session before producing' }, { status: 401 });
+
+  // (0) DO NOT SERVE hold (W7 / §3.8): a broker-imposed hold blocks ALL progression past intake — no produce,
+  // packet, cover sheet, or filing — until a broker lifts it. Checked before any produce work.
+  const hold = await fetchActiveHold(sb, session.id);
+  if (isHoldActive(hold)) {
+    return NextResponse.json(
+      { error: 'do_not_serve_hold', message: activeHoldBannerMessage(hold!) },
+      { status: 423 },
+    );
+  }
 
   const intakeComplete = missingRequiredFields(session.intake_state ?? {}).length === 0;
 

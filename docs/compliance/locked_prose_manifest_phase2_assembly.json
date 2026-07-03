@@ -529,6 +529,15 @@
       "source_ruling": "gate3_forks_C_D_B_E_F_G_omnibus_broker_ruling_2026-07-02.md",
       "subject": "We received your privacy request — OwnerPilot AI",
       "lane": "6-privacy"
+    },
+    {
+      "key": "DNS_ACTIVE_HOLD_BANNER_EN",
+      "version": "v1",
+      "tier": "A",
+      "value": "This case has an active DO NOT SERVE hold, imposed ${imposed_at} by ${imposed_by}. Basis: ${basis_document_path} ${basis_section}. Required gates before service can proceed: ${gates_summary}. Contact your broker of record to review and lift the hold.",
+      "hash": "20ef8b17c3ded7179fb52bcbb533142c97d76938ce20f7c39fa9c0b9836bbacc",
+      "source_ruling": "claude_code_master_prompt_omnibus_gate3_ownerpilot_productization_2026-07-02.md",
+      "lane": "W7-do-not-serve"
     }
   ]
 }
