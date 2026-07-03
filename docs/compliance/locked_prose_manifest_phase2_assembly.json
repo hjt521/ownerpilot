@@ -567,6 +567,15 @@
       "hash": "8da5c3c6cabdb7fcfe822af2c6f3d73580f8fa012be59ca6ee6ee734233b8648",
       "source_ruling": "claude_code_master_prompt_omnibus_gate3_ownerpilot_productization_2026-07-02.md",
       "lane": "W4-post-filing"
+    },
+    {
+      "key": "DECLARATION_OF_INTENT_STUB_EN",
+      "version": "v1",
+      "tier": "A",
+      "value": "Termination-of-tenancy notices (30-day, 60-day, 90-day) file through the LAHD Declaration of Intent to Evict pathway, which is separate from the 3-day / 5-day Eviction Notice Filing System (EFS). This flow is currently in scaffolding; the platform will guide you through the correct LAHD channel. If you have already served a termination notice and need to file today, use https://housing.lacity.gov/landlords/forms-notices to download the Declaration of Intent to Evict form directly.",
+      "hash": "14069a55e137f4a752b8a4cbbc560ee3d1d122edb9591854e996f54ab69c2dc0",
+      "source_ruling": "claude_code_master_prompt_omnibus_gate3_ownerpilot_productization_2026-07-02.md",
+      "lane": "W2-intake-routing"
     }
   ]
 }
