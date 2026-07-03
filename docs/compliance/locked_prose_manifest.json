@@ -482,6 +482,105 @@
       "hash": "7fe7525ddf35138300e4e6d10dda709b0142206bb03c84246c9f8ef0ff6b2133",
       "source_determination": "docs/compliance/pr_c_lahd_checklist_scope_omnibus_broker_ruling_2026-07-01.md",
       "source_section": "§5.6"
+    },
+    {
+      "constant": "chatFf3CaptureNoticeType",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "What kind of notice are you serving on the tenant? The common ones are: a **3-day notice to pay rent or quit** (for non-payment), a **3-day notice to cure or quit** (for a lease violation the tenant can fix), a **3-day notice to quit** without a cure period (for nuisance, illegal use, or an unauthorized subtenant), or a **30-, 60-, or 90-day termination notice** (for ending a tenancy where no fault is alleged). Which one applies to your case?",
+      "hash": "ccb889925616ac9a10d1e30fdbc5ea566caaa77d681b937f48a733a496c04a8c",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§1"
+    },
+    {
+      "constant": "chatFf3CaptureNoticeTypeReask",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "I want to record the notice type correctly, because the compliance rules that apply next depend on it. Is it a **3-day pay-or-quit**, a **3-day cure-or-quit**, a **3-day quit (no cure)**, a **30-day termination**, a **60-day termination**, or a **90-day termination** (which usually applies only to Section 8 tenancies)? If none of these match what you're serving, tell me the exact title of the notice and I'll record it as an escalation for broker review.",
+      "hash": "9f9c204f674eb3fddbdc3c899a5a936108820e0aef0fbfb251d37911aec8a922",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§1"
+    },
+    {
+      "constant": "chatFf3CaptureJustCause",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "What is the reason you are ending the tenancy? California and LA City law group these into two categories.\n\n**At-fault reasons** (the tenant did something):\n- Non-payment of rent\n- Breach of a material lease term\n- Nuisance or damage to the property\n- Using the unit for an illegal purpose\n- Refusing to allow lawful entry\n- Having an unapproved subtenant, pet, or occupant\n- End of a fixed lease term (for SRO or covered no-fault-eligible units only)\n\n**No-fault reasons** (owner or government action, tenant did nothing wrong):\n- Owner or eligible family member moving in\n- Withdrawal of the unit from the rental market (Ellis Act)\n- Demolition of the property\n- Substantial capital improvements requiring the unit to be vacant\n- Government order requiring the unit to be vacated\n\nWhich reason applies? If you have a reason that doesn't fit any of the above, tell me and I'll record it for broker review.",
+      "hash": "22a428f8ad7c19242a7d89ff1755ba56d4675c50874d166e675549a689d905cf",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§2"
+    },
+    {
+      "constant": "chatFf3CaptureJustCauseReask",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "I want to make sure I record the reason correctly, because the compliance requirements are very different for at-fault vs no-fault, and different again inside each group. From what you told me, I'm not sure which of the 12 recognized reasons applies. Can you tell me in one short phrase — for example, **'non-payment of rent'**, **'lease violation for unauthorized pet'**, **'owner moving in'**, or **'Ellis Act withdrawal'**? If your situation doesn't match any of these, tell me and I'll surface it as an escalation for broker review — we do not proceed with an unrecognized reason.",
+      "hash": "545c168150b342c54f5e8ed659ec6953ec5017acd2bf8d3d021d43ac0a9008e8",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§2"
+    },
+    {
+      "constant": "chatFf3CaptureBedrooms",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "How many bedrooms does the rental unit have? (A studio counts as 0.)",
+      "hash": "6ed0c891340e43ed46367591c480f30e79297600c3992584be86e4e6a8fa4822",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§3"
+    },
+    {
+      "constant": "chatFf3CaptureBedroomsReask",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Please give me the bedroom count as a number from 0 to 6 — a studio is 0.",
+      "hash": "8d80541b8a70c70f91021dff4af2c8cf2e53a2a0fe93af67086d24463ce2daa2",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§3"
+    },
+    {
+      "constant": "chatFf3CaptureContractRent",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "What is the tenant's current monthly rent, in dollars?",
+      "hash": "42e9631ef02248ab7dd6c0eff1e22354eb4952f68302547ca9aeeddb65d85f3c",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§4"
+    },
+    {
+      "constant": "chatFf3CaptureContractRentReask",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "Please give me the monthly rent as a dollar amount — for example, $2,400.",
+      "hash": "bfd6f71ab7c5701c2a268465a06acebab34eb76e6bd531e78b5547ab832a8a96",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§4"
+    },
+    {
+      "constant": "chatFf3CaptureAmountOwed",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "What is the total dollar amount stated on the notice you're serving? This should be the exact amount you wrote on the notice as the rent owed — not late fees, not interest, not future rent that hasn't come due yet. For example, if the tenant missed May and June rent of $3,000 each, and your notice demands both months, the amount is $6,000.",
+      "hash": "5787e91cd8c31fe8889eafabfa4db1f50fe85d9b02f41cbab288959945fde5ca",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§5"
+    },
+    {
+      "constant": "chatFf3CaptureAmountOwedReask",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "I want to record the amount from the notice exactly as written. Please give me the total dollar amount that appears on the served notice as the rent owed — for example, **$6,000**. If you haven't written the notice yet or you're not sure of the exact figure, tell me and I'll surface this as an escalation for broker review before we proceed to compliance checks.",
+      "hash": "5473af10beccde27d004bd3e6ed2e522dc7ddfae3ac012bf27bab71ff5769856",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§5"
+    },
+    {
+      "constant": "chatFf3EscalationCard",
+      "tier": "A",
+      "file": "lib/chat/persona.ts",
+      "verbatim": "I've asked a few times and I want to make sure I get this right rather than record a value I'm not confident in. I'm going to hold this case for broker review before we go any further. Your case is not lost — a broker will look at what you've told me so far and either clarify what I should ask next, or make the determination directly. You'll get an update within one business day. In the meantime, please continue to keep records of anything relevant to the case.",
+      "hash": "1d5323a53f0afe9b2decbc44ecab4130dd8d249a739e85e7723eabaa5250586e",
+      "source_determination": "docs/compliance/ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md",
+      "source_section": "§6"
     }
   ]
 }
