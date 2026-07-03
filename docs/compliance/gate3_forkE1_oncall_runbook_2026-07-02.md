@@ -20,6 +20,8 @@
 
 **Escalation rule:** anything touching the **produced-notice face, day-count, PII, or the LAHD cover sheet is Sev-1 by default** — these are the compliance surfaces the whole gate program protects. When in doubt, treat as one sev higher.
 
+**Client-only failures (Sev-3 default — C1 Amendment-A ratification, 2026-07-02).** A client-only failure (browser JS error, hydration error, client-side render fault) that does **not** corrupt produced output is **Sev-3 by default**, escalating to **Sev-2 only if a broker directly observes it and confirms a user-facing broken state**. Rationale: the closed-beta monitoring posture is server-side only (`@sentry/node`); client-side observability is deferred to standing item **CX-1** (client-side capture; required before public-launch/open-beta, not for closed-beta or Gate-3 closure). This is codified so an unobservable-by-design client failure cannot later be argued to reset a Fork-G Sev counter.
+
 ## §3 — How incidents surface (alert sources)
 - **Merge-time guard wall:** the 11 Required checks on `main` (incl. `synthetic-daycount-jul2026`, `verify-review-produce-parity`, `verify-no-operator-secrets`, `verify-banned-terms`) block a Sev-1-class regression from ever merging. First line of defense.
 - **Monitoring (C1):** once `SENTRY_DSN` is set, runtime exceptions surface in self-hosted Sentry (PII-scrubbed). Until enabled, rely on Vercel runtime logs.

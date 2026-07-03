@@ -19,7 +19,7 @@ async function run() {
   let threw = false;
   try {
     await initMonitoring();
-    await captureException(new Error('should be swallowed while disabled'), { tenant_name: 'Jane Doe' });
+    await captureException(new Error('should be swallowed while disabled'), { extra: { tenant_name: 'Jane Doe' } });
   } catch { threw = true; }
   check('initMonitoring + captureException no-op (no throw) when disabled', threw === false);
 
@@ -31,7 +31,11 @@ async function run() {
   let threw2 = false;
   try {
     await initMonitoring();
-    await captureException(new Error('boom'), { path: '/api/privacy-request' });
+    await captureException(new Error('boom'), {
+      extra: { path: '/api/privacy-request' },
+      tags: { service: 'resend', template: 'claim', env: 'test' },
+      fingerprint: ['resend', 'claim', '422'],
+    });
   } catch { threw2 = true; }
   check('init + capture safe even if @sentry not loadable', threw2 === false);
 

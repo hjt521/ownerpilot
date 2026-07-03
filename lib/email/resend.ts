@@ -4,21 +4,69 @@
 // sale/share + marketing, not a service email the owner asked for by clicking "send myself this draft").
 
 import { lockedProseEntry } from '@/lib/compliance/lockedProse';
+import { captureException } from '@/lib/monitoring';
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 const FROM = 'OwnerPilot <noreply@ownerpilot.ai>';
 
-async function send(to: string, subject: string, text: string, replyTo?: string): Promise<void> {
+/** Transactional template families — the C1-A email-send monitor tags every send by this so the Fork-G watch
+ *  can track "sends observed + Resend failure rate = 0" per family. */
+export type EmailTemplate = 'claim' | 'privacy-ack';
+
+function emailEnv(): string {
+  return process.env.VERCEL_ENV ?? 'development';
+}
+
+async function send(
+  to: string,
+  subject: string,
+  text: string,
+  template: EmailTemplate,
+  replyTo?: string,
+): Promise<void> {
   const key = process.env.RESEND_API_KEY;
   if (!key) { console.warn('RESEND_API_KEY not set — skipping email'); return; }
   const payload: Record<string, unknown> = { from: FROM, to, subject, text };
   if (replyTo) payload.reply_to = replyTo;
-  const res = await fetch(RESEND_ENDPOINT, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`Resend HTTP ${res.status}`);
+
+  let res: Response;
+  try {
+    res = await fetch(RESEND_ENDPOINT, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (networkErr) {
+    // C1-A §5.2 email-send monitor: capture transport failures too. Tags/fingerprint group by family + mode.
+    await captureException(networkErr, {
+      tags: { service: 'resend', template, env: emailEnv() },
+      fingerprint: ['resend', template, 'network'],
+    });
+    throw networkErr;
+  }
+
+  if (!res.ok) {
+    // Extract the Resend error code + message (message A15-scrubbed in `extra` before send; fingerprint groups by
+    // code so repeated failures of the same mode collapse into one Sentry issue).
+    const body = await res.text().catch(() => '');
+    let code = String(res.status);
+    let message = body;
+    try {
+      const j = JSON.parse(body) as { name?: string; statusCode?: number; message?: string };
+      code = j.name ?? (j.statusCode != null ? String(j.statusCode) : code);
+      message = j.message ?? message;
+    } catch { /* non-JSON body — keep raw text */ }
+    const err = new Error(`Resend HTTP ${res.status} (${code})`);
+    await captureException(err, {
+      tags: { service: 'resend', template, env: emailEnv() },
+      extra: { status: res.status, code, message },
+      fingerprint: ['resend', template, code],
+    });
+    throw err;
+  }
+
+  // Soak signal: "sends observed" per template family (feeds the Fork-G watch: sends > 0 + failure rate = 0).
+  console.info(JSON.stringify({ evt: 'email.sent', template, env: emailEnv() }));
 }
 
 /** Reply-To for privacy acks (D1). Closes the loop to the monitored mailbox without wiring privacy@ as a send path. */
@@ -41,7 +89,7 @@ export async function sendPrivacyAckEmail(to: string, submittedAtISO: string): P
   const e = lockedProseEntry('PRIVACY_ACK_CCPA_TIMELINE_EN');
   const text = e.value.replace('[DATE]', formatLaDate(submittedAtISO));
   const subject = e.subject ?? 'We received your privacy request';
-  await send(to, subject, text, PRIVACY_ACK_REPLY_TO);
+  await send(to, subject, text, 'privacy-ack', PRIVACY_ACK_REPLY_TO);
 }
 
 /** Fixed-template claim email — pulled from locked-prose MAGIC_LINK_EMAIL_BODY_V1 (G6). The ONLY interpolation is
@@ -51,5 +99,5 @@ export async function sendClaimEmail(to: string, claimUrl: string): Promise<void
   const e = lockedProseEntry('MAGIC_LINK_EMAIL_BODY_V1');
   const subject = e.subject ?? 'Your OwnerPilot AI claim link';
   const text = e.value.replace('{{claim_url}}', claimUrl);
-  await send(to, subject, text);
+  await send(to, subject, text, 'claim');
 }
