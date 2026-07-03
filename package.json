@@ -33,7 +33,8 @@
     "ci:verify-e2e-seed-guard": "node scripts/ci/verify_e2e_seed_guard.mjs",
     "ci:verify-analytics-no-pii": "node scripts/verify-analytics-no-pii.mjs",
     "ci:verify-broker-confirm-sla-sync": "node scripts/verify-broker-confirm-sla-sync.mjs",
-    "ci:verify-normalize-identical-to-resolver": "node scripts/verify-normalize-identical-to-resolver.mjs"
+    "ci:verify-normalize-identical-to-resolver": "node scripts/verify-normalize-identical-to-resolver.mjs",
+    "ci:verify-route-body-parsing": "node scripts/ci/verify_route_body_parsing.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",

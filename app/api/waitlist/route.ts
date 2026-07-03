@@ -6,14 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
+import { readRequestBody } from '@/lib/http/requestBody';
 
 const schema = z.object({ email: z.string().email(), city: z.string().max(80).optional() });
 
 export async function POST(req: NextRequest) {
-  const form = await req.formData().catch(() => null);
-  const raw = form
-    ? { email: form.get('email'), city: form.get('city') ?? undefined }
-    : await req.json().catch(() => ({}));
+  const raw = await readRequestBody(req);
 
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 });
