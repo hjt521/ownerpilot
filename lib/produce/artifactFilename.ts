@@ -1,11 +1,19 @@
 // lib/produce/artifactFilename.ts
-// Lane W5 (omnibus §3.6) — the ratified case-artifact filename convention (2026-07-02):
-//   <compact_address>-<unit>-<TenantName>_<descriptor>_<YYYY-MM-DD>.<ext>
-//   e.g. 5537LaMirada-202-CliftonAlexander_3Day_Notice_2026-06-29.pdf
+// Lane W5 (omnibus §3.6, broker ruling 2026-07-03) — TWO co-located filename conventions:
 //
-// This is the BROKER-SIDE filing-packet artifact convention (organizes a case's files). It is distinct from the
-// owner-facing notice download name (buildNoticePdfFilename), which stays until the broker rules W5's caller
-// scope. Pure util — no PII stored, no legal text touched.
+//   Convention A — BROKER FILING (this module, NEW): <compact_address>-<unit>-<TenantName>_<descriptor>_<date>.<ext>
+//     e.g. 5537LaMirada-202-CliftonAlexander_3Day_Notice_2026-06-29.pdf. Audience: broker managing a flat
+//     workspace of case files. Applied to broker filing artifacts (packet, cover sheet, POS, exhibits, receipts…).
+//
+//   Convention B — OWNER-FACING download (existing buildNoticePdfFilename, re-exported here as
+//     generateOwnerDownloadFilename): OwnerPilot_<Notice-Type>_<Tenant>_<Address>_<date>.pdf. KEEP AS-IS — do not
+//     sweep, do not drop the OwnerPilot_ prefix. For the shared notice PDF, the physical file uses Convention A and
+//     the owner download endpoint sets Content-Disposition filename to Convention B at response time.
+//
+// Pure util — no PII stored, no legal text touched.
+
+// Convention B is co-located per §3.6 (import + re-export; output is NOT rewritten).
+export { buildNoticePdfFilename as generateOwnerDownloadFilename } from './noticePdfFilename';
 
 /** Common US street-type suffixes dropped from the compact street (per the ratified "5537 La Mirada Ave" → "5537LaMirada"). */
 const STREET_SUFFIXES = new Set([
@@ -52,8 +60,8 @@ export interface ArtifactFilenameInput {
   et_al?: boolean;            // multiple tenants → "<LastName>EtAl" (first name dropped)
 }
 
-/** Build the ratified case-artifact filename. See module header. */
-export function generateArtifactFilename(input: ArtifactFilenameInput): string {
+/** Build the ratified Convention-A broker-filing filename. See module header. */
+export function generateBrokerFilingFilename(input: ArtifactFilenameInput): string {
   const street = compactStreet(input.property_address);
 
   const unit = compact(input.unit_number ?? '');
