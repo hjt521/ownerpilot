@@ -25,6 +25,11 @@ import type { RedisLike } from '@/lib/chat/rateLimitStore';
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
 
+  // Fork C1: boot error monitoring (Sentry). No-op unless SENTRY_DSN is set — feature-off by default.
+  // Idempotent; all events pass through the A15 PII scrub (beforeSend) and drop user identity.
+  const { initMonitoring } = await import('@/lib/monitoring');
+  await initMonitoring();
+
 // Slice 3b (ruling §2.4 req 4): classifier-audit boot self-check, independent of
   // the rate-limit store below. No-op unless CLASSIFIER_AUDIT_LIVE; when live,
   // surfaces a missing hash key / deploy sha once at boot. Never blocks boot.
@@ -55,4 +60,24 @@ export async function register(): Promise<void> {
   };
 
   setRateLimitStore(new RedisRateLimitStore(adapter));
+}
+
+/**
+ * Fork C1: Next.js global request-error hook — captures every uncaught error thrown by a route/render
+ * through the scrubbed monitoring pipeline. This is the control that would have surfaced the D1-chain Sev-1s
+ * (privacy intake 500, cron 401→throws) as monitored events instead of silent prod failures. No-op unless
+ * SENTRY_DSN is set. PII is redacted in beforeSend; only coarse route metadata is attached.
+ */
+export async function onRequestError(
+  error: unknown,
+  request: { path?: string; method?: string },
+  context: { routeType?: string; routePath?: string },
+): Promise<void> {
+  const { captureException } = await import('@/lib/monitoring');
+  await captureException(error, {
+    path: request?.path,
+    method: request?.method,
+    routeType: context?.routeType,
+    routePath: context?.routePath,
+  });
 }

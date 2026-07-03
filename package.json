@@ -37,6 +37,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
+    "@notionhq/client": "^2.2.15",
+    "@sentry/node": "^8.55.2",
     "@stripe/stripe-js": "^9.6.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
@@ -47,10 +49,10 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.12.4",
-    "stripe": "^22.1.1",
-    "@notionhq/client": "^2.2.15"
+    "stripe": "^22.1.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -60,7 +62,6 @@
     "supabase": "^2.107.0",
     "tailwindcss": "^4",
     "tsx": "^4",
-    "typescript": "^5",
-    "@playwright/test": "^1.48.0"
+    "typescript": "^5"
   }
 }
