@@ -1,10 +1,11 @@
 // lib/monitoring/index.ts
-// Fork C (C1) — self-hosted Sentry init + capture, FEATURE-OFF by default. Monitoring is a no-op unless
-// SENTRY_DSN is set (the DSN points at the self-hosted Sentry via the Relay side-car). No session replay, no
-// user identity, sendDefaultPii:false, and a beforeSend that scrubs every event through the A15 denylist.
-// The @sentry SDK is loaded lazily via a RUNTIME specifier so the app builds + typechecks WITHOUT the dep
-// installed (the dependency + Relay side-car land with the ops enablement step; see the C1 attestation).
-// Source: gate3_forks_C_D_B_E_F_G_omnibus_broker_ruling_2026-07-02 (C1).
+// Fork C (C1) — Sentry init + capture, FEATURE-OFF by default. Monitoring is a no-op unless SENTRY_DSN is set.
+// Per the C1 amendment, hosted sentry.io is the authorized INTERIM for closed beta (self-sunsetting at GA);
+// SENTRY_DSN is the hosted project DSN — no Relay side-car needed. No session replay, no user identity,
+// sendDefaultPii:false, and a beforeSend that scrubs every event through the A15 denylist. @sentry/node is a
+// declared dependency but is still loaded lazily via a RUNTIME specifier, so the app builds + typechecks even
+// if the dep is momentarily absent (belt-and-suspenders); monitoring simply stays a safe no-op.
+// Source: gate3_forks_C_D_B_E_F_G_omnibus_broker_ruling_2026-07-02 (C1) + C1 hosted-interim amendment.
 
 import { scrubMonitoringEvent, scrubValue } from './scrub';
 
