@@ -75,9 +75,12 @@ export async function onRequestError(
 ): Promise<void> {
   const { captureException } = await import('@/lib/monitoring');
   await captureException(error, {
-    path: request?.path,
-    method: request?.method,
-    routeType: context?.routeType,
-    routePath: context?.routePath,
+    extra: {
+      path: request?.path,
+      method: request?.method,
+      routeType: context?.routeType,
+      routePath: context?.routePath,
+    },
+    tags: { source: 'onRequestError', env: process.env.VERCEL_ENV ?? 'development' },
   });
 }

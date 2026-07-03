@@ -39,16 +39,47 @@ export async function initMonitoring(): Promise<void> {
     sendDefaultPii: false, // C1: never attach IP / cookies / headers
     replaysSessionSampleRate: 0, // C1: no session replay
     replaysOnErrorSampleRate: 0,
-    beforeSend: (event: unknown) => scrubMonitoringEvent(event as Record<string, unknown>),
+    beforeSend: (event: unknown) => scrubBeforeSend(event as Record<string, unknown>),
     beforeBreadcrumb: (crumb: unknown) => scrubValue(crumb),
   });
 }
 
-/** Capture an exception through the scrubbed pipeline. No-op unless monitoring is enabled. */
-export async function captureException(err: unknown, extra?: Record<string, unknown>): Promise<void> {
+// C1-A no-bypass: the scrub is the telemetry-boundary compliance control (A15 rule 3). Capture the canonical
+// reference at module load; beforeSend refuses to run — throws rather than silently sending — if it is ever
+// handed a scrubber that is not this exact function. A silent bypass would be a PII exfil vector, so throwing
+// (losing the one event) is the correct failure mode.
+const CANONICAL_SCRUB = scrubMonitoringEvent;
+
+/** beforeSend guard (C1-A): assert the scrubber is canonical, then scrub. Exported for the no-bypass test. */
+export function scrubBeforeSend(
+  event: Record<string, unknown>,
+  scrub: typeof scrubMonitoringEvent = scrubMonitoringEvent,
+): Record<string, unknown> {
+  if (scrub !== CANONICAL_SCRUB) {
+    throw new Error('monitoring beforeSend: scrub function was replaced — refusing to send (PII no-bypass)');
+  }
+  return scrub(event);
+}
+
+/** Options for a captured exception. tags/fingerprint feed Sentry grouping; extra is PII-scrubbed before send. */
+export interface CaptureOptions {
+  extra?: Record<string, unknown>;
+  tags?: Record<string, string>;
+  fingerprint?: string[];
+}
+
+/** Capture an exception through the scrubbed pipeline. No-op unless monitoring is enabled. `extra` is scrubbed
+ *  through the A15 denylist; `tags`/`fingerprint` are controlled non-PII grouping keys. */
+export async function captureException(err: unknown, opts?: CaptureOptions): Promise<void> {
   if (!isMonitoringEnabled()) return;
   const Sentry = await loadSentry();
   if (!Sentry || typeof Sentry.captureException !== 'function') return;
-  const scrubbedExtra = extra ? (scrubMonitoringEvent({ extra }).extra as Record<string, unknown>) : undefined;
-  Sentry.captureException(err, scrubbedExtra ? { extra: scrubbedExtra } : undefined);
+  const scrubbedExtra = opts?.extra
+    ? (scrubMonitoringEvent({ extra: opts.extra }).extra as Record<string, unknown>)
+    : undefined;
+  const ctx: Record<string, unknown> = {};
+  if (scrubbedExtra) ctx.extra = scrubbedExtra;
+  if (opts?.tags) ctx.tags = opts.tags;
+  if (opts?.fingerprint) ctx.fingerprint = opts.fingerprint;
+  Sentry.captureException(err, Object.keys(ctx).length ? ctx : undefined);
 }
