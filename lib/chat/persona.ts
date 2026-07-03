@@ -180,3 +180,35 @@ export const chatIntakeCaptureEscalation = `Let's not get stuck here. I'll save 
 //     now; ES awaits the general ES ratification pass (omnibus §4.7). ---
 export const chatIntakeSignerEntityTypePrompt = `Got it — {{entityName}}. What kind of entity is that? An LLC, a corporation, a limited partnership, a general partnership, a trust, or something else?`;
 export const chatIntakeSignerEntityTypeReAsk = `Sorry — I want to make sure I record this correctly. Is {{entityName}} an LLC, a corporation, a limited partnership, a general partnership, a trust, or something else?`;
+
+// --- FF-3 structured intake capture (manifest: chatFf3Capture* + chatFf3EscalationCard) ---
+// Source ruling: ff3_capture_questions_locked_prose_broker_ratification_2026-07-03.md
+export const chatFf3CaptureNoticeType = `What kind of notice are you serving on the tenant? The common ones are: a **3-day notice to pay rent or quit** (for non-payment), a **3-day notice to cure or quit** (for a lease violation the tenant can fix), a **3-day notice to quit** without a cure period (for nuisance, illegal use, or an unauthorized subtenant), or a **30-, 60-, or 90-day termination notice** (for ending a tenancy where no fault is alleged). Which one applies to your case?`;
+export const chatFf3CaptureNoticeTypeReask = `I want to record the notice type correctly, because the compliance rules that apply next depend on it. Is it a **3-day pay-or-quit**, a **3-day cure-or-quit**, a **3-day quit (no cure)**, a **30-day termination**, a **60-day termination**, or a **90-day termination** (which usually applies only to Section 8 tenancies)? If none of these match what you're serving, tell me the exact title of the notice and I'll record it as an escalation for broker review.`;
+export const chatFf3CaptureJustCause = `What is the reason you are ending the tenancy? California and LA City law group these into two categories.
+
+**At-fault reasons** (the tenant did something):
+- Non-payment of rent
+- Breach of a material lease term
+- Nuisance or damage to the property
+- Using the unit for an illegal purpose
+- Refusing to allow lawful entry
+- Having an unapproved subtenant, pet, or occupant
+- End of a fixed lease term (for SRO or covered no-fault-eligible units only)
+
+**No-fault reasons** (owner or government action, tenant did nothing wrong):
+- Owner or eligible family member moving in
+- Withdrawal of the unit from the rental market (Ellis Act)
+- Demolition of the property
+- Substantial capital improvements requiring the unit to be vacant
+- Government order requiring the unit to be vacated
+
+Which reason applies? If you have a reason that doesn't fit any of the above, tell me and I'll record it for broker review.`;
+export const chatFf3CaptureJustCauseReask = `I want to make sure I record the reason correctly, because the compliance requirements are very different for at-fault vs no-fault, and different again inside each group. From what you told me, I'm not sure which of the 12 recognized reasons applies. Can you tell me in one short phrase — for example, **'non-payment of rent'**, **'lease violation for unauthorized pet'**, **'owner moving in'**, or **'Ellis Act withdrawal'**? If your situation doesn't match any of these, tell me and I'll surface it as an escalation for broker review — we do not proceed with an unrecognized reason.`;
+export const chatFf3CaptureBedrooms = `How many bedrooms does the rental unit have? (A studio counts as 0.)`;
+export const chatFf3CaptureBedroomsReask = `Please give me the bedroom count as a number from 0 to 6 — a studio is 0.`;
+export const chatFf3CaptureContractRent = `What is the tenant's current monthly rent, in dollars?`;
+export const chatFf3CaptureContractRentReask = `Please give me the monthly rent as a dollar amount — for example, $2,400.`;
+export const chatFf3CaptureAmountOwed = `What is the total dollar amount stated on the notice you're serving? This should be the exact amount you wrote on the notice as the rent owed — not late fees, not interest, not future rent that hasn't come due yet. For example, if the tenant missed May and June rent of $3,000 each, and your notice demands both months, the amount is $6,000.`;
+export const chatFf3CaptureAmountOwedReask = `I want to record the amount from the notice exactly as written. Please give me the total dollar amount that appears on the served notice as the rent owed — for example, **$6,000**. If you haven't written the notice yet or you're not sure of the exact figure, tell me and I'll surface this as an escalation for broker review before we proceed to compliance checks.`;
+export const chatFf3EscalationCard = `I've asked a few times and I want to make sure I get this right rather than record a value I'm not confident in. I'm going to hold this case for broker review before we go any further. Your case is not lost — a broker will look at what you've told me so far and either clarify what I should ask next, or make the determination directly. You'll get an update within one business day. In the meantime, please continue to keep records of anything relevant to the case.`;
