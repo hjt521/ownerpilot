@@ -576,6 +576,15 @@
       "hash": "14069a55e137f4a752b8a4cbbc560ee3d1d122edb9591854e996f54ab69c2dc0",
       "source_ruling": "claude_code_master_prompt_omnibus_gate3_ownerpilot_productization_2026-07-02.md",
       "lane": "W2-intake-routing"
+    },
+    {
+      "key": "chatFf3IntakeConfirmationCard",
+      "version": "v1",
+      "tier": "A",
+      "value": "I want to make sure I have the case details right before I generate any forms. From our conversation so far, I have:\n- Property has **{bedrooms}** bedroom(s)\n- Amount owed on the notice: **${amount_of_rent_owed}**\n- Contract monthly rent: **${contract_monthly_rent}**\n- Just cause: **{just_cause_display_name}**\n- Notice type: **{notice_type_display_name}**\n\nIs all of that correct? If any field is wrong or missing, tell me now — I'll update the record before we proceed to compliance checks.",
+      "hash": "7099a36df804c526491f5cd97c65b3eb22146b198e2435e833f2b63a98bf6000",
+      "source_ruling": "gate3_wave3_wiring_and_ff3_omnibus_broker_ruling_2026-07-03.md §1.3",
+      "lane": "FF-3-intake"
     }
   ]
 }
