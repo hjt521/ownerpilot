@@ -40,7 +40,7 @@ function validV4(): NoticeFlowData {
     landlordContact: { name: 'Jack Tah', phone: '(559) 555-0142', streetAddress: '4336 Prospect Ave, Los Angeles, CA 90028' },
     signerName: 'Jack Tah',
     ...individualLandlord('owner', { names: ['Jack Tah'] }),
-    signingDate: '2026-06-02', // B1: execution date (<= service date)
+    signingDate: '2026-06-02', // B1 SUPERSEDED — signing == service == intendedServiceDate; g2 is now a no-op (facial coherence; pr_a_field_placement_b1_supersession_branch_split_broker_ruling_2026-06-30 §2)
     serviceDate: '2026-06-02',
     serviceMethod: 'personal',
   };
