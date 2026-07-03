@@ -23,9 +23,10 @@
 import { readFileSync } from 'node:fs';
 
 // The 11 expected Required checks — Option (c) curated set (gate2_baseline_correction_addendum_2026-07-01.md):
-// the 5 the "main protection" ruleset already enforced + 6 compliance-critical guards promoted to Required. The
+// the 5 the "main protection" ruleset already enforced + 7 compliance-critical guards promoted to Required. The
 // other 8 audit-gap checks are advisory-tier (fast-follow GATE2-ADVISORY-PROMOTION-2026Q3). This list MUST equal
 // the ruleset's required_status_checks (helper == GitHub). Job ids verbatim from .github/workflows/*.yml.
+// Full 20-job inventory + promotion recommendation: docs/compliance/branch_protection_full_inventory_baseline_2026-07-03.md
 const EXPECTED = [
   // 5 previously enforced by the "main protection" ruleset
   'test-and-typecheck',
@@ -33,13 +34,14 @@ const EXPECTED = [
   'verify-system-prompt-lock',
   'verify-classifier-lock',
   'verify-no-live-cliff',
-  // 6 compliance-critical, promoted to Required per the baseline-correction addendum
+  // 7 compliance-critical, promoted to Required per the baseline-correction addendum + the 07-03 route-body refresh
   'verify-banned-terms',
   'verify-no-operator-secrets',
   'verify-e2e-seed-guard',
   'verify-fetch-binding',
   'verify-review-produce-parity',
   'synthetic-daycount-jul2026',
+  'verify-route-body-parsing', // recurrent formData Sev-1 (#139→#145); baseline 2026-07-03 §1 promotion
 ];
 
 const norm = (s) => String(s).includes(' / ') ? s.split(' / ').pop().trim() : String(s).trim();
