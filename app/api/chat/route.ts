@@ -41,9 +41,11 @@ export async function POST(req: NextRequest) {
   // Lane 2E (Fork A): if a deterministic scripted-capture cursor is active, the server parses the owner's
   // message directly — the LLM is NOT called for the four capture categories.
   const activeCursor = activeCursorOf(session.transcript);
+  // Lane FF-3 (flag-gated): completeness for the FF-3 category lives in this typed column, not intake_state.
+  const ff3Status = (session as { ff3_capture_status?: string | null }).ff3_capture_status ?? null;
   let turn;
   if (activeCursor) {
-    turn = runScriptedActiveTurn(priorState, message, activeCursor, now);
+    turn = runScriptedActiveTurn(priorState, message, activeCursor, now, ff3Status);
   } else {
     // Build the message list: locked persona (verbatim) + transcript history + this owner message.
     const history: ChatMessage[] = (session.transcript ?? []).map((t: TranscriptTurn) => ({
@@ -64,7 +66,7 @@ export async function POST(req: NextRequest) {
 
     // Transition check: if the LLM just captured the last non-scripted required field, override its reply with
     // the verbatim first scripted block (the LLM never authors a scripted prompt).
-    turn = maybeBeginScripted(applyTurn(priorState, message, model), now);
+    turn = maybeBeginScripted(applyTurn(priorState, message, model), now, ff3Status);
   }
 
   // §E.4: if the model claimed complete prematurely, re-prompt next turn with the missing fields (do not route).
@@ -76,6 +78,9 @@ export async function POST(req: NextRequest) {
     last_refusal: turn.refusal,
     message_count: (session.message_count ?? 0) + 1,
     updated_at: new Date().toISOString(),
+    // Lane FF-3 (flag-gated): typed columns for the FF-3 category (ff3_capture_status +, on completion, the five
+    // intake columns). Empty for every non-FF-3 turn, so this spread is a no-op unless FF-3 capture is active.
+    ...(turn.ff3Persist ?? {}),
   }).eq('id', session.id);
   if (updated.error) return NextResponse.json({ error: 'persist failed' }, { status: 500 });
 

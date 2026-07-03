@@ -19,6 +19,7 @@ import {
   beginCapture, stepCapture, nextScriptedCategory, SCRIPTED_CATEGORIES,
   type CaptureCursor, type CaptureCategory, type ScriptedTurn,
 } from './scriptedCapture';
+import { ff3CaptureEnabled } from './ff3Flag';
 
 // The exact review handoff already ratified inside OWNERPILOT_PERSONA_SYSTEM_PROMPT (CLOSING). Reused verbatim
 // so the deterministic path and the LLM path emit identical closing copy.
@@ -31,12 +32,15 @@ export function activeCursorOf(transcript: TranscriptTurn[] | null | undefined):
   return last?.metadata?.capture ?? null;
 }
 
-/** True-category to begin scripted capture, gated on all NON-scripted required fields already being present. */
-export function scriptedBeginCategory(state: IntakeState): CaptureCategory | null {
+/**
+ * True-category to begin scripted capture, gated on all NON-scripted required fields already being present.
+ * ff3Status (chat_sessions.ff3_capture_status) lets nextScriptedCategory decide whether FF-3 is still pending.
+ */
+export function scriptedBeginCategory(state: IntakeState, ff3Status?: string | null): CaptureCategory | null {
   const scripted = new Set<string>(SCRIPTED_CATEGORIES);
   const nonScriptedMissing = missingRequiredFields(state).filter((f) => !scripted.has(f));
   if (nonScriptedMissing.length > 0) return null;
-  return nextScriptedCategory(state);
+  return nextScriptedCategory(state, ff3Status);
 }
 
 function assistantTurn(content: string, now: string, cursor: CaptureCursor | null): TranscriptTurn {
@@ -54,21 +58,29 @@ function mergeExtracted(state: IntakeState, scripted: ScriptedTurn): IntakeState
   return mergeIntake(state, [{ field: scripted.extracted.field, value: scripted.extracted.value, confidence: 1 }]);
 }
 
-/** Build a TurnResult, deriving completeness + review routing from the merged state. */
+/**
+ * Build a TurnResult, deriving completeness + review routing from the merged state.
+ * ff3Persist (typed columns) rides out to the route. ff3BlocksReview holds the session out of review while FF-3
+ * is still pending or parked for broker review (only meaningful when the FF-3 flag is on; false ⇒ base behavior).
+ * Review routing additionally requires no active cursor, so a session mid-capture never routes.
+ */
 function finish(
   mergedState: IntakeState, reply: string, cursor: CaptureCursor | null,
   ownerMessage: string, now: string,
+  ff3Persist?: Record<string, unknown>, ff3BlocksReview = false,
 ): TurnResult {
   const complete = missingRequiredFields(mergedState).length === 0;
+  const done = complete && cursor === null && !ff3BlocksReview;
   return {
     reply,
     refusal: null,
     intakeState: mergedState,
     intakeComplete: complete,
     missingFields: [],
-    status: complete ? 'intake_complete' : 'active',
+    status: done ? 'intake_complete' : 'active',
     transcriptAdditions: [ownerTurn(ownerMessage, now), assistantTurn(reply, now, cursor)],
-    routeToReview: complete,
+    routeToReview: done,
+    ff3Persist,
   };
 }
 
@@ -78,38 +90,44 @@ function finish(
  */
 export function runScriptedActiveTurn(
   priorState: IntakeState, ownerMessage: string, cursor: CaptureCursor, now: string,
+  ff3Status?: string | null,
 ): TurnResult {
   const scripted = stepCapture(cursor, ownerMessage, priorState);
 
+  // Resulting FF-3 status after this turn (unchanged for non-FF-3 turns) and whether it holds review.
+  const newFf3Status = (scripted.ff3Persist?.ff3_capture_status as string | undefined) ?? ff3Status ?? null;
+  const ff3Blocks = ff3CaptureEnabled() && newFf3Status !== 'complete';
+
   // Still inside the same category (prompt/reask) — carry the next cursor, no merge.
   if (scripted.kind === 'prompt' || scripted.kind === 'reask') {
-    return finish(priorState, scripted.reply, scripted.nextCursor, ownerMessage, now);
+    return finish(priorState, scripted.reply, scripted.nextCursor, ownerMessage, now, scripted.ff3Persist, ff3Blocks);
   }
-  // Escalation (two failed attempts / don't-know-title) — clear cursor, hand back; intake stays incomplete.
+  // Escalation (rule-of-three / don't-know-title / FF-3 broker-review) — clear cursor, hand back; not complete.
   if (scripted.kind === 'escalate') {
-    return finish(priorState, scripted.reply, null, ownerMessage, now);
+    return finish(priorState, scripted.reply, null, ownerMessage, now, scripted.ff3Persist, ff3Blocks);
   }
   // Completion — merge, then chain to the next ready scripted category or route to review.
   const merged = mergeExtracted(priorState, scripted);
-  const ack = scripted.reply; // '' for rent/pd/dispute; individual-ack for signer
-  const next = nextScriptedCategory(merged);
+  const ack = scripted.reply; // '' for rent/pd/dispute; ack for signer; confirmation card for FF-3
+  const next = nextScriptedCategory(merged, newFf3Status);
   if (next) {
     const begin = beginCapture(next);
     const reply = [ack, begin.reply].filter(Boolean).join('\n\n');
-    return finish(merged, reply, begin.nextCursor, ownerMessage, now);
+    // The just-begun category's status (e.g. FF-3 'in_progress') supersedes; a live cursor blocks review anyway.
+    return finish(merged, reply, begin.nextCursor, ownerMessage, now, begin.ff3Persist ?? scripted.ff3Persist, true);
   }
   const reply = [ack, CLOSING_HANDOFF].filter(Boolean).join('\n\n');
-  return finish(merged, reply, null, ownerMessage, now);
+  return finish(merged, reply, null, ownerMessage, now, scripted.ff3Persist, ff3Blocks);
 }
 
 /**
  * Transition turn: the base (LLM) turn already extracted the last non-scripted field. If scripted capture is
  * now ready, OVERRIDE the LLM reply with the verbatim first-ask and open the cursor. Otherwise return baseTurn.
  */
-export function maybeBeginScripted(baseTurn: TurnResult, now: string): TurnResult {
+export function maybeBeginScripted(baseTurn: TurnResult, now: string, ff3Status?: string | null): TurnResult {
   // Never override a refusal turn.
   if (baseTurn.refusal) return baseTurn;
-  const category = scriptedBeginCategory(baseTurn.intakeState);
+  const category = scriptedBeginCategory(baseTurn.intakeState, ff3Status);
   if (!category) return baseTurn;
 
   const begin = beginCapture(category);
@@ -130,6 +148,8 @@ export function maybeBeginScripted(baseTurn: TurnResult, now: string): TurnResul
     missingFields: [],
     routeToReview: false,
     transcriptAdditions: additions,
+    // FF-3: when the category we just opened is ff3_intake, mark the session mid-capture (in_progress).
+    ff3Persist: begin.ff3Persist ?? baseTurn.ff3Persist,
   };
 }
 
