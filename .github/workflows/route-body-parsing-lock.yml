@@ -1,0 +1,19 @@
+name: route-body-parsing-lock
+# Guards against the "formData-first, catch -> json" antipattern in API routes. On Vercel req.formData() returns
+# an EMPTY FormData for a JSON body (instead of throwing), so direct parsing drops all fields -> 400. Broke
+# /api/privacy-request (#139) then /api/waitlist. Routes must read bodies via lib/http/requestBody::readRequestBody.
+# No path filter on purpose (mirrors other *-lock workflows): always runs, fast, unevadable.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify-route-body-parsing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify routes read bodies via readRequestBody
+        run: node scripts/ci/verify_route_body_parsing.mjs
