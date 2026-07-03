@@ -547,6 +547,17 @@
       "hash": "54d54b3c125dc2d44f730cd9085d50784e873f3acab111a3ca473de305d232cc",
       "source_ruling": "claude_code_master_prompt_omnibus_gate3_ownerpilot_productization_2026-07-02.md",
       "lane": "W6-late-filing"
+    },
+    {
+      "key": "FMR_HARD_BLOCK_EN",
+      "version": "v1",
+      "tier": "A",
+      "value": "The amount owed on your 3-day notice — ${amount_of_rent_owed} — is not higher than the Fair Market Rent (FMR) threshold for a ${bedrooms}-bedroom unit in the City of Los Angeles (FMR = ${fmr}). The LAHD Eviction Notice Filing System blocks non-payment eviction filings when the amount owed does not exceed FMR. This is a portal-level restriction, not a platform preference — if you attempt to file, LAHD will reject the submission. Options: (1) if the amount owed in your records is incorrect, correct it now; (2) if the eviction is for cause other than non-payment, change the just-cause selection; (3) wait until more rent accrues so the total demanded exceeds FMR (the tenant continues to accrue arrears each month rent goes unpaid); (4) for guidance on below-FMR non-payment situations, contact LAHD directly at (866) 557-7368.",
+      "hash": "9539622bd84170c31fd138f5825ac6ef344ef53958f2138d112e18c207e29123",
+      "source_ruling": "ff4_fmr_gate_quantity_reconciliation_broker_ruling_2026-07-03.md",
+      "source_determination": "ff4_fmr_gate_quantity_reconciliation_broker_ruling_2026-07-03.md §2.3",
+      "portal_text_verbatim": "Landlords may not evict a tenant who falls behind in rent unless the tenant owes an amount higher than the Fair Market Rent (FMR).",
+      "lane": "FF-4-fmr"
     }
   ]
 }
