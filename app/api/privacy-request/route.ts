@@ -22,16 +22,35 @@ function svc() {
   });
 }
 
+/**
+ * Read the intake body by dispatching on Content-Type. Do NOT rely on req.formData() throwing on a JSON body —
+ * Vercel's serverless runtime returns an EMPTY FormData instead of throwing, so the old "formData-first, catch →
+ * json" pattern silently read every field as null and made the intake reject with a 400 (CCPA request intake was
+ * non-functional in prod). Read JSON when the client sends JSON (the /privacy-request page does); only parse
+ * FormData for actual form posts; best-effort JSON otherwise.
+ */
+export async function readIntakeBody(req: {
+  headers: { get(name: string): string | null };
+  json(): Promise<unknown>;
+  formData(): Promise<FormData>;
+}): Promise<Record<string, unknown>> {
+  const contentType = req.headers.get('content-type') ?? '';
+  if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
+    const form = await req.formData().catch(() => null);
+    if (!form) return {};
+    return {
+      request_type: form.get('request_type'),
+      contact_email: form.get('contact_email'),
+      notes: form.get('notes') ?? undefined,
+      requester_authorization_uploaded: form.get('requester_authorization_uploaded') === 'true',
+    };
+  }
+  // application/json, or unknown/empty content-type → best-effort JSON (the app always sends JSON).
+  return ((await req.json().catch(() => ({}))) as Record<string, unknown>) ?? {};
+}
+
 export async function POST(req: NextRequest) {
-  const form = await req.formData().catch(() => null);
-  const raw = form
-    ? {
-        request_type: form.get('request_type'),
-        contact_email: form.get('contact_email'),
-        notes: form.get('notes') ?? undefined,
-        requester_authorization_uploaded: form.get('requester_authorization_uploaded') === 'true',
-      }
-    : await req.json().catch(() => ({}));
+  const raw = await readIntakeBody(req);
 
   const parsed = requestSchema.safeParse(raw);
   if (!parsed.success) {
