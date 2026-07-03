@@ -29,11 +29,17 @@ The EFS portal's notice-type dropdown has **only two options: `3 Day` and `5 Day
 
 ## 2 — FMR threshold pre-check (non-payment)
 
-For a **non-payment** eviction, the LAHD portal displays and **enforces a Fair Market Rent (FMR) threshold by bedroom count.** If the contract rent is **below** the applicable FMR, a non-payment eviction is **blocked at the portal** — it is not merely discouraged.
+For a **non-payment** eviction, the LAHD portal displays and **enforces a Fair Market Rent (FMR) threshold by bedroom count.** If the amount the tenant owes is **at or below** the applicable FMR, a non-payment eviction is **blocked at the portal** — it is not merely discouraged. (LAHD wording: "Landlords may not evict a tenant who falls behind in rent unless the tenant owes an amount higher than the Fair Market Rent.")
 
-Verified from the founding filing: **2-bedroom, LA 2025-2026 FMR = $2,903** (contract rent $3,000 > FMR → permitted). The **full FMR table by bedroom count** (studio / 1BR / 2BR / 3BR / 4BR) should be pulled from the current LAHD portal and pinned in-product; only the 2BR value is verified in the founding-case materials, so the rest is marked TBD-from-portal rather than guessed.
+**LAHD FMR table — effective 2026-05-21 to 2026-09-30** (pulled from the LAHD portal; the 2BR value matches the founding filing):
 
-**Productization:** OwnerPilot adds an FMR pre-check at intake (Lane FF-4 / §3.3) that blocks a below-FMR non-payment attempt with a clear message **before** the owner assembles a packet.
+| Year | 0-BR | 1-BR | 2-BR | 3-BR | 4-BR |
+|---|---|---|---|---|---|
+| 2025-2026 | $2,079 | $2,328 | $2,903 | $3,681 | $4,098 |
+
+**Effective window matters:** this table is valid **through 2026-09-30**. It rotates after that — the FF-4 pre-check must key the threshold on the filing date and refresh the table when LAHD publishes the next window (a cron/watch candidate).
+
+**Productization:** OwnerPilot adds an FMR pre-check at intake (Lane FF-4 / §3.3) that blocks a below-/at-FMR non-payment attempt with a clear message **before** the owner assembles a packet.
 
 ## 3 — What gets uploaded vs. retained
 
@@ -98,7 +104,7 @@ The v1 walkthrough listed integration opportunities; the 2026-07-02 omnibus addr
 ---
 
 ## §4.2 attestation (Lane W1)
-- **Source of truth:** founding LIVE filing materials (`EFS0317078`) — LAHD filing confirmation, packet manifest, cover-sheet field transcript. All portal-reality claims trace to those artifacts; the only value carried forward unverified is the full FMR-by-bedroom table (2BR verified; rest marked TBD-from-portal, not guessed).
+- **Source of truth:** founding LIVE filing materials (`EFS0317078`) — LAHD filing confirmation, packet manifest, cover-sheet field transcript — plus the LAHD portal FMR table (effective 2026-05-21 to 2026-09-30). All portal-reality claims trace to those artifacts; the full FMR-by-bedroom table is now pinned from the portal (2BR $2,903 matches the founding filing) with its effective window recorded so FF-4 refreshes it on rotation.
 - **PII discipline:** no tenant PII (name, phone, email, address) is included — this is a product ops guide, not a case file. Founding case referenced only by LAHD record number.
 - **Locked prose:** none introduced by this doc; the Declaration-of-Intent stub copy is locked in Lane W2, not here.
 - **No code change:** documentation deliverable; nothing to typecheck/test.
