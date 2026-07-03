@@ -538,6 +538,15 @@
       "hash": "20ef8b17c3ded7179fb52bcbb533142c97d76938ce20f7c39fa9c0b9836bbacc",
       "source_ruling": "claude_code_master_prompt_omnibus_gate3_ownerpilot_productization_2026-07-02.md",
       "lane": "W7-do-not-serve"
+    },
+    {
+      "key": "LATE_FILING_ESCAPE_HATCH_EN",
+      "version": "v1",
+      "tier": "A",
+      "value": "Your notice was served on ${service_date}, more than three business days ago. LAHD requires eviction notice filings within three business days of service. To recover: re-serve the notice with a new service date (posting + mailing to the same tenant on the same day is sufficient under CCP § 1162(a)(3)), then file within three business days of the new service date. The platform will regenerate the packet with the new service date. Continue to re-service now, or cancel and file the current notice knowing it may be rejected by LAHD.",
+      "hash": "54d54b3c125dc2d44f730cd9085d50784e873f3acab111a3ca473de305d232cc",
+      "source_ruling": "claude_code_master_prompt_omnibus_gate3_ownerpilot_productization_2026-07-02.md",
+      "lane": "W6-late-filing"
     }
   ]
 }
