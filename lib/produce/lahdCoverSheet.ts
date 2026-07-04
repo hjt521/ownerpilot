@@ -16,6 +16,10 @@ export interface CoverSheetInput {
   propertyAddress?: string;   // full property line (snapshot.propertyAddress)
   tenantName?: string;        // first named tenant (snapshot.tenantNames[0])
   totalAmountOwed?: number;   // snapshot.totalAmount
+  // P2 (ruling 2026-07-04 Item 3): optional authenticity QR — a PNG data-URL (packetQrDataUrl) + the /verify URL.
+  // Present ONLY when PACKET_VERIFY_SECRET is configured and the caller signed a token; omitted otherwise (no-op).
+  verifyQrDataUrl?: string;
+  verifyUrl?: string;
 }
 
 const esc = (s: string) =>
@@ -85,6 +89,7 @@ export function buildLahdCoverSheetHtml(input: CoverSheetInput): string {
   <p class="cs-sub">Pre-filled by OwnerPilot AI &middot; ${esc(COVER_SHEET_REVISION)}</p>
   <p class="cs-note">This form is only required if you are submitting a physical copy of the eviction notice by mail or in person to LAHD. It is not needed if you upload the eviction notice online. Review every field, complete any blank lines, and sign the Declaration before mailing.</p>
   ${rows}
+  ${input.verifyQrDataUrl ? `<div class="cs-verify"><img src="${esc(input.verifyQrDataUrl)}" alt="Authenticity QR" width="96" height="96"/><span class="cs-verify-cap">Scan to verify this cover is an authentic, unaltered OwnerPilot packet.${input.verifyUrl ? ` ${esc(input.verifyUrl)}` : ''}<br/>Verification confirms the document hash only — it is not legal service and shows no personal information.</span></div>` : ''}
   <p class="cs-foot">Mail to: LAHD Eviction Filing Section, PO BOX 17850, Los Angeles, CA 90057. File a copy of the served notice with LAHD within 3 business days of service.<br/>OwnerPilot AI is not a law firm and does not provide legal advice; this pre-filled form is a broker-prepared convenience. Verify all fields before filing.</p>
 </body></html>`;
 }
