@@ -11,7 +11,19 @@ const FROM = 'OwnerPilot <noreply@ownerpilot.ai>';
 
 /** Transactional template families — the C1-A email-send monitor tags every send by this so the Fork-G watch
  *  can track "sends observed + Resend failure rate = 0" per family. */
-export type EmailTemplate = 'claim' | 'privacy-ack';
+export type EmailTemplate =
+  | 'claim'
+  | 'privacy-ack'
+  // P1 productization (broker standing order 2026-07-03 §2): three new transactional families.
+  | 'packet-delivery'      // combined packet PDF, copy-only (NOT service — CCP §1162 disclaimer baked into copy)
+  | 'broker-intake-digest' // broker notification: N intakes awaiting review (no PII in body — count + link only)
+  | 'lahd-confirmation';   // forward a LAHD filing confirmation reference to the owner
+
+/** A Resend attachment: base64 content + filename. Used for the packet-delivery combined PDF. */
+export interface EmailAttachment {
+  filename: string;
+  content: string; // base64-encoded file bytes
+}
 
 function emailEnv(): string {
   return process.env.VERCEL_ENV ?? 'development';
@@ -23,11 +35,13 @@ async function send(
   text: string,
   template: EmailTemplate,
   replyTo?: string,
+  attachments?: EmailAttachment[],
 ): Promise<void> {
   const key = process.env.RESEND_API_KEY;
   if (!key) { console.warn('RESEND_API_KEY not set — skipping email'); return; }
   const payload: Record<string, unknown> = { from: FROM, to, subject, text };
   if (replyTo) payload.reply_to = replyTo;
+  if (attachments && attachments.length) payload.attachments = attachments;
 
   let res: Response;
   try {
@@ -100,4 +114,47 @@ export async function sendClaimEmail(to: string, claimUrl: string): Promise<void
   const subject = e.subject ?? 'Your OwnerPilot AI claim link';
   const text = e.value.replace('{{claim_url}}', claimUrl);
   await send(to, subject, text, 'claim');
+}
+
+// --- P1 productization emails (broker standing order 2026-07-03 §2) --------------------------------------------
+// All bodies are Shape-B locked prose, PROVISIONAL pending broker ratification (07-10 countersign). No PII beyond
+// the recipient except where the recipient legitimately needs it (LAHD confirmation ref, which identifies the
+// filing, not a person). G5 footer baked into each body.
+
+/**
+ * Deliver the combined packet PDF as a records/review COPY. The locked body carries the mandatory CCP §1162
+ * non-service disclaimer — emailing the PDF is NOT legal service and starts no deadline (§1162 surface handled in
+ * copy, flagged for broker ratification). Recipient-neutral (owner / counsel / tenant copy).
+ */
+export async function sendPacketDeliveryEmail(to: string, packet: EmailAttachment): Promise<void> {
+  // LockedKey: PACKET_DELIVERY_EMAIL_BODY_V1
+  const e = lockedProseEntry('PACKET_DELIVERY_EMAIL_BODY_V1');
+  const subject = e.subject ?? 'Your OwnerPilot AI notice packet (copy)';
+  await send(to, subject, e.value, 'packet-delivery', undefined, [packet]);
+}
+
+/**
+ * Notify the broker that intakes are awaiting review. No case PII in the body — just a count + the review link
+ * (the broker clicks through to the auth-gated checklist to see details).
+ */
+export async function sendBrokerIntakeDigestEmail(to: string, count: number, reviewUrl: string): Promise<void> {
+  // LockedKey: BROKER_INTAKE_DIGEST_EMAIL_BODY_V1
+  const e = lockedProseEntry('BROKER_INTAKE_DIGEST_EMAIL_BODY_V1');
+  const subject = e.subject ?? 'OwnerPilot AI — intakes awaiting review';
+  const text = e.value.replace('{{count}}', String(count)).replace('{{review_url}}', reviewUrl);
+  await send(to, subject, text, 'broker-intake-digest');
+}
+
+/**
+ * Forward a LAHD filing confirmation reference to the owner for their records. Minimal identifiers only
+ * (confirmation ref + filed date); no address or personal data in the body.
+ */
+export async function sendLahdConfirmationEmail(to: string, confirmationRef: string, filedDateISO: string): Promise<void> {
+  // LockedKey: LAHD_CONFIRMATION_FORWARD_EMAIL_BODY_V1
+  const e = lockedProseEntry('LAHD_CONFIRMATION_FORWARD_EMAIL_BODY_V1');
+  const subject = e.subject ?? 'Your LAHD filing confirmation — OwnerPilot AI';
+  const text = e.value
+    .replace('{{confirmation_ref}}', confirmationRef)
+    .replace('{{filed_date}}', formatLaDate(filedDateISO));
+  await send(to, subject, text, 'lahd-confirmation');
 }
