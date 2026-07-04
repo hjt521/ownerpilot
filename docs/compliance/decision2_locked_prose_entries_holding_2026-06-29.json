@@ -1,0 +1,206 @@
+{
+  "_note": "HOLDING FILE — the 20 Decision 2 locked-prose entries carved out of locked_prose_manifest.json for the Phase 2D release per decision2_carve_out_from_phase2d_release_broker_ruling_2026-06-29.md §3/§4. Re-insert these into the manifest on the Decision 2 branch (alongside routeToCounselCopy.ts + brokerConfirmCopy.ts) when Decision 2 ships. Verbatim text + hashes preserved exactly. NOT part of the Phase 2D PR.",
+  "_carved_on": "2026-06-29",
+  "entries": [
+    {
+      "constant": "routeToCounselTitle",
+      "tier": "B",
+      "file": "lib/flow/routeToCounselCopy.ts",
+      "verbatim": "Find a California landlord-tenant attorney",
+      "hash": "4ea6ff1b893f1acf4d450f0f2a5b8818945441919d4de28cbcd7e753bd021441",
+      "version_stamp": "routeToCounselCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_backend_build_section0_flags_broker_ruling_2026-06-28.md",
+      "source_section": "§5.4"
+    },
+    {
+      "constant": "routeToCounselIntro",
+      "tier": "B",
+      "file": "lib/flow/routeToCounselCopy.ts",
+      "verbatim": "OwnerPilot AI is a California real estate broker service. We can guide you through CA landlord notice procedures, but we don't give legal advice. If you need legal advice — about an eviction, a tenant dispute, a contract issue, or anything else where a lawyer's judgment matters — please contact one of the referral services below.",
+      "hash": "dd4d03e28d3260126f33c3d2b456cf1200b7ab3f9b647b5cd95cbc948fd26e46",
+      "version_stamp": "routeToCounselCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_backend_build_section0_flags_broker_ruling_2026-06-28.md",
+      "source_section": "§5.4"
+    },
+    {
+      "constant": "routeToCounselLacbaBody",
+      "tier": "B",
+      "file": "lib/flow/routeToCounselCopy.ts",
+      "verbatim": "The LACBA Lawyer Referral Service connects you with a screened California attorney for an initial consultation.",
+      "hash": "1e68d8072ad9c02ba27c69380acfd68c69043d969e1880e618eb22d85934d267",
+      "version_stamp": "routeToCounselCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_backend_build_section0_flags_broker_ruling_2026-06-28.md",
+      "source_section": "§5.4"
+    },
+    {
+      "constant": "routeToCounselDisclaimer",
+      "tier": "B",
+      "file": "lib/flow/routeToCounselCopy.ts",
+      "verbatim": "OwnerPilot AI operates as a California real estate broker (CalDRE B9445457). We do not refer to specific attorneys, we do not receive referral fees, and we have no fee-splitting arrangement with any attorney or law firm. The referral services above are independent of OwnerPilot AI.",
+      "hash": "9c390baa49499126245e09c9bcf4e09da888121fd258ae1a6391d61c8b620035",
+      "version_stamp": "routeToCounselCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_backend_build_section0_flags_broker_ruling_2026-06-28.md",
+      "source_section": "§5.4"
+    },
+    {
+      "constant": "brokerConfirmRequestPrompt",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "We couldn't automatically confirm which city governs this address. You can request a review by our California licensed real estate broker — we'll check parcel and jurisdiction records and confirm whether this property is in the City of Los Angeles.",
+      "hash": "941a391a0cbf58b616f702f350bc1089361f2ad79af06851b0e3fbb8c96d1db8",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.A"
+    },
+    {
+      "constant": "brokerConfirmRequestButton",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Request broker review",
+      "hash": "ae616484413b16e4c6fdacd990da8a2827c6f4cff57be60576d0adeb0cfe067a",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.B"
+    },
+    {
+      "constant": "brokerConfirmEmailNotice",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Email (optional) — so we can tell you when the review is done.\nWe collect this email only to notify you when your broker review completes. We do not sell or share it, and we do not add you to marketing emails. We delete it 90 days after your request resolves.",
+      "hash": "48bdefa46d509c1046c68a8113fd4dd333c0db26d864ee097d9e00b5a8bc7da4",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.C"
+    },
+    {
+      "constant": "brokerConfirmSaveLinkNotice",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Your request is in. Save this page — bookmark it, or copy the URL somewhere safe. It's the only way to check your review status. We can't resend the link if you lose it.",
+      "hash": "dfb7e89804dff5ec92888dad103bf49aa87505a02854ed15ddf28d4da0c3e566",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.D"
+    },
+    {
+      "constant": "brokerConfirmPendingStatus",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Broker review in progress. Expected by {deadline}. You can keep editing your notice; producing is paused until the review completes.",
+      "hash": "1c4434d65bb646953af736dcf99d10091567c67a4bac9b51ba2a7cdc90fb1f98",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.E"
+    },
+    {
+      "constant": "brokerConfirmConfirmed",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Confirmed — this property is in the City of Los Angeles. You can continue.",
+      "hash": "3f26ea0bd96af8ae20b0ce1751a8e5cf7ce4856b28cf2c3ea3cd7181f5c218d8",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.F"
+    },
+    {
+      "constant": "brokerConfirmDeniedPreamble",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "After review, we found this property is not in the City of Los Angeles. For jurisdiction-specific guidance on the city or county that does govern, please consult a California attorney.",
+      "hash": "b65c8ec4d094d60a3a31f0ca47ad76b47c36ac527ee613b4fe7deeaa1d5716dd",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.G1"
+    },
+    {
+      "constant": "brokerConfirmInconclusivePreamble",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Our broker review couldn't reach a clear conclusion on which city governs this address. For jurisdiction-specific guidance, please consult a California attorney.",
+      "hash": "6761d6a88d5cd73996c121be25b91dd4c31c078de05e63215a3c4a2096cd51d7",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.G2"
+    },
+    {
+      "constant": "brokerConfirmExpiredPreamble",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Our broker review didn't resolve within the expected window. We're sorry for the wait. For jurisdiction-specific guidance, please consult a California attorney.",
+      "hash": "b43725a2ea3993363cf4f36dab46bdd396363b85a9126a7ea48d1d0accabbc73",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.G3"
+    },
+    {
+      "constant": "brokerConfirmCounselCtaLabel",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Find a California landlord-tenant attorney",
+      "hash": "4ea6ff1b893f1acf4d450f0f2a5b8818945441919d4de28cbcd7e753bd021441",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.G"
+    },
+    {
+      "constant": "brokerConfirmCancelConfirm",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Cancel this broker review request? You can submit a new one later.",
+      "hash": "0f54191842fd031e3d7eaac92ec0d4d6593dc3458ad7636cf76147e98ad77acd",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§2.H"
+    },
+    {
+      "constant": "checkStatusTitle",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Check your broker review status",
+      "hash": "c8c8118104ac7981cb872bda517f165af81162c44de682f88962e3f71ba05583",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§3.3"
+    },
+    {
+      "constant": "checkStatusIntro",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "If you have the link we gave you when you requested a broker review, paste it below to check the status.",
+      "hash": "dcd595469719c90aa70f7a148fbd3a5164a153ede47ec87bcf1e7d996cd3fc1a",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§3.3"
+    },
+    {
+      "constant": "checkStatusFieldLabel",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Your broker review link",
+      "hash": "6abb03c9098b2c24a97f68756836656b9b396cbc7fa88f34a4f0a632b28f8301",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§3.3"
+    },
+    {
+      "constant": "checkStatusButton",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "Check status",
+      "hash": "69cd3590300a68c6ec0a910990164d492a4ff779ce9ddc471acbd87247332600",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§3.3"
+    },
+    {
+      "constant": "checkStatusError",
+      "tier": "B",
+      "file": "lib/flow/brokerConfirmCopy.ts",
+      "verbatim": "We couldn't read that link. Make sure you pasted the full URL we sent when you submitted your request. If you lost the link entirely, we can't recover it — you'll need to submit a new request.",
+      "hash": "b82b162e1dbb2da7c6c2d1537d3b854a9ee057f322c8101e4778ad1e05e4180c",
+      "version_stamp": "brokerConfirmCopyVersion=v1",
+      "source_determination": "docs/compliance/decision2_owner_facing_ui_slice_broker_signoff_2026-06-28.md",
+      "source_section": "§3.3"
+    }
+  ]
+}
