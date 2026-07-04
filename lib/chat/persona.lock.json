@@ -1,12 +1,12 @@
 {
   "file": "lib/chat/persona.ts",
   "constant": "OWNERPILOT_PERSONA_SYSTEM_PROMPT",
-  "sha256": "f3991a92499d6621ca1b0bea73f61de0485bbb06c69cb43a357dd901ed4b5451",
-  "bytes": 6266,
-  "status": "LOCKED",
-  "approvedBy": "operator",
-  "approvedOn": "2026-06-30",
-  "sourceRevision": "Lane 3 / Ruling 1 persona ratification (lib/chat/persona.ts)",
-  "note": "Re-locked via --write. Commit this file alongside the route change. A change to SYSTEM_PROMPT requires operator re-review before re-locking (drift ruling 2026-06-06 §4).",
-  "lockedAt": "2026-06-30T07:37:02.331Z"
+  "sha256": "78a48c501d154411fefa6c140e80e80bc043d54ea0f6cb6cf61dac6677c994f4",
+  "bytes": 14498,
+  "status": "LOCKED_P4_Q1",
+  "approvedBy": "Jack Taglyan / CalDRE B9445457",
+  "approvedOn": "2026-07-04",
+  "sourceRevision": null,
+  "note": "P4 Q1 lease concept vocabulary appended per p4_q1_persona_lease_concept_vocabulary_broker_countersign_2026-07-04 (all 6 amendments integrated).",
+  "lockedAt": "2026-07-04T07:59:54.564Z"
 }
