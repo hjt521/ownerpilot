@@ -7,7 +7,7 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-4">
         <Link href="/" className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/ownerpilot-mark.png" alt="OwnerPilot.AI" className="h-9 w-auto" />
+          <img src="/ownerpilot-mark.svg" alt="OwnerPilot.AI" className="h-9 w-auto" />
           <span className="font-serif text-xl font-bold text-brand">
             OwnerPilot<span className="text-gold">.AI</span>
           </span>
