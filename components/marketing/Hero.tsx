@@ -23,6 +23,15 @@ export function Hero() {
           See how it works
         </a>
       </div>
+      {/* Lane 8 Fork 2 ruling: hero is an ABSTRACT editorial illustration (not a real /chat screenshot).
+          Canva-generated per the ratified `hero_chat_first_flow` prompt — warm California palette, phone +
+          chat bubbles, no people, no legible text. Decorative only (alt=""), so it adds no copy claims. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/hero_chat_first_flow.jpg"
+        alt=""
+        className="mx-auto mt-12 w-full max-w-2xl rounded-xl"
+      />
     </section>
   );
 }
