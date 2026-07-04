@@ -55,12 +55,43 @@ Turnkey design: `ff3_migration_042_cobatch_implementation_design_2026-07-03.md`.
 | E5 | `cron_1_ca_statute_watch` — add LAMC §151.09.C.9 / §165.05.B.5 / Ord.188,681 + housing.lacity.gov URLs | Computer automation / Notion | statute_watch_scope_lamc_amendment_2026-07-03 |
 | E6 | FF-3 series doc drop already merged; historical doc-sweep + INDEX merged — **no action, informational** | — | — |
 
-## F · Productization console / registration steps (accumulate as P1–P6 land)
+## F · Productization (P1–P6) — CONSOLIDATED CLOSE (supersedes the earlier F1–F3 placeholders)
 
-Per standing order §7 — broker completes these in the 07-10 session alongside the code:
-- F1 · **P3 Twilio** — 10DLC brand + campaign registration (DUNS/EIN attestation in Twilio console); confirm STOP/HELP Advanced Opt-Out wired flow. *(pending P3 build)*
-- F2 · **P5 domain** — DNS records for production cutover if the homepage is staged at a pplx.app subdomain (engineering will supply the exact record checklist with the P5 attestation). *(pending P5 build)*
-- F3 · Any credential/console step P2/P4/P6 surface — engineering will append to this section as each lane lands.
+All six lanes built (first pass). Below is the complete decision + console/ops queue, organized by lane. **RULE** = broker decision needed; **EXEC** = broker-executed console/dashboard/DB/DNS action; **✅** = already resolved.
+
+### P1 — Transactional email
+- **RULE F-P1a** · Ratify the 3 provisional email bodies (see §A: `PACKET_DELIVERY_/BROKER_INTAKE_DIGEST_/LAHD_CONFIRMATION_..._EMAIL_BODY_V1`).
+- **RULE F-P1b** · Packet-delivery recipient policy — tenant vs owner/counsel only (the §1162 non-service disclaimer makes any recipient safe; policy is yours). *(also §B2)*
+
+### P2 — Packet QR verification
+- **RULE F-P2a** · Verification-view content + auth model — authenticity-only + short-lived signed token (engineer lean) vs full-packet + broker login (PII exposure decision).
+- **RULE F-P2b** · Approve the `qrcode` npm dependency (or choose another).
+- **EXEC F-P2c** · `PACKET_VERIFY_SECRET` on Vercel (when the endpoint ships).
+
+### P3 — Twilio SMS
+- **RULE F-P3a** · **§B.7 reversal** — server→tenant reminder SMS is HELD (fail-closed) because it reverses the prior ratified "owner-copy-only, NO server→tenant SMS" TCPA firewall. Rule the reversal (with TCPA rationale) or keep §B.7. *(broker-alert + 2FA are live/clean regardless.)*
+- **EXEC F-P3b** · Twilio env (`TWILIO_ACCOUNT_SID/_AUTH_TOKEN/_FROM/_STATUS_CALLBACK_URL`) on Vercel.
+- **EXEC F-P3c** · 10DLC brand + campaign registration (DUNS/EIN in the Twilio console); confirm STOP/HELP Advanced Opt-Out flow.
+- **EXEC F-P3d** · SMS persistence migration (`sms_consent` + `sms_messages`) — broker-executed; required before any reminder-class SMS.
+
+### P4 — Persona wiring — ✅ CLOSED (ruled 2026-07-04, Q1–Q5)
+- **✅** CAR RLMM (Q1), runtime gate (Q3), classifier+rate-limit wiring (Q4), lock form (Q5).
+- **RULE F-P4a** · Rate-limit config reconciliation — ratified per-session config (wired) vs Q4's recommended per-IP/user numbers.
+- **EXEC F-P4b** · Flip `CLASSIFIER_LIVE` in Preview when ready to observe classifier logs.
+- **EXEC F-P4c** · Rate-limit Redis env (`KV_REST_API_URL/_TOKEN` or Upstash) for atomic prod limiting.
+- **EXEC F-P4d** · Attach/reconcile the transcript-retention decision doc (parallel lane, post-042).
+- **RULE/legal F-P4e** · ToS user-content clause (Q1 first-sale/agent-authorization footing) — before public launch.
+
+### P5 — Homepage deploy — ✅ deploy-ready
+- **EXEC F-P5a** · Vercel production deploy + `ownerpilot.ai` DNS cutover (checklist in the P5 attestation §4; preserve the Resend email DNS).
+- **RULE F-P5b** · Confirm staging-domain intent — `pplx.app` (per order) vs the default `*.vercel.app` preview.
+
+### P6 — Intake portal
+- **RULE F-P6a** · **Scope ruling** — "tenant intake portal" is a mis-name; the function is the landlord/owner retail funnel (already `/chat`). Confirm P6 = harden `/chat` (+ optional public owner form); a tenant-facing eviction tool is NOT recommended and needs its own purpose ruling. Portal build is held on this.
+- **EXEC F-P6b** · `TURNSTILE_SECRET_KEY` (+ site key) on Vercel when CAPTCHA is enabled.
+
+### Cross-cutting (already in earlier sections, restated for the single session)
+- Migration 042 VALIDATE (§E1) · branch-protection Required checks (§E2) · `ADMIN_EMAILS` (§E3) · Sentry scrubbers (§E4) · statute-watch LAMC scope (§E5).
 
 ## G · Standing guardrails (reaffirm — no change requested, listed for completeness)
 
