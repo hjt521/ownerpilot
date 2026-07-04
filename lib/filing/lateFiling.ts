@@ -7,6 +7,14 @@
 import { getVerifiedCityHolidaySet } from '@/lib/dates/holidays_la_city';
 import { lockedProseEntry } from '@/lib/compliance/lockedProse';
 
+/**
+ * The LAHD post-service filing window, in LA-city business days. Sourced to the ordinance
+ * (LAMC § 151.09.C.9 / § 165.05.B.5 / Ordinance 188,681). The W6 gate module (lateFilingGate.ts) asserts this
+ * integer equals the number parsed from LAMC_LATE_FILING_ORDINANCE_VERBATIM, so an ordinance change breaks the
+ * build — no silent hard-code drift (W6 ruling 2026-07-03 Fork-1, hard-code-assertion ratification).
+ */
+export const LATE_FILING_WINDOW_BUSINESS_DAYS = 3;
+
 /** 'YYYY-MM-DD' → UTC-noon Date (avoids TZ edge cases in date-only math). */
 function parseIso(d: string): Date {
   const [y, m, day] = d.split('-').map(Number);
@@ -33,7 +41,7 @@ export function lahdFilingDeadline(serviceDateIso: string): string {
   ]);
   const d = new Date(start);
   let counted = 0;
-  while (counted < 3) {
+  while (counted < LATE_FILING_WINDOW_BUSINESS_DAYS) {
     d.setUTCDate(d.getUTCDate() + 1);
     if (isLaBusinessDay(d, holidays)) counted++;
   }
