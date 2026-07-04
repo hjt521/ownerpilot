@@ -16,6 +16,7 @@ import { getRateLimitStore } from '@/lib/chat/rateLimitStore';
 import { CLASSIFIER_LIVE } from '@/lib/chat/classifierConfig';
 import { runClassifier } from '@/lib/chat/classifier';
 import { makeGatewayComplete } from '@/lib/chat/classifierClient';
+import { verifyCaptchaToken } from '@/lib/safety/captcha';
 import { loadSession, createSession, hashAnonToken, serviceClient } from '@/lib/chat/session';
 import { unsupportedLanguageNotice } from '@/lib/chat/refusalBank';
 import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
@@ -23,18 +24,31 @@ import type { ChatMessage } from '@/lib/chat/responseFormat';
 import type { TranscriptTurn } from '@/lib/chat/dbTypes';
 
 const COOKIE = 'op_chat_token';
-const bodySchema = z.object({ message: z.string().min(1).max(4000), language: z.enum(['en', 'es']).optional() });
+const bodySchema = z.object({
+  message: z.string().min(1).max(4000),
+  language: z.enum(['en', 'es']).optional(),
+  captchaToken: z.string().optional(), // P6: sent with the first message to gate new-session creation
+});
 
 export async function POST(req: NextRequest) {
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'message required' }, { status: 400 });
-  const { message, language } = parsed.data;
+  const { message, language, captchaToken } = parsed.data;
 
   const sb = serviceClient();
   let rawToken = req.cookies.get(COOKIE)?.value ?? '';
   let session = rawToken ? await loadSession(rawToken, sb) : null;
   let setCookie = false;
   if (!session) {
+    // P6 owner-funnel hardening (ruling 2026-07-04 Item 1): gate NEW-session creation on CAPTCHA. Abuse/bot
+    // control at the funnel entry. No-op until TURNSTILE_SECRET_KEY is set (verifyCaptchaToken → configured:false
+    // ⇒ allow), so this is safe to ship dark. Existing sessions (cookie present) are never re-challenged.
+    const remoteIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const cap = await verifyCaptchaToken(captchaToken, remoteIp);
+    if (!cap.ok) {
+      console.info(JSON.stringify({ evt: 'chat.captcha_blocked', reason: cap.reason, at: new Date().toISOString() }));
+      return NextResponse.json({ error: 'Please complete the verification challenge and try again.' }, { status: 403 });
+    }
     const created = await createSession(sb, e2eTagFromHeaders(req.headers));
     rawToken = created.rawToken; setCookie = true;
     session = await loadSession(rawToken, sb);
