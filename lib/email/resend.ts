@@ -130,7 +130,10 @@ export async function sendPacketDeliveryEmail(to: string, packet: EmailAttachmen
   // LockedKey: PACKET_DELIVERY_EMAIL_BODY_V1
   const e = lockedProseEntry('PACKET_DELIVERY_EMAIL_BODY_V1');
   const subject = e.subject ?? 'Your OwnerPilot AI notice packet (copy)';
-  await send(to, subject, e.value, 'packet-delivery', undefined, [packet]);
+  // Item 6 Tightening 1: the ruled verbatim CCP §1162 non-service disclaimer on every delivery (locked-prose).
+  // LockedKey: PACKET_DELIVERY_NOT_SERVICE_1162_DISCLAIMER
+  const disclaimer = lockedProseEntry('PACKET_DELIVERY_NOT_SERVICE_1162_DISCLAIMER').value;
+  await send(to, subject, `${e.value}\n\n${disclaimer}`, 'packet-delivery', undefined, [packet]);
 }
 
 /**
