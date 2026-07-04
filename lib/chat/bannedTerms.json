@@ -1,0 +1,30 @@
+{
+  "_doc": "Single source of banned terms for BOTH the CI static guard (scripts/ci/check_banned_terms.mjs) and the runtime output gate (lib/chat/runtimeBannedTermGate.ts). Ruling: p4_persona_production_wiring_broker_ruling_2026-07-04 Q3 (single source) + Q1 tightening 3 (CAR identifiers). `term` is the canonical human term (CI allowlist key). `ci`: enforced by the CI lint on committed copy. `runtime`: action the runtime output gate takes on live model output (block|scrub|log_only|none).",
+  "terms": [
+    { "id": "legally-compliant", "term": "legally compliant", "pattern": "\\blegally compliant\\b", "flags": "i", "reason": "designed around California statutory requirements", "ci": true, "runtime": "block" },
+    { "id": "compliant-notice", "term": "compliant notice", "pattern": "\\bcompliant notice\\b", "flags": "i", "reason": "notice designed around California statutory requirements", "ci": true, "runtime": "block" },
+    { "id": "compliant-document", "term": "compliant document", "pattern": "\\bcompliant document\\b", "flags": "i", "reason": "document designed around California statutory requirements", "ci": true, "runtime": "block" },
+    { "id": "court-ready", "term": "court-ready", "pattern": "\\bcourt-ready\\b", "flags": "i", "reason": "self-filing prep packet for landlord review", "ci": true, "runtime": "block" },
+    { "id": "future-proof", "term": "future-proof", "pattern": "\\bfuture-proof\\w*", "flags": "i", "reason": "banned outright — rephrase (monitored for changes and updated as statutes and forms evolve)", "ci": true, "runtime": "block" },
+    { "id": "attorney-drafted", "term": "attorney-drafted", "pattern": "\\battorney-drafted\\b", "flags": "i", "reason": "broker-prepared / broker-supervised", "ci": true, "runtime": "block" },
+    { "id": "compliance-officer", "term": "compliance officer", "pattern": "\\bcompliance officer\\b", "flags": "i", "reason": "broker of record / California Licensed Real Estate Broker", "ci": true, "runtime": "block" },
+    { "id": "audit-ready", "term": "audit-ready", "pattern": "\\baudit-ready\\b", "flags": "i", "reason": "keep records ready", "ci": true, "runtime": "block" },
+    { "id": "enforceable", "term": "enforceable", "pattern": "\\benforceable\\b", "flags": "i", "reason": "do not claim as a document property — rephrase (allow-list legit statutory uses)", "ci": true, "runtime": "block" },
+    { "id": "ai-lawyer", "term": "AI lawyer", "pattern": "\\bAI lawyer\\b", "flags": "i", "reason": "banned — OwnerPilot is not a law firm; rephrase", "ci": true, "runtime": "block" },
+    { "id": "guaranteed-valuation", "term": "guaranteed valuation", "pattern": "\\bguaranteed valuation\\b", "flags": "i", "reason": "banned — no guarantees; rephrase", "ci": true, "runtime": "block" },
+    { "id": "official-legal-opinion", "term": "official legal opinion", "pattern": "\\bofficial legal opinion\\b", "flags": "i", "reason": "banned — not legal advice; rephrase", "ci": true, "runtime": "block" },
+    { "id": "partner-attorney", "term": "partner attorney", "pattern": "\\bpartner attorney\\b", "flags": "i", "reason": "banned outside disclaimer — a California licensed attorney", "ci": true, "runtime": "block" },
+    { "id": "in-house-counsel", "term": "in-house counsel", "pattern": "\\bin-house counsel\\b", "flags": "i", "reason": "banned outside disclaimer — generic referral", "ci": true, "runtime": "block" },
+    { "id": "in-house-lawyer", "term": "in-house lawyer", "pattern": "\\bin-house lawyer\\b", "flags": "i", "reason": "banned outside disclaimer — generic referral", "ci": true, "runtime": "block" },
+    { "id": "our-attorney", "term": "our attorney", "pattern": "\\bour attorney\\b", "flags": "i", "reason": "banned — generic referral only (a California licensed attorney)", "ci": true, "runtime": "block" },
+    { "id": "verified-badge", "term": "verified badge", "pattern": "\"?verified\"?\\s+badge", "flags": "i", "reason": "Timestamped", "ci": true, "runtime": "block" },
+
+    { "id": "car-rlmm", "term": "RLMM", "pattern": "\\bRLMM\\b", "flags": "", "reason": "CAR form identifier (Q1 T3) — runtime SCRUB; do not reproduce CAR form codes", "ci": false, "runtime": "scrub" },
+    { "id": "car-form", "term": "C.A.R. Form", "pattern": "\\bC\\.?A\\.?R\\.?\\s+Form\\b", "flags": "i", "reason": "CAR form identifier (Q1 T3)", "ci": false, "runtime": "scrub" },
+    { "id": "car-abbrev", "term": "C.A.R.", "pattern": "\\bC\\.A\\.R\\.", "flags": "", "reason": "C.A.R. dotted abbreviation (Q1 T3)", "ci": false, "runtime": "scrub" },
+    { "id": "car-copyright", "term": "CAR copyright notice", "pattern": "Copyright\\s*©?\\s*California Association of REALTORS", "flags": "i", "reason": "CAR copyright notice (Q1 T3)", "ci": false, "runtime": "scrub" },
+    { "id": "car-paragraph-symbol", "term": "CAR paragraph symbol", "pattern": "¶\\s*\\d+[A-Z]?(\\(\\d+\\))?", "flags": "", "reason": "CAR paragraph-number pattern (Q1 T3)", "ci": false, "runtime": "scrub" },
+    { "id": "car-paragraph-word", "term": "CAR paragraph word", "pattern": "\\bParagraph\\s+\\d+[A-Z]\\b", "flags": "i", "reason": "CAR paragraph-number pattern (Q1 T3)", "ci": false, "runtime": "scrub" },
+    { "id": "car-form-code", "term": "CAR form code", "pattern": "\\b(C\\.?A\\.?R\\.?\\s*)?Form\\s+(RLMM|LR|MTM|PAA|NBP)\\b", "flags": "i", "reason": "CAR form codes in Form context (Q1 T3)", "ci": false, "runtime": "scrub" }
+  ]
+}

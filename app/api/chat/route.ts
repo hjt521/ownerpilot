@@ -10,6 +10,7 @@ import { OWNERPILOT_PERSONA_SYSTEM_PROMPT } from '@/lib/chat/persona';
 import { callPerplexity } from '@/lib/chat/perplexityClient';
 import { applyTurn } from '@/lib/chat/orchestrate';
 import { activeCursorOf, runScriptedActiveTurn, maybeBeginScripted } from '@/lib/chat/scriptedOrchestrate';
+import { runtimeBannedTermGate } from '@/lib/chat/runtimeBannedTermGate';
 import { loadSession, createSession, hashAnonToken, serviceClient } from '@/lib/chat/session';
 import { unsupportedLanguageNotice } from '@/lib/chat/refusalBank';
 import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
@@ -67,6 +68,25 @@ export async function POST(req: NextRequest) {
     // Transition check: if the LLM just captured the last non-scripted required field, override its reply with
     // the verbatim first scripted block (the LLM never authors a scripted prompt).
     turn = maybeBeginScripted(applyTurn(priorState, message, model), now, ff3Status);
+  }
+
+  // P4 Q3 (p4_persona_production_wiring_broker_ruling_2026-07-04): runtime banned-term output gate. ALL response
+  // text passes through before it leaves the server — the technical wall against leaking CAR copyrighted
+  // expression or legal-advice language from live model output. Fail-closed. Logs BLOCK/SCRUB to the audit sink.
+  const gated = runtimeBannedTermGate(turn.reply);
+  if (gated.action !== 'pass') {
+    console.info(JSON.stringify({
+      evt: 'chat.output_gate', action: gated.action,
+      term_ids: gated.matches.map((m) => m.id), session_id: session.id, at: new Date().toISOString(),
+    }));
+    turn.reply = gated.output;
+    // Reflect the gated text in the PERSISTED assistant transcript turn — never store unscrubbed output.
+    for (let i = turn.transcriptAdditions.length - 1; i >= 0; i--) {
+      if (turn.transcriptAdditions[i].role === 'assistant') {
+        turn.transcriptAdditions[i] = { ...turn.transcriptAdditions[i], content: gated.output };
+        break;
+      }
+    }
   }
 
   // §E.4: if the model claimed complete prematurely, re-prompt next turn with the missing fields (do not route).
