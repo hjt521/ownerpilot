@@ -20,6 +20,15 @@ export function Features() {
   return (
     <section className="mx-auto max-w-4xl px-5 py-14">
       <h2 className="text-2xl font-semibold">Built for California landlords. Supervised by a California broker.</h2>
+      {/* Lane 8 §3.1: abstract jurisdiction-check illustration (Canva-generated per ratified
+          feature_jurisdiction_check prompt — CA map + gold push-pin threaded to a chat phone,
+          no legible text, no people). Decorative (alt=""), so it adds no copy claims. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/feature_jurisdiction_check_v2.jpg"
+        alt=""
+        className="mx-auto mt-8 w-full max-w-sm rounded-xl"
+      />
       <div className="mt-8 grid gap-8 sm:grid-cols-3">
         {FEATURES.map((f) => (
           <div key={f.heading}>
