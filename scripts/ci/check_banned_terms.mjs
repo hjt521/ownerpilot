@@ -14,26 +14,15 @@ import { join, relative } from 'node:path';
 const ROOTS = ['components', 'app', 'lib'];
 const ALLOWLIST_PATH = 'scripts/ci/banned_terms_allowlist.txt';
 
+// SINGLE SOURCE (p4 ruling 2026-07-04 Q3): term list loaded from lib/chat/bannedTerms.json — shared with the
+// runtime output gate (lib/chat/runtimeBannedTermGate.ts). The CI lint enforces the ci:true entries on committed
+// copy; the runtime gate enforces the runtime action on live model output. CAR identifiers are runtime-only
+// (ci:false — they legitimately appear in rulings/docs, so they must NOT fail the CI lint).
+const BANNED_TERMS = JSON.parse(readFileSync('lib/chat/bannedTerms.json', 'utf8'));
 // term (canonical), regex (case-insensitive, word-boundary), substitution (marketing §1.1/§1.4)
-const PATTERNS = [
-  ['legally compliant',   /\blegally compliant\b/i,        'designed around California statutory requirements'],
-  ['compliant notice',    /\bcompliant notice\b/i,          'notice designed around California statutory requirements'],
-  ['compliant document',  /\bcompliant document\b/i,        'document designed around California statutory requirements'],
-  ['court-ready',         /\bcourt-ready\b/i,               'self-filing prep packet for landlord review'],
-  ['future-proof',        /\bfuture-proof\w*/i,             'banned outright — rephrase ("monitored for changes and updated as statutes and forms evolve")'],
-  ['attorney-drafted',    /\battorney-drafted\b/i,          'broker-prepared / broker-supervised'],
-  ['compliance officer',  /\bcompliance officer\b/i,        'broker of record / California Licensed Real Estate Broker'],
-  ['audit-ready',         /\baudit-ready\b/i,               'keep records ready'],
-  ['enforceable',         /\benforceable\b/i,               'do not claim as a document property — rephrase (allow-list legit statutory uses)'],
-  ['AI lawyer',           /\bAI lawyer\b/i,                 'banned — OwnerPilot is not a law firm; rephrase'],
-  ['guaranteed valuation',/\bguaranteed valuation\b/i,      'banned — no guarantees; rephrase'],
-  ['official legal opinion',/\bofficial legal opinion\b/i,  'banned — not legal advice; rephrase'],
-  ['partner attorney',    /\bpartner attorney\b/i,          'banned outside disclaimer — "a California licensed attorney"'],
-  ['in-house counsel',    /\bin-house counsel\b/i,          'banned outside disclaimer — generic referral'],
-  ['in-house lawyer',     /\bin-house lawyer\b/i,           'banned outside disclaimer — generic referral'],
-  ['our attorney',        /\bour attorney\b/i,              'banned — generic referral only ("a California licensed attorney")'],
-  ['verified badge',      /"?verified"?\s+badge/i,          'Timestamped'],
-];
+const PATTERNS = BANNED_TERMS.terms
+  .filter((t) => t.ci)
+  .map((t) => [t.term, new RegExp(t.pattern, t.flags), t.reason]);
 
 function loadAllowlist() {
   const allow = new Set();
