@@ -11,6 +11,11 @@ import { callPerplexity } from '@/lib/chat/perplexityClient';
 import { applyTurn } from '@/lib/chat/orchestrate';
 import { activeCursorOf, runScriptedActiveTurn, maybeBeginScripted } from '@/lib/chat/scriptedOrchestrate';
 import { runtimeBannedTermGate } from '@/lib/chat/runtimeBannedTermGate';
+import { decideFromCounts } from '@/lib/chat/rateLimit';
+import { getRateLimitStore } from '@/lib/chat/rateLimitStore';
+import { CLASSIFIER_LIVE } from '@/lib/chat/classifierConfig';
+import { runClassifier } from '@/lib/chat/classifier';
+import { makeGatewayComplete } from '@/lib/chat/classifierClient';
 import { loadSession, createSession, hashAnonToken, serviceClient } from '@/lib/chat/session';
 import { unsupportedLanguageNotice } from '@/lib/chat/refusalBank';
 import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
@@ -37,7 +42,27 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'session error' }, { status: 500 });
 
   const now = new Date().toISOString();
+  const nowMs = Date.now();
   const priorState = session.intake_state ?? {};
+
+  // P4 Q4 (ruling 2026-07-04): per-session rate-limit on the primary chat entrypoint (ratified RATE_LIMITS —
+  // burst/daily/monthly-token). Store auto-selects Redis (Upstash/KV env) or a dev in-memory fallback, so this is
+  // safe with no env. On exceed → HTTP 429 + audit log. (NOTE: Q4 recommended per-IP/per-user buckets with
+  // different numbers; that differs from the ratified per-session config — reconciliation flagged, not adopted.)
+  try {
+    const counts = await getRateLimitStore().registerRequest(session.id, nowMs);
+    const rl = decideFromCounts(counts, nowMs);
+    if (!rl.allowed) {
+      console.info(JSON.stringify({ evt: 'chat.rate_limited', reason: rl.reason, session_id: session.id, at: now }));
+      return NextResponse.json(
+        { error: "You're sending messages faster than we can respond — give it a minute." },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
+    }
+  } catch (e) {
+    // Rate-limit store failure must not take down chat; log and continue (degrade open, same posture as classifier).
+    console.warn('rate-limit store error — allowing request', (e as Error).message);
+  }
 
   // Lane 2E (Fork A): if a deterministic scripted-capture cursor is active, the server parses the owner's
   // message directly — the LLM is NOT called for the four capture categories.
@@ -58,6 +83,22 @@ export async function POST(req: NextRequest) {
       ...history,
       { role: 'user', content: message },
     ];
+
+    // P4 Q4: H1 classifier as pre-model middleware — log + pass-through (do NOT block during rollout, per ruling).
+    // Dark by default: only runs when CLASSIFIER_LIVE is set, so no extra model call / latency in prod until enabled.
+    if (CLASSIFIER_LIVE) {
+      try {
+        const verdict = await runClassifier('input', message, '', makeGatewayComplete());
+        console.info(JSON.stringify({
+          evt: 'chat.classifier', ok: verdict.ok,
+          flagged: verdict.ok ? verdict.flagged : null,
+          categories: verdict.ok ? verdict.categories : null,
+          session_id: session.id, at: now,
+        }));
+      } catch (e) {
+        console.warn('classifier error — passing through', (e as Error).message);
+      }
+    }
 
     let model;
     try { model = await callPerplexity(messages); }
