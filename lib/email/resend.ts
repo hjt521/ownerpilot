@@ -17,7 +17,8 @@ export type EmailTemplate =
   // P1 productization (broker standing order 2026-07-03 §2): three new transactional families.
   | 'packet-delivery'      // combined packet PDF, copy-only (NOT service — CCP §1162 disclaimer baked into copy)
   | 'broker-intake-digest' // broker notification: N intakes awaiting review (no PII in body — count + link only)
-  | 'lahd-confirmation';   // forward a LAHD filing confirmation reference to the owner
+  | 'lahd-confirmation'    // forward a LAHD filing confirmation reference to the owner
+  | 'admin-alert';         // internal ops alert to ADMIN_EMAILS (cron failure modes) — never owner-facing
 
 /** A Resend attachment: base64 content + filename. Used for the packet-delivery combined PDF. */
 export interface EmailAttachment {
@@ -160,4 +161,21 @@ export async function sendLahdConfirmationEmail(to: string, confirmationRef: str
     .replace('{{confirmation_ref}}', confirmationRef)
     .replace('{{filed_date}}', formatLaDate(filedDateISO));
   await send(to, subject, text, 'lahd-confirmation');
+}
+
+/**
+ * Internal ops alert to every address on ADMIN_EMAILS. NOT owner-facing and NOT locked-prose — this is an
+ * engineering/broker failure-mode channel (e.g. the broker-intake-digest cron's ruled "query/send failed twice →
+ * alert ADMIN_EMAILS, not review@" path per p1_email_trigger_dependencies_broker_ruling_2026-07-05 A3). Free-text
+ * subject/body by design; no PII beyond an internal error detail the caller supplies. No-op if ADMIN_EMAILS unset.
+ */
+export async function sendAdminAlertEmail(subject: string, text: string): Promise<void> {
+  const admins = (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!admins.length) { console.warn('ADMIN_EMAILS not set — skipping admin alert'); return; }
+  for (const to of admins) {
+    await send(to, subject, text, 'admin-alert');
+  }
 }

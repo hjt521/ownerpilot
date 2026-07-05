@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/privacy-ack-send",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/broker-intake-digest",
+      "schedule": "0 15 * * *"
     }
   ]
 }
