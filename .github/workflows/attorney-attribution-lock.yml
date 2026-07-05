@@ -1,0 +1,20 @@
+name: attorney-attribution-lock
+# codebase_prose_correction_reviewing_attorney_of_record_2026-07-05 — broker-only attribution guard.
+# HARD FAIL if any production source file (lib/ app/ components/ scripts/) contains attorney-of-record /
+# State Bar number / reviewing-attorney attribution or the eight mandatory-attorney phrases. Always runs.
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  check-attorney-attribution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Verify no attorney/SBN attribution in production source
+        run: npm run ci:check-attorney-attribution
