@@ -29,7 +29,7 @@ const heroSystem = [
   { title: 'Generate Notice', body: 'Tenant + owner copies' },
   { title: 'Serve & Track', body: 'Log attempts and mailing' },
   { title: 'Proof & Record', body: 'Complete after service' },
-  { title: 'Scan to Resume', body: 'Return to RiskPath\u2122' },
+  { title: 'RiskPath\u2122 Follow-Up', body: 'Return from your dashboard' },
 ];
 
 const packetItems = [
@@ -61,16 +61,6 @@ function CheckIcon() {
         <path d="M20 6.5 9 17.5l-5-5" />
       </svg>
     </span>
-  );
-}
-
-function QRBlock() {
-  return (
-    <div className="qr" aria-label="QR code visual placeholder">
-      <div></div><span></span><div></div>
-      <span></span><div></div><span></span>
-      <div></div><span></span><div></div>
-    </div>
   );
 }
 
@@ -129,7 +119,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             <div className="trust-row" aria-label="Trust points">
               <span>CA Licensed Real Estate Broker supervision</span>
               <span>Broker-prepared workflow</span>
-              <span>QR-powered RiskPath&trade; Follow-Up</span>
+              <span>RiskPath&trade; Follow-Up from your dashboard</span>
             </div>
           </div>
 
@@ -153,10 +143,6 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
               <div className="log-row"><span>Attempt 1</span><strong>Failed</strong></div>
               <div className="log-row"><span>Attempt 2</span><strong>Logged</strong></div>
               <div className="log-row success"><span>Mailing</span><strong>Next</strong></div>
-            </div>
-            <div className="qr-card">
-              <p>Scan to continue your RiskPath&trade;</p>
-              <QRBlock />
             </div>
           </div>
         </section>
@@ -184,7 +170,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             <p className="eyebrow">After the notice prints</p>
             <h2>Everything you need after you print.</h2>
             <p>
-              Most form tools stop at the form. OwnerPilot keeps going so you can track service attempts, complete proof of service, and return later through your dashboard or QR code.
+              Most form tools stop at the form. OwnerPilot keeps going so you can track service attempts, complete proof of service, and return later through your dashboard.
             </p>
             <Link className="text-link" href="/notice/3-day">Learn how the packet works <ArrowIcon /></Link>
           </div>
@@ -215,8 +201,8 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
               <p>Keep service attempts, mailing steps, and notes separate from the notice itself.</p>
             </article>
             <article className="service-card">
-              <h3>Scan to Resume</h3>
-              <p>Return to your RiskPath&trade; from the printed packet.</p>
+              <h3>RiskPath&trade; Follow-Up</h3>
+              <p>Return to your open notice record anytime from your dashboard.</p>
             </article>
           </div>
         </section>
