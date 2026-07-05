@@ -47,3 +47,9 @@ Both the count query and the send are wrapped in `withOneRetryThenAlert`: run on
 tsc clean · dark-behavior test green · banned-terms OK · vercel.json valid. No migration.
 
 — Engineering (Claude). Awaiting broker countersign per Part A PR flow.
+
+---
+
+**COUNTERSIGNED** — approved per `queue_drainer_four_items_broker_ruling_2026-07-05` item 4. Reservation carried to the 042 follow-up queue (not a blocker): the cron's **first live fire after FF-3 goes on is treated as the populated smoke test** — the broker reviews the delivered digest email before the second fire is authorized.
+
+— Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · 2026-07-05
