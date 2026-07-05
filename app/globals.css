@@ -147,6 +147,17 @@ body {
 .cb-home .feature-panel { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: 0 16px 52px rgba(16,32,24,.08); }
 .cb-home .feature-row { display: flex; align-items: center; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--line); font-weight: 750; }
 .cb-home .feature-row:last-child { border-bottom: 0; }
+/* Option B homepage illustration accents (homepage_illustration_placement_ruling_2026-07-05). */
+.cb-home .illus-band { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; padding: 72px 0; }
+.cb-home .illus-band .illus-body { color: var(--muted); line-height: 1.65; font-size: 17px; margin: 14px 0 0; }
+.cb-home .illus-visual img { width: 100%; height: auto; display: block; border-radius: var(--radius); box-shadow: var(--shadow); }
+.cb-home .illus-band.reverse .illus-visual { order: -1; }
+.cb-home .resolve-labels { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.cb-home .resolve-labels span { border: 1px solid var(--gold-600); border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 700; color: var(--green-950); }
+@media (max-width: 760px) {
+  .cb-home .illus-band { grid-template-columns: 1fr; gap: 26px; padding: 40px 0; }
+  .cb-home .illus-band.reverse .illus-visual { order: 0; }
+}
 .cb-home .check { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgba(143,174,156,.24); color: var(--green-950); font-weight: 950; position: relative; }
 .cb-home .check svg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 62%; height: 62%; display: block; }
 

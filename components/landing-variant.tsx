@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SiteFooter } from './site-footer';
+import { AIFlowIllustrationBand, JurisdictionFeatureBand, ResolveDocumentBand } from './marketing/HomepageIllustrations';
 
 type LandingVariantProps = {
   /** Which persona/channel this page serves, e.g. "Crisis variant — Google Search".
@@ -147,6 +148,8 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
           </div>
         </section>
 
+        <AIFlowIllustrationBand />
+
         <section className="workflow-band" id="approach">
           <div className="shell workflow-grid">
             {workflowSteps.map((step) => (
@@ -164,6 +167,8 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             <span>Proof &amp; Record</span>
           </div>
         </section>
+
+        <JurisdictionFeatureBand />
 
         <section className="split shell" id="serve-track">
           <div className="split-copy">
@@ -184,6 +189,8 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             ))}
           </div>
         </section>
+
+        <ResolveDocumentBand />
 
         <section className="notice-section shell" id="notice">
           <div className="section-heading">
