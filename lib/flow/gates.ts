@@ -486,6 +486,10 @@ const jur = detectJurisdiction({ address: data.propertyAddress, city: data.prope
   // "no divergence" assertion in renderNotice.
 
   // (h) v4 wording sign-off gate — fails closed until the broker signs off.
+  // NOTE (queue_drainer_four_items_broker_ruling_2026-07-05 item 2): this is INTENTIONALLY a boolean flag +
+  // string message, not a discriminated-union gate state. The broker-attribution CI lint
+  // (scripts/ci/check_attorney_attribution.mjs) is the guard here — do not "promote" this to a typed state
+  // unless a third sign-off state is ever added (beyond signed / not-signed).
   if (!V4_WORDING_SIGNED_OFF) {
     blockers.push({
       code: 'TEMPLATE_NOT_SIGNED_OFF',

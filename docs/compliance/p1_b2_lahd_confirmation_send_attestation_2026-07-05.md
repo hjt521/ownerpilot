@@ -41,3 +41,9 @@ Four independent gates keep this inert until deliberately enabled: (1) `RESEND_A
 tsc clean · send-decision test 7/7 · banned-terms OK · attribution guard OK · locked-prose 125. Migration 045 additive/nullable.
 
 — Engineering (Claude). Awaiting broker countersign + `RESEND_API_KEY` before the send path goes live.
+
+---
+
+**COUNTERSIGNED** — approved per `queue_drainer_four_items_broker_ruling_2026-07-05` item 4. Reservation carried to the 042 follow-up queue (not a blocker): **each of the four inertness gates gets a negative test** (guard absent → send still blocked) — land before FF-3-on if the calendar allows, but do NOT gate FF-3-on on it. (The pure `decideLahdConfirmationSend` unit test already covers each gate blocking; the follow-up is the route-level negative coverage.)
+
+— Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · 2026-07-05
