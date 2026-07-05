@@ -21,7 +21,7 @@ export const SAFE_FALLBACK =
 
 // Per-phrase safe fallbacks (a block-match may carry `fallbackKey` pointing here; otherwise SAFE_FALLBACK).
 // ud_pro_per: verbatim from persona_correction_ud_filing_pro_per_authority_2026-07-05 — replaces a wrong
-// "you must have an attorney to file" response with the accurate pro-per answer rather than a generic refusal.
+// mandatory-attorney response with the accurate pro-per answer rather than a generic refusal.
 export const FALLBACKS: Record<string, string> = {
   ud_pro_per:
     "I can't answer that in a way I'm confident is accurate. What I can tell you is that California landlords can file unlawful detainer packets in pro per — without an attorney — and OwnerPilot prepares filing-ready packets under a California licensed real estate broker's supervision (CalDRE B9445457, Cal. Bus. & Prof. Code § 10131(b)). If your situation involves contested defenses, bankruptcy, or subsidized housing, an attorney may be worth consulting — but that's a case-by-case decision, not a filing prerequisite.",

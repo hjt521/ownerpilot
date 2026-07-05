@@ -25,6 +25,7 @@
     "lockedprose:hash": "node scripts/lockedprose_hash.mjs",
     "ci:test-locked-prose-guard": "node scripts/ci/verify_locked_prose.test.mjs",
     "ci:verify-banned-terms": "node scripts/ci/check_banned_terms.mjs",
+    "ci:check-attorney-attribution": "node scripts/ci/check_attorney_attribution.mjs",
     "ci:verify-mirror-denylist": "node scripts/ci/check_mirror_denylist.mjs",
     "ci:verify-no-preconsent-analytics": "node scripts/ci/check_no_preconsent_analytics.mjs",
     "synthetic:a14:503": "tsx scripts/synthetic/a14_503_enqueue_drain_resolve.ts",

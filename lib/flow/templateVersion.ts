@@ -44,10 +44,10 @@ export const GEOCODING_LIVE = false;
  * actual notice here in chat… take it to your broker or attorney…") must keep
  * running — routing owners to a workflow they cannot yet reach would be the unsafe
  * state. When this flips to TRUE, the DOCUMENTS interim language must be revisited
- * in an attorney-reviewed prompt revision (sunset condition (a), V4_WORDING_SIGNED_OFF,
+ * in a broker-reviewed prompt revision (sunset condition (a), V4_WORDING_SIGNED_OFF,
  * is already true). That coupling is ENFORCED by scripts/check_documents_sunset.mjs:
  * flipping this to true while the interim language is still in the deployed prompt
  * fails CI, so the sunset cannot be silently forgotten. Do not flip without routing
- * the DOCUMENTS revision to the attorney of record.
+ * the DOCUMENTS revision to the broker of record.
  */
 export const BROKER_WORKFLOW_PRODUCTION_LIVE = false;
