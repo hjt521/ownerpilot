@@ -54,6 +54,7 @@ function LahdFilingSection({ record }: { record: RecordVM }) {
   const [date, setDate] = useState('');
   const [channel, setChannel] = useState<'online_portal' | 'mail_with_cover_sheet' | 'other'>('online_portal');
   const [conf, setConf] = useState('');
+  const [emailMe, setEmailMe] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -61,6 +62,11 @@ function LahdFilingSection({ record }: { record: RecordVM }) {
     setErr(null);
     if (!date) { setErr('Enter the date you filed.'); return; }
     setBusy(true);
+    // B-2 consent gate: if the owner opted to be emailed the confirmation, record their one-time consent BEFORE
+    // the filing record lands, so the send trigger sees ack_at set. Best-effort — never blocks recording.
+    if (emailMe && conf) {
+      await fetch('/api/account/email-consent', { method: 'POST' }).catch(() => null);
+    }
     const r = await fetch(`/api/notices/${record.id}/lahd-filing-record`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       // B1: confirmation_ref is optional — sent only if the owner typed one; the record lands either way.
@@ -106,6 +112,14 @@ function LahdFilingSection({ record }: { record: RecordVM }) {
               <input type="text" value={conf} maxLength={64} onChange={(e) => setConf(e.target.value)}
                 placeholder="Paste the number LAHD emailed you, if you have it"
                 className="mt-1 block min-h-[44px] w-56 rounded border border-blue-300 px-2 py-1 text-sm" />
+            </label>
+            {/* B-2 consent gate: only meaningful with a confirmation reference. Records a one-time consent to
+                email filing-record confirmations to the account address; owner can turn it off anytime in
+                preferences. */}
+            <label className={`flex items-center gap-2 text-xs ${conf ? 'text-blue-900' : 'text-blue-400'}`}>
+              <input type="checkbox" checked={emailMe} disabled={!conf} onChange={(e) => setEmailMe(e.target.checked)}
+                className="min-h-[20px] min-w-[20px]" />
+              Email me a copy for my records
             </label>
             <button onClick={record_} disabled={busy}
               className="min-h-[44px] rounded-md bg-blue-900 px-4 py-2 text-sm text-white disabled:opacity-40">
