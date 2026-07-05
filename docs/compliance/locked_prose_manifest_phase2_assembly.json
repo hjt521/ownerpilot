@@ -601,7 +601,7 @@
       "tier": "A",
       "value": "Attached is the notice packet you prepared with OwnerPilot AI, combined into a single PDF.\n\nIMPORTANT: this email delivers a COPY only. It is NOT legal service of the notice. Under California Code of Civil Procedure section 1162, service must be performed in person or by another method the statute allows; sending this PDF by email does not satisfy those requirements and does not begin any legal deadline. Follow the service instructions in the packet when you serve.\n\nOwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.",
       "hash": "89385947391a339c83f02c70f58a1f39189cf36e94314f89aa4a5f2be675a856",
-      "source_ruling": "broker_standing_order_productization_2026-07-03 §2 (P1) — PROVISIONAL pending broker ratification",
+      "source_ruling": "broker_standing_order_productization_2026-07-03 §2 (P1); ratified broker_ratification_2026-07-04 §2 (substantive changes require a new ruling)",
       "subject": "Your OwnerPilot AI notice packet (copy)",
       "lane": "P1-email"
     },
@@ -611,7 +611,7 @@
       "tier": "A",
       "value": "You have {{count}} intake(s) awaiting your review on OwnerPilot AI.\n\nOpen the broker checklist to review and confirm each one:\n{{review_url}}\n\nThis is an internal notification for the reviewing broker.\n\n— OwnerPilot AI · broker-operated compliance workflow · CalDRE B9445457",
       "hash": "7fab3af827ec794dacd5e796f68ec68311161ca8b7a88cc3e3b5b44398641cb5",
-      "source_ruling": "broker_standing_order_productization_2026-07-03 §2 (P1) — PROVISIONAL pending broker ratification",
+      "source_ruling": "broker_standing_order_productization_2026-07-03 §2 (P1); ratified broker_ratification_2026-07-04 §2 (substantive changes require a new ruling)",
       "subject": "OwnerPilot AI — intakes awaiting review",
       "lane": "P1-email"
     },
@@ -621,7 +621,7 @@
       "tier": "A",
       "value": "Your notice has been recorded as filed with the Los Angeles Housing Department (LAHD).\n\nConfirmation reference: {{confirmation_ref}}\nFiled on: {{filed_date}}\n\nKeep this confirmation with your records.\n\nOwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.",
       "hash": "d14b24f43371eee90cd4e76ef7c2404f3b7fbc48b823ef6c182f77bbaed747ab",
-      "source_ruling": "broker_standing_order_productization_2026-07-03 §2 (P1) — PROVISIONAL pending broker ratification",
+      "source_ruling": "broker_standing_order_productization_2026-07-03 §2 (P1); ratified broker_ratification_2026-07-04 §2 (substantive changes require a new ruling)",
       "subject": "Your LAHD filing confirmation — OwnerPilot AI",
       "lane": "P1-email"
     },

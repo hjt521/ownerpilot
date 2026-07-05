@@ -158,8 +158,6 @@ export const chatIntakeRentPeriodsNextPeriodAsk = `Okay — what's the start dat
 export const chatIntakeRentPeriodsReAskStartAfterEnd = `That start date is after the end date you gave me. Can you double-check the dates for this period?`;
 export const chatIntakeRentPeriodsReAskLabel = `I need the actual start and end dates for that period — the notice has to show the exact date range, not just the month name.`;
 export const chatIntakeRentPeriodsReAskAmount = `That amount doesn't look right. What's the actual amount owed for {{period_start_date}} through {{period_end_date}}?`;
-// PROVISIONAL — pending native review (§2.5)
-export const chatIntakeRentPeriodsPromptEs = `Ahora necesito el rango de fechas específico para cada período de renta que quieras incluir en el aviso. Para cada uno, necesito el día en que empezó el período, el día en que terminó, y cuánto se debe. Vamos a hacerlos uno por uno — ¿cuál es la fecha de inicio del período más antiguo que quieres incluir en este aviso?`;
 
 // --- §3 signer capacity (manifest: chatIntakeSignerCapacityPrompt + neighbors) ---
 export const chatIntakeSignerCapacityPrompt = `Thanks. One more thing about who's signing the notice — are you signing as the individual owner yourself, or on behalf of a company, LLC, or trust that owns the property?`;
@@ -169,8 +167,6 @@ export const chatIntakeSignerEntityTitleAsk = `And what's your title or role wit
 export const chatIntakeSignerEntityConfirm = `So I'll record you as signing on behalf of {{entity_name}} in your role as {{title}}. Is that right?`;
 export const chatIntakeSignerReAskDontKnowTitle = `That's okay — I need to know your role because California law requires the signer's authority to be shown on the notice. If you're not sure, the person who set up the {{entity_type_owner_used}} — or your attorney — can tell you. I can pause here and you can come back when you have it.`;
 export const chatIntakeSignerReAskAmbiguous = `Just to be sure — is the property owned by you personally, or is it owned by the LLC and you're signing for the LLC? Those are two different signatures.`;
-// PROVISIONAL — pending native review (§3.5)
-export const chatIntakeSignerCapacityPromptEs = `Gracias. Una cosa más sobre quién va a firmar el aviso — ¿vas a firmar como propietario individual tú mismo, o en nombre de una compañía, LLC, o fideicomiso dueño de la propiedad?`;
 
 // --- §4 personal delivery (manifest: chatIntakePersonalDeliveryPrompt + neighbors) ---
 export const chatIntakePersonalDeliveryPrompt = `Because you're planning to serve this notice in person, California requires the notice to say when someone can hand a rent payment back to you — the days of the week and the hours of the day. What days of the week are you available to accept payment in person? For example: Monday through Friday, or specific days.`;
@@ -178,8 +174,6 @@ export const chatIntakePersonalDeliveryHoursAsk = `And during those days, what h
 export const chatIntakePersonalDeliveryConfirm = `So the notice will say you can accept payment in person {{days_summary}}, from {{hours_start}} to {{hours_end}}. Is that right?`;
 export const chatIntakePersonalDeliveryReAskZeroDays = `California law requires the notice to name real days and hours when a tenant can hand you a payment in person. If there truly are no days when you're available, you'll need to choose a different service method — either substituted service through someone else at the property, or posting-and-mailing. Want to change the service method?`;
 export const chatIntakePersonalDeliveryReAskHours = `Those hours don't add up — the end time needs to be later than the start time. Can you give me the actual hours again?`;
-// PROVISIONAL — pending native review (§4.5)
-export const chatIntakePersonalDeliveryPromptEs = `Como piensas entregar este aviso en persona, California requiere que el aviso indique cuándo alguien puede entregarte un pago de renta en mano — los días de la semana y las horas del día. ¿Qué días de la semana estás disponible para aceptar el pago en persona? Por ejemplo: de lunes a viernes, o días específicos.`;
 
 // --- §5 preflight dispute (manifest: chatIntakePreflightDisputePrompt + neighbors) ---
 export const chatIntakePreflightDisputePrompt = `Before I put the notice together, I need to check three quick things with you. These affect whether a 3-day notice is the right tool for this situation, or whether you should talk to a lawyer first. For each one, tell me yes, no, or "not sure" — "not sure" is a real answer, so please use it if you don't know.`;
@@ -187,8 +181,6 @@ export const chatIntakePreflightDisputeQ1 = `Question 1: Has the tenant told you
 export const chatIntakePreflightDisputeQ2 = `Question 2: Has the tenant told you they're withholding rent because of something the property is missing or something you agreed to provide but haven't — utilities, repairs, appliances, a service, anything like that? Yes, no, or not sure?`;
 export const chatIntakePreflightDisputeQ3 = `Question 3: Has the tenant told you the property has a serious habitability problem — no heat, no hot water, mold, pests, a code violation, anything they've raised as making the place unlivable? Yes, no, or not sure?`;
 export const chatIntakePreflightDisputeReAsk = `I want to make sure I've got this right — for this question, is the answer yes, no, or "not sure"?`;
-// PROVISIONAL — pending native review (§5.6)
-export const chatIntakePreflightDisputePromptEs = `Antes de armar el aviso, necesito verificar tres cosas rápidas contigo. Estas afectan si un aviso de 3 días es la herramienta correcta para esta situación, o si deberías hablar con un abogado primero. Para cada una, dime sí, no, o "no estoy seguro" — "no estoy seguro" es una respuesta real, así que úsala si no sabes.`;
 
 // --- Guardrail re-asks RATIFIED verbatim by lane2e_fork_a_countersign_and_open_items_omnibus_broker_ruling_2026-07-01.md §3
 //     (were engineering-proposed in the Fork A attestation; ratified as-written, now manifest-locked). ---
