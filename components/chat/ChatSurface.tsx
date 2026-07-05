@@ -11,6 +11,15 @@ import { showsCounselHandoff, appendsChatDisclaimer, type ChatMessageVM, type Ch
 // LockedKey: CHAT_LANDING_DISCLAIMER
 const CHAT_DISCLAIMER = lockedProse('CHAT_LANDING_DISCLAIMER');
 
+// Clickable starter questions for owners who don't know what to ask (same broker-safe workflow prompts already
+// shown on the landing page). Tapping one sends it as the first message.
+const STARTER_PROMPTS = [
+  'My tenant is behind on rent. What should I do?',
+  'How do I create a 3-Day Notice?',
+  'What happens after I serve the notice?',
+  'How do I track a failed service attempt?',
+];
+
 export function ChatSurface() {
   const [messages, setMessages] = useState<ChatMessageVM[]>([]);
   const [input, setInput] = useState('');
@@ -20,9 +29,13 @@ export function ChatSurface() {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, busy]);
 
-  async function send(e: React.FormEvent) {
+  function send(e: React.FormEvent) {
     e.preventDefault();
-    const text = input.trim();
+    void sendMessage(input);
+  }
+
+  async function sendMessage(raw: string) {
+    const text = raw.trim();
     if (!text || busy) return;
     setError(null);
     const ownerMsg: ChatMessageVM = { id: `o${Date.now()}`, role: 'owner', content: text, refusal: null };
@@ -49,10 +62,23 @@ export function ChatSurface() {
     <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-2xl flex-col px-4">
       <div className="flex-1 space-y-4 overflow-y-auto py-6" aria-live="polite">
         {messages.length === 0 && (
-          <p className="text-base leading-relaxed text-neutral-600">
-            Tell us what&apos;s happening with your tenant — rent owed, payment dates, who&apos;s on the lease, the
-            property address. I&apos;ll ask one question at a time and confirm each detail with you.
-          </p>
+          <>
+            <p className="text-base leading-relaxed text-neutral-600">
+              Tell us what&apos;s happening with your tenant — rent owed, payment dates, who&apos;s on the lease, the
+              property address. I&apos;ll ask one question at a time and confirm each detail with you.
+            </p>
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-medium text-neutral-500">Not sure where to start? Try one of these:</p>
+              <div className="flex flex-wrap gap-2">
+                {STARTER_PROMPTS.map((q) => (
+                  <button key={q} type="button" onClick={() => void sendMessage(q)}
+                    className="min-h-[44px] rounded-full border border-neutral-300 bg-white px-4 py-2 text-left text-sm text-neutral-700 transition-colors hover:border-neutral-500">
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
         )}
         {messages.map((m) => (
           <div key={m.id} className={m.role === 'owner' ? 'text-right' : 'text-left'}>

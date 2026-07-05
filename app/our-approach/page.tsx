@@ -6,10 +6,13 @@ export const metadata = {
 
 export default function OurApproachPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-[#f7f4ee]">
       <article className="mx-auto max-w-3xl px-6 py-16 md:py-24">
+        <a href="/" className="mb-8 inline-flex min-h-[44px] items-center text-sm font-medium text-gray-700 hover:text-gray-900">
+          ← Back to home
+        </a>
         <header className="mb-12">
-          <p className="text-sm font-semibold uppercase tracking-wider text-blue-700 mb-3">
+          <p className="text-sm font-semibold uppercase tracking-wider text-[#a8895a] mb-3">
             About Our Approach
           </p>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
@@ -98,7 +101,7 @@ export default function OurApproachPage() {
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Ready when you are.</h2>
                    <a 
             href="/chat"
-            className="inline-flex items-center px-8 py-4 bg-blue-700 text-white text-lg font-semibold rounded-lg hover:bg-blue-800 transition-colors"
+            className="inline-flex items-center px-8 py-4 bg-[#102018] text-white text-lg font-semibold rounded-lg hover:bg-[#0b160f] transition-colors"
           >
             Ask Your Property Question →
           </a>
