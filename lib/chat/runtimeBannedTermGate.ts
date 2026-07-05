@@ -13,15 +13,23 @@ import bannedTerms from './bannedTerms.json';
 
 export type RuntimeAction = 'block' | 'scrub' | 'log_only' | 'none';
 
-interface CompiledTerm { id: string; re: RegExp; action: RuntimeAction; }
+interface CompiledTerm { id: string; re: RegExp; action: RuntimeAction; fallbackKey?: string }
 
 const REDACTION = '[redacted]';
 export const SAFE_FALLBACK =
   "I can't share that specific language — let me describe the concept instead. Ask me again and I'll explain it in plain terms.";
 
-const COMPILED: CompiledTerm[] = (bannedTerms.terms as Array<{ id: string; pattern: string; flags: string; runtime: string }>)
+// Per-phrase safe fallbacks (a block-match may carry `fallbackKey` pointing here; otherwise SAFE_FALLBACK).
+// ud_pro_per: verbatim from persona_correction_ud_filing_pro_per_authority_2026-07-05 — replaces a wrong
+// "you must have an attorney to file" response with the accurate pro-per answer rather than a generic refusal.
+export const FALLBACKS: Record<string, string> = {
+  ud_pro_per:
+    "I can't answer that in a way I'm confident is accurate. What I can tell you is that California landlords can file unlawful detainer packets in pro per — without an attorney — and OwnerPilot prepares filing-ready packets under a California licensed real estate broker's supervision (CalDRE B9445457, Cal. Bus. & Prof. Code § 10131(b)). If your situation involves contested defenses, bankruptcy, or subsidized housing, an attorney may be worth consulting — but that's a case-by-case decision, not a filing prerequisite.",
+};
+
+const COMPILED: CompiledTerm[] = (bannedTerms.terms as Array<{ id: string; pattern: string; flags: string; runtime: string; fallbackKey?: string }>)
   .filter((t) => t.runtime && t.runtime !== 'none')
-  .map((t) => ({ id: t.id, re: new RegExp(t.pattern, t.flags.includes('g') ? t.flags : t.flags + 'g'), action: t.runtime as RuntimeAction }));
+  .map((t) => ({ id: t.id, re: new RegExp(t.pattern, t.flags.includes('g') ? t.flags : t.flags + 'g'), action: t.runtime as RuntimeAction, fallbackKey: t.fallbackKey }));
 
 export interface GateMatch { id: string; action: RuntimeAction; excerpt: string; }
 export interface RuntimeGateResult {
@@ -51,7 +59,7 @@ export function runtimeBannedTermGate(responseText: string): RuntimeGateResult {
       if (m) {
         return {
           action: 'block',
-          output: SAFE_FALLBACK,
+          output: (t.fallbackKey && FALLBACKS[t.fallbackKey]) || SAFE_FALLBACK,
           matches: [{ id: t.id, action: 'block', excerpt: excerptFor(responseText, m) }],
         };
       }
