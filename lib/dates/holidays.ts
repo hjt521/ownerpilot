@@ -4,7 +4,7 @@
  * ⚠️  DO NOT POPULATE THE DATED TABLES FROM MEMORY.  ⚠️
  *
  * Statutory basis: CCP § 135 (incorporating Gov. Code §§ 6700-6701). The
- * attorney review directs sourcing the holiday table from § 135 directly,
+ * broker compliance review directs sourcing the holiday table from § 135 directly,
  * refreshing annually, and logging which table version produced each notice.
  *
  * § 135 RECURRING JUDICIAL HOLIDAYS (the rules — stable year to year):
@@ -48,12 +48,13 @@ export interface HolidayYear {
   /** Provenance, e.g. "CCP § 135 + Judicial Council 2026 schedule, retrieved YYYY-MM-DD". */
   source: string;
   /**
-   * Reviewing attorney's name and State Bar number, e.g. "Jane Roe, SBN 123456".
-   * Recorded so a challenged table can point to a specific licensed attorney's
-   * sign-off by name and bar number, not just "an attorney reviewed this".
+   * Broker of record who verified this table, e.g. "Jack Taglyan, Broker, CalDRE #B9445457".
+   * Recorded so a challenged table points to the specific licensed broker's sign-off under
+   * Cal. Bus. & Prof. Code § 10131(b), not just "someone reviewed this". Broker attribution
+   * only — never an attorney identifier or bar number (per codebase_prose_correction_2026-07-05).
    */
   verifiedBy?: string;
-  /** ISO date the attorney verified this year's table, 'YYYY-MM-DD'. */
+  /** ISO date the broker verified this year's table, 'YYYY-MM-DD'. */
   verifiedOn?: string;
 }
 
@@ -70,14 +71,14 @@ export interface HolidayYear {
  *   },
  */
 export const CA_JUDICIAL_HOLIDAYS: Record<number, HolidayYear> = {
-  // 2026 — ATTORNEY-VERIFIED 2026-05-31.
+  // 2026 — BROKER-VERIFIED 2026-05-31.
   // Source: Judicial Branch of CA 2026 Court Holiday Schedule
   // (https://courts.ca.gov/about/court-holidays), reconciled against
   // CCP §§ 12, 12a, 135 (as amended by AB 268, eff. 1/1/2026), Gov. Code § 6700,
   // Cal. Rules of Court rule 1.11 (observed-date shifts), and AB 2343.
   //
-  // verifiedBy records the reviewing attorney of record (name + State Bar number)
-  // so a challenged table points to a specific licensed attorney's sign-off.
+  // verifiedBy records the broker of record (name + CalDRE license number)
+  // so a challenged table points to the broker's sign-off (§ 10131(b)).
   2026: {
     year: 2026,
     dates: [
@@ -102,13 +103,13 @@ export const CA_JUDICIAL_HOLIDAYS: Record<number, HolidayYear> = {
     source:
       'Judicial Branch of CA 2026 Court Holiday Schedule, ' +
       'https://courts.ca.gov/about/court-holidays ' +
-      '(fetched 2026-05-31, attorney-verified 2026-05-31); ' +
+      '(fetched 2026-05-31, broker-verified 2026-05-31); ' +
       'CCP §§ 12, 12a, 135 (as amended by AB 268, eff. 1/1/2026); ' +
       'Gov. Code § 6700; Cal. Rules of Court, rule 1.11; ' +
       'AB 2343 (eff. 9/1/2019, count-rule amendment to CCP § 1161(2)/(3))',
   },
 
-  // 2027 — ATTORNEY-VERIFIED 2026-06-05 per citation pull
+  // 2027 — BROKER-VERIFIED 2026-06-05 per citation pull
   // ownerpilot_citation_pull_2027_holidays_for_verification (2026-06-05):
   // courts.ca.gov statewide schedule cross-confirmed against five superior-court
   // 2027 calendars (Contra Costa, Sacramento, San Diego, San Luis Obispo, San
@@ -120,7 +121,7 @@ export const CA_JUDICIAL_HOLIDAYS: Record<number, HolidayYear> = {
   // correct and not a transcription error. The table is a FLAT date list, so both
   // 2027-01-01 and 2027-12-31 appear.
   //
-  // verifiedBy is the reviewing attorney of record (name + State Bar number),
+  // verifiedBy is the broker of record (name + CalDRE license number),
   // same reviewer as 2026. Future years: fill verifiedBy before committing.
   2027: {
     year: 2027,

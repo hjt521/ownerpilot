@@ -72,11 +72,11 @@ if (sunsetConditionsMet && interimPresent) {
       `  (b) BROKER_WORKFLOW_PRODUCTION_LIVE  = ${workflowLive}\n\n` +
       `…but the deployed prompt STILL contains the DOCUMENTS interim language.\n\n` +
       `Per correction 2026-06-07 §3.2, the interim notice-response paragraph must now\n` +
-      `be revisited in an ATTORNEY-REVIEWED prompt revision before this ships (the\n` +
+      `be revisited in a BROKER-REVIEWED prompt revision before this ships (the\n` +
       `interim language currently routes owners to "your broker or attorney"; once the\n` +
       `broker-supervised workflow is live, the routing should point there instead — but\n` +
-      `the new wording is the attorney's call, not the build side's).\n\n` +
-      `Action: route the DOCUMENTS revision to the attorney of record, apply her wording,\n` +
+      `the new wording is the broker's call, not the build side's).\n\n` +
+      `Action: route the DOCUMENTS revision to the broker of record, apply the broker's wording,\n` +
       `re-lock the prompt (check_system_prompt_lock.mjs --write …), then this passes.`
   );
 }

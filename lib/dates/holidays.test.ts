@@ -28,9 +28,9 @@ console.log('\n=== 2027 table is verified with the 15-entry / dual Jan+Dec shape
   check('2027 verified === true', e?.verified === true);
   check('2027 has exactly 15 dates', e?.dates.length === 15, `got ${e?.dates.length}`);
   check('2027 verifiedOn recorded', e?.verifiedOn === '2026-06-05');
-  // verifiedBy is now the reviewing attorney of record. Asserting the exact
-  // string keeps a silent edit to the attribution from passing unnoticed.
-  check('2027 verifiedBy = reviewing attorney name + SBN',
+  // verifiedBy is the broker of record. Asserting the exact string keeps a silent
+  // edit to the attribution from passing unnoticed (broker only — no attorney, no SBN).
+  check('2027 verifiedBy = broker of record (name + CalDRE #)',
     e?.verifiedBy === 'Jack Taglyan, Broker, CalDRE #B9445457');
 }
 {
