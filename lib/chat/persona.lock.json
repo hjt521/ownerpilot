@@ -1,12 +1,12 @@
 {
   "file": "lib/chat/persona.ts",
   "constant": "OWNERPILOT_PERSONA_SYSTEM_PROMPT",
-  "sha256": "78a48c501d154411fefa6c140e80e80bc043d54ea0f6cb6cf61dac6677c994f4",
-  "bytes": 14498,
-  "status": "LOCKED_P4_Q1",
+  "sha256": "e5fad561a13bace16f6fb1076ec2f452531943ce7dd763f3a36965814ca6ef89",
+  "bytes": 16185,
+  "status": "LOCKED_UD_PRO_PER",
   "approvedBy": "Jack Taglyan / CalDRE B9445457",
-  "approvedOn": "2026-07-04",
+  "approvedOn": "2026-07-05",
   "sourceRevision": null,
-  "note": "P4 Q1 lease concept vocabulary appended per p4_q1_persona_lease_concept_vocabulary_broker_countersign_2026-07-04 (all 6 amendments integrated).",
-  "lockedAt": "2026-07-04T07:59:54.564Z"
+  "note": "Add 'Filing authority and the pro per path' paragraph per persona_correction_ud_filing_pro_per_authority_2026-07-05 (corrects the false mandatory-attorney claim).",
+  "lockedAt": "2026-07-05T07:42:41.286Z"
 }
