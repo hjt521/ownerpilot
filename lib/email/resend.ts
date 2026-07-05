@@ -160,8 +160,14 @@ export async function sendLahdConfirmationEmail(to: string, confirmationRef: str
   const text = e.value
     .replace('{{confirmation_ref}}', confirmationRef)
     .replace('{{filed_date}}', formatLaDate(filedDateISO));
-  await send(to, subject, text, 'lahd-confirmation');
+  // B-2 safeguard 2: CAN-SPAM preference/unsubscribe footer, appended outside the locked body (same pattern as
+  // the packet-delivery §1162 disclaimer). Links to the granular per-type preference page.
+  await send(to, subject, `${text}\n\n${EMAIL_PREFERENCE_FOOTER}`, 'lahd-confirmation');
 }
+
+/** Functional CAN-SPAM footer for owner-facing transactional email (B-2). Not locked prose — operational. */
+export const EMAIL_PREFERENCE_FOOTER =
+  'To stop receiving filing-record confirmation emails, update your preferences at https://ownerpilot.ai/preferences/email';
 
 /**
  * Internal ops alert to every address on ADMIN_EMAILS. NOT owner-facing and NOT locked-prose — this is an
