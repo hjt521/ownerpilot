@@ -5,13 +5,13 @@
  * face of a California 3-Day Notice to Pay Rent or Quit, per the attorney
  * review (post-Eshagian: actual dates required on the notice).
  *
- * LEGAL BASIS (math only — confirmed in attorney review Q4):
+ * LEGAL BASIS (math only — confirmed in broker review Q4):
  *   - CCP § 12      : exclude the first day (day of service), include the last.
  *   - CCP § 12a     : if the last day is a holiday, it is also excluded.
  *   - AB 2343 (2019): the 3-day count excludes Saturdays, Sundays, and
  *                     judicial holidays.
  *
- * COMMENCEMENT DEFINITION (settled — attorney review Q11):
+ * COMMENCEMENT DEFINITION (settled — broker review Q11):
  *   The period commences on the first counted day — i.e. the day after the
  *   day of service if that day is a non-weekend, non-holiday day; otherwise
  *   the first non-weekend, non-holiday day thereafter. This equals
@@ -154,7 +154,7 @@ export function computeCompliancePeriod(
   const countedDays = counted as [string, string, string];
   const expirationDate = countedDays[2];
 
-  // Commencement = first counted day (attorney review Q11, settled).
+  // Commencement = first counted day (broker review Q11, settled).
   const commencementDate = countedDays[0];
 
   const notes: string[] = [];
@@ -164,7 +164,7 @@ export function computeCompliancePeriod(
   );
   notes.push(
     `Commencement = first counted (non-weekend/non-holiday) day, per ` +
-      `attorney review Q11.`,
+      `broker review Q11.`,
   );
 
   const mailingExtensionFlag =

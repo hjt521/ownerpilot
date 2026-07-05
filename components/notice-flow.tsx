@@ -3220,7 +3220,7 @@ function ReviewStep({
 
 // --- Step 7: Service instructions -------------------------------------------
 // Post-production guidance. The legal substance (how to serve under CCP § 1162,
-// local filing) is NOT authored here — it renders as "pending attorney review"
+// local filing) is NOT authored here — it renders as "pending broker review"
 // until the service-instruction copy is signed off, then drops into these
 // sections. This shell only structures the step and echoes data already captured.
 

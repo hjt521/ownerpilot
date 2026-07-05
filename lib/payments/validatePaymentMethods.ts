@@ -7,7 +7,7 @@
  * legally valid, so the rules live in one tested place rather than scattered
  * through UI.
  *
- * LEGAL BASIS (from attorney review of the spec and the v2 template):
+ * LEGAL BASIS (from broker review of the spec and the v2 template):
  *   - CCP § 1161(2): payee name, telephone, address required; in-person hours
  *     required if in-person offered; bank-deposit branch must be within 5 miles;
  *     EFT only if "previously established".
