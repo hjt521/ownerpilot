@@ -331,42 +331,6 @@
       "source_section": "§5.3"
     },
     {
-      "constant": "chatIntakeRentPeriodsPromptEs",
-      "tier": "A",
-      "file": "lib/chat/persona.ts",
-      "verbatim": "Ahora necesito el rango de fechas específico para cada período de renta que quieras incluir en el aviso. Para cada uno, necesito el día en que empezó el período, el día en que terminó, y cuánto se debe. Vamos a hacerlos uno por uno — ¿cuál es la fecha de inicio del período más antiguo que quieres incluir en este aviso?",
-      "hash": "97185cca48994409b56b2dca4c2883600a2076bafb5bfd9c0690a3a4e96fb87a",
-      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
-      "source_section": "§2.5 (PROVISIONAL)"
-    },
-    {
-      "constant": "chatIntakeSignerCapacityPromptEs",
-      "tier": "A",
-      "file": "lib/chat/persona.ts",
-      "verbatim": "Gracias. Una cosa más sobre quién va a firmar el aviso — ¿vas a firmar como propietario individual tú mismo, o en nombre de una compañía, LLC, o fideicomiso dueño de la propiedad?",
-      "hash": "0e3124760e68e39af27d3849c984ef2a48053c795f4e6c5dece6ddfc123af66e",
-      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
-      "source_section": "§3.5 (PROVISIONAL)"
-    },
-    {
-      "constant": "chatIntakePersonalDeliveryPromptEs",
-      "tier": "A",
-      "file": "lib/chat/persona.ts",
-      "verbatim": "Como piensas entregar este aviso en persona, California requiere que el aviso indique cuándo alguien puede entregarte un pago de renta en mano — los días de la semana y las horas del día. ¿Qué días de la semana estás disponible para aceptar el pago en persona? Por ejemplo: de lunes a viernes, o días específicos.",
-      "hash": "36e163c4f679dfb654dd146eca80e03d58ddae9903c6e1bf40489a08e5588abb",
-      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
-      "source_section": "§4.5 (PROVISIONAL)"
-    },
-    {
-      "constant": "chatIntakePreflightDisputePromptEs",
-      "tier": "A",
-      "file": "lib/chat/persona.ts",
-      "verbatim": "Antes de armar el aviso, necesito verificar tres cosas rápidas contigo. Estas afectan si un aviso de 3 días es la herramienta correcta para esta situación, o si deberías hablar con un abogado primero. Para cada una, dime sí, no, o \"no estoy seguro\" — \"no estoy seguro\" es una respuesta real, así que úsala si no sabes.",
-      "hash": "f452326a23c671e7bc8b8891de695dcbc1020286ec5597b7804c19ca96c90bdb",
-      "source_determination": "docs/compliance/lane2e_persona_prose_broker_ruling_2026-07-01.md",
-      "source_section": "§5.6 (PROVISIONAL)"
-    },
-    {
       "constant": "chatIntakeRentPeriodsReAskContinuation",
       "tier": "A",
       "file": "lib/chat/persona.ts",
