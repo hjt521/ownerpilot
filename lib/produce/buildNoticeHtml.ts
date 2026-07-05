@@ -7,7 +7,7 @@
  * SINGLE SOURCE OF WORDING: composes the SAME locked/proposed prose constants
  * and the SAME data the text rendering uses (renderNotice). It only arranges
  * and styles them; it does not restate or paraphrase any sentence. v4 HOW TO
- * PAY wording is PROPOSED pending attorney sign-off; production stays gated.
+ * PAY wording is PROPOSED pending broker sign-off; production stays gated.
  *
  * Output is a complete standalone HTML string (own <style>, logos inlined as
  * data URIs). Used for print-to-PDF and for the in-app preview (sandboxed

@@ -22,13 +22,25 @@ const ALLOWLIST = new Set([
   'scripts/ci/check_attorney_attribution.mjs',
 ]);
 
-// 3 attribution phrases (this ruling) + 8 mandatory-attorney phrases (persona ruling, reused).
-const PHRASES = [
+// Literal phrases: 3 attribution (codebase_prose_correction_2026-07-05) + 8 mandatory-attorney (persona ruling).
+const LITERAL = [
   'attorney of record', 'State Bar number', 'reviewing attorney',
   'must be reviewed by an attorney', 'must be filed by an attorney', 'must have an attorney',
   'requires an attorney', 'you need an attorney to file', 'you need a lawyer to file',
   'only an attorney can file', 'only a lawyer can file',
 ].map((p) => ({ p, re: new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }));
+
+// Provenance / gate-state phrase-class (codebase_provenance_attorney_review_signoff_rename_2026-07-05).
+// Regex patterns use space/hyphen separators only, so underscored ruling-doc filename citations
+// (e.g. "A1_part_d_attorney_signoff_2026-06-03.md") are NOT matched — those are proper nouns, carve-out.
+const REGEX = [
+  'attorney[- ]review', 'attorney[- ]sign[- ]?off', 'attorney[- ]signoff', 'attorney[- ]authoriz',
+  'awaiting attorney', 'pending attorney', 'reviewed by (an )?attorney', 'signed off by (an )?attorney',
+  'attorney-reviewed', 'attorney-reviewable',
+  'attorneyReview', 'attorneySignoff', 'attorneySignedOff', 'reviewedByAttorney', 'signedByAttorney',
+].map((p) => ({ p, re: new RegExp(p, 'i') }));
+
+const PHRASES = [...LITERAL, ...REGEX];
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {

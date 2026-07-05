@@ -1,5 +1,5 @@
 /**
- * H1 detection patterns — CANDIDATE set for attorney sign-off.
+ * H1 detection patterns — CANDIDATE set for broker sign-off.
  *
  * NOT WIRED INTO THE ROUTE. The live guards in lib/chat/guards.ts keep empty
  * pattern lists and stay inert. This module exists so the validation harness

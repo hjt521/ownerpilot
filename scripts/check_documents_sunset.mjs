@@ -10,7 +10,7 @@
  * (a) is already true. (b) is false today (dev-only). The risk is forgetting to
  * revisit the prompt the day (b) flips. This guard makes that impossible to forget:
  * if both flags are true while the deployed prompt STILL contains the interim
- * language, it fails — forcing an attorney-reviewed DOCUMENTS revision before ship.
+ * language, it fails — forcing a broker-reviewed DOCUMENTS revision before ship.
  *
  * It does NOT decide what the new language should be (that is the attorney's call);
  * it only refuses to let the live-flag flip past an un-revisited interim paragraph.

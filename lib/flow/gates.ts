@@ -40,7 +40,7 @@ import { getSuccessfulAttempt, deriveComplianceInputs } from './escalation';
 // --- 1. Dispute hard-block -------------------------------------------------
 
 /**
- * Per-question policy for an 'unknown' answer. This is the attorney-reviewable
+ * Per-question policy for an 'unknown' answer. This is the broker-reviewable
  * heart of the dispute screen: which "I don't know" answers may proceed
  * (with a logged warning) vs. which must block.
  *
@@ -51,7 +51,7 @@ import { getSuccessfulAttempt, deriveComplianceInputs } from './escalation';
  *  - bankruptcy : 'unknown' BLOCKS, with automatic-stay guidance.
  *
  * NOTE: this relaxation (complaint-unknown proceeding) is a change to the
- * attorney-reviewed dispute screen and is flagged for her next review.
+ * broker-reviewed dispute screen and is flagged for the broker's next review.
  */
 export const UNKNOWN_PROCEEDS: Record<keyof DisputeScreen, boolean> = {
   tenantFiledComplaint: true, // proceed-with-warning
@@ -485,12 +485,12 @@ const jur = detectJurisdiction({ address: data.propertyAddress, city: data.prope
   // chain; its compliance work has migrated into the validator and the
   // "no divergence" assertion in renderNotice.
 
-  // (h) v4 wording sign-off gate — fails closed until the attorney signs off.
+  // (h) v4 wording sign-off gate — fails closed until the broker signs off.
   if (!V4_WORDING_SIGNED_OFF) {
     blockers.push({
       code: 'TEMPLATE_NOT_SIGNED_OFF',
       message:
-        'This notice version is pending attorney sign-off of the updated ' +
+        'This notice version is pending broker sign-off of the updated ' +
         'payment-section wording and cannot be produced yet.',
     });
   }

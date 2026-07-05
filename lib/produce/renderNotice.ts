@@ -5,7 +5,7 @@
  * VERSION v4 (payment-fields change; attorney ruling 2026-06-01).
  *
  * DISCIPLINE:
- *  - Renders attorney-reviewed template text. Fixed wording lives in
+ *  - Renders broker-reviewed template text. Fixed wording lives in
  *    NOTICE_PROSE / POS_PROSE / FORM_META as the single source for both the
  *    text rendering and the structured model. This module does NOT author or
  *    paraphrase legal language on its own authority.
@@ -14,7 +14,7 @@
  *    Part D sign-off (A1_part_d_attorney_signoff_2026-06-03.md) and countersign
  *    (A1_part_d_attorney_countersign_2026-06-04.md): the thirteen renderer prose
  *    constants are build-locked, verbatim only. Any string-level change requires
- *    a fresh attorney review packet.
+ *    a fresh broker review packet.
  *  - Renders entered data VERBATIM (no capitalization tidying).
  *  - Consumes commencement/expiration dates; never recomputes them.
  *  - Proof of service rendered BLANK.
