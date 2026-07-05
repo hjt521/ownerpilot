@@ -53,6 +53,7 @@ function LahdFilingSection({ record }: { record: RecordVM }) {
   const [filed, setFiled] = useState(record.lahd?.latestFiling ?? null);
   const [date, setDate] = useState('');
   const [channel, setChannel] = useState<'online_portal' | 'mail_with_cover_sheet' | 'other'>('online_portal');
+  const [conf, setConf] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -62,7 +63,8 @@ function LahdFilingSection({ record }: { record: RecordVM }) {
     setBusy(true);
     const r = await fetch(`/api/notices/${record.id}/lahd-filing-record`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filing_date: date, filing_channel: channel }),
+      // B1: confirmation_ref is optional — sent only if the owner typed one; the record lands either way.
+      body: JSON.stringify({ filing_date: date, filing_channel: channel, confirmation_ref: conf || undefined }),
     }).catch(() => null);
     setBusy(false);
     if (!r || !r.ok) { setErr('Could not record the filing. Please try again.'); return; }
@@ -97,6 +99,13 @@ function LahdFilingSection({ record }: { record: RecordVM }) {
                 <option value="mail_with_cover_sheet">Mail with cover sheet</option>
                 <option value="other">Other</option>
               </select>
+            </label>
+            {/* B1: optional LAHD confirmation reference. Does not block the record. (Full "add later from your
+                filing history" path lands in B-2 with the edit surface; hint kept accurate to what exists now.) */}
+            <label className="text-xs text-blue-900">Confirmation reference (optional)
+              <input type="text" value={conf} maxLength={64} onChange={(e) => setConf(e.target.value)}
+                placeholder="Paste the number LAHD emailed you, if you have it"
+                className="mt-1 block min-h-[44px] w-56 rounded border border-blue-300 px-2 py-1 text-sm" />
             </label>
             <button onClick={record_} disabled={busy}
               className="min-h-[44px] rounded-md bg-blue-900 px-4 py-2 text-sm text-white disabled:opacity-40">
