@@ -21,5 +21,15 @@ export const lahdFilingRecordBodySchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'filing_date must be an ISO date (YYYY-MM-DD)')
     .refine((d) => d <= new Date().toISOString().slice(0, 10), 'filing_date cannot be in the future'),
   filing_channel: FILING_CHANNEL,
+  // B1 (p1_email_trigger_dependencies_broker_ruling_2026-07-05): optional owner-supplied LAHD confirmation
+  // reference. Free-text; trimmed and capped at 64 chars. NEVER blocks the record — over-length is truncated,
+  // empty/whitespace becomes undefined, so a filing without a reference still lands.
+  confirmation_ref: z
+    .string()
+    .optional()
+    .transform((v) => {
+      const t = (v ?? '').trim();
+      return t ? t.slice(0, 64) : undefined;
+    }),
 });
 export type LahdFilingRecordBody = z.infer<typeof lahdFilingRecordBodySchema>;

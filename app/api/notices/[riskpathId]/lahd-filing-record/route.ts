@@ -41,6 +41,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ris
       filing_date: parsed.data.filing_date,
       filing_channel: parsed.data.filing_channel,
       cover_sheet_revision: COVER_SHEET_REVISION,
+      // B1: optional owner-supplied LAHD confirmation reference (null when omitted). The send path (B-2) reads
+      // this to decide whether a LAHD-confirmation email goes out; B-1 only captures it.
+      confirmation_ref: parsed.data.confirmation_ref ?? null,
     })
     .select('id')
     .single();
