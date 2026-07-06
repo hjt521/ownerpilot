@@ -99,8 +99,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
           <div className="hero-copy">
             <p className="eyebrow">Built for California property owners</p>
             <h1>Ask OwnerPilot AI first.</h1>
-            <p className="hero-subline">Broker-supervised, AI-first, and built for what happens after the notice.</p>
-            <p className="lead">
+            <p className="hero-subline">
               Get plain-English guidance, then move into broker-supervised notice preparation, service tracking,
               written resolution records, and organized next steps.
             </p>
