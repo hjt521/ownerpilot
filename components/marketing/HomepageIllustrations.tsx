@@ -44,6 +44,7 @@ export function JurisdictionFeatureBand() {
         <div className="status-card" aria-label="Jurisdiction check example">
           <div className="status-row"><span>Property check</span><strong>Complete</strong></div>
           <div className="status-row"><span>Result</span><strong className="ready">Ready to proceed</strong></div>
+          <div className="status-row"><span>Next</span><strong>Broker-supervised workflow</strong></div>
         </div>
       </div>
     </section>

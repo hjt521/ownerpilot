@@ -22,8 +22,7 @@ const workflowSteps = [
   { number: '1', title: 'Ask AI', body: 'Plain-English workflow guidance before you act.' },
   { number: '2', title: 'Generate Notice', body: 'Build and review a broker-supervised 3-Day Notice packet.' },
   { number: '3', title: 'Serve & Track', body: 'Log attempts, mailing, photos, and notes.' },
-  { number: '4', title: 'Resolve & Document', body: 'Record payment, payment plan, Move-Out Agreement, or surrender.' },
-  { number: '5', title: 'RiskPath™ Records', body: 'Keep the packet, proof, agreements, and next steps organized.' },
+  { number: '4', title: 'Resolve & Record', body: 'Document payment, Move-Out Agreement, surrender, and keep the record in RiskPath™.' },
 ];
 
 const heroSystem = [
@@ -151,6 +150,10 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
               <div className="log-row"><span>Attempt 2</span><strong>Logged</strong></div>
               <div className="log-row success"><span>Mailing</span><strong>Next</strong></div>
             </div>
+            <div className="ai-minicard" aria-hidden="true">
+              <span className="ai-minicard-label">OwnerPilot AI</span>
+              <p>Tell me what happened. I&apos;ll help route the next step.</p>
+            </div>
           </div>
         </section>
 
@@ -170,8 +173,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             <span>Ask AI</span><i>&rarr;</i>
             <span>Generate Notice</span><i>&rarr;</i>
             <span>Serve &amp; Track</span><i>&rarr;</i>
-            <span>Resolve &amp; Document</span><i>&rarr;</i>
-            <span>RiskPath™</span>
+            <span>Resolve &amp; Record</span>
           </div>
         </section>
 
@@ -226,7 +228,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
               <span className="pill">Timestamped</span>
             </div>
             <p className="proof-sub">Posted on Front Door</p>
-            <div className="proof-photo" aria-hidden="true"></div>
+            <div className="proof-photo" aria-hidden="true"><span className="proof-doc"></span></div>
             <p className="proof-time">May 12, 2025 · 10:24 AM</p>
           </div>
           <div className="split-copy">
