@@ -124,7 +124,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             </p>
             <div className="trust-row" aria-label="Trust points">
               <span>California Licensed Real Estate Broker supervision</span>
-              <span>Broker-prepared workflow</span>
+              <span>Broker-supervised workflow</span>
               <span>RiskPath™ Follow-Up from your dashboard</span>
             </div>
           </div>
@@ -153,6 +153,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             <div className="ai-minicard" aria-hidden="true">
               <span className="ai-minicard-label">OwnerPilot AI</span>
               <p>Tell me what happened. I&apos;ll help route the next step.</p>
+              <div className="ai-minicard-input"><span>Ask a question&hellip;</span></div>
             </div>
           </div>
         </section>
@@ -263,6 +264,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
           </div>
           <div className="resolve-foot">
             <Link className="primary-btn" href="/chat">Open Resolve &amp; Document <ArrowIcon /></Link>
+            <p className="resolve-riskpath">Saved to RiskPath&trade; for the owner record.</p>
             <p className="resolve-note">
               OwnerPilot helps document the terms you enter for your records. OwnerPilot is not a law firm and does
               not provide legal advice.

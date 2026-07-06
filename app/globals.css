@@ -159,6 +159,7 @@ body {
 .cb-home .resolve-labels span { border: 1px solid var(--gold-600); border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 700; color: var(--green-950); }
 .cb-home .resolve-helper { margin-top: 12px; font-size: 14px; color: var(--muted); }
 .cb-home .status-card { margin-top: 18px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; max-width: 340px; }
+.cb-home .status-title { margin: 2px 0 8px; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--green-950); }
 .cb-home .status-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 14px; font-weight: 650; color: var(--ink); }
 .cb-home .status-row strong.ready { color: var(--green-800); }
 /* AI-first homepage sections (homepage_canonical_update_2026-07-05). */
@@ -176,9 +177,10 @@ body {
 .cb-home .proof-doc::before { content: ''; position: absolute; top: 13px; left: 11px; right: 11px; height: 7px; background: var(--green-950); border-radius: 2px; }
 .cb-home .proof-doc::after { content: ''; position: absolute; top: 28px; left: 11px; right: 11px; bottom: 13px; border-radius: 2px; background: repeating-linear-gradient(#e7e2d6 0 2px, transparent 2px 10px); }
 /* Hero AI mini-card — reinforces AI-first alongside the concrete product preview. */
-.cb-home .ai-minicard { position: absolute; left: 4px; bottom: 4px; width: 252px; background: var(--green-950); color: #eef3ee; border-radius: 18px; padding: 15px 18px; box-shadow: var(--shadow); }
-.cb-home .ai-minicard-label { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-500); }
-.cb-home .ai-minicard p { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: #eef3ee; }
+.cb-home .ai-minicard { position: absolute; left: 0; bottom: 0; width: 292px; background: var(--green-950); color: #eef3ee; border-radius: 20px; padding: 18px 20px 16px; box-shadow: var(--shadow); }
+.cb-home .ai-minicard-label { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-500); }
+.cb-home .ai-minicard p { margin: 7px 0 0; font-size: 16px; line-height: 1.42; color: #f2f6f1; }
+.cb-home .ai-minicard-input { margin-top: 13px; border-radius: 11px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16); padding: 9px 13px; font-size: 14px; color: rgba(238,243,238,.62); }
 .cb-home .proof-time { margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--ink); }
 .cb-home .resolve-foot { margin-top: 28px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .cb-home .resolve-note { font-size: 13px; color: var(--muted); max-width: 660px; }
@@ -325,6 +327,30 @@ body {
   .cb-home .hero-visual { transform: none; }
 }
 /* === end headline + visual rebalance === */
+
+/* ============================================================
+   Marketing polish pass 5 (2026-07-05) — stronger first-screen
+   hierarchy. Headline ~12% larger for conversion confidence;
+   subheadline gets more breathing room (unchanged calm weight).
+   Source-order last, scoped to .cb-home.
+   ============================================================ */
+.cb-home h1 { font-size: clamp(47px, 5.5vw, 70px); }
+.cb-home .hero-subline { margin: 22px 0 6px; line-height: 1.55; }
+
+@media (max-width: 640px) {
+  .cb-home h1 { font-size: 49px; }
+}
+/* === end polish pass 5 === */
+
+/* Marketing polish pass 5 — spacing tighten (~10%): calmer vertical rhythm
+   between hero → AI-first band, after-notice → serve/track, and resolve → CTA.
+   Source-order last, scoped to .cb-home. */
+.cb-home .hero { padding-bottom: 40px; }
+.cb-home .illus-band { padding: 64px 0; }
+.cb-home .notice-section { padding-bottom: 68px; }
+.cb-home .final-cta { padding: 68px 0; }
+.cb-home .resolve-riskpath { margin: 14px 0 0; font-size: 13px; font-weight: 750; letter-spacing: .01em; color: var(--gold-600); }
+/* === end spacing tighten === */
 /* ============================================================
    Mobile optimization pass — Slice M1 (build, 2026-06-16).
    Pure CSS, phone breakpoint only (max-width: 640px), all scoped
