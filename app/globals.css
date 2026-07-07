@@ -173,6 +173,9 @@ body {
 /* Photo Proof of Posting — product-rendered "notice on a door" thumbnail (not a raw photo). */
 .cb-home .proof-photo { position: relative; height: 190px; border-radius: 14px; border: 1px solid var(--line); overflow: hidden; background: linear-gradient(158deg, #b89c7b 0%, #9c7f60 55%, #866b4f 100%); }
 .cb-home .proof-photo::before { content: ''; position: absolute; inset: 16px; border: 2px solid rgba(255,255,255,.12); border-radius: 7px; }
+/* door seam line to read as a real door */
+.cb-home .proof-photo::after { content: ''; position: absolute; top: 0; bottom: 0; left: 28%; width: 2px; background: rgba(0,0,0,.10); }
+.cb-home .proof-pin { position: absolute; top: -5px; left: 50%; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #d9b26a, #a9812f); box-shadow: 0 2px 4px rgba(0,0,0,.35); z-index: 2; }
 .cb-home .proof-doc { position: absolute; top: 50%; left: 50%; width: 98px; height: 122px; transform: translate(-50%,-50%) rotate(-3deg); background: #fdfcf8; border-radius: 4px; box-shadow: 0 10px 26px rgba(0,0,0,.28); }
 .cb-home .proof-doc::before { content: ''; position: absolute; top: 13px; left: 11px; right: 11px; height: 7px; background: var(--green-950); border-radius: 2px; }
 .cb-home .proof-doc::after { content: ''; position: absolute; top: 28px; left: 11px; right: 11px; bottom: 13px; border-radius: 2px; background: repeating-linear-gradient(#e7e2d6 0 2px, transparent 2px 10px); }
@@ -334,22 +337,31 @@ body {
    subheadline gets more breathing room (unchanged calm weight).
    Source-order last, scoped to .cb-home.
    ============================================================ */
-.cb-home h1 { font-size: clamp(47px, 5.5vw, 70px); }
+.cb-home h1 { font-size: clamp(51px, 6vw, 77px); max-width: 720px; }
 .cb-home .hero-subline { margin: 22px 0 6px; line-height: 1.55; }
+/* Give the hero copy column a touch more horizontal room + a slightly more
+   dominant primary CTA (marketing polish pass 6). */
+.cb-home .hero { grid-template-columns: 1.1fr 1fr; }
+.cb-home .hero-actions .primary-btn { padding: 17px 26px; font-size: 17px; box-shadow: 0 10px 26px rgba(180,137,68,.28); }
+.cb-home .hero-actions .secondary-btn { opacity: .92; }
 
 @media (max-width: 640px) {
-  .cb-home h1 { font-size: 49px; }
+  .cb-home h1 { font-size: 53px; }
+  .cb-home .hero { grid-template-columns: 1fr; }
 }
 /* === end polish pass 5 === */
 
 /* Marketing polish pass 5 — spacing tighten (~10%): calmer vertical rhythm
    between hero → AI-first band, after-notice → serve/track, and resolve → CTA.
    Source-order last, scoped to .cb-home. */
-.cb-home .hero { padding-bottom: 40px; }
-.cb-home .illus-band { padding: 64px 0; }
-.cb-home .notice-section { padding-bottom: 68px; }
-.cb-home .final-cta { padding: 68px 0; }
+.cb-home .hero { padding-bottom: 34px; }
+.cb-home .illus-band { padding: 58px 0; }
+.cb-home .notice-section { padding-bottom: 60px; }
+.cb-home .final-cta { padding: 60px 0; }
 .cb-home .resolve-riskpath { margin: 14px 0 0; font-size: 13px; font-weight: 750; letter-spacing: .01em; color: var(--gold-600); }
+/* One-line plain-English definition of RiskPath near the workflow strip. */
+.cb-home .workflow-riskpath-note { margin: 20px auto 0; max-width: 720px; text-align: center; font-size: 15px; line-height: 1.5; color: var(--muted); }
+.cb-home .workflow-riskpath-note strong { color: var(--green-900); font-weight: 750; }
 /* === end spacing tighten === */
 /* ============================================================
    Mobile optimization pass — Slice M1 (build, 2026-06-16).

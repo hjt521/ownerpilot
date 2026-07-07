@@ -176,6 +176,10 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             <span>Serve &amp; Track</span><i>&rarr;</i>
             <span>Resolve &amp; Record</span>
           </div>
+          <p className="shell workflow-riskpath-note">
+            <strong>RiskPath&trade;</strong> keeps your notice record, service steps, documents, photos, and next
+            actions organized.
+          </p>
         </section>
 
         {/* Ask OwnerPilot AI — surfaced high, right after the workflow story so it isn't buried. */}
@@ -229,7 +233,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
               <span className="pill">Timestamped</span>
             </div>
             <p className="proof-sub">Posted on Front Door</p>
-            <div className="proof-photo" aria-hidden="true"><span className="proof-doc"></span></div>
+            <div className="proof-photo" aria-hidden="true"><span className="proof-doc"><i className="proof-pin"></i></span></div>
             <p className="proof-time">May 12, 2025 · 10:24 AM</p>
           </div>
           <div className="split-copy">
