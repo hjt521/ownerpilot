@@ -8,7 +8,7 @@ import Link from 'next/link';
 /** Below the hero: the AI-first workflow story (hero_chat_first_flow). */
 export function AIFlowIllustrationBand() {
   return (
-    <section className="illus-band shell">
+    <section className="illus-band shell illus-band--flow">
       <div className="illus-copy">
         <p className="eyebrow">AI-first workflow</p>
         <h2>Start with a question. Move into the right workflow.</h2>

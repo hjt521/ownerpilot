@@ -551,3 +551,38 @@ body {
 /* Hero broker micro-line — muted (≈4.9:1 on ivory). */
 .cb-home .hero-broker-line { margin: 12px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
 /* === end accessibility pass === */
+
+/* ============================================================
+   Mobile compression pass (2026-07-05) — phones only. Desktop
+   untouched. The editorial illustrations were rendering full-width
+   (tall), pushing the product/selling content down. Cap their
+   height so they read as accents, hide the purely-atmospheric
+   hero-flow art, and tighten the vertical rhythm ~25%.
+   Source-order last; scoped to .cb-home.
+   ============================================================ */
+@media (max-width: 640px) {
+  /* Editorial illustrations become compact accents, not full panels. */
+  .cb-home .illus-visual img {
+    max-height: 220px;
+    width: auto;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+  /* Purely-atmospheric hero-flow art: hide on phones so the workflow
+     summary + AI prompt section surface faster. Copy + CTA stay. */
+  .cb-home .illus-band--flow .illus-visual { display: none; }
+
+  /* Tighten the illustration bands + surrounding rhythm (~25%). */
+  .cb-home .illus-band { padding: 26px 0; gap: 16px; }
+  .cb-home .hero { padding-bottom: 18px; }
+  .cb-home .chat-section { padding: 28px 0; }
+  .cb-home #serve-track { padding: 30px 0; }
+  .cb-home .final-cta { padding: 34px 0 calc(34px + env(safe-area-inset-bottom)); }
+
+  /* RiskPath explainer stays readable directly under the compact strip. */
+  .cb-home .workflow-riskpath-note { margin-top: 16px; font-size: 14.5px; }
+
+  /* Keep the primary/secondary CTAs comfortably tappable (>=48px). */
+  .cb-home .primary-btn, .cb-home .secondary-btn { min-height: 50px; padding: 15px 20px; }
+}
+/* === end mobile compression pass === */
