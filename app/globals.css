@@ -497,3 +497,57 @@ body {
   }
 }
 /* === end mobile Slice M2 CSS === */
+
+/* ============================================================
+   Accessibility pass — WCAG 2.2 AA (2026-07-05). Source-order last,
+   scoped to .cb-home. Adds visible keyboard focus, reduced-motion
+   support, and background-aware gold contrast so text/controls meet
+   AA contrast on both the ivory and the dark-green sections.
+   ============================================================ */
+
+/* 1. Darker gold for gold text/controls on LIGHT backgrounds.
+   #8a6a2a ≈ 4.9:1 on ivory (passes AA normal text); overriding the
+   token cascades to eyebrows, text-links, hero-help link, chip borders,
+   and the RiskPath "Saved to..." line. */
+.cb-home { --gold-600: #8a6a2a; }
+
+/* 2. Primary CTA: both gradient stops kept dark enough that white text
+   clears AA (~5:1) at any button size. */
+.cb-home .primary-btn { background: linear-gradient(135deg, #8a6a2a, #6f5620); }
+
+/* 3. Gold text on the DARK-GREEN sections needs the LIGHT gold instead
+   (dark gold would fail on dark). Eyebrow in the AI prompt section. */
+.cb-home .chat-section .eyebrow { color: #dcbb7a; }
+
+/* 4. Workflow step-number badges: dark number on light-gold badge reads
+   clearly on the dark-green band (≈6:1) and the badge stays visible. */
+.cb-home .step-number { background: var(--gold-500); color: var(--green-950); }
+
+/* 5. Visible keyboard focus for every interactive element. Gold-600 ring
+   clears 3:1 on both ivory and dark-green backgrounds. */
+.cb-home a:focus-visible,
+.cb-home button:focus-visible {
+  outline: 3px solid var(--gold-600);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+/* Extra separation ring for controls that sit on the dark-green sections. */
+.cb-home .chat-section a:focus-visible,
+.cb-home .prompt-box a:focus-visible {
+  outline-color: #dcbb7a;
+}
+
+/* 6. Respect reduced-motion preferences: no transforms/transitions/anim. */
+@media (prefers-reduced-motion: reduce) {
+  .cb-home *,
+  .cb-home *::before,
+  .cb-home *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+  .cb-home .hero-visual { transform: none !important; }
+}
+/* Hero broker micro-line — muted (≈4.9:1 on ivory). */
+.cb-home .hero-broker-line { margin: 12px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+/* === end accessibility pass === */

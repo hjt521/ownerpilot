@@ -127,6 +127,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
               <span>Broker-supervised workflow</span>
               <span>RiskPath™ Follow-Up from your dashboard</span>
             </div>
+            <p className="hero-broker-line">Built and operated under California real estate broker supervision.</p>
           </div>
 
           <div className="hero-visual" aria-label="OwnerPilot notice and service tracking preview">
