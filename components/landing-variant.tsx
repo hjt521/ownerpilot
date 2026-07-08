@@ -177,8 +177,8 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             <span>Resolve &amp; Record</span>
           </div>
           <p className="shell workflow-riskpath-note">
-            <strong>RiskPath&trade;</strong> keeps your notice record, service steps, documents, photos, and next
-            actions organized.
+            <strong>RiskPath&trade;</strong> keeps your notice packet, service log, photos, agreements, and next
+            steps organized in one record.
           </p>
         </section>
 
