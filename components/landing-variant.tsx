@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SiteFooter } from './site-footer';
+import { AIFlowIllustrationBand, JurisdictionFeatureBand, ResolveDocumentBand } from './marketing/HomepageIllustrations';
 
 type LandingVariantProps = {
   /** Which persona/channel this page serves, e.g. "Crisis variant — Google Search".
@@ -10,26 +11,25 @@ type LandingVariantProps = {
 };
 
 /**
- * Shared landing template for all seven UTM variants — Concept B "Action
- * Forward" with the 2026-06-16 marketing hero revision (above-the-fold system
- * strip; "Create a California 3-Day Notice in Minutes" headline). One shared
- * design for now; per-persona copy (by variantLabel) is a later project.
- * Routing and campaign labels are unchanged (see proxy.ts). Layout styles are
- * scoped under `.cb-home` in app/globals.css.
+ * Canonical served homepage (proxy rewrites / → /landing/default). AI-first repositioning per
+ * homepage_canonical_update_2026-07-05: leads with "Ask OwnerPilot AI first." and tells the full workflow story
+ * (Ask AI → Generate Notice → Serve & Track → Resolve & Document → RiskPath Records) rather than a notice-only
+ * pitch. The functional product preview stays in the hero; the Canva illustrations are Option-B accents lower on
+ * the page. UTM/landing-variant infrastructure unchanged. Styles scoped under `.cb-home` in app/globals.css.
  */
 
 const workflowSteps = [
-  { number: '1', title: 'Ask AI', body: 'Plain-English guidance for California property owners before you act.' },
-  { number: '2', title: 'Generate Notice', body: 'Build and review a broker-prepared 3-Day Notice packet.' },
-  { number: '3', title: 'Serve & Track', body: 'Log attempts, track mailing, and keep the record moving.' },
-  { number: '4', title: 'Proof & Record', body: 'Complete proof of service and keep the packet organized.' },
+  { number: '1', title: 'Ask AI', body: 'Plain-English workflow guidance before you act.' },
+  { number: '2', title: 'Generate Notice', body: 'Build and review a broker-supervised 3-Day Notice packet.' },
+  { number: '3', title: 'Serve & Track', body: 'Log attempts, mailing, photos, and notes.' },
+  { number: '4', title: 'Resolve & Record', body: 'Document payment, Move-Out Agreement, surrender, and keep the record in RiskPath™.' },
 ];
 
 const heroSystem = [
-  { title: 'Generate Notice', body: 'Tenant + owner copies' },
-  { title: 'Serve & Track', body: 'Log attempts and mailing' },
-  { title: 'Proof & Record', body: 'Complete after service' },
-  { title: 'RiskPath\u2122 Follow-Up', body: 'Return from your dashboard' },
+  { title: 'Ask AI', body: 'Guidance before you act' },
+  { title: 'Generate Notice', body: 'Broker-supervised packet' },
+  { title: 'Serve & Track', body: 'Attempts, mailing, photos' },
+  { title: 'Resolve & Record', body: 'Document the outcome' },
 ];
 
 const packetItems = [
@@ -37,14 +37,24 @@ const packetItems = [
   'Owner Record Copy',
   'Proof of Service',
   'Service Log',
-  'RiskPath\u2122 Follow-Up',
+  'Photo Proof of Posting',
+  'Resolve & Document',
+  'RiskPath™ Follow-Up',
 ];
 
 const chatPrompts = [
   'My tenant is behind on rent. What should I do?',
   'How do I create a 3-Day Notice?',
   'What happens after I serve the notice?',
-  'How do I track a failed service attempt?',
+  'The tenant paid after notice. What should I document?',
+  'The tenant agreed to move out. Can I create a Move-Out Agreement?',
+];
+
+const resolveCards = [
+  { title: 'Record Payment', body: 'Document full or post-deadline payment and close the notice record when appropriate.' },
+  { title: 'Create Payment Plan', body: 'Capture payment terms, due dates, and follow-up reminders.' },
+  { title: 'Create Move-Out Agreement', body: 'Use when the tenant agrees to vacate after notice service and both sides want the terms in writing.' },
+  { title: 'Record Surrender', body: 'Document key return, possession, move-out photos, and next steps.' },
 ];
 
 function ArrowIcon() {
@@ -52,9 +62,6 @@ function ArrowIcon() {
 }
 
 function CheckIcon() {
-  // Inline SVG check (centered by geometry) instead of a unicode glyph, whose
-  // font metrics left it sitting off-center in the small circle. Sized via CSS
-  // (.cb-home .check svg) so it scales for the hero (22px) and list (28px).
   return (
     <span className="check" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
@@ -65,9 +72,8 @@ function CheckIcon() {
 }
 
 export function LandingVariant({ variantLabel }: LandingVariantProps) {
-  // variantLabel is preserved for UTM attribution + future per-variant copy.
-  // It is intentionally NOT rendered as a visible label (marketing direction,
-  // 2026-06-16); exposed only as a dev-only data attribute for QA.
+  // variantLabel is preserved for UTM attribution + future per-variant copy. Not rendered as a visible label
+  // (marketing direction, 2026-06-16); exposed only as a dev-only data attribute for QA.
   const devVariantAttr: Record<string, string> =
     process.env.NODE_ENV !== 'production' ? { 'data-variant': variantLabel } : {};
   return (
@@ -75,7 +81,7 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
       <header className="site-header">
         <Link className="brand" href="/" aria-label="OwnerPilot.AI home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="brand-mark" src="/ownerpilot-mark.png" alt="OwnerPilot.AI" />
+          <img className="brand-mark" src="/ownerpilot-mark.svg" alt="OwnerPilot.AI" />
           <span className="brand-text">OwnerPilot<span>.AI</span></span>
         </Link>
         <nav className="nav" aria-label="Main navigation">
@@ -84,17 +90,17 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
           <Link href="/chat">Ask OwnerPilot</Link>
           <Link href="/our-approach">Our Approach</Link>
         </nav>
-        <Link className="nav-cta" href="/notice/3-day">Start 3-Day Notice</Link>
+        <Link className="nav-cta" href="/chat">Ask OwnerPilot AI</Link>
       </header>
 
       <main>
         <section id="top" className="hero shell">
           <div className="hero-copy">
-            <p className="eyebrow">The complete 3-Day Notice workflow</p>
-            <h1>Create a California 3-Day Notice in Minutes.</h1>
-            <p className="hero-subline">Track service. Keep the record organized.</p>
-            <p className="lead">
-              Generate a broker-prepared notice packet, separate tenant and owner copies, log service attempts, complete proof of service, and return anytime with RiskPath&trade; Follow-Up.
+            <p className="eyebrow">Built for California property owners</p>
+            <h1>Ask OwnerPilot AI first.</h1>
+            <p className="hero-subline">
+              Get plain-English guidance, then move into broker-supervised notice preparation, service tracking,
+              written resolution records, and organized next steps.
             </p>
 
             <div className="hero-system" aria-label="OwnerPilot connected workflow">
@@ -110,17 +116,18 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             </div>
 
             <div className="hero-actions" id="start">
-              <Link className="primary-btn" href="/notice/3-day">Start 3-Day Notice <ArrowIcon /></Link>
-              <Link className="secondary-btn" href="/chat">Ask OwnerPilot AI</Link>
+              <Link className="primary-btn" href="/chat">Ask OwnerPilot AI <ArrowIcon /></Link>
+              <Link className="secondary-btn" href="/notice/3-day">Start 3-Day Notice</Link>
             </div>
             <p className="hero-help">
               Not sure what to do first? <Link href="/chat">Ask OwnerPilot AI before you start.</Link>
             </p>
             <div className="trust-row" aria-label="Trust points">
-              <span>CA Licensed Real Estate Broker supervision</span>
-              <span>Broker-prepared workflow</span>
-              <span>RiskPath&trade; Follow-Up from your dashboard</span>
+              <span>California Licensed Real Estate Broker supervision</span>
+              <span>Broker-supervised workflow</span>
+              <span>RiskPath™ Follow-Up from your dashboard</span>
             </div>
+            <p className="hero-broker-line">Built and operated under California real estate broker supervision.</p>
           </div>
 
           <div className="hero-visual" aria-label="OwnerPilot notice and service tracking preview">
@@ -128,9 +135,9 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
               <div className="doc-top">THREE-DAY NOTICE<br />TO PAY RENT OR QUIT</div>
               <div className="doc-line thick"></div>
               <div className="doc-grid">
-                <span>Tenant</span><strong>John Doe</strong>
-                <span>Rent owed</span><strong>$4,354.00</strong>
-                <span>Status</span><strong className="ready">Ready</strong>
+                <span>Notice Packet</span><strong className="ready">Ready</strong>
+                <span>Service Log</span><strong>Logged</strong>
+                <span>RiskPath Record</span><strong className="ready">Next</strong>
               </div>
               <div className="doc-lines">
                 <i></i><i></i><i></i><i></i>
@@ -144,8 +151,15 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
               <div className="log-row"><span>Attempt 2</span><strong>Logged</strong></div>
               <div className="log-row success"><span>Mailing</span><strong>Next</strong></div>
             </div>
+            <div className="ai-minicard" aria-hidden="true">
+              <span className="ai-minicard-label">OwnerPilot AI</span>
+              <p>Tell me what happened. I&apos;ll help route the next step.</p>
+              <div className="ai-minicard-input"><span>Ask a question&hellip;</span></div>
+            </div>
           </div>
         </section>
+
+        <AIFlowIllustrationBand />
 
         <section className="workflow-band" id="approach">
           <div className="shell workflow-grid">
@@ -161,21 +175,48 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
             <span>Ask AI</span><i>&rarr;</i>
             <span>Generate Notice</span><i>&rarr;</i>
             <span>Serve &amp; Track</span><i>&rarr;</i>
-            <span>Proof &amp; Record</span>
+            <span>Resolve &amp; Record</span>
+          </div>
+          <p className="shell workflow-riskpath-note">
+            <strong>RiskPath&trade;</strong> keeps your notice packet, service log, photos, agreements, and next
+            steps organized in one record.
+          </p>
+        </section>
+
+        {/* Ask OwnerPilot AI — surfaced high, right after the workflow story so it isn't buried. */}
+        <section className="chat-section" id="ask">
+          <div className="shell chat-box">
+            <div>
+              <p className="eyebrow">AI-first workflow</p>
+              <h2>Not sure what to do next? Ask OwnerPilot AI.</h2>
+              <p>
+                Get plain-English workflow guidance before you create a notice, accept payment, document service, or
+                close a record.
+              </p>
+            </div>
+            <div className="prompt-box">
+              {chatPrompts.map((prompt) => (
+                <Link key={prompt} href="/chat" className="prompt-link">{prompt}</Link>
+              ))}
+              <Link className="primary-btn chat-btn" href="/chat">Ask OwnerPilot AI <ArrowIcon /></Link>
+            </div>
           </div>
         </section>
 
+        <JurisdictionFeatureBand />
+
         <section className="split shell" id="serve-track">
           <div className="split-copy">
-            <p className="eyebrow">After the notice prints</p>
-            <h2>Everything you need after you print.</h2>
+            <p className="eyebrow">After the notice is created</p>
+            <h2>Everything you need after the notice is created.</h2>
             <p>
-              Most form tools stop at the form. OwnerPilot keeps going so you can track service attempts, complete proof of service, and return later through your dashboard.
+              Most tools stop at the form. OwnerPilot keeps going so you can track service, capture records, document
+              outcomes, and return later through your dashboard.
             </p>
-            <Link className="text-link" href="/notice/3-day">Learn how the packet works <ArrowIcon /></Link>
+            <Link className="text-link" href="/notice/3-day/serve">Track service from the same record <ArrowIcon /></Link>
           </div>
           <div className="feature-panel">
-            <p className="packet-heading-mobile">Your packet includes:</p>
+            <p className="packet-heading-mobile">Your workflow includes:</p>
             {packetItems.map((item) => (
               <div className="feature-row" key={item}>
                 <CheckIcon />
@@ -185,50 +226,67 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
           </div>
         </section>
 
-        <section className="notice-section shell" id="notice">
-          <div className="section-heading">
-            <p className="eyebrow">Built for speed and records</p>
-            <h2>Built for what happens after the notice prints.</h2>
-            <p>Start with a fast notice generator, then continue with Serve &amp; Track when service actually happens.</p>
+        {/* Serve & Track + Photo Proof of Posting. Status pill "Timestamped" (never "Verified"). */}
+        <section className="split shell reverse-split" id="photo-proof">
+          <div className="proof-card" aria-label="Photo Proof of Posting example">
+            <div className="proof-head">
+              <strong>3-Day Notice</strong>
+              <span className="pill">Timestamped</span>
+            </div>
+            <p className="proof-sub">Posted on Front Door</p>
+            <div className="proof-photo" aria-hidden="true"><span className="proof-doc"><i className="proof-pin"></i></span></div>
+            <p className="proof-time">May 12, 2025 · 10:24 AM</p>
           </div>
-          <div className="cards-three">
-            <article className="service-card">
-              <h3>Fast 3-Day Notice</h3>
-              <p>Four guided steps: Quick Safety Check, Property/Tenant/Rent, Landlord/Payment/Signer, Review &amp; Produce.</p>
-            </article>
-            <article className="service-card featured">
-              <h3>Serve &amp; Track</h3>
-              <p>Keep service attempts, mailing steps, and notes separate from the notice itself.</p>
-            </article>
-            <article className="service-card">
-              <h3>RiskPath&trade; Follow-Up</h3>
-              <p>Return to your open notice record anytime from your dashboard.</p>
-            </article>
+          <div className="split-copy">
+            <p className="eyebrow">Serve &amp; Track</p>
+            <h2>Track service from the same record.</h2>
+            <p>
+              Log service attempts, mailing steps, notes, and owner-side records without mixing them into the tenant
+              copy. Capture and timestamp posting photos from your phone for the owner record.
+            </p>
           </div>
         </section>
 
-        <section className="chat-section" id="ask">
-          <div className="shell chat-box">
-            <div>
-              <p className="eyebrow">RE Broker AI Assistant</p>
-              <h2>Ask OwnerPilot AI.</h2>
-              <p>
-                Get plain-English guidance for California property owners and route into the right workflow when you are ready to act.
-              </p>
-            </div>
-            <div className="prompt-box">
-              {chatPrompts.map((prompt) => (
-                <Link key={prompt} href="/chat" className="prompt-link">{prompt}</Link>
-              ))}
-              <Link className="primary-btn chat-btn" href="/chat">Ask Now <ArrowIcon /></Link>
-            </div>
+        <ResolveDocumentBand />
+
+        {/* Resolve & Document product lane. */}
+        <section className="notice-section shell" id="resolve">
+          <div className="section-heading">
+            <p className="eyebrow">Resolve &amp; Document</p>
+            <h2>Create a written record when the tenant responds.</h2>
+            <p>
+              If the tenant pays, makes a payment plan, agrees to move out, or returns possession after a notice is
+              served, OwnerPilot helps you document what happened and keep the record connected.
+            </p>
+          </div>
+          <div className="cards-quad">
+            {resolveCards.map((c, i) => (
+              <article className={`service-card${i === 2 ? ' featured' : ''}`} key={c.title}>
+                <h3>{c.title}</h3>
+                <p>{c.body}</p>
+              </article>
+            ))}
+          </div>
+          <div className="resolve-foot">
+            <Link className="primary-btn" href="/chat">Open Resolve &amp; Document <ArrowIcon /></Link>
+            <p className="resolve-riskpath">Saved to RiskPath&trade; for the owner record.</p>
+            <p className="resolve-note">
+              OwnerPilot helps document the terms you enter for your records. OwnerPilot is not a law firm and does
+              not provide legal advice.
+            </p>
           </div>
         </section>
 
         <section className="final-cta shell">
-          <h2>Start with the notice. Stay on track after printing.</h2>
-          <p>Your RiskPath&trade; stays open so you can come back and finish the service record.</p>
-          <Link className="primary-btn" href="/notice/3-day">Create Your 3-Day Notice <ArrowIcon /></Link>
+          <h2>Start with a question. Keep every next step organized.</h2>
+          <p>
+            OwnerPilot helps you move from plain-English guidance to notice preparation, service tracking, written
+            resolution records, and RiskPath&trade;.
+          </p>
+          <div className="hero-actions" style={{ justifyContent: 'center' }}>
+            <Link className="primary-btn" href="/chat">Ask OwnerPilot AI <ArrowIcon /></Link>
+            <Link className="secondary-btn" href="/notice/3-day">Start 3-Day Notice</Link>
+          </div>
         </section>
       </main>
 
