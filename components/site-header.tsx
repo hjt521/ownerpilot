@@ -16,6 +16,9 @@ export function SiteHeader() {
           <Link href="/notice/3-day" className="text-ink transition-colors hover:text-brand">
             3-Day Notice
           </Link>
+          <Link href="/notice/3-day/serve" className="text-ink transition-colors hover:text-brand">
+            Serve &amp; Track
+          </Link>
           <Link href="/our-approach" className="text-ink transition-colors hover:text-brand">
             Our Approach
           </Link>
