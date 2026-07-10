@@ -11,6 +11,11 @@ export const FMR_PORTAL_TEXT_VERBATIM =
   'the Fair Market Rent (FMR). The FMR depends on the bedroom size of the rental unit.';
 // → operative quantity: "amount owed"; operator: "higher than" (strict >); block side is therefore <=.
 
+/** SHA-256 of FMR_PORTAL_TEXT_VERBATIM. Portal-derived gates carry their verbatim hash on every result — the
+ *  standing rule for any gate with a verbatim constant (042 co-batch §6, mirroring W6). */
+export const FMR_PORTAL_TEXT_VERBATIM_HASH =
+  '0d7e5d279f99c550e73ddced4022bff018648ddfc6fd074a802b4ece4932f2b2';
+
 import { lockedProseEntry } from '@/lib/compliance/lockedProse';
 
 /** LAHD Economic Threshold FMR by bedroom count, City of Los Angeles. Verified from the live portal (0–4 BR). */
@@ -30,12 +35,15 @@ export function fmrThreshold(bedrooms: number): number {
 export interface FmrPreCheckInput {
   bedrooms: number;
   amountOwed: number; // total demanded on the 3-day notice — NOT contract monthly rent
+  evaluatedAt?: string; // ISO-8601 eval timestamp; defaults to now (injectable for deterministic tests)
 }
 export interface FmrPreCheckResult {
   blocked: boolean;
   fmr: number;
   amountOwed: number;
   bedrooms: number;
+  evaluated_at: string; // when this gate ran (§6 retrofit)
+  verbatim_hash: string; // hash of the portal verbatim this gate evaluated against (§6 retrofit)
 }
 
 /**
@@ -49,6 +57,8 @@ export function fmrPreCheck(input: FmrPreCheckInput): FmrPreCheckResult {
     fmr,
     amountOwed: input.amountOwed,
     bedrooms: input.bedrooms,
+    evaluated_at: input.evaluatedAt ?? new Date().toISOString(),
+    verbatim_hash: FMR_PORTAL_TEXT_VERBATIM_HASH,
   };
 }
 
