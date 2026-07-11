@@ -23,6 +23,9 @@ import { toNoticeFlowData } from '@/lib/chat/toNoticeFlowData';
 import { captureProductionSnapshot } from '@/lib/flow/escalation';
 import { checkStaleness } from '@/lib/chat/stalenessCheck';
 import type { ProductionSnapshot } from '@/lib/flow/noticeFlowState';
+// FF-3 co-batch Block A (dark until FF3_CAPTURE_ENABLED): produce-gate chain seam.
+import { evaluateFf3Gate, type Ff3SessionColumns } from '@/lib/intake/ff3ProduceGate';
+import { toComplianceGateRows } from '@/lib/intake/reconciliationCallSite';
 
 const COOKIE = 'op_chat_token';
 
@@ -82,7 +85,11 @@ export async function POST(req: NextRequest) {
 
   // (2) intendedServiceDate validated per broker ruling 2026-07-01 §1.2(2); delegates to PR-A2 validator
   // (lib/dates/intendedServiceDate.ts). Do not duplicate range/back-date logic here.
-  const body = (await req.json().catch(() => ({}))) as { intendedServiceDate?: string; acknowledgedStaleness?: boolean };
+  const body = (await req.json().catch(() => ({}))) as {
+    intendedServiceDate?: string;
+    acknowledgedStaleness?: boolean;
+    reconciliationSelection?: '1' | '2' | '3';
+  };
   const sdCheck = validateIntendedServiceDate(body.intendedServiceDate);
   if (!sdCheck.ok) {
     return NextResponse.json({ error: 'invalid_service_date', detail: sdCheck.message }, { status: 400 });
@@ -116,6 +123,49 @@ export async function POST(req: NextRequest) {
         );
       }
     }
+  }
+
+  // (2.6) FF-3 produce-gate chain — Block A seam (FF-3 co-batch §3). DARK until FF3_CAPTURE_ENABLED:
+  // evaluateFf3Gate returns kind:'skip' when the flag is off, leaving the produce flow unchanged. When on and
+  // FF-3 capture is complete, the four-gate chain runs before producing; a halt/defect persists compliance_gates
+  // rows and returns 409 with the ratified card (no insert); a clear (or owner selection (1)) records the
+  // reconciliation resolution and continues. The awaiting_broker_review state transition + operator resolution
+  // surface are Block B (separate ruling).
+  const ff3Cols = session as unknown as Ff3SessionColumns;
+  const ff3Gate = evaluateFf3Gate({
+    ff3: {
+      bedrooms: ff3Cols.bedrooms,
+      amount_of_rent_owed: ff3Cols.amount_of_rent_owed,
+      just_cause: ff3Cols.just_cause,
+      notice_type: ff3Cols.notice_type,
+      rent_periods: ff3Cols.rent_periods,
+    },
+    intendedServiceDate,
+    today: new Date().toISOString().slice(0, 10),
+    selection: body.reconciliationSelection ?? null,
+  });
+  if (ff3Gate.disposition.kind !== 'skip') {
+    if (ff3Gate.chain) {
+      await sb.from('compliance_gates').insert(toComplianceGateRows(session.id, ff3Gate.chain));
+    }
+    const d = ff3Gate.disposition;
+    if (d.reconciliation_resolution) {
+      await sb
+        .from('chat_sessions')
+        .update({ reconciliation_resolution: d.reconciliation_resolution, reconciliation_resolved_at: new Date().toISOString() })
+        .eq('id', session.id);
+    }
+    if (d.kind === 'reconciliation_flag')
+      return NextResponse.json({ error: 'ff3_reconciliation_flag', card: d.card, selectionRequired: true }, { status: 409 });
+    if (d.kind === 'fmr_block')
+      return NextResponse.json({ error: 'ff4_fmr_block', card: d.card }, { status: 409 });
+    if (d.kind === 'late_filing_block')
+      return NextResponse.json({ error: 'w6_late_filing_block' }, { status: 409 });
+    if (d.kind === 'pause')
+      return NextResponse.json({ error: 'ff3_notice_wrong_pause' }, { status: 409 });
+    if (d.kind === 'broker_review')
+      return NextResponse.json({ error: 'ff3_awaiting_broker_review' }, { status: 409 });
+    // kind 'proceed' → fall through to the riskpath insert below.
   }
 
   // Dangling POST to /api/notice/produce (no route) removed per broker ruling 2026-07-01 §1.2(3)

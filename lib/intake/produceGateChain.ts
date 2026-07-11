@@ -45,6 +45,10 @@ export interface ProduceGateChainInput {
   today: string;
   /** ISO-8601 eval timestamp; defaults to now (injectable for deterministic tests). */
   evaluatedAt?: string;
+  /** Owner already resolved a reconciliation mismatch with selection (1) ("notice amount is right, my records
+   *  are incomplete") — the mismatch is recorded but no longer halts; the chain continues to FF-4 with the
+   *  case-notes flag (countersign §3.2 outcome (1)). Default false. */
+  reconciliationOverride?: boolean;
 }
 
 /** A single gate node as recorded in the chain (normalized envelope). */
@@ -141,7 +145,7 @@ export function runProduceGateChain(input: ProduceGateChainInput): ProduceGateCh
   // 1. FF-3 amount reconciliation.
   const reconcile = reconcileFf3Amount(input.amount_of_rent_owed, input.rent_periods);
   gates.push(reconcileNode(reconcile));
-  if (reconcile.outcome === 'mismatch') {
+  if (reconcile.outcome === 'mismatch' && !input.reconciliationOverride) {
     return halt(FF3_AMOUNT_RECONCILE_GATE, reconcile.lockedKey);
   }
 
