@@ -46,6 +46,17 @@ export const FF3_HAPPY_PATH_ANSWERS = [
   'yes, that is correct', // confirm → complete
 ] as const;
 
+/** Reconciliation-mismatch path — 3-day pay-or-quit, but the typed amount ($6,300) DIVERGES from the seeded
+ *  rent-ledger total ($6,000), so the produce-time reconciliation gate fires (Block C / Gate-4 evidence path). */
+export const FF3_RECONCILE_MISMATCH_ANSWERS = [
+  '3-day pay or quit',    // notice_type
+  'non-payment of rent',  // just_cause
+  '2',                    // bedrooms
+  '$3,000',               // contract_monthly_rent
+  '$6,300',               // amount_of_rent_owed — $300 over the $6,000 ledger → mismatch at produce
+  'yes, that is correct', // confirm → complete → /chat/review
+] as const;
+
 /** Non-fault path — 60-day termination; amount_owed is SKIPPED (conditional branch does NOT fire). */
 export const FF3_NONFAULT_ANSWERS = [
   '60-day termination',   // notice_type
