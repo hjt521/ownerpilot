@@ -76,6 +76,14 @@ export interface EvaluateFf3GateArgs {
   /** The owner's answer to a prior reconciliation flag, if this is the resolving request. */
   selection?: ReconciliationSelection | null;
   evaluatedAt?: string;
+  /**
+   * PR B-server-resume (ff3_gate4_omnibus_authorization_broker_signature_2026-07-12 §2): the produce gate has
+   * consumed a valid, scope-matched, one-shot broker-resume authorization for this session. The reconciliation
+   * halt is overridden (the broker reviewed and authorized THIS mismatch), but FF-4 FMR and W6 late-filing still
+   * apply. Distinct from selection (1): this does NOT write reconciliation_resolution='records_incomplete' — the
+   * resolution stays 'broker_review' and the consumed authorization is the audit fact.
+   */
+  brokerAuthorizedResume?: boolean;
 }
 
 /**
@@ -84,10 +92,11 @@ export interface EvaluateFf3GateArgs {
  * mismatch is recorded but the chain continues to FF-4.
  */
 export function evaluateFf3Gate(args: EvaluateFf3GateArgs): Ff3GateOutcome {
-  const { ff3, intendedServiceDate, today, selection, evaluatedAt } = args;
+  const { ff3, intendedServiceDate, today, selection, evaluatedAt, brokerAuthorizedResume } = args;
 
-  // Owner selected (2) notice-wrong or (3) unsure BEFORE we re-run — short-circuit (no produce).
-  if (selection === '2') {
+  // Owner selected (2) notice-wrong or (3) unsure BEFORE we re-run — short-circuit (no produce). A broker-authorized
+  // resume never carries a pending owner selection, so the selection short-circuits are skipped for it.
+  if (!brokerAuthorizedResume && selection === '2') {
     return {
       chain: null,
       disposition: { kind: 'pause', reconciliation_resolution: resolveReconciliationSelection('2').resolution },
@@ -109,13 +118,18 @@ export function evaluateFf3Gate(args: EvaluateFf3GateArgs): Ff3GateOutcome {
     service_date: intendedServiceDate,
     today,
     evaluatedAt,
-    reconciliationOverride: selection === '1',
+    // A broker-authorized resume overrides the reconciliation halt just like selection (1) does, but keeps the
+    // 'broker_review' resolution (see the clear-status disposition below).
+    reconciliationOverride: selection === '1' || brokerAuthorizedResume === true,
   };
 
   const chain = runGatedProduceChain(input);
   if (chain === null) return { chain: null, disposition: { kind: 'skip' } };
 
   if (chain.status === 'clear') {
+    // Broker-authorized resume → proceed WITHOUT rewriting reconciliation_resolution (stays 'broker_review'; the
+    // consumed authorization is the audit fact). Selection (1) → proceed + records_incomplete. Otherwise plain proceed.
+    if (brokerAuthorizedResume) return { chain, disposition: { kind: 'proceed' } };
     return {
       chain,
       disposition: selection === '1'

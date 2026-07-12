@@ -4,6 +4,9 @@
 // Server-only (service-role client). No owner PII on the list (ruling §3) — only session id + gap + timestamp.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { buildResumeAuthorization, ledgerPeriodKey, type DatedPeriod } from '@/lib/intake/ff3ResumeAuthorization';
+import { sumLedger } from '@/lib/intake/ff3AmountReconcile';
+import { ff3RentPeriodsFromSession } from '@/lib/intake/ff3ProduceGate';
 
 /** State predicate (ruling §1, option (b) tightened): note-nullability IS the awaiting-review transition. */
 export const AWAITING_REVIEW = {
@@ -88,12 +91,33 @@ export async function resolveAwaitingReview(
   reviewerEmail: string,
 ): Promise<ResolveResult> {
   const now = new Date().toISOString();
+
+  // PR B-server-resume (omnibus §2): derive the scoped, one-shot resume authorization SERVER-SIDE from existing
+  // session state (no admin UI change). Bound to notice_amount + ledger_total + ledger_period + note hash so the
+  // broker authorizes THIS specific mismatch on THIS session. Written in the same guarded update as the note.
+  const { data: sess } = await sb
+    .from('chat_sessions')
+    .select('amount_of_rent_owed, intake_state')
+    .eq('id', sessionId)
+    .maybeSingle();
+  const periods = ff3RentPeriodsFromSession(sess as { intake_state?: Record<string, { value?: unknown } | undefined> } | null);
+  const authorization = buildResumeAuthorization({
+    sessionId,
+    noticeAmount: Number((sess as { amount_of_rent_owed?: number | null } | null)?.amount_of_rent_owed ?? 0),
+    ledgerTotal: sumLedger(periods) ?? 0,
+    ledgerPeriod: ledgerPeriodKey(periods as DatedPeriod[] | null),
+    brokerEmail: reviewerEmail,
+    resolutionNote: brokerResolutionNote,
+    authorizedAt: now,
+  });
+
   const { data, error } = await sb
     .from('chat_sessions')
     .update({
       broker_resolution_note: brokerResolutionNote,
       broker_resolution_resolved_at: now,
       broker_resolution_reviewer_email: reviewerEmail,
+      broker_resume_authorization: authorization,
     })
     .eq('id', sessionId)
     .eq('reconciliation_resolution', AWAITING_REVIEW.reconciliation_resolution)
