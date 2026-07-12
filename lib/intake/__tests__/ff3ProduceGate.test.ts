@@ -60,6 +60,15 @@ check('W6 late → late_filing_block', w6.disposition.kind === 'late_filing_bloc
 const def = ev(ff3({ notice_type: 'not_a_real_type', just_cause: 'other', amount_of_rent_owed: null, rent_periods: [] }));
 check('unrecognized notice_type → defect → broker_review', def.disposition.kind === 'broker_review' && def.chain?.status === 'defect');
 
+// PR B-server-resume: broker-authorized resume overrides the reconciliation halt WITHOUT rewriting
+// reconciliation_resolution (stays broker_review), but FF-4 FMR still applies.
+const resume = evaluateFf3Gate({ ff3: ff3({ amount_of_rent_owed: 6300 }), intendedServiceDate: SERVICE, today: TODAY, selection: null, evaluatedAt: AT, brokerAuthorizedResume: true });
+check('broker resume → proceed, no reconciliation_resolution rewrite', resume.disposition.kind === 'proceed' && resume.disposition.reconciliation_resolution === undefined);
+check('  resume override runs the chain to clear', resume.chain?.status === 'clear');
+
+const resumeFmr = evaluateFf3Gate({ ff3: ff3({ amount_of_rent_owed: 2000, rent_periods: [{ amount: 2000 }] }), intendedServiceDate: SERVICE, today: TODAY, selection: null, evaluatedAt: AT, brokerAuthorizedResume: true });
+check('broker resume still respects the FMR hard block', resumeFmr.disposition.kind === 'fmr_block');
+
 delete process.env.FF3_CAPTURE_ENABLED;
 
 if (failed > 0) { console.error(`\n${failed} ff3ProduceGate check(s) FAILED`); process.exit(1); }

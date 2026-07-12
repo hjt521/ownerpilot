@@ -26,6 +26,13 @@ import type { ProductionSnapshot } from '@/lib/flow/noticeFlowState';
 // FF-3 co-batch Block A (dark until FF3_CAPTURE_ENABLED): produce-gate chain seam.
 import { evaluateFf3Gate, ff3RentPeriodsFromSession, type Ff3SessionColumns } from '@/lib/intake/ff3ProduceGate';
 import { toComplianceGateRows } from '@/lib/intake/reconciliationCallSite';
+// PR B-server-resume (omnibus §2): one-shot broker-resume authorization consumption at the produce gate.
+import { verifyResumeToken } from '@/lib/intake/ff3ResumeToken';
+import { sumLedger } from '@/lib/intake/ff3AmountReconcile';
+import {
+  checkResumeScope, resolutionNoteHash, ledgerPeriodKey, FF3_RESUME_SCOPE_MISMATCH,
+  type ResumeAuthorization, type DatedPeriod,
+} from '@/lib/intake/ff3ResumeAuthorization';
 
 const COOKIE = 'op_chat_token';
 
@@ -89,6 +96,7 @@ export async function POST(req: NextRequest) {
     intendedServiceDate?: string;
     acknowledgedStaleness?: boolean;
     reconciliationSelection?: '1' | '2' | '3';
+    resumeToken?: string;
   };
   const sdCheck = validateIntendedServiceDate(body.intendedServiceDate);
   if (!sdCheck.ok) {
@@ -132,6 +140,49 @@ export async function POST(req: NextRequest) {
   // reconciliation resolution and continues. The awaiting_broker_review state transition + operator resolution
   // surface are Block B (separate ruling).
   const ff3Cols = session as unknown as Ff3SessionColumns;
+
+  // (2.55) PR B-server-resume — consume a one-shot broker-resume authorization (omnibus §2). If the owner tapped
+  // Continue on the resume card, the client re-POSTs with the resume token minted by /api/chat/ff3/resume. Verify
+  // the token, re-check scope against LIVE state (fail-closed on drift), and atomically consume (one-shot) — only
+  // then does the reconciliation halt get overridden for this produce. consumed_at is stamped HERE, at consume time.
+  let brokerAuthorizedResume = false;
+  if (typeof body.resumeToken === 'string' && body.resumeToken) {
+    const rs = session as unknown as {
+      id: string; amount_of_rent_owed: number | null; broker_resolution_note: string | null;
+      broker_resume_authorization: ResumeAuthorization | null; broker_resume_consumed_at: string | null;
+    };
+    const secret = process.env.FF3_RESUME_SECRET;
+    const auth = rs.broker_resume_authorization;
+    if (secret && auth && !rs.broker_resume_consumed_at) {
+      const v = verifyResumeToken(secret, body.resumeToken);
+      const bound =
+        v.ok &&
+        v.payload.session_id === rs.id &&
+        v.payload.authorized_at === auth.authorized_at &&
+        v.payload.note_hash === auth.resolution_note_hash;
+      if (bound) {
+        const periods = ff3RentPeriodsFromSession(session);
+        const scope = checkResumeScope(auth, {
+          session_id: rs.id,
+          notice_amount: rs.amount_of_rent_owed,
+          ledger_total: sumLedger(periods),
+          ledger_period: ledgerPeriodKey(periods as DatedPeriod[] | null),
+          resolution_note_hash: resolutionNoteHash(rs.broker_resolution_note ?? ''),
+        });
+        if (!scope.ok) {
+          return NextResponse.json({ error: FF3_RESUME_SCOPE_MISMATCH, field: scope.divergedField }, { status: 409 });
+        }
+        const { data: consumed } = await sb
+          .from('chat_sessions')
+          .update({ broker_resume_consumed_at: new Date().toISOString() })
+          .eq('id', rs.id)
+          .is('broker_resume_consumed_at', null)
+          .select('id');
+        if ((consumed?.length ?? 0) > 0) brokerAuthorizedResume = true;
+      }
+    }
+  }
+
   const ff3Gate = evaluateFf3Gate({
     ff3: {
       bedrooms: ff3Cols.bedrooms,
@@ -146,6 +197,7 @@ export async function POST(req: NextRequest) {
     intendedServiceDate,
     today: new Date().toISOString().slice(0, 10),
     selection: body.reconciliationSelection ?? null,
+    brokerAuthorizedResume,
   });
   if (ff3Gate.disposition.kind !== 'skip') {
     if (ff3Gate.chain) {
