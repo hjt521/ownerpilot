@@ -24,7 +24,7 @@ import { captureProductionSnapshot } from '@/lib/flow/escalation';
 import { checkStaleness } from '@/lib/chat/stalenessCheck';
 import type { ProductionSnapshot } from '@/lib/flow/noticeFlowState';
 // FF-3 co-batch Block A (dark until FF3_CAPTURE_ENABLED): produce-gate chain seam.
-import { evaluateFf3Gate, type Ff3SessionColumns } from '@/lib/intake/ff3ProduceGate';
+import { evaluateFf3Gate, ff3RentPeriodsFromSession, type Ff3SessionColumns } from '@/lib/intake/ff3ProduceGate';
 import { toComplianceGateRows } from '@/lib/intake/reconciliationCallSite';
 
 const COOKIE = 'op_chat_token';
@@ -138,7 +138,10 @@ export async function POST(req: NextRequest) {
       amount_of_rent_owed: ff3Cols.amount_of_rent_owed,
       just_cause: ff3Cols.just_cause,
       notice_type: ff3Cols.notice_type,
-      rent_periods: ff3Cols.rent_periods,
+      // PR A defect fix (ff3_reconciliation_gate_runtime_defect_ruling_2026-07-12): rent_periods lives in
+      // intake_state (jsonb), not a chat_sessions column. Reading ff3Cols.rent_periods was always undefined →
+      // the reconciliation gate never fired. Read the production data shape.
+      rent_periods: ff3RentPeriodsFromSession(session),
     },
     intendedServiceDate,
     today: new Date().toISOString().slice(0, 10),
