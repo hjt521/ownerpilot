@@ -6,6 +6,8 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { lockedProse } from '@/lib/compliance/lockedProse';
+import { ff3ResumeCardContinueOnly } from '@/lib/intake/ff3ResumeCard';
+import { LockedText } from '@/components/chat/LockedText';
 import { showsCounselHandoff, appendsChatDisclaimer, type ChatMessageVM, type ChatTurnResponse } from '@/lib/chat/clientTypes';
 
 // LockedKey: CHAT_LANDING_DISCLAIMER
@@ -25,9 +27,26 @@ export function ChatSurface() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // FF-3 Block C §3.3: the entry-13 continue-only resume card, shown on /chat open after a broker resolves a hold.
+  const [resumeNote, setResumeNote] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, busy]);
+
+  // On open, check whether a broker has resolved a reconciliation hold for this session (existing review GET; no
+  // new endpoint). If so, greet the owner with the resume card instead of the empty starter.
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/chat/review');
+        if (!r.ok) return;
+        const d = await r.json();
+        if (live && d?.ff3Resume?.eligible && typeof d.ff3Resume.note === 'string') setResumeNote(d.ff3Resume.note);
+      } catch { /* no-op: a fresh visitor has no session */ }
+    })();
+    return () => { live = false; };
+  }, []);
 
   function send(e: React.FormEvent) {
     e.preventDefault();
@@ -61,7 +80,19 @@ export function ChatSurface() {
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-2xl flex-col px-4">
       <div className="flex-1 space-y-4 overflow-y-auto py-6" aria-live="polite">
-        {messages.length === 0 && (
+        {messages.length === 0 && resumeNote !== null && (
+          <div className="rounded-lg border border-neutral-200 bg-white p-4" data-testid="ff3-resume-card">
+            <LockedText text={ff3ResumeCardContinueOnly(resumeNote)} className="text-base leading-relaxed text-neutral-800" />
+            <button
+              type="button"
+              onClick={() => { window.location.href = '/chat/review?resume=1'; }}
+              className="mt-4 min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white"
+            >
+              Continue
+            </button>
+          </div>
+        )}
+        {messages.length === 0 && resumeNote === null && (
           <>
             <p className="text-base leading-relaxed text-neutral-600">
               Tell us what&apos;s happening with your tenant — rent owed, payment dates, who&apos;s on the lease, the

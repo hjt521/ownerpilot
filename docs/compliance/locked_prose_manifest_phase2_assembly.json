@@ -651,6 +651,33 @@
       "hash": "20a29e875f2cfc9aef574edd936773e164171ce2d246a36ec0b7da94d9d32009",
       "source_ruling": "ff3_countersign_ordering_awaiting_review_reconciliation_2026-07-03.md \u00a73.2",
       "lane": "FF-3-reconciliation"
+    },
+    {
+      "key": "chatFf3AwaitingBrokerReviewHeld",
+      "version": "v1",
+      "tier": "A",
+      "value": "Thanks \u2014 I've handed this to a broker for review. A California-licensed real estate broker will look at the amount we flagged and leave a note here on how to proceed. There's nothing to do right now \u2014 you can close this window and come back anytime. Your next visit to this session will show the broker's note if it's ready, or this same screen if the review is still open.",
+      "hash": "bfd41c687f080710ace73ad8ab851c228fb8c30d0723f52a8a0366e77936f083",
+      "source_ruling": "ff3_block_c_locked_prose_amendment_ratification_2026-07-11.md \u00a7\u00a72-3",
+      "lane": "FF-3-awaiting-review"
+    },
+    {
+      "key": "chatFf3ResumeAfterBrokerReviewCardContinueOnly",
+      "version": "v1",
+      "tier": "A",
+      "value": "Thanks for your patience. A California-licensed real estate broker has reviewed the amount we flagged and left a note. Here's what the broker wrote: **{broker_resolution_note}** If that reads right for your situation, tap continue and we'll pick up where we left off.",
+      "hash": "529720cecbdc093f12567ee74a8b8fc5b57ce73f877c4e05ed4bb4b8a59070b9",
+      "source_ruling": "ff3_block_c_locked_prose_amendment_ratification_2026-07-11.md \u00a7\u00a72-3",
+      "lane": "FF-3-resume"
+    },
+    {
+      "key": "chatFf3NoticeWrongPause",
+      "version": "v1",
+      "tier": "A",
+      "value": "Got it \u2014 the amount you entered didn't match your rent-period records, and you've told me the records are the right side of that. I'm going to pause this case here rather than guess at the corrected amount, since the number on the notice is the one that has to be right at filing. When you're ready, start a new session and I'll walk you through it with the correct amount from the top.",
+      "hash": "fc2d60a843b2ff03443e9c40207a8107c417d1faf3ace34474a7283d53b1ee0c",
+      "source_ruling": "ff3_block_c_resume_and_pause_seams_broker_ruling_2026-07-12.md \u00a7Gap-B; ratified ff3_gate4_omnibus_authorization_broker_signature_2026-07-12.md \u00a71",
+      "lane": "FF-3-reconciliation"
     }
   ]
 }

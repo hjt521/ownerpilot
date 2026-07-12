@@ -17,10 +17,15 @@ export async function GET(req: NextRequest) {
   if (!token) return NextResponse.json({ error: 'no session' }, { status: 404 });
   const session = await loadSession(token);
   if (!session) return NextResponse.json({ error: 'no session' }, { status: 404 });
+  // FF-3 Block C §3.3: resume-eligibility — a broker has resolved the reconciliation hold (note present) and the
+  // owner has not yet consumed the resume authorization. Surfaces the entry-13 continue-only card on /chat open.
+  const s = session as unknown as { broker_resolution_note?: string | null; broker_resume_consumed_at?: string | null };
+  const resumeEligible = !!s.broker_resolution_note && !s.broker_resume_consumed_at;
   return NextResponse.json({
     groups: groupIntakeForReview(session.intake_state ?? {}),
     intakeComplete: session.intake_complete,
     missingFields: missingRequiredFields(session.intake_state ?? {}),
+    ff3Resume: { eligible: resumeEligible, note: resumeEligible ? (s.broker_resolution_note ?? null) : null },
   });
 }
 

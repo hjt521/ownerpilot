@@ -18,3 +18,17 @@ export function ff3ResumeCard(brokerResolutionNote: string): string {
     () => brokerResolutionNote,
   );
 }
+
+// Block C renders the CONTINUE-ONLY variant (no reply-to-broker control until the reply seam ships) —
+// ff3_block_c_locked_prose_amendment_ratification_2026-07-11 §3. Entry-13 above is preserved unrendered for the
+// future reply-seam block.
+export const FF3_RESUME_CONTINUE_ONLY_KEY = 'chatFf3ResumeAfterBrokerReviewCardContinueOnly';
+
+/** Render the Block-C continue-only resume card with the broker's note interpolated verbatim (function-form
+ *  replace so any regex-special chars in the note are inserted literally). */
+export function ff3ResumeCardContinueOnly(brokerResolutionNote: string): string {
+  return lockedProseEntry(FF3_RESUME_CONTINUE_ONLY_KEY).value.replace(
+    '{broker_resolution_note}',
+    () => brokerResolutionNote,
+  );
+}

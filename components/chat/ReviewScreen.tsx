@@ -21,6 +21,10 @@ import { LaProducePanel } from '@/components/la-produce-panel';
 import { isLaProductionUnblocked } from '@/lib/jurisdiction/laRtcRules';
 import { boundFetch } from '@/lib/http/boundFetch';
 import { chatStalenessAckButton } from '@/lib/chat/stalenessCopy';
+// FF-3 Block C — owner-facing reconciliation / held / pause surfaces + resume.
+import { lockedProse } from '@/lib/compliance/lockedProse';
+import { parseReconciliationOptions, type ReconciliationOption } from '@/lib/chat/reconciliationCardOptions';
+import { LockedText } from '@/components/chat/LockedText';
 
 interface ReviewField { field: string; label: string; display: string; sensitive: boolean; }
 interface ReviewGroup { heading: string; fields: ReviewField[]; }
@@ -70,16 +74,22 @@ export function ReviewScreen() {
   // new-row; the owner must acknowledge before a new row is produced). The produce rail is never called until
   // the owner clicks Generate.
   interface StaleInfo { warning: string; reason: 'AMOUNT_CHANGED' | 'FACE_FIELD_CHANGED'; changedFields: string[]; priorRiskpathId: string; }
+  interface ReconcileInfo { card: string; options: ReconciliationOption[]; }
   const [produce, setProduce] = useState<
-    { phase: 'idle' | 'working' | 'ready' | 'error' | 'stale'; plan?: ProducePlan; error?: string; stale?: StaleInfo }
+    { phase: 'idle' | 'working' | 'ready' | 'error' | 'stale' | 'reconcile' | 'held' | 'pause'; plan?: ProducePlan; error?: string; stale?: StaleInfo; reconcile?: ReconcileInfo }
   >({ phase: 'idle' });
 
-  async function onGenerate(opts?: { acknowledged?: boolean }) {
+  async function onGenerate(opts?: { acknowledged?: boolean; reconciliationSelection?: '1' | '2' | '3'; resumeToken?: string }) {
     setProduce({ phase: 'working' });
     try {
       const r = await fetch('/api/notice/produce/from-chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intendedServiceDate: serviceDate, acknowledgedStaleness: opts?.acknowledged === true }),
+        body: JSON.stringify({
+          intendedServiceDate: serviceDate,
+          acknowledgedStaleness: opts?.acknowledged === true,
+          ...(opts?.reconciliationSelection ? { reconciliationSelection: opts.reconciliationSelection } : {}),
+          ...(opts?.resumeToken ? { resumeToken: opts.resumeToken } : {}),
+        }),
       });
       if (r.status === 409) {
         const j = await r.json().catch(() => ({}));
@@ -89,6 +99,16 @@ export function ReviewScreen() {
           setProduce({ phase: 'stale', stale: { warning: j.staleness.warning, reason: j.staleness.reason, changedFields: j.staleness.changedFields ?? [], priorRiskpathId: j.priorRiskpathId } });
           return;
         }
+        // FF-3 Block C §3.1 — reconciliation mismatch: render the entry-14 card verbatim + the three-way buttons.
+        if (j.error === 'ff3_reconciliation_flag' && typeof j.card === 'string') {
+          setProduce({ phase: 'reconcile', reconcile: { card: j.card, options: parseReconciliationOptions(j.card) } });
+          return;
+        }
+        // §3.2 held state (owner picked (3) / a defect); §Gap-B pause (owner picked (2)).
+        if (j.error === 'ff3_awaiting_broker_review') { setProduce({ phase: 'held' }); return; }
+        if (j.error === 'ff3_notice_wrong_pause') { setProduce({ phase: 'pause' }); return; }
+        // Resume authorization no longer matches live state (details changed since the broker reviewed) → the
+        // existing generic review-needed message (no new owner-facing prose, per Block C §3.5).
         setProduce({ phase: 'error', error: 'This notice needs review before it can be produced.' });
         return;
       }
@@ -123,6 +143,21 @@ export function ReviewScreen() {
     const d = await r.json(); setGroups(d.groups); setMissing(d.missingFields ?? []);
   }
   useEffect(() => { load(); }, []);
+
+  // FF-3 Block C §3.3 — arriving from the resume card (/chat/review?resume=1): mint a one-shot resume token and
+  // produce with it. Single attempt; on any failure, fall back to the normal review screen.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (new URLSearchParams(window.location.search).get('resume') !== '1') return;
+    (async () => {
+      try {
+        const r = await fetch('/api/chat/ff3/resume', { method: 'POST' });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && typeof j.resumeToken === 'string') void onGenerate({ resumeToken: j.resumeToken });
+      } catch { /* fall back to the normal review */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // req 5 — real-time recompute: the displayed expiration updates in the same render cycle as the date edit.
   useEffect(() => {
@@ -247,6 +282,49 @@ export function ReviewScreen() {
               Cancel — let me review first
             </button>
           </div>
+        </div>
+      )}
+
+      {/* FF-3 Block C §3.1 — reconciliation mismatch: entry-14 card verbatim + three-way buttons (neutral, no
+          "recommended" highlight; labels parsed verbatim from the ratified card). */}
+      {produce.phase === 'reconcile' && produce.reconcile && (
+        <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4" data-testid="ff3-reconcile-card">
+          <LockedText text={produce.reconcile.card} className="text-sm leading-relaxed text-neutral-900" />
+          <div className="mt-4 flex flex-col gap-2">
+            {produce.reconcile.options.map((o) => (
+              <button
+                key={o.ordinal}
+                type="button"
+                onClick={() => onGenerate({ reconciliationSelection: o.ordinal })}
+                className="min-h-[48px] rounded-md border border-neutral-400 bg-white px-4 py-3 text-left text-sm text-neutral-900 hover:border-neutral-700"
+                data-testid={`ff3-reconcile-option-${o.ordinal}`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* §3.2 held state — content only, no CTA (owner picked (3) or a defect). */}
+      {produce.phase === 'held' && (
+        <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid="ff3-held-card">
+          <LockedText text={lockedProse('chatFf3AwaitingBrokerReviewHeld')} className="text-sm leading-relaxed text-neutral-800" />
+        </div>
+      )}
+
+      {/* §Gap-B pause — owner picked (2) notice-wrong: acknowledge + the one authorized action. */}
+      {produce.phase === 'pause' && (
+        <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid="ff3-pause-card">
+          <LockedText text={lockedProse('chatFf3NoticeWrongPause')} className="text-sm leading-relaxed text-neutral-800" />
+          <button
+            type="button"
+            onClick={() => { window.location.href = '/chat'; }}
+            className="mt-4 min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white"
+            data-testid="ff3-pause-new-session"
+          >
+            Start a new session
+          </button>
         </div>
       )}
 
