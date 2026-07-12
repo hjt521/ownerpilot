@@ -53,6 +53,21 @@ export interface Ff3GateOutcome {
   disposition: Ff3GateDisposition;
 }
 
+/**
+ * PR A reconciliation-gate runtime-defect fix — ff3_reconciliation_gate_runtime_defect_ruling_2026-07-12.
+ * rent_periods is NOT a chat_sessions column; it lives in intake_state (jsonb) as {value, confidence, updated_at}.
+ * The produce seam previously read session.rent_periods (a non-existent column → undefined), so the reconciliation
+ * gate always saw a null ledger and soft-continued (no_ledger_baseline) — it never fired. Read the real data shape:
+ * intake_state.rent_periods.value. Genuine ledgerless sessions (no rent_periods captured) still return null → the
+ * no_ledger_baseline soft-continue is preserved for them.
+ */
+export function ff3RentPeriodsFromSession(
+  session: { intake_state?: Record<string, { value?: unknown } | undefined> | null } | null | undefined,
+): { amount?: number | null }[] | null {
+  const rp = session?.intake_state?.rent_periods?.value;
+  return Array.isArray(rp) ? (rp as { amount?: number | null }[]) : null;
+}
+
 export interface EvaluateFf3GateArgs {
   ff3: Ff3SessionColumns;
   intendedServiceDate: string;
