@@ -44,6 +44,25 @@ for (const route of routes) {
   }
 }
 
+// Targeted check for the admin-session minter (omnibus §4): it must mint for the env-provisioned E2E_ADMIN_EMAIL
+// ONLY, never an email supplied in the request. Strict-EMPTY body enforces this at the schema level.
+const adminRoute = join(DIR, 'admin-session', 'route.ts');
+if (existsSync(adminRoute)) {
+  const src = readFileSync(adminRoute, 'utf8');
+  if (!src.includes('E2E_ADMIN_EMAIL')) {
+    console.error('verify_e2e_seed_guard: admin-session must read E2E_ADMIN_EMAIL from env (never the request)');
+    failed = true;
+  }
+  if (!/z\.object\(\{\s*\}\)\.strict\(\)/.test(src)) {
+    console.error('verify_e2e_seed_guard: admin-session body must be z.object({}).strict() — no email/user override accepted');
+    failed = true;
+  }
+  if (/email:\s*z\./.test(src)) {
+    console.error('verify_e2e_seed_guard: admin-session must not declare an email field in its request schema');
+    failed = true;
+  }
+}
+
 if (failed) process.exit(1);
 console.log(`verify_e2e_seed_guard: all four locks present on ${routes.length} test-seed route(s) ✓`);
 process.exit(0);

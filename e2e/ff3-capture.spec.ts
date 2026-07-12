@@ -127,13 +127,8 @@ test.describe('FF-3 structured intake capture', () => {
     await expect(page).not.toHaveURL(/\/chat\/review/);
   });
 
-  // --- Reconciliation three-way branch (Decision 3) — activates with migration 042 -------------------------------
-  // The reconciliation gate runs after FF-3 completes and before FF-4 FMR; on `mismatch` it surfaces the
-  // chatFf3AmountReconciliationFlag card (locked-prose entry 14). Both the gate wiring and entry 14 land WITH
-  // migration 042, so this scenario is scaffolded but not yet runnable. When wired, seed a session whose ledger
-  // (rent_periods) sums to a value that DIVERGES from the typed amount, drive to FF-3 completion, and assert the
-  // three-way branch card (records-wrong / notice-wrong / broker-review) renders instead of routing to review.
-  test.fixme('reconciliation mismatch surfaces the three-way branch card (lands with migration 042)', async () => {
-    // Intentionally empty — see comment above. Enable when the reconciliation gate + entry 14 are wired.
-  });
+  // --- Reconciliation three-way branch (Decision 3) — NOW WIRED --------------------------------------------------
+  // The reconciliation gate + entry-14 card + the full escalate→broker-resolve→owner-resume flow are exercised
+  // end-to-end in ff3-reconciliation-resume.spec.ts (Gate-4 evidence path). The prior test.fixme placeholder is
+  // retired there; nothing to scaffold here.
 });
