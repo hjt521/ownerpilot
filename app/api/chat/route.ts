@@ -63,19 +63,25 @@ export async function POST(req: NextRequest) {
   // burst/daily/monthly-token). Store auto-selects Redis (Upstash/KV env) or a dev in-memory fallback, so this is
   // safe with no env. On exceed → HTTP 429 + audit log. (NOTE: Q4 recommended per-IP/per-user buckets with
   // different numbers; that differs from the ratified per-session config — reconciliation flagged, not adopted.)
-  try {
-    const counts = await getRateLimitStore().registerRequest(session.id, nowMs);
-    const rl = decideFromCounts(counts, nowMs);
-    if (!rl.allowed) {
-      console.info(JSON.stringify({ evt: 'chat.rate_limited', reason: rl.reason, session_id: session.id, at: now }));
-      return NextResponse.json(
-        { error: "You're sending messages faster than we can respond — give it a minute." },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } },
-      );
+  // E2E accommodation: skip the per-session burst limiter during Preview E2E runs. E2E_RUN_ACTIVE is set in Preview
+  // scope only (never Production), and the deterministic capture walk legitimately fires more turns per minute than
+  // the 5/min human cap. Same gating posture as the E3 deterministic chat mock. Never active in production.
+  const e2eBypassRateLimit = process.env.E2E_RUN_ACTIVE === 'true' && process.env.VERCEL_ENV !== 'production';
+  if (!e2eBypassRateLimit) {
+    try {
+      const counts = await getRateLimitStore().registerRequest(session.id, nowMs);
+      const rl = decideFromCounts(counts, nowMs);
+      if (!rl.allowed) {
+        console.info(JSON.stringify({ evt: 'chat.rate_limited', reason: rl.reason, session_id: session.id, at: now }));
+        return NextResponse.json(
+          { error: "You're sending messages faster than we can respond — give it a minute." },
+          { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } },
+        );
+      }
+    } catch (e) {
+      // Rate-limit store failure must not take down chat; log and continue (degrade open, same posture as classifier).
+      console.warn('rate-limit store error — allowing request', (e as Error).message);
     }
-  } catch (e) {
-    // Rate-limit store failure must not take down chat; log and continue (degrade open, same posture as classifier).
-    console.warn('rate-limit store error — allowing request', (e as Error).message);
   }
 
   // Lane 2E (Fork A): if a deterministic scripted-capture cursor is active, the server parses the owner's

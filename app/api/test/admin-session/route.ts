@@ -33,7 +33,9 @@ async function ensureAdminUser(admin: SupabaseClient, email: string, password: s
 
 export async function POST(req: NextRequest) {
   // S2 — never reachable in production runtime.
-  if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
+  // S2 — never reachable in the PRODUCTION deployment. Gate on VERCEL_ENV only: NODE_ENV is 'production' on ALL
+  // Vercel deployments (including Preview), so checking it here would 404 the endpoint on Preview too (defect fix).
+  if (process.env.VERCEL_ENV === 'production') {
     return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
   // S3 — only during an active E2E run.
