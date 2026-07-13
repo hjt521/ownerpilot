@@ -13,6 +13,8 @@ import { FF3_OPENER, FF3_RECONCILE_MISMATCH_ANSWERS } from '../lib/testing/e2eFf
 
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 const SECRET = process.env.TEST_SEED_SECRET ?? '';
+// Gate-4 attestation screenshots land here (relative to cwd). Each captures one omnibus §7 evidence surface.
+const SHOTS = 'gate4-evidence/';
 
 function svc() {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
@@ -26,19 +28,23 @@ async function seedClaimedFf3(ctx: APIRequestContext, page: Page): Promise<strin
   });
   expect(seed.ok(), 'seed-ff3-session (claimed) should succeed').toBeTruthy();
   const { cookie, sessionId } = await seed.json();
-  await page.context().addCookies([{ name: 'op_chat_token', value: cookie, url: page.url() || BASE }]);
+  await page.context().addCookies([{ name: 'op_chat_token', value: cookie, url: BASE }]);
   return sessionId as string;
 }
 
 function makeSend(page: Page) {
   return async (msg: string) => {
     await page.getByLabel('Message').fill(msg);
-    await page.getByRole('button', { name: 'Send' }).click();
+    // Wait for the turn's /api/chat response before the next send — the scripted capture is one-turn-at-a-time.
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/api/chat') && r.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Send' }).click(),
+    ]);
   };
 }
 
-/** Drive the FF-3 mismatch walk → /chat/review → Generate → reconciliation card → pick (3) → awaiting-review held. */
-async function ownerEscalateToHeld(page: Page): Promise<void> {
+/** Drive the FF-3 mismatch walk → /chat/review → Generate → the entry-14 reconciliation card (before selection). */
+async function ownerDriveToReconcileCard(page: Page): Promise<void> {
   await page.goto('/chat');
   const send = makeSend(page);
   await send(FF3_OPENER);
@@ -48,12 +54,18 @@ async function ownerEscalateToHeld(page: Page): Promise<void> {
 
   await page.getByRole('button', { name: 'Generate notice PDF' }).click();
   await expect(page.getByTestId('ff3-reconcile-card')).toBeVisible({ timeout: 30_000 });
-  // The three options render verbatim from the ratified entry-14 card.
+  // The three options render verbatim from the ratified entry-14 card (omnibus §7 criterion 5).
   await expect(page.getByTestId('ff3-reconcile-option-1')).toBeVisible();
   await expect(page.getByTestId('ff3-reconcile-option-3')).toBeVisible();
+  await page.screenshot({ path: SHOTS + 'entry14-reconciliation-card.png', fullPage: true });
+}
 
+/** Continue past the reconciliation card via selection (3) → awaiting-review held state (criterion 6). */
+async function ownerEscalateToHeld(page: Page): Promise<void> {
+  await ownerDriveToReconcileCard(page);
   await page.getByTestId('ff3-reconcile-option-3').click(); // (3) I need help → broker review
   await expect(page.getByTestId('ff3-held-card')).toBeVisible({ timeout: 30_000 });
+  await page.screenshot({ path: SHOTS + 'held-state.png', fullPage: true });
 }
 
 /** Admin-authed browser context resolves the awaiting session via /admin/ff3-review. Returns the admin email. */
@@ -67,6 +79,7 @@ async function adminResolve(browser: Browser, note: string): Promise<string> {
 
   await adminPage.goto('/admin/ff3-review');
   await expect(adminPage.getByRole('heading', { name: 'FF-3 broker review' })).toBeVisible({ timeout: 30_000 });
+  await adminPage.screenshot({ path: SHOTS + 'admin-awaiting-review.png', fullPage: true }); // criterion 3
   await adminPage.getByRole('textbox').first().fill(note);
   await adminPage.getByRole('button', { name: 'Resolve' }).first().click();
   await expect(adminPage.getByText('Note saved. It will surface when the owner next opens their session.')).toBeVisible({ timeout: 30_000 });
@@ -101,6 +114,7 @@ test('escalate → broker resolve → owner resume → produce (one session)', a
   await page.goto('/chat');
   await expect(page.getByTestId('ff3-resume-card')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(note)).toBeVisible();
+  await page.screenshot({ path: SHOTS + 'entry13-resume-card.png', fullPage: true }); // criterion 4
 
   // Continue → /chat/review?resume=1 → resume token minted → produce with it (reconciliation overridden).
   await page.getByRole('button', { name: 'Continue' }).click();
@@ -133,4 +147,14 @@ test('negative: amount mutated between resolve and Continue → scope mismatch, 
 
   const r = await sb.from('chat_sessions').select('broker_resume_consumed_at').eq('id', sessionId).single();
   expect(r.data?.broker_resume_consumed_at).toBeNull();
+});
+
+test('reconciliation selection (2) notice-wrong → pause screen (criterion 7)', async ({ page }) => {
+  const ctx = await request.newContext({ baseURL: BASE });
+  await seedClaimedFf3(ctx, page);
+  await ownerDriveToReconcileCard(page);
+  await page.getByTestId('ff3-reconcile-option-2').click(); // (2) records right, notice wrong → pause
+  await expect(page.getByTestId('ff3-pause-card')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('ff3-pause-new-session')).toBeVisible();
+  await page.screenshot({ path: SHOTS + 'pause-notice-wrong.png', fullPage: true });
 });
