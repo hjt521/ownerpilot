@@ -49,3 +49,7 @@ supabase/.temp/
 !.env.example
 scripts/__pycache__/
 .claude/
+
+# E2E local artifacts (packet evidence + Playwright output) — not source
+gate4-evidence/
+test-results/
