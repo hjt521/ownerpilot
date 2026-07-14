@@ -33,6 +33,8 @@ import {
   checkResumeScope, resolutionNoteHash, ledgerPeriodKey, FF3_RESUME_SCOPE_MISMATCH,
   type ResumeAuthorization, type DatedPeriod,
 } from '@/lib/intake/ff3ResumeAuthorization';
+// Omnibus §3 row 2 — FF-3 telemetry (pre-staged; no-op unless FF3_TELEMETRY_ENABLED + consent; never throws).
+import { emitFf3Event, ff3TelemetryConsentFromCookie } from '@/lib/analytics/ff3Telemetry';
 
 const COOKIE = 'op_chat_token';
 
@@ -183,6 +185,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Omnibus §3 row 2 — FF-3 telemetry consent (same surface as the GA4 mount). Computed once; all seam emits below
+  // are no-ops unless FF3_TELEMETRY_ENABLED + this consent, and never throw (soak-safe).
+  const ff3Tel = { consentGranted: ff3TelemetryConsentFromCookie(req.cookies.get('CookieConsent')?.value) };
+  if (brokerAuthorizedResume) {
+    emitFf3Event({ event: 'resume-consumed', chatSessionId: session.id, actorType: 'owner', sourceRoute: 'POST /api/notice/produce/from-chat', dispositionRef: 'broker_resume_consumed' }, ff3Tel);
+  }
+
   const ff3Gate = evaluateFf3Gate({
     ff3: {
       bedrooms: ff3Cols.bedrooms,
@@ -199,6 +208,10 @@ export async function POST(req: NextRequest) {
     selection: body.reconciliationSelection ?? null,
     brokerAuthorizedResume,
   });
+  if (ff3Gate.disposition.kind === 'skip') {
+    // Omnibus §3 row 2 — produce-gate-skipped seam (flag off / FF-3 not captured). No-op unless telemetry on.
+    emitFf3Event({ event: 'produce-gate-skipped', chatSessionId: session.id, actorType: 'system', sourceRoute: 'POST /api/notice/produce/from-chat', dispositionRef: 'skip' }, ff3Tel);
+  }
   if (ff3Gate.disposition.kind !== 'skip') {
     if (ff3Gate.chain) {
       await sb.from('compliance_gates').insert(toComplianceGateRows(session.id, ff3Gate.chain));
@@ -210,6 +223,13 @@ export async function POST(req: NextRequest) {
         .update({ reconciliation_resolution: d.reconciliation_resolution, reconciliation_resolved_at: new Date().toISOString() })
         .eq('id', session.id);
     }
+    // Omnibus §3 row 2 — FF-3 disposition seams (all no-ops unless telemetry on + consent).
+    if (d.kind === 'reconciliation_flag')
+      emitFf3Event({ event: 'reconciliation-fired', chatSessionId: session.id, actorType: 'system', sourceRoute: 'POST /api/notice/produce/from-chat', dispositionRef: 'reconciliation_flag' }, ff3Tel);
+    if (d.kind === 'broker_review')
+      emitFf3Event({ event: 'escalation-created', chatSessionId: session.id, actorType: 'owner', sourceRoute: 'POST /api/notice/produce/from-chat', dispositionRef: d.reconciliation_resolution ?? 'broker_review' }, ff3Tel);
+    if (d.kind === 'proceed')
+      emitFf3Event({ event: 'produce-gate-cleared', chatSessionId: session.id, actorType: 'system', sourceRoute: 'POST /api/notice/produce/from-chat', dispositionRef: d.reconciliation_resolution ?? 'proceed' }, ff3Tel);
     if (d.kind === 'reconciliation_flag')
       return NextResponse.json({ error: 'ff3_reconciliation_flag', card: d.card, selectionRequired: true }, { status: 409 });
     if (d.kind === 'fmr_block')
