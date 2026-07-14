@@ -22,17 +22,61 @@ Expect **3 passed** (reconciliation fires → escalate → resolve → resume; n
 **Step 2 — Flip OFF.** In Vercel → Environment Variables → set `FF3_CAPTURE_ENABLED=false` (Preview scope) →
 **Redeploy** the Preview. Wait for Ready.
 
-**Step 3 — Verify the surface is dark.** Re-run the same command against the redeployed Preview. Expected: the run
-**does not reach the reconciliation card** — the FF-3 scripted walk no longer opens (the `ff3_intake` category is
-unregistered with the flag off), so the spec cannot progress past the FF-3 opener. This *expected* stop is the
-no-op proof: with the flag off, FF-3 is completely dark and the produce path reverts to pre-FF-3 behavior. Capture
-the output showing it does not reach `ff3-reconcile-card`. (Corroborated at the unit level by the flag-off skip
-tests and `synthetic:ff3:monitoring` — the chain returns the `skip` disposition when the flag is off.)
+**Step 3 — Verify the surface is dark, at multiple layers** (broker countersign 2026-07-14, Amendment 1). "The
+spec stopped" only proves the harness halts; it does not disprove a silent flag-off disposition write. Prove dark at
+the harness, disposition-store, capture-state, and route layers. Seed one probe session and produce against it with
+the flag off:
+
+- **3a — Seed + produce (flag off).** `POST /api/test/seed-ff3-session` (bearer) → capture `{sessionId, cookie}`.
+  Then `POST /api/notice/produce/from-chat` with that cookie + `{"intendedServiceDate":"<today>"}`. Expected: the
+  response is **NOT** `409 ff3_reconciliation_flag` / `ff3_awaiting_broker_review` / `ff3_notice_wrong_pause` — the
+  FF-3 gate is skipped.
+- **3b — Disposition-store query (the Sev-1 canary), Studio.** `compliance_gates` is the disposition store
+  (there is no `notice_disposition` table):
+  ```sql
+  select gate, result from compliance_gates where chat_session_id = '<sessionId>';
+  ```
+  **EXPECT ZERO ROWS.**
+- **3c — FF-3 capture-state query, Studio** (capture state lives on `chat_sessions`; there is no separate FF-3
+  category table):
+  ```sql
+  select ff3_capture_status, reconciliation_resolution, broker_resume_authorization
+  from chat_sessions where id = '<sessionId>';
+  ```
+  **EXPECT** `ff3_capture_status` NULL, `reconciliation_resolution` NULL, `broker_resume_authorization` NULL.
+- **3d — Route-level probe (freeze flag-off behavior on Run 1).** The FF-3 surfaces are `/api/chat/ff3/resume` and
+  the produce gate in `/api/notice/produce/from-chat` (no `/api/ff3/*` namespace):
+  ```bash
+  curl -i -X POST "<preview>/api/chat/ff3/resume" -H "cookie: op_chat_token=<cookie>"
+  ```
+  **EXPECT** `409 {"error":"ff3_resume_not_authorized"}` (no authorization on a fresh session). Freeze this exact
+  response on Run 1 as the flag-off baseline; Run 2 must match.
+- **3e — Clean up.** `delete from chat_sessions where id = '<sessionId>';`
+
+**⛔ SEV-1 STOP-THE-LINE (broker countersign):** if **3b returns ANY rows** in the flag-off state, that is the
+§1.5 Sev-1 scenario — the produce-gate chain silently writing a disposition under flag-off. **HALT the drill, do NOT
+proceed to Step 4, file an incident, escalate.**
+
+Corroboration: the flag-off `skip` disposition is also proven at unit level by the flag-off skip tests and
+`synthetic:ff3:monitoring`.
 
 **Step 4 — Flip back ON + confirm parity.** Set `FF3_CAPTURE_ENABLED=true` (Preview) → Redeploy → re-run the
 command. Expect **3 passed** again — parity with the Step-1 baseline. Capture output.
 
 **Step 5 — Record below.**
+
+**Step 6 — Independent post-drill live-state probe** (broker countersign 2026-07-14, Amendment 2). The Step-5 flag
+box is operator-recorded *intent* — if the Step-4 redeploy was skipped, someone marks `☐ true` while the running
+build is still flag-off. From a **fresh shell**, re-run the evidence spec against the Preview (independent of the
+Step-4 run):
+```bash
+cd ~/ownerpilot && E2E_BASE_URL="<preview-url>" E2E_RUN_ID="$(uuidgen)" TEST_SEED_SECRET="<secret>" \
+  SUPABASE_URL="https://txpetdrfsmqnyooydmas.supabase.co" SUPABASE_SERVICE_ROLE_KEY="<key>" \
+  npx playwright test ff3-reconciliation-resume --config=e2e/playwright.config.ts --project=desktop --reporter=list
+```
+**EXPECT 3 passed** — this queries the *live deployed build*: reconciliation fires only if `FF3_CAPTURE_ENABLED` is
+genuinely on. If it does not reach the reconciliation card, the Step-4 redeploy did not take (build still flag-off) —
+**FAIL LOUD: redeploy and re-probe before closing the drill.**
 
 ---
 
