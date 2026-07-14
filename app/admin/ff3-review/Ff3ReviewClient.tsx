@@ -88,6 +88,22 @@ export function Ff3ReviewClient({ initial }: { initial: AwaitingReviewRow[] }) {
               </pre>
             )}
 
+            {/* Omnibus §3 row 1: owner reply thread, read-only. Empty until the reply seam ships (flag off). */}
+            {r.reply_thread.length > 0 && (
+              <div className="mt-4 rounded-md border border-neutral-200 bg-neutral-50 p-3">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Owner replies</p>
+                <ul className="space-y-2">
+                  {r.reply_thread.map((e, i) => (
+                    <li key={i} className="text-sm text-neutral-800">
+                      <span className="mr-2 text-xs uppercase tracking-wide text-neutral-400">{e.author}</span>
+                      {e.text}
+                      <span className="ml-2 text-xs text-neutral-400">{new Date(e.at).toLocaleString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <label className="mt-4 block text-sm font-medium text-neutral-700">Resolution note</label>
             <textarea
               value={notes[r.session_id] ?? ''}
