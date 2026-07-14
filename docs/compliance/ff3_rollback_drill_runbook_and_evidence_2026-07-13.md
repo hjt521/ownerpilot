@@ -119,6 +119,11 @@ genuinely on. If it does not reach the reconciliation card, the Step-4 redeploy 
 
 ## Evidence — Run 2 (within 48h before the §1.6 flip attestation)
 
+<!-- Timing hint: under the decoupled FF-3 soak clock (14-day floor from Gate-4 activation), the §1.6 attestation
+     files ~2026-07-27, so Run 2 lands ~2026-07-25–27. Not a hard date — Run 2 is anchored to "within 48h before the
+     attestation filing," whenever that is. See ff3_soak_clock_decouple_engineering_input_2026-07-14.md (pending broker
+     supersession ruling). -->
+
 - Date/time (PT): ____
 - Preview URL: ____
 - Preview commit SHA: ____
