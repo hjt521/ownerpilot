@@ -25,6 +25,8 @@ import { chatStalenessAckButton } from '@/lib/chat/stalenessCopy';
 import { lockedProse } from '@/lib/compliance/lockedProse';
 import { parseReconciliationOptions, type ReconciliationOption } from '@/lib/chat/reconciliationCardOptions';
 import { LockedText } from '@/components/chat/LockedText';
+// Omnibus §3 row 1 — owner reply-to-broker widget (self-gates on FF3_REPLY_TO_BROKER_ENABLED; renders null when off).
+import { Ff3BrokerReply } from '@/components/chat/Ff3BrokerReply';
 
 interface ReviewField { field: string; label: string; display: string; sensitive: boolean; }
 interface ReviewGroup { heading: string; fields: ReviewField[]; }
@@ -310,6 +312,9 @@ export function ReviewScreen() {
       {produce.phase === 'held' && (
         <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid="ff3-held-card">
           <LockedText text={lockedProse('chatFf3AwaitingBrokerReviewHeld')} className="text-sm leading-relaxed text-neutral-800" />
+          {/* Omnibus §3 row 1: reply-to-broker seam. Renders null unless FF3_REPLY_TO_BROKER_ENABLED is on, so the
+              locked held-state content above is unchanged when the flag is off. */}
+          <Ff3BrokerReply />
         </div>
       )}
 
