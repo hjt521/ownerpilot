@@ -18,8 +18,9 @@ function scan(dir) {
     if (statSync(p).isDirectory()) { scan(p); continue; }
     if (!/\.(ts|tsx|js|jsx)$/.test(f)) continue;
     const src = readFileSync(p, 'utf8');
-    // Find gtag/fireClientEvent/fireServerEvent calls and look for denied keys in inline object literals
-    const callRegex = /(gtag|fireClientEvent|fireServerEvent)\s*\([^)]*\)/g;
+    // Find analytics call sites and look for denied keys in inline object literals. Omnibus §3 row 2 adds
+    // emitFf3Event so the FF-3 telemetry payload schema is under the same build-time PII coverage as GA4 events.
+    const callRegex = /(gtag|fireClientEvent|fireServerEvent|emitFf3Event)\s*\([^)]*\)/g;
     const calls = src.match(callRegex) ?? [];
     for (const c of calls) {
       for (const key of DENIED) {

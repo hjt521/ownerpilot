@@ -10,6 +10,8 @@ import { z } from 'zod';
 import { currentAdmin } from '@/lib/admin/isAdmin';
 import { readRequestBody } from '@/lib/http/requestBody';
 import { loadAwaitingReview, resolveAwaitingReview, loadSessionTranscript } from '@/lib/admin/ff3Review';
+// Omnibus §3 row 2 — FF-3 telemetry (pre-staged; no-op unless FF3_TELEMETRY_ENABLED + consent; never throws).
+import { emitFf3Event, ff3TelemetryConsentFromCookie } from '@/lib/analytics/ff3Telemetry';
 
 function svc() {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -49,6 +51,14 @@ export async function POST(req: NextRequest) {
   if (!result.ok) {
     console.error('ff3-review resolve failed', result.error);
     return NextResponse.json({ error: 'could not save' }, { status: 500 });
+  }
+  // Omnibus §3 row 2 — resolution-recorded seam (broker actor). Only when a row was actually resolved. No-op unless
+  // telemetry on + consent; never throws (soak-safe).
+  if (result.affected > 0) {
+    emitFf3Event(
+      { event: 'resolution-recorded', chatSessionId: parsed.data.session_id, actorType: 'broker', sourceRoute: 'POST /api/admin/ff3-review', dispositionRef: 'broker_resolution_note' },
+      { consentGranted: ff3TelemetryConsentFromCookie(req.cookies.get('CookieConsent')?.value) },
+    );
   }
   // affected === 0 → the session wasn't in the awaiting set (already resolved / not escalated). Not an error.
   return NextResponse.json({ items: await loadAwaitingReview(sb), resolved: result.affected });

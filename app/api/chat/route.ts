@@ -20,6 +20,8 @@ import { verifyCaptchaToken } from '@/lib/safety/captcha';
 import { loadSession, createSession, hashAnonToken, serviceClient } from '@/lib/chat/session';
 import { unsupportedLanguageNotice } from '@/lib/chat/refusalBank';
 import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
+// Omnibus §3 row 2 — FF-3 telemetry (pre-staged; no-op unless FF3_TELEMETRY_ENABLED + consent).
+import { emitFf3Event, ff3TelemetryConsentFromCookie } from '@/lib/analytics/ff3Telemetry';
 import type { ChatMessage } from '@/lib/chat/responseFormat';
 import type { TranscriptTurn } from '@/lib/chat/dbTypes';
 
@@ -164,6 +166,16 @@ export async function POST(req: NextRequest) {
     ...(turn.ff3Persist ?? {}),
   }).eq('id', session.id);
   if (updated.error) return NextResponse.json({ error: 'persist failed' }, { status: 500 });
+
+  // Omnibus §3 row 2 — capture-start seam. Fires once, when FF-3 capture transitions from inactive to active on
+  // this turn. No-op unless FF3_TELEMETRY_ENABLED + consent; never throws (soak-safe).
+  const nextFf3Status = (turn.ff3Persist as { ff3_capture_status?: string | null } | undefined)?.ff3_capture_status ?? null;
+  if (ff3Status == null && nextFf3Status != null) {
+    emitFf3Event(
+      { event: 'capture-start', chatSessionId: session.id, actorType: 'owner', sourceRoute: 'POST /api/chat', dispositionRef: nextFf3Status },
+      { consentGranted: ff3TelemetryConsentFromCookie(req.cookies.get('CookieConsent')?.value) },
+    );
+  }
 
   const res = NextResponse.json({
     reply: turn.reply,

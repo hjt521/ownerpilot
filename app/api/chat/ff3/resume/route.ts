@@ -19,6 +19,8 @@ import {
   type DatedPeriod,
 } from '@/lib/intake/ff3ResumeAuthorization';
 import { mintResumeToken } from '@/lib/intake/ff3ResumeToken';
+// Omnibus §3 row 2 — FF-3 telemetry (pre-staged; no-op unless FF3_TELEMETRY_ENABLED + consent; never throws).
+import { emitFf3Event, ff3TelemetryConsentFromCookie } from '@/lib/analytics/ff3Telemetry';
 
 const COOKIE = 'op_chat_token';
 
@@ -65,5 +67,10 @@ export async function POST(req: NextRequest) {
     authorizedAt: auth.authorized_at,
     noteHash: auth.resolution_note_hash,
   });
+  // Omnibus §3 row 2 — resume-authorized seam (no-op unless telemetry on + consent; never throws).
+  emitFf3Event(
+    { event: 'resume-authorized', chatSessionId: s.id, actorType: 'owner', sourceRoute: 'POST /api/chat/ff3/resume', dispositionRef: 'resume_token_minted' },
+    { consentGranted: ff3TelemetryConsentFromCookie(req.cookies.get('CookieConsent')?.value) },
+  );
   return NextResponse.json({ ok: true, resumeToken });
 }
