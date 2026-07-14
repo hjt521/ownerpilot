@@ -7,6 +7,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildResumeAuthorization, ledgerPeriodKey, type DatedPeriod } from '@/lib/intake/ff3ResumeAuthorization';
 import { sumLedger } from '@/lib/intake/ff3AmountReconcile';
 import { ff3RentPeriodsFromSession } from '@/lib/intake/ff3ProduceGate';
+// Omnibus §3 row 1 — owner reply thread surfaced read-only on the review surface.
+import { normalizeReplyThread, type Ff3ReplyEntry } from '@/lib/intake/ff3ReplyThread';
 
 /** State predicate (ruling §1, option (b) tightened): note-nullability IS the awaiting-review transition. */
 export const AWAITING_REVIEW = {
@@ -19,13 +21,15 @@ export interface AwaitingReviewRow {
   /** Reconciliation gap surfaced from the ff3_amount_reconciliation compliance_gates row (no owner PII). */
   notice_amount: number | null;
   ledger_total: number | null;
+  /** Omnibus §3 row 1 — owner reply thread, surfaced read-only. Empty until the reply seam ships. */
+  reply_thread: Ff3ReplyEntry[];
 }
 
 /** Load sessions awaiting broker review (oldest first), each with its reconciliation gap. */
 export async function loadAwaitingReview(sb: SupabaseClient): Promise<AwaitingReviewRow[]> {
   const { data: sessions } = await sb
     .from('chat_sessions')
-    .select('id, reconciliation_resolved_at')
+    .select('id, reconciliation_resolved_at, broker_reply_thread')
     .eq('reconciliation_resolution', AWAITING_REVIEW.reconciliation_resolution)
     .not('reconciliation_resolved_at', 'is', null)
     .is('broker_resolution_note', null)
@@ -53,6 +57,7 @@ export async function loadAwaitingReview(sb: SupabaseClient): Promise<AwaitingRe
       reconciliation_resolved_at: (s.reconciliation_resolved_at as string | null) ?? null,
       notice_amount: (ctx.noticeAmount as number | null) ?? null,
       ledger_total: (ctx.ledgerTotal as number | null) ?? null,
+      reply_thread: normalizeReplyThread((s as { broker_reply_thread?: unknown }).broker_reply_thread),
     };
   });
 }
