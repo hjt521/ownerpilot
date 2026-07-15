@@ -11,8 +11,13 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const ROOTS = ['components', 'app', 'lib'];
+// Marketing Tranche 1 (addendum 2026-07-14a §5A): scan marketing/blog/content surfaces too, including .md/.mdx.
+// `content` added as a root (existsSync-guarded). Term list stays SSOT-sourced from lib/chat/bannedTerms.json.
+const ROOTS = ['components', 'app', 'lib', 'content'];
 const ALLOWLIST_PATH = 'scripts/ci/banned_terms_allowlist.txt';
+// .md/.mdx are scanned ONLY under marketing/blog/content path segments (keeps docs/ and stray READMEs out of scope,
+// which legitimately contain broker-internal terms like "rulings").
+const MARKETING_CONTENT_RE = /(^|\/)(marketing|blog|content)(\/|$)/;
 
 // SINGLE SOURCE (p4 ruling 2026-07-04 Q3): term list loaded from lib/chat/bannedTerms.json — shared with the
 // runtime output gate (lib/chat/runtimeBannedTermGate.ts). The CI lint enforces the ci:true entries on committed
@@ -43,6 +48,9 @@ function* walk(dir) {
       if (name === '_core' || name === 'node_modules') continue;
       yield* walk(p);
     } else if (/\.(ts|tsx)$/.test(name) && !/\.test\./.test(name)) {
+      yield p;
+    } else if (/\.(md|mdx)$/.test(name) && MARKETING_CONTENT_RE.test(p.replace(/\\/g, '/'))) {
+      // Marketing/blog/content prose surfaces (addendum §5A) — banned-terms enforced on copy, not just code.
       yield p;
     }
   }
