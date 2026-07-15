@@ -7,11 +7,14 @@
 import { notFound } from 'next/navigation';
 import { marketingTranche1Enabled } from '@/lib/marketing/flags';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
+import { MarketingPageView } from '@/components/marketing/MarketingPageView';
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   if (!marketingTranche1Enabled()) notFound();
   return (
     <div className="min-h-screen bg-[#f7f4ee]">
+      {/* slice 5: consent-gated page_view emission (inert in Tranche 1). */}
+      <MarketingPageView />
       {children}
       <MarketingFooter />
     </div>

@@ -36,7 +36,10 @@
     "ci:verify-analytics-no-pii": "node scripts/verify-analytics-no-pii.mjs",
     "ci:verify-broker-confirm-sla-sync": "node scripts/verify-broker-confirm-sla-sync.mjs",
     "ci:verify-normalize-identical-to-resolver": "node scripts/verify-normalize-identical-to-resolver.mjs",
-    "ci:verify-route-body-parsing": "node scripts/ci/verify_route_body_parsing.mjs"
+    "ci:verify-route-body-parsing": "node scripts/ci/verify_route_body_parsing.mjs",
+    "a11y:pa11y": "npx --yes pa11y-ci",
+    "a11y:lighthouse": "npx --yes @lhci/cli autorun",
+    "ci:a11y-marketing": "npm run a11y:pa11y"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",

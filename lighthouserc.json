@@ -1,0 +1,26 @@
+{
+  "//": "Marketing Tranche 1 slice 5 — Lighthouse CI a11y/SEO/perf gate on the 6 marketing routes. Runs in CI (not the sandbox): the CI job builds with MARKETING_TRANCHE1=true so the flag-gated routes resolve, then LHCI serves and audits. Thresholds per the SEO/blog prompt CI additions (a11y >= 95, SEO >= 90, perf >= 75 mobile).",
+  "ci": {
+    "collect": {
+      "startServerCommand": "MARKETING_TRANCHE1=true npm run start",
+      "url": [
+        "http://localhost:3000/california-3-day-notice",
+        "http://localhost:3000/tenant-behind-on-rent-california",
+        "http://localhost:3000/serve-and-track-3-day-notice",
+        "http://localhost:3000/photo-proof-of-posting",
+        "http://localhost:3000/riskpath-records",
+        "http://localhost:3000/los-angeles-3-day-notice"
+      ],
+      "numberOfRuns": 1,
+      "settings": { "preset": "desktop" }
+    },
+    "assert": {
+      "assertions": {
+        "categories:accessibility": ["error", { "minScore": 0.95 }],
+        "categories:seo": ["error", { "minScore": 0.9 }],
+        "categories:performance": ["warn", { "minScore": 0.75 }]
+      }
+    },
+    "upload": { "target": "temporary-public-storage" }
+  }
+}
