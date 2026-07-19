@@ -82,38 +82,42 @@ genuinely on. If it does not reach the reconciliation card, the Step-4 redeploy 
 
 ## Evidence — Run 1 (target ≤ 2026-07-20)
 
-- Date/time (PT): ____
-- Preview URL: ____
-- Preview commit SHA: ____
+- Date/time (PT): 2026-07-18, drill window ~16:40–17:15 PT (broker-executed)
+- Preview URL: https://ownerpilot-git-chore-security-advisors-we-2cd259-jt-s-projects3.vercel.app
+- Preview commit SHA: bc75188 (Merge branch 'main' into chore/security-advisors-weekly-baseline)
 
 ### Step 1 (flag on) baseline
-- ☐ 3 passed — paste `npx playwright test` tail: ____
+- ☑ 3 passed — tail: `3 passed (46.5s)` (escalate→resolve→resume→produce 20.7s; scope-mismatch negative 14.0s; notice-wrong pause 8.9s). Note: green only after migration 050 applied mid-drill (see Anomalies).
 
 ### Step 3 (flag off) multi-layer dark verification
-- Seeded sessionId: ____
-- **3a** produce response NOT `ff3_reconciliation_flag` / `ff3_awaiting_broker_review` / `ff3_notice_wrong_pause`: ☐
-    - Paste response body: ____
-- **3b** `compliance_gates` rows for sessionId = **ZERO**: ☐ **(Sev-1 canary)**
-    - Paste query result: ____
-- **3c** `chat_sessions` fields all NULL (ff3_capture_status / reconciliation_resolution / broker_resume_authorization): ☐
-    - Paste query result: ____
-- **3d** `/api/chat/ff3/resume` response = `409 ff3_resume_not_authorized`: ☐
-    - Paste full response including headers: ____
+- Seeded sessionId: ab97345c-1f3b-475b-9f45-c3d51ba389e4
+- **3a** produce response NOT `ff3_reconciliation_flag` / `ff3_awaiting_broker_review` / `ff3_notice_wrong_pause`: ☑
+    - Response body: `HTTP/2 200 {"ok":true,"riskpathId":"86c491d7-a13a-4c90-8e89-51694f888ce3","lahdCopyVersion":"v1","baseName":"5537-la-mirada-ave-unit-202-los-angeles-",...}` — produce-ready envelope, gate skipped.
+- **3b** `compliance_gates` rows for sessionId = **ZERO**: ☑ **(Sev-1 canary — clear)**
+    - Query result (MCP `execute_sql`): `gates_count = 0`
+- **3c** `chat_sessions` fields all NULL (ff3_capture_status / reconciliation_resolution / broker_resume_authorization): ☑
+    - Query result (MCP): `ff3_capture_status = NULL`, `reconciliation_resolution = NULL`, `broker_resume_authorization = NULL`
+- **3d** `/api/chat/ff3/resume` response = `409 ff3_resume_not_authorized`: ☑
+    - Full response: `HTTP/2 409` · `content-type: application/json` · `date: Sun, 19 Jul 2026 00:00:50 GMT` · `x-matched-path: /api/chat/ff3/resume` · `x-vercel-id: cdg1::iad1::tssxm-1784419249283-ed663b88c943` · body `{"error":"ff3_resume_not_authorized"}`
     - **This response is FROZEN as the Run-1 baseline; Run 2 must match byte-for-byte.**
-- **3e** cleanup delete confirmed: ☐
+- **3e** cleanup delete confirmed: ☑ (`delete from public.chat_sessions where id = 'ab97345c-...'` → "Success. No rows returned"). Also cleaned an earlier flag-on probe session `0b50dd7a-...` (3 gate rows + row) created before the flag-off redeploy propagated.
 
 ### Step 4 (flag back on) parity
-- ☐ 3 passed — paste tail: ____
+- ☑ 3 passed — tail: `3 passed (45.2s)` (22.4s / 13.9s / 6.5s)
 
 ### Step 5 recorded
-- Flag state left at end of run: ☐ `true` (Preview) — **critical: never leave Preview flag off**
+- Flag state left at end of run: ☑ `true` (Preview) — confirmed by the Step-4 parity pass (reconciliation fires only when flag is genuinely on)
 
 ### Step 6 independent post-drill live-state probe
-- ☐ 3 passed from fresh shell — paste tail: ____
-- If FAIL: redeploy executed at ____ (PT), re-probe result: ____
+- ☑ 3 passed from fresh shell — tail: `3 passed (52.3s)` (16.9s / 15.5s / 11.4s). Independent live-state probe confirms the deployed build is genuinely flag-on.
+- If FAIL: n/a — passed on first probe.
+
+**Run 1 status: COMPLETE + CLEAN (2026-07-18).** Sev-1 canary clear; rollback mechanism confirmed bidirectional (flag off → dark at all four layers → flag on → parity). Referenced in the §1.6 prod-flip attestation packet as the §1.3 requirement (first of two runs).
 
 ### Anomalies / notes
-- ____
+- **Drift caught by the drill (standing ruling #5 — schema-before-flag).** Step-1 baseline initially failed 2/3 (admin-resolve textbox never rendered). Root cause: migration 050 (`broker_reply_thread` on `chat_sessions`, WS1 reply-to-broker seam) was merged to `main` but never applied to prod; `loadAwaitingReview` selects that column unconditionally, PostgREST errored, the error was swallowed (unchecked destructure), the awaiting-review list came back empty → no textbox. Remediated mid-drill: 050 applied to prod via Studio (additive/defaulted/idempotent), verified present via information_schema, baseline then 3 passed. This is exactly the ten-day merge/flip-gap ruling #5 exists to catch. Follow-ups ticketed: silent-error-swallow fix in `loadAwaitingReview`; systematic merged-vs-live schema-drift diagnostic before the 2026-07-28 flip; 050 into the migration-history reconciliation sweep.
+- **Redeploy-propagation note.** The Step-2 flag flip did not take on the first attempt because the Preview build hadn't been redeployed after the env change (first flag-off produce returned `ff3_awaiting_broker_review`, i.e. still flag-on, and wrote 3 gate rows on `0b50dd7a` — cleaned). After Redeploy → Ready, the flag-off dark path behaved as specified. Same env-change-requires-redeploy rule applied to `TEST_SEED_SECRET`.
+- **Credential exposure.** `TEST_SEED_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` were entered in plaintext in the working channel during the drill. Rotation ticketed (service-role key is full RLS-bypass — higher priority) to run post-Run-2. Rotation does not affect the drill per §4 secret-scoping note.
 
 ---
 
