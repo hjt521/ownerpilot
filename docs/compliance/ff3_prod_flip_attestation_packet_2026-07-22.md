@@ -48,8 +48,8 @@ Filed: **`ff3_oncall_runbook_addendum_2026-07-13.md`** — extends `gate3_forkE1
 
 - **What flips:** exactly one env var — `FF3_CAPTURE_ENABLED` → `true`, **Production scope only**, Vercel. No code deploy.
 - **Prerequisite (must be true before flip):** Production `ADMIN_EMAILS` provisioned (task #184) so `/admin/ff3-review` is reachable in prod the moment capture goes live — otherwise a reconciliation escalation strands the owner with no broker surface (this is exactly the §1.5 Sev-2 class). Confirm set before flipping.
-- **Order:** (1) confirm prod `ADMIN_EMAILS` set; (2) set `FF3_CAPTURE_ENABLED=true` (Production); (3) redeploy Production; (4) wait Ready.
-- **Smoke test on the other side (prod, non-destructive):** confirm `/chat` loads and an ordinary produce with a matching amount proceeds normally (no spurious reconciliation card); confirm `/admin/ff3-review` renders the "FF-3 broker review" heading (empty queue = healthy). Do **not** seed synthetic FF-3 sessions in prod (the seed route is Preview-locked by design — S2 prod→404). 
+- **Order:** (1) confirm prod `ADMIN_EMAILS` set; (2) **pre-flip admin smoke** — with `ADMIN_EMAILS` set but capture still OFF, load prod `/admin/ff3-review` and confirm the "FF-3 broker review" heading renders with an empty queue. This confirms `ADMIN_EMAILS` is genuinely *functional* (not just set — catches a typo, or a deploy that hasn't picked it up). **If it fails, do not flip.** (Standing ruling #4 pre-apply diligence, applied one layer up.) (3) set `FF3_CAPTURE_ENABLED=true` (Production); (4) redeploy Production; (5) wait Ready; (6) post-flip smoke (below).
+- **Smoke test on the other side (prod, non-destructive):** confirm `/chat` loads and an ordinary produce with a matching amount proceeds normally (no spurious reconciliation card); confirm `/admin/ff3-review` still renders the "FF-3 broker review" heading (empty queue = healthy). Do **not** seed synthetic FF-3 sessions in prod (the seed route is Preview-locked by design — S2 prod→404). 
 - **Executor:** broker (§4.13). Engineering supplies this block; broker performs the Vercel action.
 
 ## Item 7 — Rollback plan
@@ -60,12 +60,23 @@ Filed: **`ff3_oncall_runbook_addendum_2026-07-13.md`** — extends `gate3_forkE1
 - **Time to rollback:** minutes — a single Vercel env flip + redeploy (same mechanism timed repeatedly in the drill). Owner data is safe throughout; held state persists across the flag flip.
 - **Executor:** broker (§4.13). Held owners are unblocked as soon as capture is restored or `ADMIN_EMAILS`/deploy is corrected.
 
+## §8 — Post-flip watch window (72h heightened cadence)
+
+For **72 hours after the flag flip**, engineering monitors on a heightened cadence, ratcheting to normal after the window (proportionate to "first time this env var has been true in production"):
+
+- **Sentry:** notification on **any** FF-3-attributable Sev-1/Sev-2.
+- **DB backlog:** hourly automated check, alert on any non-zero `awaiting_review_over_48h` **or** `authorized_unconsumed` count.
+- **`/admin/ff3-review` reachability:** confirm at the end of each business day.
+
+After 72h with no Sev-1/Sev-2 and a clean backlog, drops to normal monitoring cadence.
+
 ---
 
 ## Pre-flip checklist (must clear before the flip action)
 
 - [ ] **Run 2 rollback drill** (~07-25–27) — 3-passed round-trip + frozen-baseline match (#183)
 - [ ] **Prod `ADMIN_EMAILS` provisioned** (Vercel, Production) — #184
+- [ ] **Migration 050 (`broker_reply_thread`) confirmed present in prod `chat_sessions`** + admin-review query verified functional against live schema — `SELECT column_name FROM information_schema.columns WHERE table_name='chat_sessions' AND column_name='broker_reply_thread'` returns one row (confirmed 2026-07-18/07-22); Run 2 exercises the admin-resolve path end-to-end. The specific defect caught mid-drill, listed as its own confirmed item.
 - [ ] **Service-role key + seed-secret rotation** (exposed in the drill channel) — #181
 - [ ] **Broker: Sentry FF-3 alert rules configured** (§1.2 §B, 6 rules) + Data Scrubber/Scrub IP toggles (§2.2)
 - [ ] **Leaked-password protection enabled** (Auth dashboard) — clears the standing Advisors WARN
@@ -75,6 +86,7 @@ Filed: **`ff3_oncall_runbook_addendum_2026-07-13.md`** — extends `gate3_forkE1
 
 - **`schema_drift_diagnostic_2026-07-22.md`** — systematic merged-vs-live schema check across all 8 object classes; **zero drift** beyond the (now-applied) migration 050. Confirms no other 050-style gap exists ahead of the flip.
 - **Supabase Advisors 2026-07-22:** 0 errors; live == ratified baseline; all Fork H-a exceptions intact.
+- **Migration-history reconciliation (informational, not a flip gate):** the Supabase `schema_migrations` history table remains tracked at **036** while the live schema is at **055** (037–055 applied as raw Studio SQL under the pre-branching workflow). The 2026-07-22 systematic drift diagnostic confirms **zero merged-vs-live gaps beyond migration 050** (remediated 2026-07-18 per standing ruling #5 — surfaced at the drill catch, not silently routed around). The GitHub-connection branching fix that will reconcile the history table is tracked as a separate ticket and does **not** block this flip.
 
 ---
 
