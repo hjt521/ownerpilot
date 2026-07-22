@@ -37,7 +37,7 @@ const packetItems = [
   'Owner Record Copy',
   'Proof of Service',
   'Service Log',
-  'Photo Proof of Posting',
+  'Serve log and posting record',
   'RiskPath™ Follow-Up',
 ];
 
@@ -218,12 +218,14 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
           </div>
         </section>
 
-        {/* Serve & Track + Photo Proof of Posting. Status pill "Timestamped" (never "Verified"). */}
-        <section className="split shell reverse-split" id="photo-proof">
-          <div className="proof-card" aria-label="Photo Proof of Posting example">
+        {/* Serve log section (Ruling 5 photo-capture reframe — broker ruling 2026-07-22): reframed from the
+            unshipped "Photo Proof of Posting / timestamped photo capture" claim to the shipped serve-log record.
+            "Timestamped" pill removed — the serve flow records no server-side served_at timestamp (verified against
+            the serve implementation: the service log is a fillable packet record, not a server-timestamped row). */}
+        <section className="split shell reverse-split" id="serve-log">
+          <div className="proof-card" aria-label="Serve log entry example">
             <div className="proof-head">
               <strong>3-Day Notice</strong>
-              <span className="pill">Timestamped</span>
             </div>
             <p className="proof-sub">Posted on Front Door</p>
             <div className="proof-photo" aria-hidden="true"><span className="proof-doc"><i className="proof-pin"></i></span></div>
@@ -231,10 +233,11 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
           </div>
           <div className="split-copy">
             <p className="eyebrow">Serve &amp; Track</p>
-            <h2>Track service from the same record.</h2>
+            <h2>Serve log for the record.</h2>
             <p>
-              Log service attempts, mailing steps, notes, and owner-side records without mixing them into the tenant
-              copy. Capture and timestamp posting photos from your phone for the owner record.
+              After you post the notice, the serve flow captures the date, time, method, and address of service.
+              That record moves into the packet with the notice — one continuous record from produce to serve, kept
+              for you. If the matter later moves to filing, the same record is what the filing packet draws from.
             </p>
           </div>
         </section>
