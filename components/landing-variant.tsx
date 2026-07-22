@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { SiteFooter } from './site-footer';
-import { AIFlowIllustrationBand, JurisdictionFeatureBand, ResolveDocumentBand } from './marketing/HomepageIllustrations';
+import { AIFlowIllustrationBand, JurisdictionFeatureBand } from './marketing/HomepageIllustrations';
 
 type LandingVariantProps = {
   /** Which persona/channel this page serves, e.g. "Crisis variant — Google Search".
@@ -13,7 +13,7 @@ type LandingVariantProps = {
 /**
  * Canonical served homepage (proxy rewrites / → /landing/default). AI-first repositioning per
  * homepage_canonical_update_2026-07-05: leads with "Ask OwnerPilot AI first." and tells the full workflow story
- * (Ask AI → Generate Notice → Serve & Track → Resolve & Document → RiskPath Records) rather than a notice-only
+ * (Ask AI → Generate Notice → Serve & Track → Resolve & Record → RiskPath Records) rather than a notice-only
  * pitch. The functional product preview stays in the hero; the Canva illustrations are Option-B accents lower on
  * the page. UTM/landing-variant infrastructure unchanged. Styles scoped under `.cb-home` in app/globals.css.
  */
@@ -22,7 +22,7 @@ const workflowSteps = [
   { number: '1', title: 'Ask AI', body: 'Plain-English workflow guidance before you act.' },
   { number: '2', title: 'Generate Notice', body: 'Build and review a broker-supervised 3-Day Notice packet.' },
   { number: '3', title: 'Serve & Track', body: 'Log attempts, mailing, photos, and notes.' },
-  { number: '4', title: 'Resolve & Record', body: 'Document payment, Move-Out Agreement, surrender, and keep the record in RiskPath™.' },
+  { number: '4', title: 'Resolve & Record', body: 'Document the outcome and keep the record in RiskPath™.' },
 ];
 
 const heroSystem = [
@@ -38,7 +38,6 @@ const packetItems = [
   'Proof of Service',
   'Service Log',
   'Photo Proof of Posting',
-  'Resolve & Document',
   'RiskPath™ Follow-Up',
 ];
 
@@ -47,14 +46,7 @@ const chatPrompts = [
   'How do I create a 3-Day Notice?',
   'What happens after I serve the notice?',
   'The tenant paid after notice. What should I document?',
-  'The tenant agreed to move out. Can I create a Move-Out Agreement?',
-];
-
-const resolveCards = [
-  { title: 'Record Payment', body: 'Document full or post-deadline payment and close the notice record when appropriate.' },
-  { title: 'Create Payment Plan', body: 'Capture payment terms, due dates, and follow-up reminders.' },
-  { title: 'Create Move-Out Agreement', body: 'Use when the tenant agrees to vacate after notice service and both sides want the terms in writing.' },
-  { title: 'Record Surrender', body: 'Document key return, possession, move-out photos, and next steps.' },
+  'The tenant agreed to move out. What are my next steps?',
 ];
 
 function ArrowIcon() {
@@ -247,35 +239,10 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
           </div>
         </section>
 
-        <ResolveDocumentBand />
-
-        {/* Resolve & Document product lane. */}
-        <section className="notice-section shell" id="resolve">
-          <div className="section-heading">
-            <p className="eyebrow">Resolve &amp; Document</p>
-            <h2>Create a written record when the tenant responds.</h2>
-            <p>
-              If the tenant pays, makes a payment plan, agrees to move out, or returns possession after a notice is
-              served, OwnerPilot helps you document what happened and keep the record connected.
-            </p>
-          </div>
-          <div className="cards-quad">
-            {resolveCards.map((c, i) => (
-              <article className={`service-card${i === 2 ? ' featured' : ''}`} key={c.title}>
-                <h3>{c.title}</h3>
-                <p>{c.body}</p>
-              </article>
-            ))}
-          </div>
-          <div className="resolve-foot">
-            <Link className="primary-btn" href="/chat">Open Resolve &amp; Document <ArrowIcon /></Link>
-            <p className="resolve-riskpath">Saved to RiskPath&trade; for the owner record.</p>
-            <p className="resolve-note">
-              OwnerPilot helps document the terms you enter for your records. OwnerPilot is not a law firm and does
-              not provide legal advice.
-            </p>
-          </div>
-        </section>
+        {/* Resolve & Document band + product lane removed (Ruling 5 / shipped-surface inventory 2026-07-14,
+            disposition (c)): marketed an unshipped interactive Resolve & Document surface, Move-Out Agreement
+            creation, and an "Open Resolve & Document" CTA. Outcome recordkeeping remains covered by the shipped
+            RiskPath surface (see the workflow band and final CTA). Returns to a future tranche if the product ships. */}
 
         <section className="final-cta shell">
           <h2>Start with a question. Keep every next step organized.</h2>
