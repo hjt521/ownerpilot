@@ -1,0 +1,50 @@
+{
+  "$comment": "Constitution Genesis Manifest — the immutable v1.0 snapshot descriptor. Checksums are sha256 over the canonical DDL of each object category, computed from live introspection on the export date. The reproduction algorithm is documented in CONSTITUTION_BASELINE_v1.md §Checksum algorithm; re-running it against any future snapshot yields a comparable overall_sha256, which is how drift is detected automatically.",
+  "constitution_release": "v1.0",
+  "release_name": "Genesis",
+  "schema": "constitution",
+  "status": "genesis_baseline",
+  "export": {
+    "export_date": "2026-07-22",
+    "git_commit": "8fa17cb",
+    "git_ref": "main",
+    "supabase_project_ref": "txpetdrfsmqnyooydmas",
+    "postgresql_version": "PostgreSQL 17.6 on aarch64-unknown-linux-gnu",
+    "exported_by": "engineering (introspection); constitution_v1.0.sql to be produced by broker pg_dump"
+  },
+  "object_counts": {
+    "tables": 59,
+    "views": 0,
+    "materialized_views": 0,
+    "functions": 7,
+    "trigger_functions": 2,
+    "security_definer_functions": 5,
+    "triggers": 8,
+    "indexes": 139,
+    "rls_enabled_tables": 59,
+    "rls_policies": 0,
+    "enums": 0,
+    "domains": 0,
+    "sequences": 0,
+    "custom_types": 0
+  },
+  "checksums": {
+    "algorithm": "sha256",
+    "tables_sha256": "1783c548be92637ed04192868862351bfd104d9fcc626b72daa14227eaa25a76",
+    "functions_sha256": "7b4e378fca32c775d919570a5c6a5fa14054e25883416c9e86e938b72f1c5ed1",
+    "triggers_sha256": "bdff625ff947cf3eeeb04ad12d392a35818e41589d98a1c63844256ff19dc51c",
+    "indexes_sha256": "30d250c4a03667b0d13c9f8dcbf037e2bab14e8f6d995be3ec46870bf6e7ca78",
+    "overall_sha256": "8830f6b18d3f466b9876a136283592df9041fe2caee0a97d038e836429b71e36"
+  },
+  "artifacts": {
+    "genesis_document": "CONSTITUTION_BASELINE_v1.md",
+    "schema_dump": "constitution_v1.0.sql (broker pg_dump — see BASELINE.md)",
+    "manifest": "constitution_v1.0_manifest.json",
+    "checksum_file": "constitution_checksum.sha256"
+  },
+  "governance": {
+    "source_of_truth": "repository (as of Constitution v1.0)",
+    "immutability": "This manifest is the Genesis Block. It is never edited. The next official change produces constitution_v1.1_manifest.json via the migration workflow (baseline refresh, workflow step 8).",
+    "authorizing_documents": ["../CONSTITUTION.md", "../adr/adr_log.md", "../process/migration_workflow.md"]
+  }
+}
