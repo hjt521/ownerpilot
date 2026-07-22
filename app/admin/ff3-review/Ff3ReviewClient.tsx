@@ -18,7 +18,7 @@ const RESOLVE_SUCCESS = 'Note saved. It will surface when the owner next opens t
 const NOTE_PLACEHOLDER =
   'Written to the owner verbatim — they see exactly this when they next open their session. Explain what you found and how to proceed.';
 
-export function Ff3ReviewClient({ initial }: { initial: AwaitingReviewRow[] }) {
+export function Ff3ReviewClient({ initial, queryFailed = false }: { initial: AwaitingReviewRow[]; queryFailed?: boolean }) {
   const [rows, setRows] = useState<AwaitingReviewRow[]>(initial);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -50,9 +50,18 @@ export function Ff3ReviewClient({ initial }: { initial: AwaitingReviewRow[] }) {
 
   return (
     <div className="mt-8 space-y-6">
+      {/* A broken query is NOT an empty queue — surface it loud and distinct so the operator never reads a failed
+          load as "nothing to review" (the migration-050 drift failure mode). */}
+      {queryFailed && (
+        <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <strong>The review queue could not be loaded.</strong> A query error occurred (see server logs) — this is
+          <strong> not</strong> an empty queue. Do not treat it as &ldquo;no sessions awaiting review.&rdquo; Escalate
+          per the on-call runbook (Sev-2: <code>/admin/ff3-review</code> unreachable).
+        </p>
+      )}
       {/* Always render the confirmation message — even after resolving the last item empties the list. */}
       {msg && <p className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{msg}</p>}
-      {rows.length === 0 && (
+      {!queryFailed && rows.length === 0 && (
         <p className="rounded-md border border-neutral-200 bg-neutral-50 px-4 py-6 text-neutral-600">No sessions awaiting broker review.</p>
       )}
       {rows.map((r) => {

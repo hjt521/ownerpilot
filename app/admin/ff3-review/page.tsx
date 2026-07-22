@@ -23,7 +23,17 @@ export default async function Ff3ReviewPage() {
   const { isAdmin } = await currentAdmin();
   if (!isAdmin) notFound();
 
-  const items = await loadAwaitingReview(svc());
+  // Distinguish "no sessions awaiting review" from "the query broke" — a swallowed error previously rendered the
+  // empty-state, which is how the migration-050 drift hid. On failure, render a legible banner (client) instead of
+  // the generic error boundary, and log server-side.
+  let items: Awaited<ReturnType<typeof loadAwaitingReview>> = [];
+  let queryFailed = false;
+  try {
+    items = await loadAwaitingReview(svc());
+  } catch (e) {
+    console.error('[ff3-review] page load failed:', e instanceof Error ? e.message : e);
+    queryFailed = true;
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10">
@@ -33,7 +43,7 @@ export default async function Ff3ReviewPage() {
         need context, then leave a resolution note. The note is shown to the owner verbatim when they next open
         their session — it does not notify them and does not auto-resume the case.
       </p>
-      <Ff3ReviewClient initial={items} />
+      <Ff3ReviewClient initial={items} queryFailed={queryFailed} />
     </main>
   );
 }

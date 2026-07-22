@@ -27,22 +27,33 @@ export interface AwaitingReviewRow {
 
 /** Load sessions awaiting broker review (oldest first), each with its reconciliation gap. */
 export async function loadAwaitingReview(sb: SupabaseClient): Promise<AwaitingReviewRow[]> {
-  const { data: sessions } = await sb
+  const { data: sessions, error: sessionsError } = await sb
     .from('chat_sessions')
     .select('id, reconciliation_resolved_at, broker_reply_thread')
     .eq('reconciliation_resolution', AWAITING_REVIEW.reconciliation_resolution)
     .not('reconciliation_resolved_at', 'is', null)
     .is('broker_resolution_note', null)
     .order('reconciliation_resolved_at', { ascending: true });
+  // Fail LOUD, never silent. A query error (e.g. a missing column from an unapplied migration — the exact FF-3
+  // migration-050 schema-before-flag drift caught in the 2026-07-18 rollback drill) must surface as an error, not
+  // be swallowed and masquerade as an empty awaiting-review list. An empty queue and a broken query are different
+  // states and the operator must be able to tell them apart (on-call addendum §1 Sev-2).
+  if (sessionsError) {
+    console.error('[ff3-review] loadAwaitingReview sessions query failed:', sessionsError.message);
+    throw new Error(`ff3_review_query_failed: ${sessionsError.message}`);
+  }
   if (!sessions?.length) return [];
 
   const ids = sessions.map((s) => s.id as string);
-  const { data: gates } = await sb
+  const { data: gates, error: gatesError } = await sb
     .from('compliance_gates')
     .select('chat_session_id, context_json, evaluated_at')
     .in('chat_session_id', ids)
     .eq('gate', 'ff3_amount_reconciliation')
     .order('evaluated_at', { ascending: false });
+  // Gap-context degrades gracefully: the row still lists (amounts render as '—'), so log but do NOT throw — the
+  // operator can still work the queue even if the reconciliation-gap lookup fails.
+  if (gatesError) console.error('[ff3-review] loadAwaitingReview gap-context query failed (degrading to no-gap):', gatesError.message);
 
   const latestBySession = new Map<string, Record<string, unknown>>();
   for (const g of gates ?? []) {
@@ -65,13 +76,19 @@ export async function loadAwaitingReview(sb: SupabaseClient): Promise<AwaitingRe
 /** On-demand transcript for one awaiting session (the ruling §3 "deep link to full transcript" — PII lives here,
  *  never on the summary list). Returns null if the session isn't awaiting review. */
 export async function loadSessionTranscript(sb: SupabaseClient, sessionId: string): Promise<unknown[] | null> {
-  const { data } = await sb
+  const { data, error } = await sb
     .from('chat_sessions')
     .select('transcript')
     .eq('id', sessionId)
     .eq('reconciliation_resolution', AWAITING_REVIEW.reconciliation_resolution)
     .is('broker_resolution_note', null)
     .maybeSingle();
+  // Distinguish a query error (throw → 500 → alert) from a genuine not-found (null → 404). Swallowing the error
+  // as null would report "session not awaiting review" for what is actually a broken query.
+  if (error) {
+    console.error('[ff3-review] loadSessionTranscript query failed:', error.message);
+    throw new Error(`ff3_review_transcript_query_failed: ${error.message}`);
+  }
   if (!data) return null;
   return (data.transcript as unknown[] | null) ?? [];
 }

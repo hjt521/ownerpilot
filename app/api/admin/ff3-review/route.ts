@@ -31,12 +31,19 @@ export async function GET(req: NextRequest) {
   const sb = svc();
   // ?session=<uuid> → the deep-linked transcript for one awaiting session (ruling §3).
   const sessionId = req.nextUrl.searchParams.get('session');
-  if (sessionId) {
-    const transcript = await loadSessionTranscript(sb, sessionId);
-    if (transcript === null) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-    return NextResponse.json({ transcript });
+  try {
+    if (sessionId) {
+      const transcript = await loadSessionTranscript(sb, sessionId);
+      if (transcript === null) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      return NextResponse.json({ transcript });
+    }
+    return NextResponse.json({ items: await loadAwaitingReview(sb) });
+  } catch (e) {
+    // A data-layer query failure surfaces as a 500 (→ Sentry §B "/admin/ff3-review 5xx → Sev-2 page"), never a
+    // 200 with an empty list. Loud, not silent.
+    console.error('[ff3-review] GET failed:', e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: 'review_query_failed' }, { status: 500 });
   }
-  return NextResponse.json({ items: await loadAwaitingReview(sb) });
 }
 
 export async function POST(req: NextRequest) {
