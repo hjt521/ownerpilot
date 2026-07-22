@@ -37,15 +37,8 @@ export function Features() {
           </div>
         ))}
       </div>
-      {/* Lane 8 §3.3: abstract Resolve & Document schematic (Canva-generated per ratified
-          feature_resolve_document prompt — chat → broker seal → branch to notice or counsel;
-          no legible text, no people). Decorative (alt=""), so it adds no copy claims. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/feature_resolve_document.jpg"
-        alt=""
-        className="mx-auto mt-12 w-full max-w-sm rounded-xl"
-      />
+      {/* Resolve & Document illustration removed (Ruling 5 / shipped-surface inventory 2026-07-14, disposition (c)):
+          it depicted an unshipped interactive Resolve & Document surface. Returns automatically if the product ships. */}
     </section>
   );
 }

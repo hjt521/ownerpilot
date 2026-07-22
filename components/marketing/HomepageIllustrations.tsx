@@ -52,29 +52,7 @@ export function JurisdictionFeatureBand() {
   );
 }
 
-/** After the notice (feature_resolve_document) — introduces the Resolve &amp; Document layer. */
-export function ResolveDocumentBand() {
-  return (
-    <section className="illus-band shell">
-      <div className="illus-copy">
-        <p className="eyebrow">After the notice</p>
-        <h2>The notice does not end at service.</h2>
-        <p className="illus-body">
-          If the tenant pays, makes a payment plan, agrees to move out, or returns possession, create a written
-          record before closing the notice.
-        </p>
-        <div className="resolve-labels">
-          <span>Record Payment</span>
-          <span>Create Payment Plan</span>
-          <span>Create Move-Out Agreement</span>
-          <span>Record Surrender</span>
-        </div>
-        <p className="resolve-helper">Saved to RiskPath&trade; for the owner record.</p>
-      </div>
-      <div className="illus-visual">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/feature_resolve_document.jpg" alt="" />
-      </div>
-    </section>
-  );
-}
+// ResolveDocumentBand removed (Ruling 5 / shipped-surface inventory 2026-07-14, disposition (c)): it marketed an
+// unshipped interactive Resolve & Document surface (Record Payment / Create Payment Plan / Create Move-Out
+// Agreement / Record Surrender action labels). Supersedes the 2026-07-05 illustration-placement approval per the
+// 2026-07-14 inventory finding (§4). Returns automatically to a future tranche if/when the product ships.
