@@ -43,6 +43,22 @@ Binding conventions for **all future constitutional development**. Every one is 
 - **`RESTRICT` is not used; no `ON UPDATE` clauses** (default `NO ACTION`). Match this unless an ADR justifies otherwise.
 - Name FK constraints `<table>_<column>_fkey`.
 
+## Governance identities
+
+Approver / requester / actor columns (`approved_by`, `requested_by`, and any future "who did this" governance field) are **`text`, never a uuid FK** (ADR-008). Governance records identify *constitutional actors* — which may be a person, an AI agent, a committee, an organization, or a future external authority — not a row in one identity table. **Principle: governance identities are logical identities, not database identities.** Identity resolution, if ever needed, lives in the application layer, not the constitutional schema — keeping the constitution loosely coupled and future-proof.
+
+Canonical identity format (human-readable **and** machine-parsable, no FK coupling):
+
+- bare role — `Founder`, `Broker`, `Constitution Steward`
+- `human:<display-name>` — e.g. `human:jack`
+- `user:<uuid>` — when an app user maps to a registry row
+- `ai:<agent-name>` — e.g. `ai:claude-code`, `ai:monte-carlo-reviewer`
+- `service:<service-name>` — e.g. `service:validation-runner`
+- `committee:<name>` — e.g. `committee:ExecutiveCouncil`
+- `organization:<name>`
+
+Every new governance/approval column follows this. It stays legible, parseable, loosely coupled, and compatible with a future unified identity registry without a schema change.
+
 ## CHECK constraint philosophy
 
 - Encode **invariants that must always hold** (ranges, ordering like `maximum_trials >= minimum_trials`, non-negativity, allowed state sets). Keep them in the table so they cannot be bypassed by any writer. Name them explicitly (`<table>_<column>_check`) for reversibility and clear failures.

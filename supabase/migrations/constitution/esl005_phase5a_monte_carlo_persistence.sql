@@ -72,8 +72,8 @@ create index if not exists idx_mc_experiments_created_at          on constitutio
 create index if not exists idx_mc_experiments_started_at          on constitution.monte_carlo_experiments (started_at);
 create index if not exists idx_mc_experiments_completed_at        on constitution.monte_carlo_experiments (completed_at);
 
--- updated_at maintenance via the EXISTING standard trigger function (design note 4). The ESL-004 sibling tables omit
--- this trigger; it is included here so the updated_at column is truthful. Drop this block for strict ESL-family parity.
+-- updated_at maintenance via the EXISTING standard trigger function. KEPT per ADR-008 (broker ruling 2026-07-22):
+-- an updated_at column must carry a maintaining trigger (development standards; const_0001 closed this gap schema-wide).
 drop trigger if exists monte_carlo_experiments_set_updated_at on constitution.monte_carlo_experiments;
 create trigger monte_carlo_experiments_set_updated_at
   before update on constitution.monte_carlo_experiments
