@@ -69,6 +69,23 @@ Phase 0 ✅ · Phase 1 Genesis ✅ · Phase 2 validation ✅ · Phase 3 governan
 
 ## Constitutional Intelligence Layer (doctrine ADOPTED 2026-07-24)
 - **Directive (Founder):** do not accelerate features; strengthen foundations. Every intelligence model (Behavioral, Trust, Confidence, Negotiation, Decision, future) is a **governed constitutional capability sharing one evidence model, one traceability model, one review model.** No independent scoring systems or isolated frameworks. Recorded in `doctrines/constitutional_intelligence_layer.md`. This is the next strategic objective: build the shared Intelligence Layer so models don't evolve independently into disconnected modules.
+- **Now also a first-class EA:** `EA-012` (below) formalizes the layer as ratifiable *architecture*; the doctrine remains the ratified *principle*.
+
+## Separation of powers (stable)
+Engineering **implements** · CA-001 **assures** · Founder **ratifies** · Repository is the **canonical source of truth**. This separation prevents governance from collapsing into engineering and is the platform's core architectural guarantee.
+
+## Constitutional artifact lifecycle (standard ADOPTED 2026-07-24)
+- Every artifact carries exactly one state: **Concept → Proposed → Architecture Draft → Founder Review → Ratified → Implemented → Operational → Superseded → Archived** (`standards/constitutional_artifact_lifecycle.md`). AI never self-advances past *Architecture Draft*; Founder-only transition to *Ratified*. `STATUS.md` is the canonical mirror of each artifact's state.
+- **Current states:** CA-001 Operational · Intelligence-Layer doctrine + Lifecycle standard Ratified · **EA-012 Proposed · IMR-001 Proposed · TM-001 Proposed · CM-001 Proposed · CKG-001 (P5.5) Proposed · CD-001 Proposed** · ESL-005 Ratified-design/draft-not-applied.
+
+## EA-012 — Constitutional Intelligence Layer (Proposed)
+- **Status:** **Proposed** — Founder directed the layer become a first-class EA. Scope mandate recorded in `architecture/EA-012_constitutional_intelligence_layer.md` (defines: what a model is, registration, evidence consumption, assessment production, evaluation, audit, interoperation, versioning). **Architecture not begun.** Ratify EA-012 before TM-001 (P6) design so TM-001 is the first model to inherit the finished layer.
+
+## IMR-001 — Intelligence Model Registry (Proposed)
+- **Status:** **Proposed** — Founder directed introducing a registry of intelligence models (Behavioral, TM-001, CM-001, Negotiation, Decision, Pricing, Compliance, CA-001, future). Entry schema recorded in `roadmap/intelligence_model_registry_proposal.md` (canonical_id, owner, purpose, evidence_inputs, outputs, evaluation_suite, governing_ea, governing_doctrine, constitutional_constraints, maturity, current_version, superseded_by). Governed by EA-012; built alongside the Capability Registry (P5). Prevents informal model proliferation.
+
+## Constitutional Recovery Kit (`constitution/recovery/`, ADOPTED 2026-07-24)
+- Canonical kit for rebuilding/re-grounding the platform after tool migration or data loss. `recovery/RECOVERY.md` (runbook + Emergency Agent Prompt + canonical anchors + integrity-verification steps) and `recovery/repository_inventory_2026-07-24.md` (dated file snapshot). Repository stays the source of truth; refresh inventory each release. No secrets stored — references only.
 
 ## TM-001 — Enterprise Trust Model (PROPOSED, priority 6)
 - **Status:** **PROPOSED** — Founder authorized design + canonical mapping; specification recorded in `roadmap/TM-001_enterprise_trust_model_proposal.md`. **Not designed/ratified;** architecture + mapping + schema are priority-6 work (after the Knowledge Graph). Determines permissible *reliance* (distinct from Behavioral Intelligence's *likely behavior*); multi-dimensional, evidence-classed, no universal score, no automated adverse decisions, no AI ratification. Now has the P5.5 Knowledge Graph as a relationship fabric to reference. First model to be reviewed by CA-001.
@@ -81,7 +98,8 @@ Phase 0 ✅ · Phase 1 Genesis ✅ · Phase 2 validation ✅ · Phase 3 governan
 
 ## Phase II priority order (revised 2026-07-24; prepared, not executed)
 CA-001 ✅ · **P1 security evidence ✅ (Founder-approved, merged `339a0f8`)** → **P2 Canonical Architecture Mapping (constitutional inventory)** → **P3 Constitutional Knowledge Library (EA-010)** → **P4 metadata migration** → **P5 Capability Registry** → **P5.5 Constitutional Knowledge Graph** → **P6 TM-001 Trust Model** → *(CM-001 Confidence Model designed after TM-001)* → **P7 EA-011 provider governance** → **P8 CD-001 draft (PROPOSED only)** → **P9 ESL-005 (after FF-3 window + gates).**
-- **Change from prior order:** P2 split — Canonical Architecture Mapping is now its own step (the constitutional inventory) ahead of the Knowledge Library (EA-010). Knowledge Graph inserted at P5.5. CM-001 added after TM-001.
+- **Change from prior order:** P2 split — Canonical Architecture Mapping is now its own step (the constitutional inventory) ahead of the Knowledge Library (EA-010). Knowledge Graph inserted at P5.5. CM-001 added after TM-001. **Order confirmed by Founder 2026-07-24 — keep it.**
+- **Founder hold (2026-07-24):** do **not** add intelligence models beyond TM-001 and CM-001 until P2–P5.5 (Canonical Architecture Mapping, CKL, metadata, Capability Registry, Knowledge Graph) are complete. That shared foundation must exist first so every later model inherits it. EA-012 is elevated during P2–P5.5 and ratified before P6.
 
 ## Merged PRs (~9)
 reverse-eng + ESL-005 draft (`2150678`) · Phase 0 (`8fa17cb`) · Phases 1–5 (`360d207`) · validation runner (`05baf89`) · Genesis dump + tool (`fa9ae47`) · v1.1 release (`c7d0b6d`) · v1.1 dump (`9d39c8e`) · ADR-008 accepted (`848fcab`).
