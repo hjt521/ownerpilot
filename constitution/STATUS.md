@@ -1,6 +1,6 @@
 # Constitutional Operating System — STATUS
 
-> Canonical, always-current status of the `constitution` subsystem. Point anyone here (or paste this) instead of re-deriving. Refresh this file on each constitutional release (migration workflow, step 7). **Last updated: 2026-07-22 · Constitution v1.1.**
+> Canonical, always-current status of the `constitution` subsystem. Point anyone here (or paste this) instead of re-deriving. Refresh this file on each constitutional release (migration workflow, step 7). **Last updated: 2026-07-23 · Constitution v1.1 · Phase II in progress (CA-001 Constitutional Auditor). Phase II is NOT complete.**
 
 ## Headline
 The `constitution` schema (Enterprise Constitutional AI layer) transitioned from an undocumented, database-first subsystem into a governed, repository-first software product at **version v1.1**. The repository is the authoritative source of truth. No unplanned production change was made.
@@ -49,6 +49,16 @@ Phase 0 ✅ · Phase 1 Genesis ✅ · Phase 2 validation ✅ · Phase 3 governan
 
 ## Next
 **ESL-005 (Monte Carlo) — unblocked, not yet resumed.** Architecture accepted, both design decisions resolved, 5A draft aligned. Resume 5A through the COS workflow (→ v1.2), sequenced after the unrelated FF-3 production-flip window (~2026-07-28). Future modules require EA doc → ADR → module doc → security model → validation strategy before any schema.
+
+## Phase II — CA-001 Constitutional Auditor (in progress)
+- **Status:** CA-001 **ratified** (Founder authorization via the Constitutional Recovery Package, Appendix A/D, 2026-07-23) — **repository artifacts created; awaiting Founder PR review.** Phase II is **not** complete.
+- **Canonical mapping decision:** CA-001 is delivered **entirely by extension** of the existing `constitution` governance model — capability → `capabilities`, org (Constitutional Assurance) → `ai_organizations`, binding → `ai_organization_capabilities`, findings → `agent_review_gates.findings`, events → `agent_event_log`, artifact → `artifacts`/`artifact_versions`. **No new tables, no parallel registries.**
+- **Independence controls:** the Auditor may inspect/report/recommend/request-remediation/block-where-policy-grants; it may **never** implement, deploy, merge, ratify, modify production, audit its own authored work, or self-grant authority. AI output alone is never ratification. Missing evidence → `Indeterminate`.
+- **Files added:** `audit/CA-001_constitutional_auditor.md`, `audit/canonical_architecture_mapping_CA-001.md`, `audit/initial_audit_queue_2026-07-23.md`, `audit/audit_automation_design.md`. **Modified:** `adr/adr_log.md` (ADR-009), `STATUS.md`.
+- **Audit automation:** designed, **not deployed** (extends `validation/run_checks.*` + CI; three tiers — deterministic / AI-assisted-advisory / human-only).
+- **Initial security audit queue (evidence-backed, none remediated):** A) constitution/schema RLS deny-by-default — *Indeterminate* pending grant evidence; B) `pg_net` in `public` — *Compliant w/ observation* (documented deferral); C) `WITH CHECK(true)` INSERT on 5 public audit tables — *Compliant w/ observation* (ratified Fork H-a walls); D) leaked-password disabled — *Noncompliant/pending*.
+- **Database changes applied:** **none.** DB registration of CA-001 capability/org rows is a future reviewed migration (repository-first).
+- **CD-001:** remains **PROPOSED** (not ratified). **Next Founder decisions:** review/merge the CA-001 PR; whether findings later warrant a dedicated `audit_findings` table; sequencing of the CA-001 registration migration.
 
 ## Merged PRs (~8)
 reverse-eng + ESL-005 draft (`2150678`) · Phase 0 (`8fa17cb`) · Phases 1–5 (`360d207`) · validation runner (`05baf89`) · Genesis dump + tool (`fa9ae47`) · v1.1 release (`c7d0b6d`) · v1.1 dump (`9d39c8e`) · ADR-008 accepted (`848fcab`).
