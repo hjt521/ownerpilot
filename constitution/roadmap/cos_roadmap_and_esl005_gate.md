@@ -1,6 +1,6 @@
 # Constitutional Operating System — Roadmap & ESL-005 Resume Gate
 
-Extends `gap_analysis_and_roadmap.md` (Phase 0) with the COS governance phases. Current constitution version: **v1.0 "Genesis"** (git `8fa17cb`, overall checksum `8830f6b1…b71e36`).
+Extends `gap_analysis_and_roadmap.md` (Phase 0) with the COS governance phases. Current constitution version: **v1.1** (`const_0001` applied 2026-07-22; overall checksum `60ea83bc…a9275740`). Genesis was **v1.0** (`8830f6b1…b71e36`) — the first release (`const_0001`) exercised the full COS workflow end-to-end.
 
 ## Status of the governance build
 

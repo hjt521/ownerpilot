@@ -1,0 +1,45 @@
+{
+  "$comment": "Constitution v1.1 release manifest. First official release after Genesis. Produced by the migration workflow (baseline refresh, step 8) after const_0001_updated_at_trigger_coverage was applied. Genesis v1.0 (constitution_v1.0_manifest.json) remains immutable.",
+  "constitution_release": "v1.1",
+  "release_name": "trigger-coverage",
+  "previous_release": "v1.0",
+  "schema": "constitution",
+  "status": "released",
+  "migration": "const_0001_updated_at_trigger_coverage",
+  "change_type": "additive (10 updated_at triggers); correctness-only; backward compatible; reversible",
+  "release": {
+    "release_date": "2026-07-22",
+    "applied_by": "engineering via connected Supabase MCP, on explicit broker instruction ('run it through sql')",
+    "supabase_project_ref": "txpetdrfsmqnyooydmas",
+    "postgresql_version": "PostgreSQL 17.6 on aarch64-unknown-linux-gnu"
+  },
+  "object_counts": {
+    "tables": 59,
+    "functions": 7,
+    "triggers": 18,
+    "indexes": 139,
+    "rls_enabled_tables": 59,
+    "rls_policies": 0,
+    "enums": 0,
+    "domains": 0,
+    "sequences": 0
+  },
+  "checksums": {
+    "algorithm": "sha256",
+    "tables_sha256": "1783c548be92637ed04192868862351bfd104d9fcc626b72daa14227eaa25a76",
+    "functions_sha256": "7b4e378fca32c775d919570a5c6a5fa14054e25883416c9e86e938b72f1c5ed1",
+    "triggers_sha256": "f51f3036897655c2abecc6a47c27bc00498f69803ed7c6d7c0c48c528edff382",
+    "indexes_sha256": "30d250c4a03667b0d13c9f8dcbf037e2bab14e8f6d995be3ec46870bf6e7ca78",
+    "overall_sha256": "60ea83bc0916ce31ed1410f724770d4c0dd655a47d914a260bea7376a9275740"
+  },
+  "delta_from_v1.0": {
+    "triggers": "8 -> 18 (added set_updated_at() to 9 non-twin tables + touch_updated_at() to twin_discovery_rules)",
+    "triggers_sha256": "bdff625ff947cf3eeeb04ad12d392a35818e41589d98a1c63844256ff19dc51c -> f51f3036897655c2abecc6a47c27bc00498f69803ed7c6d7c0c48c528edff382",
+    "overall_sha256": "8830f6b18d3f466b9876a136283592df9041fe2caee0a97d038e836429b71e36 -> 60ea83bc0916ce31ed1410f724770d4c0dd655a47d914a260bea7376a9275740",
+    "validation": "check #2 trigger_coverage: 10 offenders -> 0; all other checks unchanged and green"
+  },
+  "artifacts": {
+    "current_checksum_file": "constitution_checksum.sha256",
+    "schema_dump": "constitution_v1.1.sql (regenerate via constitution/tools/dump_constitution.mjs — pending refresh)"
+  }
+}
