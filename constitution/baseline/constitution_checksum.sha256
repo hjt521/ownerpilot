@@ -1,8 +1,9 @@
-# Constitution Genesis Checksums — v1.0 (Genesis) · 2026-07-22 · git 8fa17cb
-# Algorithm: sha256 over the canonical DDL of each object category (see CONSTITUTION_BASELINE_v1.md).
-# Compare a future snapshot's overall checksum against this file to detect drift automatically.
+# Constitution CURRENT baseline checksums — v1.1 · 2026-07-22 (release: const_0001_updated_at_trigger_coverage)
+# This file tracks the CURRENT baseline the validation runner diffs against. It advances every release.
+# Genesis v1.0 checksums are preserved immutably in CONSTITUTION_BASELINE_v1.md + constitution_v1.0_manifest.json.
+# Algorithm: sha256 over the canonical DDL of each object category (see CONSTITUTION_BASELINE_v1.md §Checksum algorithm).
 1783c548be92637ed04192868862351bfd104d9fcc626b72daa14227eaa25a76  constitution.tables
 7b4e378fca32c775d919570a5c6a5fa14054e25883416c9e86e938b72f1c5ed1  constitution.functions
-bdff625ff947cf3eeeb04ad12d392a35818e41589d98a1c63844256ff19dc51c  constitution.triggers
+f51f3036897655c2abecc6a47c27bc00498f69803ed7c6d7c0c48c528edff382  constitution.triggers
 30d250c4a03667b0d13c9f8dcbf037e2bab14e8f6d995be3ec46870bf6e7ca78  constitution.indexes
-8830f6b18d3f466b9876a136283592df9041fe2caee0a97d038e836429b71e36  constitution.OVERALL
+60ea83bc0916ce31ed1410f724770d4c0dd655a47d914a260bea7376a9275740  constitution.OVERALL
