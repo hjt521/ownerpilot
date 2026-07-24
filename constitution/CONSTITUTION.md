@@ -1,3 +1,28 @@
+---
+constitutional_id: CON-001
+object_type: constitution
+title: Engineering Constitution
+status: Operational
+canonical_owner: Governance
+governing_authority: Founder
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: []
+required_by: []
+implements: []
+governed_by: [Founder]
+validated_by: [CA-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [constitution,root]
+program_phase: foundation
+repository_path: constitution/CONSTITUTION.md
+checksum_scope: file
+---
+
 # CONSTITUTION.md — The OwnerPilot Constitutional Operating System
 
 > **Status:** Phase 0 — Repository Foundation (documentation & governance only). No production behavior is changed by anything in this directory. The production database remains the current source of truth until the baseline is exported and adopted.

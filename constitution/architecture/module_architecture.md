@@ -1,3 +1,28 @@
+---
+constitutional_id: ARCH-001
+object_type: architecture
+title: Module Architecture
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [CON-001]
+required_by: []
+implements: [CON-001]
+governed_by: [CON-001]
+validated_by: [VAL-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [architecture]
+program_phase: foundation
+repository_path: constitution/architecture/module_architecture.md
+checksum_scope: file
+---
+
 # Phase C — Constitution Module Architecture
 
 Documents each constitutional subsystem. Module boundaries are **inferred from naming and function dependencies** (the database does not label them); groupings are engineering's best reconstruction and should be confirmed by the platform owner. 59 tables total. All tables: RLS enabled, deny-by-default (0 policies), `id uuid default gen_random_uuid()`, `created_at timestamptz default now()`.

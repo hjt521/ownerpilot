@@ -1,5 +1,6 @@
 ---
 constitutional_id: EA-000
+governed_by: [CON-001]
 object_type: enterprise_architecture
 title: Constitutional Meta-Architecture
 status: Proposed

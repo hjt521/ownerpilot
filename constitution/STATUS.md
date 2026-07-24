@@ -1,3 +1,28 @@
+---
+constitutional_id: SYS-001
+object_type: dashboard
+title: Constitutional Operating System STATUS
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: n/a
+lifecycle_state: Operational
+created: 2026-07-22
+updated: 2026-07-24
+depends_on: [MAP-001]
+required_by: [REC-001]
+implements: []
+governed_by: [CON-001]
+validated_by: [CBS-001]
+supersedes: []
+superseded_by: []
+related_artifacts: [CIX-001]
+registry_tags: [status, dashboard]
+program_phase: operational
+repository_path: constitution/STATUS.md
+checksum_scope: file
+---
+
 # Constitutional Operating System — STATUS
 
 > Canonical, always-current status of the `constitution` subsystem. Point anyone here (or paste this) instead of re-deriving. Refresh this file on each constitutional release (migration workflow, step 7). **Last updated: 2026-07-24 · Constitution v1.1 · Phase II in progress. P1 security evidence Founder-approved; roadmap revised (Knowledge Graph P5.5, CM-001 added); Constitutional Intelligence Layer adopted. Phase II is NOT complete.**
@@ -113,6 +138,15 @@ The platform now governs how its own governance evolves. Components: **Artifact 
 
 ## P5.5 — Constitutional Knowledge Graph (PROPOSED, priority 5.5)
 - **Status:** **PROPOSED** — Founder placed at priority 5.5 (after Capability Registry, before TM-001): "relationships, not just artifacts." Spec in `roadmap/P5_5_constitutional_knowledge_graph_proposal.md`. Connects books, doctrines, ADRs, EA, capabilities, AI organizations, trust/decision/behavioral models, CA-001, Founder decisions. **Governed-relationships-first — no graph DB assumed initially;** begins inside the existing `constitution` structures. **Not designed/ratified.**
+
+## Metadata foundation — CBS-001 generated (P2.1 → P3 → P4)
+The COS is now **metadata-driven**: every durable artifact is self-describing (STD-003 front-matter + permanent CRID), and **CBS-001** (`tools/cbs.mjs`) compiles that metadata into all derived artifacts — no hand-synchronization. `node constitution/tools/cbs.mjs build` regenerates `constitution/index/*` reproducibly; `check` fails CI on metadata drift (dup CRID, broken reference, dependency cycle, missing metadata). Delivered: STD-003 metadata schema · P2.1 front-matter retrofit + CRIDs across ~20 artifacts · **CBS-001** build system · **EA-010** Knowledge Library (generated view) · **CIX-001** generated indexes (13 files, 31 nodes / 76 edges) · implementation report (RPT-001). No production/schema/runtime change; no AI ratification.
+
+<!-- CBS-001 GENERATED STATS (regenerate: node constitution/tools/cbs.mjs status) -->
+- **Artifacts (with metadata):** 33 · **ADRs:** 9
+- **By lifecycle:** Architecture Draft 2 · Implemented 3 · Operational 14 · Proposed 8 · Ratified 6
+- **Outstanding Proposed:** EA-000, EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
+- **Ratification queue (Proposed/Architecture Draft):** EA-000, EA-010, EA-012, MAP-001, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
 
 ## Layer model (Founder-articulated 2026-07-24)
 - **L0 Meta-Governance:** EA-000, STD-002 lifecycle, Recovery Kit+Bundle, CIX-001, MAP-001.

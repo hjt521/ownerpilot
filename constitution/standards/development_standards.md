@@ -1,3 +1,28 @@
+---
+constitutional_id: STD-001
+object_type: standard
+title: Development Standards
+status: Ratified
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Ratified
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [CON-001]
+required_by: []
+implements: [CON-001]
+governed_by: [CON-001]
+validated_by: [VAL-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [standards]
+program_phase: foundation
+repository_path: constitution/standards/development_standards.md
+checksum_scope: file
+---
+
 # Phase E — Constitution Development Standards
 
 Binding conventions for **all future constitutional development**. Every one is derived from the 59 tables / 7 functions already in production (see the reverse-engineering report) — these are not new preferences, they are the codified existing house style. New objects that deviate must justify it in an ADR.

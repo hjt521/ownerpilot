@@ -1,5 +1,6 @@
 ---
 constitutional_id: EA-012
+governed_by: [EA-000]
 object_type: enterprise_architecture
 title: Constitutional Intelligence Layer
 status: Proposed

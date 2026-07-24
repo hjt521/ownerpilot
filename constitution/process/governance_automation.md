@@ -1,3 +1,28 @@
+---
+constitutional_id: PROC-002
+object_type: process
+title: Governance Automation
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [CON-001]
+required_by: []
+implements: [CON-001]
+governed_by: [CON-001]
+validated_by: [VAL-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [process]
+program_phase: foundation
+repository_path: constitution/process/governance_automation.md
+checksum_scope: file
+---
+
 # Phase 3 — Constitutional Governance Automation
 
 **Rule:** *no migration may change the Constitution without simultaneously updating its governance artifacts.* Every constitutional migration produces a **Migration Governance Record** (one file per migration, `constitution/database/migrations/<name>_record.md`) covering the ten required outputs. The pre-merge CI gate (checks 11/13/14) fails if a schema-touching PR lacks a complete record or leaves docs/ADRs out of sync.

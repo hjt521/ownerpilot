@@ -1,3 +1,28 @@
+---
+constitutional_id: ARCH-002
+object_type: architecture
+title: Repository Structure
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [CON-001]
+required_by: []
+implements: [CON-001]
+governed_by: [CON-001]
+validated_by: [VAL-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [architecture]
+program_phase: foundation
+repository_path: constitution/architecture/repository_structure.md
+checksum_scope: file
+---
+
 # Phase A — Constitution Repository Structure
 
 The `constitution` subsystem is organized as a modular, scalable, repository-first tree. Rationale: the schema is a *product* (59 tables and growing across many modules), so it needs the same separation of concerns a product codebase has — architecture separate from standards separate from the executable database artifacts separate from decision records.

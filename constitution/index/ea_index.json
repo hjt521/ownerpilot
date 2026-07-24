@@ -1,0 +1,93 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "count": 3,
+  "artifacts": [
+    {
+      "crid": "EA-000",
+      "title": "Constitutional Meta-Architecture",
+      "object_type": "enterprise_architecture",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/EA-000_constitutional_meta_architecture.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "EA-010",
+      "title": "Constitutional Knowledge Library",
+      "object_type": "enterprise_architecture",
+      "lifecycle_state": "Architecture Draft",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/EA-010_constitutional_knowledge_library.md",
+      "depends_on": [
+        "MAP-001",
+        "STD-003",
+        "CBS-001"
+      ],
+      "required_by": [
+        "CKG-001",
+        "CK-001"
+      ],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "CIX-001",
+        "MAP-001"
+      ],
+      "registry_tags": [
+        "knowledge-library",
+        "generated",
+        "metadata"
+      ],
+      "program_phase": "P3",
+      "version": "1.0"
+    },
+    {
+      "crid": "EA-012",
+      "title": "Constitutional Intelligence Layer",
+      "object_type": "enterprise_architecture",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/EA-012_constitutional_intelligence_layer.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    }
+  ]
+}

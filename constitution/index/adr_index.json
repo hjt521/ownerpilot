@@ -1,0 +1,53 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "count": 9,
+  "adrs": [
+    {
+      "crid": "ADR-001",
+      "title": "A dedicated `constitution` schema",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-002",
+      "title": "Database-first origins → repository-first going forward",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-003",
+      "title": "Security model: deny-by-default, operator-plane access",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-004",
+      "title": "RLS strategy: enable + no policy (not permissive policies)",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-005",
+      "title": "SECURITY DEFINER functions with pinned search_path",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-006",
+      "title": "Enterprise Simulation architecture (ESL-002/003/004)",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-007",
+      "title": "Decision Intelligence pipeline with founder-in-the-loop approval",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-008",
+      "title": "Monte Carlo architecture (ESL-005)",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-009",
+      "title": "CA-001 Constitutional Auditor (independent assurance)",
+      "path": "constitution/adr/adr_log.md"
+    }
+  ]
+}

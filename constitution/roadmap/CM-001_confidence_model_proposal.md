@@ -1,5 +1,7 @@
 ---
 constitutional_id: CM-001
+governed_by: [EA-012]
+lifecycle_state: Proposed
 object_type: constitutional_intelligence_model
 title: Confidence Model
 status: PROPOSED

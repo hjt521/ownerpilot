@@ -1,0 +1,978 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "count": 33,
+  "artifacts": [
+    {
+      "crid": "ADR-LOG",
+      "title": "Architecture Decision Records",
+      "object_type": "adr_log",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/adr/adr_log.md",
+      "depends_on": [
+        "CON-001",
+        "PROC-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "adr"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "ARCH-001",
+      "title": "Module Architecture",
+      "object_type": "architecture",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/module_architecture.md",
+      "depends_on": [
+        "CON-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "architecture"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "ARCH-002",
+      "title": "Repository Structure",
+      "object_type": "architecture",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/repository_structure.md",
+      "depends_on": [
+        "CON-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "architecture"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "BASE-001",
+      "title": "Constitution Schema Baseline",
+      "object_type": "baseline",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/baseline/CONSTITUTION_BASELINE_v1.md",
+      "depends_on": [],
+      "required_by": [
+        "VAL-001",
+        "REC-001"
+      ],
+      "implements": [
+        "ADR-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "baseline",
+        "genesis"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "BASE-002",
+      "title": "Baseline Notes",
+      "object_type": "baseline",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/database/baseline/BASELINE.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "baseline"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "CA-001",
+      "title": "Constitutional Auditor",
+      "object_type": "constitutional_capability",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Constitutional Assurance",
+      "ratification_authority": "none",
+      "path": "constitution/audit/CA-001_constitutional_auditor.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "ADR-009",
+        "CON-001"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": "1.0"
+    },
+    {
+      "crid": "CBS-001",
+      "title": "Constitutional Build System",
+      "object_type": "infrastructure",
+      "lifecycle_state": "Implemented",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/tools/CBS-001_constitutional_build_system.md",
+      "depends_on": [
+        "STD-003",
+        "MAP-001"
+      ],
+      "required_by": [
+        "CIX-001",
+        "EA-010",
+        "SYS-001",
+        "REC-001"
+      ],
+      "implements": [
+        "EA-000",
+        "STD-003"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "CIX-001"
+      ],
+      "registry_tags": [
+        "build-system",
+        "generator",
+        "metadata",
+        "tooling"
+      ],
+      "program_phase": "P4-foundation",
+      "version": "1.0"
+    },
+    {
+      "crid": "CIX-001",
+      "title": "Constitutional Index",
+      "object_type": "constitutional_infrastructure",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/constitutional_index_proposal.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "CK-001",
+      "title": "Constitutional Query Engine",
+      "object_type": "constitutional_capability",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/CK-001_constitutional_query_engine_proposal.md",
+      "depends_on": [
+        "EA-010",
+        "CKG-001",
+        "IMR-001",
+        "CIX-001"
+      ],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-000",
+        "EA-012"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "CKG-001",
+      "title": "Constitutional Knowledge Graph",
+      "object_type": "constitutional_infrastructure",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/P5_5_constitutional_knowledge_graph_proposal.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "CM-001",
+      "title": "Confidence Model",
+      "object_type": "constitutional_intelligence_model",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/CM-001_confidence_model_proposal.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-012"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "CON-001",
+      "title": "Engineering Constitution",
+      "object_type": "constitution",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/CONSTITUTION.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "constitution",
+        "root"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "DOC-001",
+      "title": "Constitutional Intelligence Layer",
+      "object_type": "doctrine",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/doctrines/constitutional_intelligence_layer.md",
+      "depends_on": [],
+      "required_by": [
+        "TM-001",
+        "CM-001",
+        "EA-012"
+      ],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "EA-012"
+      ],
+      "registry_tags": [
+        "doctrine",
+        "intelligence"
+      ],
+      "program_phase": "intelligence",
+      "version": null
+    },
+    {
+      "crid": "DOC-002",
+      "title": "Governance Handbook",
+      "object_type": "doctrine",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/doctrines/governance_handbook.md",
+      "depends_on": [
+        "CON-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "doctrine",
+        "handbook"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "EA-000",
+      "title": "Constitutional Meta-Architecture",
+      "object_type": "enterprise_architecture",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/EA-000_constitutional_meta_architecture.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "EA-010",
+      "title": "Constitutional Knowledge Library",
+      "object_type": "enterprise_architecture",
+      "lifecycle_state": "Architecture Draft",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/EA-010_constitutional_knowledge_library.md",
+      "depends_on": [
+        "MAP-001",
+        "STD-003",
+        "CBS-001"
+      ],
+      "required_by": [
+        "CKG-001",
+        "CK-001"
+      ],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "CIX-001",
+        "MAP-001"
+      ],
+      "registry_tags": [
+        "knowledge-library",
+        "generated",
+        "metadata"
+      ],
+      "program_phase": "P3",
+      "version": "1.0"
+    },
+    {
+      "crid": "EA-012",
+      "title": "Constitutional Intelligence Layer",
+      "object_type": "enterprise_architecture",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/EA-012_constitutional_intelligence_layer.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "IMR-001",
+      "title": "Intelligence Model Registry",
+      "object_type": "constitutional_registry",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/intelligence_model_registry_proposal.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-012"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "MAP-001",
+      "title": "Canonical Architecture Mapping (Constitutional Operating System)",
+      "object_type": "canonical_architecture_mapping",
+      "lifecycle_state": "Architecture Draft",
+      "canonical_owner": "Constitutional Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/canonical_architecture_mapping.md",
+      "depends_on": [],
+      "required_by": [
+        "EA-000",
+        "CIX-001",
+        "EA-010",
+        "CKG-001",
+        "IMR-001",
+        "CK-001"
+      ],
+      "implements": [],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "MIG-const_0001",
+      "title": "const_0001 updated_at trigger coverage",
+      "object_type": "migration",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/database/migrations/const_0001_updated_at_trigger_coverage_record.md",
+      "depends_on": [
+        "STD-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "PROC-001"
+      ],
+      "governed_by": [
+        "PROC-001"
+      ],
+      "validated_by": [
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "migration"
+      ],
+      "program_phase": "release",
+      "version": null
+    },
+    {
+      "crid": "PROC-001",
+      "title": "Migration Workflow",
+      "object_type": "process",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/process/migration_workflow.md",
+      "depends_on": [
+        "CON-001",
+        "STD-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "process",
+        "workflow"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "PROC-002",
+      "title": "Governance Automation",
+      "object_type": "process",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/process/governance_automation.md",
+      "depends_on": [
+        "CON-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "process"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "REC-001",
+      "title": "Recovery Kit and Bundle",
+      "object_type": "infrastructure",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/recovery/RECOVERY.md",
+      "depends_on": [
+        "BASE-001",
+        "VAL-001",
+        "SYS-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "recovery"
+      ],
+      "program_phase": "continuity",
+      "version": null
+    },
+    {
+      "crid": "ROAD-001",
+      "title": "Gap Analysis and Roadmap",
+      "object_type": "roadmap",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/gap_analysis_and_roadmap.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "roadmap"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "ROAD-002",
+      "title": "COS Roadmap and ESL-005 Gate",
+      "object_type": "roadmap",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/cos_roadmap_and_esl005_gate.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "roadmap"
+      ],
+      "program_phase": "governance",
+      "version": null
+    },
+    {
+      "crid": "RPT-001",
+      "title": "Constitutional Metadata Foundation — Implementation Report and Migration Plan",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "n/a",
+      "path": "constitution/architecture/P2_metadata_foundation_implementation_report.md",
+      "depends_on": [
+        "MAP-001",
+        "STD-003",
+        "CBS-001",
+        "EA-010",
+        "CIX-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "MAP-001",
+        "EA-010",
+        "CBS-001"
+      ],
+      "registry_tags": [
+        "report",
+        "metadata",
+        "P2.1",
+        "P3",
+        "P4"
+      ],
+      "program_phase": "P2.1-P3-P4-foundation",
+      "version": "1.0"
+    },
+    {
+      "crid": "STD-001",
+      "title": "Development Standards",
+      "object_type": "standard",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/standards/development_standards.md",
+      "depends_on": [
+        "CON-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "standards"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "STD-002",
+      "title": "Constitutional Artifact Lifecycle",
+      "object_type": "standard",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/standards/constitutional_artifact_lifecycle.md",
+      "depends_on": [
+        "CON-001",
+        "EA-000"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "lifecycle"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "STD-003",
+      "title": "Constitutional Metadata Schema",
+      "object_type": "standard",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/standards/constitutional_metadata_schema.md",
+      "depends_on": [
+        "CON-001",
+        "EA-000",
+        "MAP-001"
+      ],
+      "required_by": [
+        "CBS-001",
+        "CIX-001",
+        "EA-010"
+      ],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "STD-002",
+        "MAP-001"
+      ],
+      "registry_tags": [
+        "metadata",
+        "front-matter",
+        "schema"
+      ],
+      "program_phase": "P2.1",
+      "version": "1.0"
+    },
+    {
+      "crid": "SYS-001",
+      "title": "Constitutional Operating System STATUS",
+      "object_type": "dashboard",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "n/a",
+      "path": "constitution/STATUS.md",
+      "depends_on": [
+        "MAP-001"
+      ],
+      "required_by": [
+        "REC-001"
+      ],
+      "implements": [],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "CIX-001"
+      ],
+      "registry_tags": [
+        "status",
+        "dashboard"
+      ],
+      "program_phase": "operational",
+      "version": null
+    },
+    {
+      "crid": "TM-001",
+      "title": "Enterprise Trust Model",
+      "object_type": "constitutional_intelligence_model",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/TM-001_enterprise_trust_model_proposal.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-012"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    },
+    {
+      "crid": "VAL-001",
+      "title": "Validation Framework and Runner",
+      "object_type": "validation",
+      "lifecycle_state": "Implemented",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/validation/validation_framework.md",
+      "depends_on": [
+        "BASE-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "PROC-001"
+      ],
+      "governed_by": [
+        "PROC-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "validation"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "VAL-002",
+      "title": "Validation CI CD Design",
+      "object_type": "validation",
+      "lifecycle_state": "Implemented",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/validation/ci_cd_design.md",
+      "depends_on": [
+        "VAL-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "VAL-001"
+      ],
+      "governed_by": [
+        "PROC-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "validation",
+        "ci"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    }
+  ]
+}

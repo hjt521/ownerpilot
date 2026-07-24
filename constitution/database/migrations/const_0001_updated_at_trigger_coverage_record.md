@@ -1,3 +1,28 @@
+---
+constitutional_id: MIG-const_0001
+object_type: migration
+title: const_0001 updated_at trigger coverage
+status: Operational
+canonical_owner: Governance
+governing_authority: PROC-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [STD-001]
+required_by: []
+implements: [PROC-001]
+governed_by: [PROC-001]
+validated_by: [VAL-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [migration]
+program_phase: release
+repository_path: constitution/database/migrations/const_0001_updated_at_trigger_coverage_record.md
+checksum_scope: file
+---
+
 # Migration Governance Record — const_0001_updated_at_trigger_coverage
 
 - **Constitution version:** v1.0 → **v1.1** (first official release after Genesis) · **Type:** additive · **Reversible:** yes

@@ -1,3 +1,28 @@
+---
+constitutional_id: VAL-001
+object_type: validation
+title: Validation Framework and Runner
+status: Implemented
+canonical_owner: Governance
+governing_authority: PROC-001
+ratification_authority: Founder
+lifecycle_state: Implemented
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [BASE-001]
+required_by: []
+implements: [PROC-001]
+governed_by: [PROC-001]
+validated_by: [CA-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [validation]
+program_phase: foundation
+repository_path: constitution/validation/validation_framework.md
+checksum_scope: file
+---
+
 # Phase G — Constitution Validation Framework
 
 Automated checks that make constitutional regressions **detectable before deployment** and drift **detectable continuously**. Design (Phase 0); implementation is a follow-up (each check is a SQL introspection query + a repo comparison, runnable in CI and as a scheduled watch — the same mechanism as the `public`-schema drift diagnostic #179 and the weekly Advisors task, extended to `constitution`).
@@ -26,3 +51,6 @@ Automated checks that make constitutional regressions **detectable before deploy
 ## Implementation shape
 
 Each check is a small idempotent SQL query returning offenders as JSON (exactly like the #179 diagnostic). A `constitution/validation/run_checks.sql` bundle + a scheduled task diffs against `constitution_baseline.sql` and the ADR-005 allow-list, alerting on any delta. No check writes to the database.
+
+## Metadata-drift gate (CBS-001)
+`node constitution/tools/cbs.mjs check` is the metadata-integrity CI gate: it fails on duplicate CRIDs, broken CRID references, dependency cycles, missing required metadata, or unknown object types. Wire it into CI and the weekly watch alongside the schema checksum check. The generated `constitution/index/*` must always be reproducible from repository metadata — a diff after `cbs build` means front-matter changed without regenerating the indexes.

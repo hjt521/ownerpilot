@@ -1,3 +1,28 @@
+---
+constitutional_id: ADR-LOG
+object_type: adr_log
+title: Architecture Decision Records
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [CON-001, PROC-001]
+required_by: []
+implements: [CON-001]
+governed_by: [CON-001]
+validated_by: [CA-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [adr]
+program_phase: foundation
+repository_path: constitution/adr/adr_log.md
+checksum_scope: file
+---
+
 # Constitution — Architecture Decision Records
 
 Append-only log. Each ADR: **Context** (why the decision exists), **Decision**, **Consequences**, **Revisit trigger** (what would justify changing it). Superseded ADRs are marked, never deleted.

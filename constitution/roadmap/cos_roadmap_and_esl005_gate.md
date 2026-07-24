@@ -1,3 +1,28 @@
+---
+constitutional_id: ROAD-002
+object_type: roadmap
+title: COS Roadmap and ESL-005 Gate
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: []
+required_by: []
+implements: []
+governed_by: [CON-001]
+validated_by: []
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [roadmap]
+program_phase: governance
+repository_path: constitution/roadmap/cos_roadmap_and_esl005_gate.md
+checksum_scope: file
+---
+
 # Constitutional Operating System — Roadmap & ESL-005 Resume Gate
 
 Extends `gap_analysis_and_roadmap.md` (Phase 0) with the COS governance phases. Current constitution version: **v1.1** (`const_0001` applied 2026-07-22; overall checksum `60ea83bc…a9275740`). Genesis was **v1.0** (`8830f6b1…b71e36`) — the first release (`const_0001`) exercised the full COS workflow end-to-end.

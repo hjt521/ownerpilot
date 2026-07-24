@@ -1,3 +1,28 @@
+---
+constitutional_id: VAL-002
+object_type: validation
+title: Validation CI CD Design
+status: Implemented
+canonical_owner: Governance
+governing_authority: PROC-001
+ratification_authority: Founder
+lifecycle_state: Implemented
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [VAL-001]
+required_by: []
+implements: [VAL-001]
+governed_by: [PROC-001]
+validated_by: [CA-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [validation,ci]
+program_phase: foundation
+repository_path: constitution/validation/ci_cd_design.md
+checksum_scope: file
+---
+
 # Constitutional Validation — CI/CD Design (Phase 2)
 
 Goal: **make constitutional regressions impossible to introduce silently.** The validation checks (`checks.sql` + runner-side comparisons) run in three places, so a drift or governance violation is caught at commit, at merge, and continuously.

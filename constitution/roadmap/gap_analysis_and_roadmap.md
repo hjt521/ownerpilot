@@ -1,3 +1,28 @@
+---
+constitutional_id: ROAD-001
+object_type: roadmap
+title: Gap Analysis and Roadmap
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: []
+required_by: []
+implements: []
+governed_by: [CON-001]
+validated_by: []
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [roadmap]
+program_phase: foundation
+repository_path: constitution/roadmap/gap_analysis_and_roadmap.md
+checksum_scope: file
+---
+
 # Phase H — Gap Analysis, Roadmap & ESL Readiness
 
 ## 1 · Gap analysis (what modernization surfaced)

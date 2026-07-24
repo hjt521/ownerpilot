@@ -1,0 +1,69 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "count": 2,
+  "artifacts": [
+    {
+      "crid": "VAL-001",
+      "title": "Validation Framework and Runner",
+      "object_type": "validation",
+      "lifecycle_state": "Implemented",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/validation/validation_framework.md",
+      "depends_on": [
+        "BASE-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "PROC-001"
+      ],
+      "governed_by": [
+        "PROC-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "validation"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "VAL-002",
+      "title": "Validation CI CD Design",
+      "object_type": "validation",
+      "lifecycle_state": "Implemented",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/validation/ci_cd_design.md",
+      "depends_on": [
+        "VAL-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "VAL-001"
+      ],
+      "governed_by": [
+        "PROC-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "validation",
+        "ci"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    }
+  ]
+}
