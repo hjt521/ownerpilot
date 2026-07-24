@@ -34,7 +34,7 @@
       "crid": "REG-CAP-001",
       "title": "Constitutional Capability Registry",
       "object_type": "registry",
-      "lifecycle_state": "Architecture Draft",
+      "lifecycle_state": "Ratified",
       "canonical_owner": "Governance",
       "ratification_authority": "Founder",
       "path": "constitution/architecture/REG-CAP-001_capability_registry.md",
@@ -75,7 +75,7 @@
       "version": "1.0",
       "capability_class": "constitutional",
       "security_classification": "internal",
-      "operational_maturity": "architecture-draft",
+      "operational_maturity": "ratified",
       "runtime_bindings": []
     }
   ]

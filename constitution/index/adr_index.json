@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 11,
+  "count": 12,
   "adrs": [
     {
       "crid": "ADR-001",
@@ -57,6 +57,11 @@
     {
       "crid": "ADR-011",
       "title": "Ratify EA-000 and close the Constitutional Foundation set",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-012",
+      "title": "Ratify REG-CAP-001 + EA-100; authorize OwnerPilot Product Build Program",
       "path": "constitution/adr/adr_log.md"
     }
   ]

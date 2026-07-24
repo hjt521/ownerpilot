@@ -2,12 +2,12 @@
 constitutional_id: EA-100
 object_type: enterprise_architecture
 title: OwnerPilot Enterprise Architecture
-status: Architecture Draft
+status: Ratified
 version: 0.1
 canonical_owner: Enterprise
 governing_authority: EA-000
 ratification_authority: Founder
-lifecycle_state: Architecture Draft
+lifecycle_state: Ratified
 created: 2026-07-24
 updated: 2026-07-24
 depends_on: [EA-000, MAP-001, REG-CAP-001]
@@ -26,7 +26,7 @@ checksum_scope: file
 
 # EA-100 — OwnerPilot Enterprise Architecture
 
-**The enterprise built on the Constitution.** EA-100 is the application-layer architecture that governs OwnerPilot's business capabilities. It sits *under* the constitutional meta-architecture (governed by EA-000) and *on top of* the Capability Registry (REG-CAP-001): every OwnerPilot capability is a governed constitutional object, traceable to governance, queryable through the constitutional platform. **This is modeling, not implementation** — capabilities describe identity, ownership, dependencies, and runtime bindings; the business logic already lives in the OwnerPilot application and is unchanged by this artifact. Lifecycle: Architecture Draft, awaiting Founder ratification.
+**The enterprise built on the Constitution.** EA-100 is the application-layer architecture that governs OwnerPilot's business capabilities. It sits *under* the constitutional meta-architecture (governed by EA-000) and *on top of* the Capability Registry (REG-CAP-001): every OwnerPilot capability is a governed constitutional object, traceable to governance, queryable through the constitutional platform. **This is modeling, not implementation** — capabilities describe identity, ownership, dependencies, and runtime bindings; the business logic already lives in the OwnerPilot application and is unchanged by this artifact. Lifecycle: Ratified (Founder, 2026-07-24 · ADR-012).
 
 ## Enterprise capability taxonomy
 | ECAP | Capability | Category | Owner | Maturity |

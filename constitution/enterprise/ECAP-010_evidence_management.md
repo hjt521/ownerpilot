@@ -1,5 +1,7 @@
 ---
 constitutional_id: ECAP-010
+delivery_stage: constitutional-validation
+implementing_artifacts: [lib/audit, app/api/internal, lib/monitoring]
 object_type: enterprise_capability
 title: Evidence Management
 status: Concept

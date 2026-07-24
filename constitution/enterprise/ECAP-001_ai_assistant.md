@@ -1,5 +1,7 @@
 ---
 constitutional_id: ECAP-001
+delivery_stage: constitutional-validation
+implementing_artifacts: [app/chat, app/api/chat, lib/chat, lib/flow, lib/intake, lib/safety]
 object_type: enterprise_capability
 title: AI Assistant
 status: Concept
