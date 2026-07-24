@@ -114,6 +114,20 @@ The platform now governs how its own governance evolves. Components: **Artifact 
 ## P5.5 — Constitutional Knowledge Graph (PROPOSED, priority 5.5)
 - **Status:** **PROPOSED** — Founder placed at priority 5.5 (after Capability Registry, before TM-001): "relationships, not just artifacts." Spec in `roadmap/P5_5_constitutional_knowledge_graph_proposal.md`. Connects books, doctrines, ADRs, EA, capabilities, AI organizations, trust/decision/behavioral models, CA-001, Founder decisions. **Governed-relationships-first — no graph DB assumed initially;** begins inside the existing `constitution` structures. **Not designed/ratified.**
 
+## Layer model (Founder-articulated 2026-07-24)
+- **L0 Meta-Governance:** EA-000, STD-002 lifecycle, Recovery Kit+Bundle, CIX-001, MAP-001.
+- **L1 Governance:** CON-001 Constitution, doctrines, EA-*, ADR-*, standards, migration workflow, CA-001.
+- **L2 Infrastructure:** MAP-001, Knowledge Library (EA-010), metadata, Capability Registry, Knowledge Graph (CKG-001).
+- **L3 Intelligence:** EA-012, IMR-001, TM-001, CM-001, future models.
+- **L4 Runtime:** CK-001, future AI organizations / operational capabilities.
+
+## Phase II P2 — Canonical Architecture Mapping (IN PROGRESS, Architecture Draft)
+- **Status:** authorized + built 2026-07-24 (`architecture/canonical_architecture_mapping.md`, CRID **MAP-001**). Elevated from "inventory" to the **canonical map of the COS** and the **evidence base for EA-000**. **Lifecycle: Architecture Draft — awaiting Founder review.** No schema/DB/code change.
+- **Delivers:** CRID scheme (§1) + full CRID registry of all current artifacts (§2); canonical ownership matrix + registry ownership (§3); the **Constitutional Dependency Rule** instantiated for every artifact — Depends On / Required By / Supersedes / Superseded By / Implements / Governed By / Validated By (§4); reference, creation-order, duplicate-detection, ratification-path, and cross-reference-validation rules (§5); the foundation hand-off to CIX-001, EA-010/CKL, metadata (P4), CKG-001, IMR-001 (§6).
+- **CRID (permanent identifier):** not the filename — files/paths may move, the CRID never changes or is reused. Coined IDs (CA-001, EA-000, TM-001, …) and family-sequential IDs both valid. Drafted here, promoted to normative on **EA-000** ratification.
+- **On ratification:** §1 CRID + §4 Dependency Rule fold into EA-000 as normative (already added to EA-000's required scope); the per-artifact front-matter retrofit (CRID + 7 relations on every file) is the mechanical follow-up **P2.1** feeding CIX-001 generation.
+- **Sequencing:** Independent Auditor disposition on the 4 P1 findings is **deferred to after P2** (Founder decision, 2026-07-24) — evidence already preserved; the Auditor then evaluates against the complete map. One work item (P2) now feeds EA-000, CIX-001, CKL, metadata, CKG-001, IMR-001 instead of each re-discovering the same relationships.
+
 ## Phase II priority order (revised 2026-07-24; prepared, not executed)
 CA-001 ✅ · **P1 security evidence ✅ (Founder-approved, merged `339a0f8`)** → **P2 Canonical Architecture Mapping (constitutional inventory)** → **P3 Constitutional Knowledge Library (EA-010)** → **P4 metadata migration** → **P5 Capability Registry** → **P5.5 Constitutional Knowledge Graph** → **P6 TM-001 Trust Model** → *(CM-001 Confidence Model designed after TM-001)* → **P7 EA-011 provider governance** → **P8 CD-001 draft (PROPOSED only)** → **P9 ESL-005 (after FF-3 window + gates).**
 - **Change from prior order:** P2 split — Canonical Architecture Mapping is now its own step (the constitutional inventory) ahead of the Knowledge Library (EA-010). Knowledge Graph inserted at P5.5. CM-001 added after TM-001. **Order confirmed by Founder 2026-07-24 — keep it.**
