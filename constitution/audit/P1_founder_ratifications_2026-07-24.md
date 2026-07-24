@@ -23,3 +23,9 @@ Founder ratifies keeping `pg_net` in `public`. Rationale accepted: Supabase-mana
 - D → Noncompliant/pending → **remediation Founder-approved**; Compliant after confirmed enablement.
 
 Founder ratification does not substitute for the independent Auditor's disposition; it authorizes the `[HUMAN]` actions and settles the pg_net operational decision.
+
+## Confirmation of enablement (2026-07-24)
+- **Finding D — leaked-password protection: ENABLED and VERIFIED.** Founder toggled "Prevent use of leaked passwords" ON (Authentication → Sign In / Providers → Email; HaveIBeenPwned Pwned Passwords API) and saved. A post-change Supabase security-advisor scan (via MCP `get_advisors`, 2026-07-24) confirms the `auth_leaked_password_protection` lint **no longer appears** — it was present in the pre-change baseline and is now absent. A full diff of the advisor output shows **no other change** and **no new finding**. Incidental hardening also enabled in the same save: "Require current password when updating" (ON).
+- **Remaining expected advisor lints (unchanged, all ratified/by-design):** `extension_in_public` for `pg_net` (Founder-ratified deferral, §3 above); 5× `rls_policy_always_true` INSERT on the append-only walls (ratified Fork H-a); ~70× `rls_enabled_no_policy` INFO across `constitution` (deny-by-default). No action.
+- **Finding A — exposed-schema visual confirmation:** the PostgREST exposed-schema list is an API-gateway setting not readable via SQL; the advisor emitted **no** "sensitive schema exposed" lint for `constitution`, and anon/authenticated have zero USAGE (re-verified 2026-07-24), so exposure is denied regardless. Dashboard visual confirmation (Settings → API → Exposed schemas) remains a `[HUMAN]` completeness step.
+- **Disposition impact:** Finding D moves from Noncompliant/pending to **remediated — evidence supports Compliant**; the independent Auditor issues the final Compliant disposition. Findings A/B/C unchanged (Auditor reserves).
