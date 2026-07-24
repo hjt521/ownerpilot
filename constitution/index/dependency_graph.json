@@ -119,6 +119,11 @@
       "layer": 0
     },
     {
+      "crid": "REG-CAP-001",
+      "title": "Constitutional Capability Registry",
+      "layer": 2
+    },
+    {
       "crid": "ROAD-001",
       "title": "Gap Analysis and Roadmap",
       "layer": 1
@@ -463,6 +468,36 @@
     {
       "from": "REC-001",
       "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "REG-CAP-001",
+      "to": "EA-000",
+      "rel": "depends_on"
+    },
+    {
+      "from": "REG-CAP-001",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "REG-CAP-001",
+      "to": "STD-003",
+      "rel": "depends_on"
+    },
+    {
+      "from": "REG-CAP-001",
+      "to": "CBS-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "REG-CAP-001",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "REG-CAP-001",
+      "to": "EA-000",
       "rel": "implements"
     },
     {

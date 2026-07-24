@@ -156,6 +156,7 @@ function build(artifacts, adrs) {
   writeIdx('standard_index.json', all.filter(a => a.object_type === 'standard'));
   writeIdx('doctrine_index.json', all.filter(a => a.object_type === 'doctrine'));
   writeIdx('registry_index.json', all.filter(a => a.object_type.includes('registry')));
+  writeIdx('capability_index.json', all.filter(a => a.object_type.includes('capability')));
   writeIdx('recovery_index.json', all.filter(a => a.crid === 'REC-001' || /recovery/.test(a.path)));
   writeIdx('validation_index.json', all.filter(a => a.object_type === 'validation' || a.crid.startsWith('VAL-')));
   writeIdx('roadmap_index.json', all.filter(a => a.object_type === 'roadmap' || /roadmap\//.test(a.path)));

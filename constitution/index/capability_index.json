@@ -1,0 +1,59 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "count": 2,
+  "artifacts": [
+    {
+      "crid": "CA-001",
+      "title": "Constitutional Auditor",
+      "object_type": "constitutional_capability",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Constitutional Assurance",
+      "ratification_authority": "none",
+      "path": "constitution/audit/CA-001_constitutional_auditor.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "ADR-009",
+        "CON-001"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": "1.0"
+    },
+    {
+      "crid": "CK-001",
+      "title": "Constitutional Query Engine",
+      "object_type": "constitutional_capability",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/CK-001_constitutional_query_engine_proposal.md",
+      "depends_on": [
+        "EA-010",
+        "CKG-001",
+        "IMR-001",
+        "CIX-001"
+      ],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-000",
+        "EA-012"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    }
+  ]
+}

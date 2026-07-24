@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "markdown_files": 41,
+  "markdown_files": 42,
   "files": [
     "constitution/CONSTITUTION.md",
     "constitution/STATUS.md",
@@ -11,6 +11,7 @@
     "constitution/architecture/EA-010_constitutional_knowledge_library.md",
     "constitution/architecture/EA-012_constitutional_intelligence_layer.md",
     "constitution/architecture/P2_metadata_foundation_implementation_report.md",
+    "constitution/architecture/REG-CAP-001_capability_registry.md",
     "constitution/architecture/canonical_architecture_mapping.md",
     "constitution/architecture/module_architecture.md",
     "constitution/architecture/repository_structure.md",
