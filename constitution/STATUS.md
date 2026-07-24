@@ -66,7 +66,9 @@ Phase 0 ✅ · Phase 1 Genesis ✅ · Phase 2 validation ✅ · Phase 3 governan
 - **Findings (engineering assessment; Auditor reserves final):** A) constitution deny-by-default **provable at the grant layer** (anon/authenticated: 0 schema-USAGE, 0 grants, 0 EXECUTE; no app references) → compliant-with-observation (confirm exposed-schema list); B) `pg_net` in public → justified deferral (3 cron paths depend on `net.http_post`; do not relocate); C) 5 append-only walls **intact** (INSERT-only, no read/mutate policy or grant; operator-only SELECT) → compliant-with-observation; D) leaked-password **disabled** → **Noncompliant/pending** (enable via Auth dashboard; low exposure — password path minimal vs magic-link/SSO).
 - **Founder actions:** enable leaked-password protection + confirm; confirm PostgREST exposed-schema list excludes `constitution`.
 - **Founder ratifications (2026-07-24, `audit/P1_founder_ratifications_2026-07-24.md`):** P1 **approved architecturally** (constitutional process affirmed). (1) Leaked-password enablement **approved** (D). (2) Exposed-schema confirmation **approved** (closes A gap). (3) `pg_net` deferral **RATIFIED** — do not relocate; revisit only via a future supported path (would need an ADR); `sec9` scope-guard stands. Founder ratification authorizes the `[HUMAN]` actions and settles the pg_net operational decision; it does **not** replace the independent Auditor's final dispositions.
-- **Finding D CLEARED (2026-07-24):** leaked-password protection **ENABLED + VERIFIED** — Founder toggled it ON; post-change advisor scan confirms the `auth_leaked_password_protection` lint is gone (full-diff: no other change, no new finding). D → remediated, evidence supports Compliant (Auditor issues final). Exposed-schema dashboard visual confirm (A) remains a `[HUMAN]` completeness step; exposure already denied by zero anon/authenticated USAGE.
+- **Finding D CLEARED (2026-07-24):** leaked-password protection **ENABLED + VERIFIED** — Founder toggled it ON; post-change advisor scan confirms the `auth_leaked_password_protection` lint is gone (full-diff: no other change, no new finding). D → remediated, evidence supports Compliant (Auditor issues final).
+- **Finding A gap CLOSED (2026-07-24):** Founder visually confirmed Data API → Exposed schemas = "2 of 3" (`public`, `graphql_public` only; **`constitution` unchecked/not exposed**). Both P1 `[HUMAN]` actions now complete. A → evidence gap closed (Auditor reserves final).
+- **New adjacent observation (public-schema, out of P1 scope):** Data API "Automatically expose new tables" is **ON** — Supabase recommends OFF; does not affect `constitution` (unexposed), but auto-exposes new `public` tables. Logged for the Auditor's public-surface queue; Founder `[HUMAN]` decision to disable.
 
 ## Constitutional Intelligence Layer (doctrine ADOPTED 2026-07-24)
 - **Directive (Founder):** do not accelerate features; strengthen foundations. Every intelligence model (Behavioral, Trust, Confidence, Negotiation, Decision, future) is a **governed constitutional capability sharing one evidence model, one traceability model, one review model.** No independent scoring systems or isolated frameworks. Recorded in `doctrines/constitutional_intelligence_layer.md`. This is the next strategic objective: build the shared Intelligence Layer so models don't evolve independently into disconnected modules.
@@ -74,6 +76,21 @@ Phase 0 ✅ · Phase 1 Genesis ✅ · Phase 2 validation ✅ · Phase 3 governan
 
 ## Separation of powers (stable)
 Engineering **implements** · CA-001 **assures** · Founder **ratifies** · Repository is the **canonical source of truth**. This separation prevents governance from collapsing into engineering and is the platform's core architectural guarantee.
+
+## Meta-governance layer (governance of governance)
+The platform now governs how its own governance evolves. Components: **Artifact Lifecycle** standard (how artifacts evolve) · **EA-000 Meta-Architecture** (how artifacts relate — Proposed) · **EA-012 Intelligence Layer** (how models are designed — Proposed) · **IMR-001** (how models are registered — Proposed) · **CIX-001 Constitutional Index** (machine-readable ID inventory — Proposed) · **Recovery Kit + Recovery Bundle** (continuity) · **STATUS.md** (operational dashboard tying them together).
+
+## EA-000 — Constitutional Meta-Architecture (Proposed)
+- **Status:** **Proposed** — Founder directed introducing the map of the Constitution (artifact taxonomy, creation order, reference rules, normative-vs-descriptive classification, ratification requirements, dependency graph). Scope in `architecture/EA-000_constitutional_meta_architecture.md`. Frames every other artifact; recommended for early ratification, evidence base is P2. **Not designed.**
+
+## CIX-001 — Constitutional Index (Proposed)
+- **Status:** **Proposed** — Founder directed a machine-readable inventory keyed on canonical IDs (`constitution/index/*.json`: artifact/capability/ea/adr/doctrine/registry). Generated from artifact front-matter, validation-wired, serializes EA-000's dependency graph. Spec in `roadmap/constitutional_index_proposal.md`. **Not built.**
+
+## CK-001 — Constitutional Query Engine (Proposed, after P5.5)
+- **Status:** **Proposed** — Founder's recommended foundational capability to introduce **after P5.5**, ahead of more domain intelligence. Query layer over Library + Graph + Registry + Index ("which ADR governs X", "what depends on EA-012", "what changed v1.1→v1.2"). Read/navigate/explain only — never ratifies or mutates. Spec in `roadmap/CK-001_constitutional_query_engine_proposal.md`. **Not designed.**
+
+## Recovery Bundle (per-release, ADOPTED direction 2026-07-24)
+- Every release SHALL emit a self-restoring ZIP (repo subtree + STATUS + inventory + checksums + RECOVERY.md + Emergency Agent Prompt + release notes + version manifest). Recorded in `recovery/RECOVERY.md`; becomes a migration-workflow release step. Automation not yet built.
 
 ## Constitutional artifact lifecycle (standard ADOPTED 2026-07-24)
 - Every artifact carries exactly one state: **Concept → Proposed → Architecture Draft → Founder Review → Ratified → Implemented → Operational → Superseded → Archived** (`standards/constitutional_artifact_lifecycle.md`). AI never self-advances past *Architecture Draft*; Founder-only transition to *Ratified*. `STATUS.md` is the canonical mirror of each artifact's state.
