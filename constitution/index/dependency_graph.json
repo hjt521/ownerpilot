@@ -244,6 +244,11 @@
       "layer": 1
     },
     {
+      "crid": "RPT-009",
+      "title": "ECAP-002 Document Generation — PROC-100 Delivery Record",
+      "layer": 1
+    },
+    {
       "crid": "STD-001",
       "title": "Development Standards",
       "layer": 1
@@ -1082,6 +1087,31 @@
     },
     {
       "from": "RPT-008",
+      "to": "PROC-100",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-009",
+      "to": "ECAP-002",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-009",
+      "to": "PROC-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-009",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-009",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-009",
       "to": "PROC-100",
       "rel": "implements"
     },

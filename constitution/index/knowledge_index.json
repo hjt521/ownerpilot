@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 56,
+  "count": 57,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -1794,6 +1794,48 @@
         "delivery-record",
         "ecap-010",
         "evidence-management"
+      ],
+      "program_phase": "enterprise-delivery",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-009",
+      "title": "ECAP-002 Document Generation — PROC-100 Delivery Record",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/RPT-009_ECAP-002_delivery_record.md",
+      "depends_on": [
+        "ECAP-002",
+        "PROC-100",
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "PROC-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "ECAP-002",
+        "RPT-006"
+      ],
+      "registry_tags": [
+        "delivery-record",
+        "ecap-002",
+        "document-generation"
       ],
       "program_phase": "enterprise-delivery",
       "version": "1.0",

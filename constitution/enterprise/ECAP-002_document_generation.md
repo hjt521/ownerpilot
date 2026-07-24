@@ -1,6 +1,6 @@
 ---
 constitutional_id: ECAP-002
-delivery_stage: constitutional-validation
+delivery_stage: released
 implementing_artifacts: [app/notice, app/api/documents, app/api/notices, lib/documents, lib/produce, lib/compliance, lib/filing]
 object_type: enterprise_capability
 title: Document Generation
