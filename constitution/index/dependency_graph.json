@@ -249,6 +249,11 @@
       "layer": 1
     },
     {
+      "crid": "RPT-010",
+      "title": "ECAP-003 Serve & Track — PROC-100 Delivery Record",
+      "layer": 1
+    },
+    {
       "crid": "STD-001",
       "title": "Development Standards",
       "layer": 1
@@ -1112,6 +1117,31 @@
     },
     {
       "from": "RPT-009",
+      "to": "PROC-100",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-010",
+      "to": "ECAP-003",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-010",
+      "to": "PROC-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-010",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-010",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-010",
       "to": "PROC-100",
       "rel": "implements"
     },

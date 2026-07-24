@@ -1,7 +1,7 @@
 ---
 constitutional_id: ECAP-003
-delivery_stage: constitutional-validation
-implementing_artifacts: [lib/tracking.ts, lib/filing, app/riskpath, app/api/riskpath]
+delivery_stage: released
+implementing_artifacts: [lib/filing, lib/riskpath, app/riskpath, app/api/riskpath]
 object_type: enterprise_capability
 title: Serve and Track
 status: Concept
