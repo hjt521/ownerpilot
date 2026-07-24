@@ -42,6 +42,15 @@ Founder
 5. Which artifacts are **normative** (binding) vs **descriptive** (informational).
 6. The **dependency graph** of the Constitution (what depends on / is governed by what).
 
+## Normative rules to be ratified into EA-000 (drafted by MAP-001, Phase II P2)
+The Canonical Architecture Mapping (`MAP-001`, `architecture/canonical_architecture_mapping.md`) is EA-000's evidence base. On EA-000 ratification, these become normative:
+
+**A. CRID — Constitutional Reference ID (permanent identifier).** Every artifact carries an immutable CRID. **The CRID is not the filename** — files and paths may move; the CRID never changes and is never reused. On supersession a new CRID is issued and the old marked `Superseded by`. CRIDs are the identifier used by the Knowledge Library, Knowledge Graph, Constitutional Index, Query Engine, validation, recovery bundles, and future APIs. Coined mnemonic IDs (CA-001, CK-001, TM-001, EA-000, IMR-001, CIX-001, CKG-001, …) and family-sequential IDs (CON-, EA-, ADR-, STD-, DOC-, PROC-, REG-, MODEL-, CAP-, INFRA-, BASE-, VAL-, MIG-, SYS-, BOOK-, VOL-) are equally valid. Full scheme + registry in MAP-001 §1–§2.
+
+**B. Constitutional Dependency Rule.** Every artifact explicitly declares seven relations: **Depends On · Required By · Supersedes · Superseded By · Implements · Governed By · Validated By.** These are the backbone of the Knowledge Graph and the substrate for impact analysis, validation, and navigation. Declared in front-matter; every relation must resolve to a real CRID (cross-reference validation). Instantiated for all current artifacts in MAP-001 §4.
+
+**C.** Reference rules, creation-order (precedence) rules, duplicate-detection rules, required ratification paths, and cross-reference validation — as specified in MAP-001 §5.
+
 ## Relationship to neighbouring work
 - **P2 Canonical Architecture Mapping** produces the inventory EA-000 organizes — EA-000 is the *frame*, P2 the *contents*; sequence EA-000's ratification alongside/after P2.
 - **Artifact Lifecycle standard** supplies each artifact's *state*; EA-000 supplies each artifact's *place and relationships*.

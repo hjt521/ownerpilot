@@ -1,0 +1,153 @@
+---
+constitutional_id: MAP-001
+object_type: canonical_architecture_mapping
+title: Canonical Architecture Mapping (Constitutional Operating System)
+status: Architecture Draft
+lifecycle_state: Architecture Draft
+authority_source: Founder (2026-07-24 — authorized Phase II P2, elevated to the canonical map of the whole COS and the evidence base for EA-000)
+canonical_owner: Constitutional Governance
+ratification_authority: Founder
+governed_by: EA-000 Constitutional Meta-Architecture
+depends_on: [all current constitutional artifacts (introspected)]
+required_by: [EA-000, CIX-001, CKL/EA-010, metadata migration, CKG-001, IMR-001, CK-001]
+validated_by: CA-001 + validation/run_checks (cross-reference check, planned)
+---
+
+# MAP-001 — Canonical Architecture Mapping (Phase II P2)
+
+> **The structural map of the Constitutional Operating System.** Not a simple inventory: this is the authoritative graph of every constitutional artifact, its permanent identifier, its owner, and its relationships — built as the **evidence base for EA-000** and the shared foundation for CIX-001, the Knowledge Library (EA-010), metadata migration, the Knowledge Graph (CKG-001), and IMR-001, so each does not re-discover the same relationships. Governed by EA-000 (Proposed); **lifecycle: Architecture Draft** — awaiting Founder review. No production/schema change.
+
+## Layer model (context)
+```
+Layer 0  Meta-Governance     EA-000, STD-002 (lifecycle), REC-001 + Recovery Bundle, CIX-001, MAP-001
+Layer 1  Governance          CON-001, doctrines (DOC-*), EA-*, ADR-*, standards (STD-*), workflow (PROC-*), CA-001
+Layer 2  Infrastructure      MAP-001 (this), CKL/EA-010, metadata, capability registry, CKG-001
+Layer 3  Intelligence        EA-012, IMR-001, TM-001, CM-001, future models
+Layer 4  Runtime             CK-001, future AI organizations / operational capabilities
+```
+
+---
+
+## 1. CRID scheme — Constitutional Reference IDs (proposed standard, ratify in EA-000)
+
+Every constitutional artifact carries a **permanent CRID**. **The CRID is not the filename.** The filename may change; the repository path may change; **the CRID never changes.** It is the identifier used by the Knowledge Library, Knowledge Graph, Constitutional Index, Query Engine, validation, recovery bundles, and any future API.
+
+**Rules:**
+1. **Immutable** once assigned. On supersession, a *new* CRID is issued and the old one is marked `Superseded by <new CRID>` — never reused, never deleted.
+2. **Unique** across the whole Constitution.
+3. **Family-prefixed.** The scheme accommodates both **coined mnemonic IDs** the Founder has already established (e.g. `CA-001`, `CK-001`, `TM-001`, `CM-001`, `EA-000`, `IMR-001`, `CIX-001`, `CKG-001`) and **family-sequential IDs** assigned here. Both are equally valid CRIDs; the coined IDs are preserved as-is.
+4. **Declared in front-matter** (`constitutional_id:`) and mirrored in CIX-001.
+
+**Families:**
+| Prefix | Family | Examples |
+|---|---|---|
+| `CON-` | Engineering Constitution | CON-001 |
+| `EA-` | Enterprise Architecture | EA-000, EA-010, EA-011, EA-012 |
+| `ADR-` | Architecture Decision Records | ADR-001 … ADR-009 |
+| `STD-` | Standards | STD-001, STD-002 |
+| `DOC-` | Doctrines | DOC-001, DOC-002 |
+| `PROC-` | Process | PROC-001, PROC-002 |
+| `REG-`/coined | Registries | IMR-001, CIX-001, REG-CAP-001 |
+| `MODEL-`/coined | Intelligence models | TM-001, CM-001, MODEL-BEH/DEC/NEG |
+| `CAP-`/coined | Capabilities | CA-001, CK-001 |
+| `INFRA-`/coined | Infrastructure | CKG-001, REC-001, MAP-001 |
+| `BASE-` | Schema baseline | BASE-001 |
+| `VAL-` | Validation assets | VAL-001 |
+| `MIG-` | Migrations | MIG-const_0001 |
+| `SYS-` | Operational/descriptive | SYS-001 (STATUS.md) |
+| `BOOK-`/`VOL-` | Knowledge content (future) | — (none yet) |
+
+## 2. CRID registry (current artifacts)
+
+| CRID | Artifact | Type | Path | Lifecycle | Canonical owner | Ratification |
+|---|---|---|---|---|---|---|
+| CON-001 | Engineering Constitution | constitution | `CONSTITUTION.md` | Operational | Governance | Founder |
+| EA-000 | Constitutional Meta-Architecture | EA | `architecture/EA-000_…md` | Proposed | Governance | Founder |
+| EA-010 | Constitutional Knowledge Library | EA | *(P3, planned)* | Concept | Governance | Founder |
+| EA-011 | Provider Governance | EA | *(P7, planned)* | Concept | Governance | Founder |
+| EA-012 | Constitutional Intelligence Layer | EA | `architecture/EA-012_…md` | Proposed | Intelligence | Founder |
+| MAP-001 | Canonical Architecture Mapping | mapping | `architecture/canonical_architecture_mapping.md` | Architecture Draft | Governance | Founder |
+| ADR-001…009 | Architecture Decision Records | ADR | `adr/adr_log.md` | Operational (Accepted) | Governance | Founder |
+| STD-001 | Development Standards | standard | `standards/development_standards.md` | Ratified | Governance | Founder |
+| STD-002 | Constitutional Artifact Lifecycle | standard | `standards/constitutional_artifact_lifecycle.md` | Ratified | Governance | Founder |
+| DOC-001 | Constitutional Intelligence Layer (doctrine) | doctrine | `doctrines/constitutional_intelligence_layer.md` | Ratified | Intelligence | Founder |
+| DOC-002 | Governance Handbook | doctrine | `doctrines/governance_handbook.md` | Ratified | Governance | Founder |
+| PROC-001 | Migration Workflow | process | `process/migration_workflow.md` | Operational | Governance | Founder |
+| PROC-002 | Governance Automation | process | `process/governance_automation.md` | Operational | Governance | Founder |
+| CA-001 | Constitutional Auditor | capability | `audit/CA-001_…md` | Operational | Assurance | Founder |
+| IMR-001 | Intelligence Model Registry | registry | `roadmap/intelligence_model_registry_proposal.md` | Proposed | Intelligence | Founder |
+| CIX-001 | Constitutional Index | infrastructure | `roadmap/constitutional_index_proposal.md` | Proposed | Governance | Founder |
+| CKG-001 | Constitutional Knowledge Graph | infrastructure | `roadmap/P5_5_…md` | Proposed | Intelligence | Founder |
+| CK-001 | Constitutional Query Engine | capability | `roadmap/CK-001_…md` | Proposed | Intelligence | Founder |
+| TM-001 | Trust Model | model | `roadmap/TM-001_…md` | Proposed | Intelligence | Founder |
+| CM-001 | Confidence Model | model | `roadmap/CM-001_…md` | Proposed | Intelligence | Founder |
+| REG-CAP-001 | Capability Registry | registry | *(P5, planned)* | Concept | Governance | Founder |
+| REC-001 | Recovery Kit + Bundle | infrastructure | `recovery/RECOVERY.md` | Ratified | Governance | Founder |
+| BASE-001 | Schema baseline (constitution v1.1) | baseline | `baseline/constitution_v1.1.sql` | Operational | Governance | Founder |
+| VAL-001 | Validation runner + checks | validation | `validation/run_checks.*`, `checks.sql`, `security_posture_checks.sql` | Implemented | Governance | Founder |
+| MIG-const_0001 | updated_at trigger coverage | migration | `database/migrations/const_0001_…sql` | Operational (applied) | Governance | Founder |
+| SYS-001 | STATUS (operational dashboard) | descriptive | `STATUS.md` | Operational | Governance | n/a (descriptive) |
+
+*Behavioral / Decision / Negotiation intelligence exist as live `constitution` schema surfaces but are not yet registered artifacts — reserved `MODEL-BEH/DEC/NEG`, to be registered when IMR-001 is built.*
+
+## 3. Canonical ownership matrix
+
+| Owner domain | Owns (CRIDs) | Authority |
+|---|---|---|
+| **Founder** | ratifies all; owns no artifact operationally | ratification (sole) |
+| **Governance** | CON-001, EA-000, MAP-001, ADR-*, STD-*, PROC-*, CIX-001, REG-CAP-001, REC-001, BASE-001, VAL-001, DOC-002, SYS-001 | authors/maintains |
+| **Intelligence** | EA-012, IMR-001, CKG-001, CK-001, TM-001, CM-001, DOC-001 | authors/maintains |
+| **Assurance (CA-001)** | CA-001; audits **all** | assures (never authors the audited work) |
+
+**Registry ownership:** IMR-001 (intelligence models) → Intelligence · REG-CAP-001 (capabilities) → Governance · CIX-001 (artifact index) → Governance. No registry owns another; CIX-001 indexes all three.
+
+## 4. Constitutional Dependency Rule (instantiated here; ratify in EA-000)
+
+Every artifact declares seven relations: **Depends On · Required By · Supersedes · Superseded By · Implements · Governed By · Validated By.** These are the backbone of the Knowledge Graph and the substrate for impact analysis, validation, and navigation.
+
+| CRID | Depends On | Required By | Implements | Governed By | Validated By |
+|---|---|---|---|---|---|
+| CON-001 | — | all | — | Founder | CA-001 |
+| EA-000 | MAP-001 | CIX-001, EA-012, all-artifact relations | CON-001 | CON-001 | CA-001 |
+| MAP-001 | all current artifacts | EA-000, CIX-001, EA-010, CKG-001, IMR-001 | EA-000 (evidence) | EA-000 | CA-001, VAL-001 |
+| STD-001 | CON-001 | all migrations/models | CON-001 | CON-001 | VAL-001 |
+| STD-002 | CON-001, EA-000 | all artifacts (states) | EA-000 | CON-001 | CA-001 |
+| PROC-001 | CON-001, STD-001 | all migrations | CON-001 | CON-001 | VAL-001 |
+| DOC-001 | — | TM-001, CM-001, EA-012 | CON-001 | CON-001 | CA-001 |
+| EA-012 | DOC-001, EA-000 | TM-001, CM-001, IMR-001 | DOC-001 | EA-000 | CA-001 |
+| IMR-001 | EA-012, REG-CAP-001 | CK-001, CKG-001 | EA-012 | EA-012 | CA-001 |
+| CIX-001 | MAP-001, all front-matter | CK-001, CA-001 automation | EA-000 | EA-000 | VAL-001 |
+| CKG-001 | CIX-001, EA-010, IMR-001, REG-CAP-001 | CK-001, TM-001 | EA-000 | EA-000 | CA-001 |
+| CK-001 | EA-010, CKG-001, IMR-001, CIX-001 | humans + AI navigation | EA-000, EA-012 | EA-000 | CA-001 |
+| TM-001 | CM-001, CKG-001 | negotiation/decision use | EA-012 | EA-012 | CA-001 |
+| CM-001 | — | TM-001, AI-output/OCR/etc. | EA-012 | EA-012 | CA-001 |
+| CA-001 | agent_review_gates, event_log (schema) | all governance assurance | ADR-009 | CON-001, EA-000 | *(Auditor is audited by Founder review; never self-audits)* |
+| REC-001 | BASE-001, VAL-001, SYS-001 | continuity/recovery | CON-001 | CON-001 | CA-001 |
+| VAL-001 | BASE-001 | all releases | PROC-001 | CON-001 | *(self + CA-001)* |
+| BASE-001 | schema (introspected) | VAL-001, REC-001 | ADR-001…008 | CON-001 | VAL-001 |
+
+*Supersedes / Superseded-by: none current (no artifact has yet replaced another). MIG-const_0001 supersedes nothing; ADRs are append-only.*
+
+## 5. Rules
+
+**Reference rules (which may reference which):** lower layers/foundations may be referenced by higher; **Layer 0 (EA-000, STD-002) is referenceable by all**; a descriptive artifact (SYS-001) may reference any normative artifact but **no normative artifact may derive authority from a descriptive one**. Models (Layer 3) reference infrastructure (Layer 2) and the Intelligence EA (EA-012); they must **not** reference each other's internals except via declared relations (TM-001→CM-001 is a declared reference, not a private coupling). ADRs may be referenced by anything; ADRs reference only context, decisions, and prior ADRs.
+
+**Creation-order rules (precedence):** an artifact may not be *ratified* before the artifacts it is *Governed By* / *Implements*. Canonical order: CON-001 → EA-000 → STD/PROC → EA-012 → registries/infrastructure (REG-CAP-001, CIX-001, CKG-001) → models (TM-001, CM-001) → runtime (CK-001). MAP-001 precedes EA-000's ratification (it is EA-000's evidence).
+
+**Duplicate-detection rules:** (1) one CRID per artifact, one artifact per CRID; (2) a capability/model/registry must **not** be created where an existing `constitution` structure can represent it — audit-and-extend (e.g. `constitution.intelligence_model_registry` already exists as a live table → IMR-001 extends it, does not create a parallel; likewise CA-001 extended existing tables); (3) CIX-001 generation fails if two artifacts claim the same CRID or two CRIDs point to one file.
+
+**Required ratification paths:** every normative artifact (EA, standard, ADR, doctrine, model, capability) requires **Founder** ratification to reach *Ratified*; AI never self-advances past *Architecture Draft* (STD-002). Descriptive artifacts (SYS-001, inventories, reports) need no ratification — they record, they do not bind. CA-001 may assure any artifact but ratifies none.
+
+**Cross-reference validation:** every declared relation must resolve to a real CRID (no dangling references); every artifact must appear in CIX-001 exactly once; lifecycle states must agree across artifact front-matter, CIX-001, and SYS-001. **Enforcement:** a repo-level cross-reference check (added to `validation/run_checks`, design in VAL-001) run in CI and the weekly watch. *(Check tooling is follow-up build, not created by P2; the rules it enforces are specified here.)*
+
+## 6. Foundation for downstream (what P2 hands to each successor)
+
+- **EA-000:** §1 CRID scheme, §4 Dependency Rule, §5 rules, §3 ownership → EA-000 ratifies these as normative.
+- **CIX-001:** §2 registry + §4 relations are the seed data; CIX-001 is generated from artifact front-matter and checked against this map.
+- **EA-010 / Knowledge Library:** §2 is the catalog spine; the Library attaches content to each CRID.
+- **Metadata migration (P4):** §1 CRID + §3 ownership + §4 relations are the metadata schema fields to persist.
+- **CKG-001 / Knowledge Graph:** §4 relations are its edges; §2 CRIDs are its nodes.
+- **IMR-001:** §2 model rows + §3 registry ownership seed the registry; note the live `constitution.intelligence_model_registry` table is the extend-target.
+
+## 7. Status
+**Architecture Draft** — built as P2, awaiting Founder review. On ratification: §1 CRID scheme and §4 Dependency Rule are promoted into **EA-000** as normative; the per-artifact front-matter retrofit (adding CRID + seven relations to every artifact file) is the immediate mechanical follow-up (P2.1) that feeds CIX-001 generation. No schema, DB, or code change. Independent Auditor disposition (P1 findings) resumes after P2 per Founder sequencing.
