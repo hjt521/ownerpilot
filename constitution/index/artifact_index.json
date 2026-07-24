@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 33,
+  "count": 34,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -429,7 +429,7 @@
       "crid": "EA-010",
       "title": "Constitutional Knowledge Library",
       "object_type": "enterprise_architecture",
-      "lifecycle_state": "Architecture Draft",
+      "lifecycle_state": "Ratified",
       "canonical_owner": "Governance",
       "ratification_authority": "Founder",
       "path": "constitution/architecture/EA-010_constitutional_knowledge_library.md",
@@ -514,7 +514,7 @@
       "crid": "MAP-001",
       "title": "Canonical Architecture Mapping (Constitutional Operating System)",
       "object_type": "canonical_architecture_mapping",
-      "lifecycle_state": "Architecture Draft",
+      "lifecycle_state": "Ratified",
       "canonical_owner": "Constitutional Governance",
       "ratification_authority": "Founder",
       "path": "constitution/architecture/canonical_architecture_mapping.md",
@@ -856,6 +856,48 @@
         "schema"
       ],
       "program_phase": "P2.1",
+      "version": "1.0"
+    },
+    {
+      "crid": "STD-004",
+      "title": "Constitutional Stability Principle",
+      "object_type": "standard",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/standards/constitutional_stability_principle.md",
+      "depends_on": [
+        "MAP-001",
+        "STD-003",
+        "CBS-001",
+        "EA-010"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "ADR-010",
+        "EA-000",
+        "MAP-001",
+        "STD-003",
+        "CBS-001",
+        "EA-010"
+      ],
+      "registry_tags": [
+        "stability",
+        "foundation",
+        "governance"
+      ],
+      "program_phase": "foundation",
       "version": "1.0"
     },
     {

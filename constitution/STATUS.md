@@ -139,14 +139,20 @@ The platform now governs how its own governance evolves. Components: **Artifact 
 ## P5.5 — Constitutional Knowledge Graph (PROPOSED, priority 5.5)
 - **Status:** **PROPOSED** — Founder placed at priority 5.5 (after Capability Registry, before TM-001): "relationships, not just artifacts." Spec in `roadmap/P5_5_constitutional_knowledge_graph_proposal.md`. Connects books, doctrines, ADRs, EA, capabilities, AI organizations, trust/decision/behavioral models, CA-001, Founder decisions. **Governed-relationships-first — no graph DB assumed initially;** begins inside the existing `constitution` structures. **Not designed/ratified.**
 
+## Foundation RATIFIED + stabilized (Founder, 2026-07-24 · ADR-010)
+The Constitutional Operating System is now the **permanent governance substrate**. Founder ratifications: **MAP-001 → Ratified** (constitutional backbone), **EA-010 → Ratified** (Knowledge Library as a generated view). Adopted the **Constitutional Stability Principle** (STD-004): a ratified foundational artifact (Meta-Architecture, Mapping, Metadata Schema, Build System, Knowledge Library) shall not be materially redesigned except through a new EA version + corresponding ADR — extend, do not replace. **Closed foundation set:** MAP-001, EA-010, STD-003, CBS-001 (⏳ **EA-000 upon its own ratification** — still Proposed; its CRID + Dependency rules are already normative via MAP-001). Emphasis now shifts from inventing constitutional mechanisms to **using the COS** to build OwnerPilot capabilities; new capabilities plug in via the Capability Registry rather than modifying the foundation.
+
+## Next constitutional project (only one authorized before pivot to products)
+**P5 — Capability Registry.** The semantic center connecting Enterprise Architecture → Knowledge Library → Knowledge Graph → Intelligence Models → AI Organizations → Runtime → OwnerPilot products. Everything now depends on capabilities. After P5, the order holds: P5.5 Knowledge Graph → EA-012 → IMR-001 → TM-001 → CM-001 → CK-001 → OwnerPilot Intelligence Applications (mostly application work, not constitutional infrastructure). **Open Founder decision:** whether to ratify EA-000 (as the design frame) or leave it as an open scope mandate.
+
 ## Metadata foundation — CBS-001 generated (P2.1 → P3 → P4)
 The COS is now **metadata-driven**: every durable artifact is self-describing (STD-003 front-matter + permanent CRID), and **CBS-001** (`tools/cbs.mjs`) compiles that metadata into all derived artifacts — no hand-synchronization. `node constitution/tools/cbs.mjs build` regenerates `constitution/index/*` reproducibly; `check` fails CI on metadata drift (dup CRID, broken reference, dependency cycle, missing metadata). Delivered: STD-003 metadata schema · P2.1 front-matter retrofit + CRIDs across ~20 artifacts · **CBS-001** build system · **EA-010** Knowledge Library (generated view) · **CIX-001** generated indexes (13 files, 31 nodes / 76 edges) · implementation report (RPT-001). No production/schema/runtime change; no AI ratification.
 
 <!-- CBS-001 GENERATED STATS (regenerate: node constitution/tools/cbs.mjs status) -->
-- **Artifacts (with metadata):** 33 · **ADRs:** 9
-- **By lifecycle:** Architecture Draft 2 · Implemented 3 · Operational 14 · Proposed 8 · Ratified 6
+- **Artifacts (with metadata):** 34 · **ADRs:** 10
+- **By lifecycle:** Implemented 3 · Operational 14 · Proposed 8 · Ratified 9
 - **Outstanding Proposed:** EA-000, EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
-- **Ratification queue (Proposed/Architecture Draft):** EA-000, EA-010, EA-012, MAP-001, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
+- **Ratification queue (Proposed):** EA-000, EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
 
 ## Layer model (Founder-articulated 2026-07-24)
 - **L0 Meta-Governance:** EA-000, STD-002 lifecycle, Recovery Kit+Bundle, CIX-001, MAP-001.

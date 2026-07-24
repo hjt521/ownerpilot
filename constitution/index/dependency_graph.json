@@ -149,6 +149,11 @@
       "layer": 1
     },
     {
+      "crid": "STD-004",
+      "title": "Constitutional Stability Principle",
+      "layer": 1
+    },
+    {
       "crid": "SYS-001",
       "title": "Constitutional Operating System STATUS",
       "layer": 1
@@ -562,6 +567,36 @@
     },
     {
       "from": "STD-003",
+      "to": "EA-000",
+      "rel": "implements"
+    },
+    {
+      "from": "STD-004",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-004",
+      "to": "STD-003",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-004",
+      "to": "CBS-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-004",
+      "to": "EA-010",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-004",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "STD-004",
       "to": "EA-000",
       "rel": "implements"
     },

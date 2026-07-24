@@ -2,12 +2,12 @@
 constitutional_id: EA-010
 object_type: enterprise_architecture
 title: Constitutional Knowledge Library
-status: Architecture Draft
+status: Ratified
 version: 1.0
 canonical_owner: Governance
 governing_authority: EA-000
 ratification_authority: Founder
-lifecycle_state: Architecture Draft
+lifecycle_state: Ratified
 created: 2026-07-24
 updated: 2026-07-24
 depends_on: [MAP-001, STD-003, CBS-001]
@@ -26,7 +26,7 @@ checksum_scope: file
 
 # EA-010 — Constitutional Knowledge Library (P3)
 
-**The Knowledge Library is a generated view, not a hand-maintained catalog.** Every constitutional artifact is already self-describing (STD-003) and inventoried (MAP-001); the Library is CBS-001's compilation of that metadata into a browsable, CRID-keyed catalog of Knowledge Objects. **Not redesigned — populated from MAP-001.** Lifecycle: Architecture Draft (built as a generated view; awaiting Founder ratification as the canonical EA).
+**The Knowledge Library is a generated view, not a hand-maintained catalog.** Every constitutional artifact is already self-describing (STD-003) and inventoried (MAP-001); the Library is CBS-001's compilation of that metadata into a browsable, CRID-keyed catalog of Knowledge Objects. **Not redesigned — populated from MAP-001.** Lifecycle: Ratified (Founder, 2026-07-24) — the generated Knowledge Library is canonical; closed foundation (STD-004).
 
 ## Library structure (sections)
 Books · Volumes · Architecture · Standards · Doctrines · ADRs · Policies · Registries · Recovery · Validation · Roadmaps · Historical releases · Generated indexes. Every entry references **CRIDs**, never filenames.

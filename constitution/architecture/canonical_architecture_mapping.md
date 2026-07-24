@@ -2,8 +2,8 @@
 constitutional_id: MAP-001
 object_type: canonical_architecture_mapping
 title: Canonical Architecture Mapping (Constitutional Operating System)
-status: Architecture Draft
-lifecycle_state: Architecture Draft
+status: Ratified
+lifecycle_state: Ratified
 authority_source: Founder (2026-07-24 — authorized Phase II P2, elevated to the canonical map of the whole COS and the evidence base for EA-000)
 canonical_owner: Constitutional Governance
 ratification_authority: Founder
@@ -15,7 +15,7 @@ validated_by: CA-001 + validation/run_checks (cross-reference check, planned)
 
 # MAP-001 — Canonical Architecture Mapping (Phase II P2)
 
-> **The structural map of the Constitutional Operating System.** Not a simple inventory: this is the authoritative graph of every constitutional artifact, its permanent identifier, its owner, and its relationships — built as the **evidence base for EA-000** and the shared foundation for CIX-001, the Knowledge Library (EA-010), metadata migration, the Knowledge Graph (CKG-001), and IMR-001, so each does not re-discover the same relationships. Governed by EA-000 (Proposed); **lifecycle: Architecture Draft** — awaiting Founder review. No production/schema change.
+> **RATIFIED (Founder, 2026-07-24) — the constitutional backbone; everything downstream references it.** The structural map of the Constitutional Operating System.** Not a simple inventory: this is the authoritative graph of every constitutional artifact, its permanent identifier, its owner, and its relationships — built as the **evidence base for EA-000** and the shared foundation for CIX-001, the Knowledge Library (EA-010), metadata migration, the Knowledge Graph (CKG-001), and IMR-001, so each does not re-discover the same relationships. Governed by EA-000 (Proposed); **lifecycle: Architecture Draft** — awaiting Founder review. No production/schema change.
 
 ## Layer model (context)
 ```
@@ -150,4 +150,4 @@ Every artifact declares seven relations: **Depends On · Required By · Supersed
 - **IMR-001:** §2 model rows + §3 registry ownership seed the registry; note the live `constitution.intelligence_model_registry` table is the extend-target.
 
 ## 7. Status
-**Architecture Draft** — built as P2, awaiting Founder review. On ratification: §1 CRID scheme and §4 Dependency Rule are promoted into **EA-000** as normative; the per-artifact front-matter retrofit (adding CRID + seven relations to every artifact file) is the immediate mechanical follow-up (P2.1) that feeds CIX-001 generation. No schema, DB, or code change. Independent Auditor disposition (P1 findings) resumes after P2 per Founder sequencing.
+**Ratified** (Founder, 2026-07-24) — closed foundation (STD-004); extend, do not redesign. On ratification: §1 CRID scheme and §4 Dependency Rule are promoted into **EA-000** as normative; the per-artifact front-matter retrofit (adding CRID + seven relations to every artifact file) is the immediate mechanical follow-up (P2.1) that feeds CIX-001 generation. No schema, DB, or code change. Independent Auditor disposition (P1 findings) resumes after P2 per Founder sequencing.

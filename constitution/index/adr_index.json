@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 9,
+  "count": 10,
   "adrs": [
     {
       "crid": "ADR-001",
@@ -47,6 +47,11 @@
     {
       "crid": "ADR-009",
       "title": "CA-001 Constitutional Auditor (independent assurance)",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-010",
+      "title": "Constitutional Stability Principle + ratification of MAP-001 and EA-010",
       "path": "constitution/adr/adr_log.md"
     }
   ]
