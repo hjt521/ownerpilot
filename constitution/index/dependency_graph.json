@@ -234,6 +234,11 @@
       "layer": 1
     },
     {
+      "crid": "RPT-007",
+      "title": "ECAP-001 AI Assistant — PROC-100 Delivery Record",
+      "layer": 1
+    },
+    {
       "crid": "STD-001",
       "title": "Development Standards",
       "layer": 1
@@ -1023,6 +1028,31 @@
     {
       "from": "RPT-006",
       "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-007",
+      "to": "ECAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-007",
+      "to": "PROC-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-007",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-007",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-007",
+      "to": "PROC-100",
       "rel": "implements"
     },
     {
