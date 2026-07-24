@@ -1,0 +1,30 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "count": 1,
+  "artifacts": [
+    {
+      "crid": "IMR-001",
+      "title": "Intelligence Model Registry",
+      "object_type": "constitutional_registry",
+      "lifecycle_state": "Proposed",
+      "canonical_owner": "Constitutional Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/roadmap/intelligence_model_registry_proposal.md",
+      "depends_on": [],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-012"
+      ],
+      "validated_by": [],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [],
+      "program_phase": null,
+      "version": null
+    }
+  ]
+}

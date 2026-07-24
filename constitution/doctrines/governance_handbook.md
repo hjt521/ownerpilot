@@ -1,3 +1,28 @@
+---
+constitutional_id: DOC-002
+object_type: doctrine
+title: Governance Handbook
+status: Ratified
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Ratified
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [CON-001]
+required_by: []
+implements: [CON-001]
+governed_by: [CON-001]
+validated_by: [CA-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [doctrine,handbook]
+program_phase: foundation
+repository_path: constitution/doctrines/governance_handbook.md
+checksum_scope: file
+---
+
 # Phase 4 — Constitutional Governance Handbook
 
 The governance handbook for the OwnerPilot Constitutional Operating System (COS). It defines how the Constitution *lives* as a software product: its lifecycle, versioning, release, review, approval, deprecation, and amendment. This is the authoritative policy layer; the mechanics live in `../process/` and `../validation/`.

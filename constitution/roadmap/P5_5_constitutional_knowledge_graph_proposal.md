@@ -1,5 +1,7 @@
 ---
 constitutional_id: CKG-001
+governed_by: [EA-000]
+lifecycle_state: Proposed
 object_type: constitutional_infrastructure
 title: Constitutional Knowledge Graph
 status: PROPOSED

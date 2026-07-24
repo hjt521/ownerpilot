@@ -1,0 +1,614 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "nodes": [
+    {
+      "crid": "ADR-LOG",
+      "title": "Architecture Decision Records",
+      "layer": 1
+    },
+    {
+      "crid": "ARCH-001",
+      "title": "Module Architecture",
+      "layer": 1
+    },
+    {
+      "crid": "ARCH-002",
+      "title": "Repository Structure",
+      "layer": 1
+    },
+    {
+      "crid": "BASE-001",
+      "title": "Constitution Schema Baseline",
+      "layer": 2
+    },
+    {
+      "crid": "BASE-002",
+      "title": "Baseline Notes",
+      "layer": 2
+    },
+    {
+      "crid": "CA-001",
+      "title": "Constitutional Auditor",
+      "layer": 1
+    },
+    {
+      "crid": "CBS-001",
+      "title": "Constitutional Build System",
+      "layer": 1
+    },
+    {
+      "crid": "CIX-001",
+      "title": "Constitutional Index",
+      "layer": 0
+    },
+    {
+      "crid": "CK-001",
+      "title": "Constitutional Query Engine",
+      "layer": 4
+    },
+    {
+      "crid": "CKG-001",
+      "title": "Constitutional Knowledge Graph",
+      "layer": 2
+    },
+    {
+      "crid": "CM-001",
+      "title": "Confidence Model",
+      "layer": 3
+    },
+    {
+      "crid": "CON-001",
+      "title": "Engineering Constitution",
+      "layer": 1
+    },
+    {
+      "crid": "DOC-001",
+      "title": "Constitutional Intelligence Layer",
+      "layer": 1
+    },
+    {
+      "crid": "DOC-002",
+      "title": "Governance Handbook",
+      "layer": 1
+    },
+    {
+      "crid": "EA-000",
+      "title": "Constitutional Meta-Architecture",
+      "layer": 0
+    },
+    {
+      "crid": "EA-010",
+      "title": "Constitutional Knowledge Library",
+      "layer": 1
+    },
+    {
+      "crid": "EA-012",
+      "title": "Constitutional Intelligence Layer",
+      "layer": 1
+    },
+    {
+      "crid": "IMR-001",
+      "title": "Intelligence Model Registry",
+      "layer": 3
+    },
+    {
+      "crid": "MAP-001",
+      "title": "Canonical Architecture Mapping (Constitutional Operating System)",
+      "layer": 0
+    },
+    {
+      "crid": "MIG-const_0001",
+      "title": "const_0001 updated_at trigger coverage",
+      "layer": 1
+    },
+    {
+      "crid": "PROC-001",
+      "title": "Migration Workflow",
+      "layer": 1
+    },
+    {
+      "crid": "PROC-002",
+      "title": "Governance Automation",
+      "layer": 1
+    },
+    {
+      "crid": "REC-001",
+      "title": "Recovery Kit and Bundle",
+      "layer": 0
+    },
+    {
+      "crid": "ROAD-001",
+      "title": "Gap Analysis and Roadmap",
+      "layer": 1
+    },
+    {
+      "crid": "ROAD-002",
+      "title": "COS Roadmap and ESL-005 Gate",
+      "layer": 1
+    },
+    {
+      "crid": "RPT-001",
+      "title": "Constitutional Metadata Foundation — Implementation Report and Migration Plan",
+      "layer": 1
+    },
+    {
+      "crid": "STD-001",
+      "title": "Development Standards",
+      "layer": 1
+    },
+    {
+      "crid": "STD-002",
+      "title": "Constitutional Artifact Lifecycle",
+      "layer": 0
+    },
+    {
+      "crid": "STD-003",
+      "title": "Constitutional Metadata Schema",
+      "layer": 1
+    },
+    {
+      "crid": "SYS-001",
+      "title": "Constitutional Operating System STATUS",
+      "layer": 1
+    },
+    {
+      "crid": "TM-001",
+      "title": "Enterprise Trust Model",
+      "layer": 3
+    },
+    {
+      "crid": "VAL-001",
+      "title": "Validation Framework and Runner",
+      "layer": 2
+    },
+    {
+      "crid": "VAL-002",
+      "title": "Validation CI CD Design",
+      "layer": 2
+    }
+  ],
+  "edges": [
+    {
+      "from": "ADR-LOG",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ADR-LOG",
+      "to": "PROC-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ADR-LOG",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ADR-LOG",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "ARCH-001",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ARCH-001",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ARCH-001",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "ARCH-002",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ARCH-002",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ARCH-002",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "BASE-001",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "BASE-001",
+      "to": "ADR-001",
+      "rel": "implements"
+    },
+    {
+      "from": "BASE-002",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "CA-001",
+      "to": "ADR-009",
+      "rel": "governed_by"
+    },
+    {
+      "from": "CA-001",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "CBS-001",
+      "to": "STD-003",
+      "rel": "depends_on"
+    },
+    {
+      "from": "CBS-001",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "CBS-001",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "CBS-001",
+      "to": "EA-000",
+      "rel": "implements"
+    },
+    {
+      "from": "CBS-001",
+      "to": "STD-003",
+      "rel": "implements"
+    },
+    {
+      "from": "CIX-001",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "CK-001",
+      "to": "EA-010",
+      "rel": "depends_on"
+    },
+    {
+      "from": "CK-001",
+      "to": "CKG-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "CK-001",
+      "to": "IMR-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "CK-001",
+      "to": "CIX-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "CK-001",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "CK-001",
+      "to": "EA-012",
+      "rel": "governed_by"
+    },
+    {
+      "from": "CKG-001",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "CM-001",
+      "to": "EA-012",
+      "rel": "governed_by"
+    },
+    {
+      "from": "DOC-001",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "DOC-001",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "DOC-002",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "DOC-002",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "DOC-002",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "EA-000",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "EA-010",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "EA-010",
+      "to": "STD-003",
+      "rel": "depends_on"
+    },
+    {
+      "from": "EA-010",
+      "to": "CBS-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "EA-010",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "EA-010",
+      "to": "EA-000",
+      "rel": "implements"
+    },
+    {
+      "from": "EA-012",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "IMR-001",
+      "to": "EA-012",
+      "rel": "governed_by"
+    },
+    {
+      "from": "MAP-001",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "MIG-const_0001",
+      "to": "STD-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "MIG-const_0001",
+      "to": "PROC-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "MIG-const_0001",
+      "to": "PROC-001",
+      "rel": "implements"
+    },
+    {
+      "from": "PROC-001",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "PROC-001",
+      "to": "STD-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "PROC-001",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "PROC-001",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "PROC-002",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "PROC-002",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "PROC-002",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "REC-001",
+      "to": "BASE-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "REC-001",
+      "to": "VAL-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "REC-001",
+      "to": "SYS-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "REC-001",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "REC-001",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "ROAD-001",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ROAD-002",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-001",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-001",
+      "to": "STD-003",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-001",
+      "to": "CBS-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-001",
+      "to": "EA-010",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-001",
+      "to": "CIX-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-001",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-001",
+      "to": "EA-000",
+      "rel": "implements"
+    },
+    {
+      "from": "STD-001",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-001",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "STD-001",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "STD-002",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-002",
+      "to": "EA-000",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-002",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "STD-002",
+      "to": "EA-000",
+      "rel": "implements"
+    },
+    {
+      "from": "STD-003",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-003",
+      "to": "EA-000",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-003",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "STD-003",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "STD-003",
+      "to": "EA-000",
+      "rel": "implements"
+    },
+    {
+      "from": "SYS-001",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "SYS-001",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "TM-001",
+      "to": "EA-012",
+      "rel": "governed_by"
+    },
+    {
+      "from": "VAL-001",
+      "to": "BASE-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "VAL-001",
+      "to": "PROC-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "VAL-001",
+      "to": "PROC-001",
+      "rel": "implements"
+    },
+    {
+      "from": "VAL-002",
+      "to": "VAL-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "VAL-002",
+      "to": "PROC-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "VAL-002",
+      "to": "VAL-001",
+      "rel": "implements"
+    }
+  ]
+}

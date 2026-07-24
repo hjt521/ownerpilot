@@ -1,3 +1,28 @@
+---
+constitutional_id: STD-002
+object_type: standard
+title: Constitutional Artifact Lifecycle
+status: Ratified
+canonical_owner: Governance
+governing_authority: EA-000
+ratification_authority: Founder
+lifecycle_state: Ratified
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [CON-001, EA-000]
+required_by: []
+implements: [EA-000]
+governed_by: [EA-000]
+validated_by: [CA-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [lifecycle]
+program_phase: foundation
+repository_path: constitution/standards/constitutional_artifact_lifecycle.md
+checksum_scope: file
+---
+
 # Standard — Constitutional Artifact Lifecycle
 
 **Status:** ADOPTED (Founder directive, 2026-07-24) · **Scope:** every constitutional artifact — EA documents, doctrines, standards, intelligence models, registries, capabilities, ADRs-as-decisions, and infrastructure proposals.

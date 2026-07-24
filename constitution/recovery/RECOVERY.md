@@ -1,3 +1,28 @@
+---
+constitutional_id: REC-001
+object_type: infrastructure
+title: Recovery Kit and Bundle
+status: Ratified
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Ratified
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [BASE-001, VAL-001, SYS-001]
+required_by: []
+implements: [CON-001]
+governed_by: [CON-001]
+validated_by: [CA-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [recovery]
+program_phase: continuity
+repository_path: constitution/recovery/RECOVERY.md
+checksum_scope: file
+---
+
 # Constitutional Recovery Kit — RECOVERY.md
 
 **Status:** ADOPTED (Founder directive, 2026-07-24) · **Purpose:** the canonical kit for rebuilding or re-grounding the OwnerPilot Constitutional platform if you migrate tools (e.g. away from an AI assistant), lose local state, or need to reconstruct the governance context from scratch.
@@ -45,8 +70,11 @@ Recovery Bundle (constitution_recovery_v<version>.zip)
 ├── RECOVERY.md              # this runbook
 ├── Emergency Agent Prompt   # the minimal re-briefing (below)
 ├── Release Notes            # what changed this release
-└── Version Manifest         # constitution_v<version>_manifest.json
+├── Version Manifest         # constitution_v<version>_manifest.json
+├── Generated Indexes        # constitution/index/*.json (CBS-001 output: artifact/ea/adr/registry/knowledge/… + dependency_graph + repository_inventory + metadata_coverage)
+└── Dependency Graph         # constitution/index/dependency_graph.json (nodes = CRIDs, edges = declared relations)
 ```
+The generated indexes are produced by **CBS-001** (`node constitution/tools/cbs.mjs build`) and are reproducible from repository metadata, so a bundle self-describes its entire artifact graph.
 This becomes a step in the migration workflow's release phase (bundle produced + attached to the release). Rebuilding from any bundle reconstitutes the platform at that version without external state. **No secrets in the bundle** — it references credentials, never stores them. (Bundle automation is build-work, not yet implemented; this records the required output.)
 
 ## Maintenance

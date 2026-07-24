@@ -1,0 +1,16 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "artifacts_with_metadata": 33,
+  "adrs": 9,
+  "markdown_without_frontmatter": [
+    "constitution/audit/P1_founder_ratifications_2026-07-24.md",
+    "constitution/audit/P1_remediation_roadmap_2026-07-23.md",
+    "constitution/audit/P1_security_evidence_report_2026-07-23.md",
+    "constitution/audit/audit_automation_design.md",
+    "constitution/audit/canonical_architecture_mapping_CA-001.md",
+    "constitution/audit/initial_audit_queue_2026-07-23.md",
+    "constitution/recovery/repository_inventory_2026-07-24.md"
+  ],
+  "warnings": []
+}

@@ -1,3 +1,28 @@
+---
+constitutional_id: BASE-001
+object_type: baseline
+title: Constitution Schema Baseline
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: []
+required_by: [VAL-001, REC-001]
+implements: [ADR-001]
+governed_by: [CON-001]
+validated_by: [VAL-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [baseline,genesis]
+program_phase: foundation
+repository_path: constitution/baseline/CONSTITUTION_BASELINE_v1.md
+checksum_scope: file
+---
+
 # CONSTITUTION BASELINE v1.0 — "Genesis"
 
 > **The Genesis Block of the OwnerPilot Constitutional Operating System.** The first official constitutional release. Immutable. This document + its manifest + checksum define the canonical state of the `constitution` schema as of Constitution v1.0.

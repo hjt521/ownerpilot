@@ -1,0 +1,111 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "count": 3,
+  "artifacts": [
+    {
+      "crid": "STD-001",
+      "title": "Development Standards",
+      "object_type": "standard",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/standards/development_standards.md",
+      "depends_on": [
+        "CON-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "standards"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "STD-002",
+      "title": "Constitutional Artifact Lifecycle",
+      "object_type": "standard",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/standards/constitutional_artifact_lifecycle.md",
+      "depends_on": [
+        "CON-001",
+        "EA-000"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "lifecycle"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    },
+    {
+      "crid": "STD-003",
+      "title": "Constitutional Metadata Schema",
+      "object_type": "standard",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/standards/constitutional_metadata_schema.md",
+      "depends_on": [
+        "CON-001",
+        "EA-000",
+        "MAP-001"
+      ],
+      "required_by": [
+        "CBS-001",
+        "CIX-001",
+        "EA-010"
+      ],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "VAL-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "STD-002",
+        "MAP-001"
+      ],
+      "registry_tags": [
+        "metadata",
+        "front-matter",
+        "schema"
+      ],
+      "program_phase": "P2.1",
+      "version": "1.0"
+    }
+  ]
+}

@@ -1,3 +1,28 @@
+---
+constitutional_id: PROC-001
+object_type: process
+title: Migration Workflow
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: [CON-001, STD-001]
+required_by: []
+implements: [CON-001]
+governed_by: [CON-001]
+validated_by: [VAL-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [process,workflow]
+program_phase: foundation
+repository_path: constitution/process/migration_workflow.md
+checksum_scope: file
+---
+
 # Phase F — Constitutional Migration Workflow
 
 The mandatory, repeatable, repository-first process for every future constitutional change. **No constitutional object may bypass this workflow.** It exists so the schema never drifts database-first again.

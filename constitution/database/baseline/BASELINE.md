@@ -1,3 +1,28 @@
+---
+constitutional_id: BASE-002
+object_type: baseline
+title: Baseline Notes
+status: Operational
+canonical_owner: Governance
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Operational
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: []
+required_by: []
+implements: []
+governed_by: [CON-001]
+validated_by: [VAL-001]
+supersedes: []
+superseded_by: []
+related_artifacts: []
+registry_tags: [baseline]
+program_phase: foundation
+repository_path: constitution/database/baseline/BASELINE.md
+checksum_scope: file
+---
+
 # Phase B — Constitution Schema Baseline
 
 The baseline is the repository's canonical snapshot of the **entire `constitution` schema as it exists in production** — the artifact drift detection compares against. **Documentation only; no object is modified.**

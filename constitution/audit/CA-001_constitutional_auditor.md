@@ -1,5 +1,7 @@
 ---
 constitutional_id: CA-001
+governed_by: [ADR-009, CON-001]
+lifecycle_state: Operational
 object_type: constitutional_capability
 title: Constitutional Auditor
 version: "1.0"

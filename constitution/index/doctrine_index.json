@@ -1,0 +1,74 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "count": 2,
+  "artifacts": [
+    {
+      "crid": "DOC-001",
+      "title": "Constitutional Intelligence Layer",
+      "object_type": "doctrine",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Intelligence",
+      "ratification_authority": "Founder",
+      "path": "constitution/doctrines/constitutional_intelligence_layer.md",
+      "depends_on": [],
+      "required_by": [
+        "TM-001",
+        "CM-001",
+        "EA-012"
+      ],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "EA-012"
+      ],
+      "registry_tags": [
+        "doctrine",
+        "intelligence"
+      ],
+      "program_phase": "intelligence",
+      "version": null
+    },
+    {
+      "crid": "DOC-002",
+      "title": "Governance Handbook",
+      "object_type": "doctrine",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/doctrines/governance_handbook.md",
+      "depends_on": [
+        "CON-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [],
+      "registry_tags": [
+        "doctrine",
+        "handbook"
+      ],
+      "program_phase": "foundation",
+      "version": null
+    }
+  ]
+}

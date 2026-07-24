@@ -1,3 +1,28 @@
+---
+constitutional_id: DOC-001
+object_type: doctrine
+title: Constitutional Intelligence Layer
+status: Ratified
+canonical_owner: Intelligence
+governing_authority: CON-001
+ratification_authority: Founder
+lifecycle_state: Ratified
+created: 2026-07-24
+updated: 2026-07-24
+depends_on: []
+required_by: [TM-001, CM-001, EA-012]
+implements: [CON-001]
+governed_by: [CON-001]
+validated_by: [CA-001]
+supersedes: []
+superseded_by: []
+related_artifacts: [EA-012]
+registry_tags: [doctrine, intelligence]
+program_phase: intelligence
+repository_path: constitution/doctrines/constitutional_intelligence_layer.md
+checksum_scope: file
+---
+
 # Doctrine — The Constitutional Intelligence Layer
 
 **Status:** ADOPTED (Founder directive, 2026-07-24) · **Scope:** every intelligence model in the constitution, present and future.
