@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "markdown_files": 40,
+  "markdown_files": 41,
   "files": [
     "constitution/CONSTITUTION.md",
     "constitution/STATUS.md",
@@ -40,6 +40,7 @@
     "constitution/roadmap/intelligence_model_registry_proposal.md",
     "constitution/standards/constitutional_artifact_lifecycle.md",
     "constitution/standards/constitutional_metadata_schema.md",
+    "constitution/standards/constitutional_stability_principle.md",
     "constitution/standards/development_standards.md",
     "constitution/tools/CBS-001_constitutional_build_system.md",
     "constitution/validation/ci_cd_design.md",
