@@ -35,7 +35,7 @@ checksum_scope: file
 | ECAP-001 | AI Assistant | `app/chat`, `app/api/chat`, `lib/chat`, `lib/flow`, `lib/intake`, `lib/safety` | ✅ operational | **Runtime monitoring SHIPPED** (all 5 chat error exits → `captureException`: rate-limit, classifier, perplexity-502 [PR #265]; session + persist-500 [this PR]). **DELIVERED through PROC-100** (RPT-007): security-reviewed, validated, released. First Wave-1 stream complete. |
 | ECAP-002 | Document Generation | `app/notice`, `app/api/documents`, `app/api/notices`, `lib/documents`, `lib/produce`, `lib/compliance`, `lib/filing` | ✅ operational | (6) locked-prose/IP review · (9) · (10) |
 | ECAP-003 | Serve & Track | `lib/tracking.ts`, `lib/filing`, `app/riskpath`, `app/api/riskpath` | ✅ operational | (6) · (8) E2E coverage check · (9) · (10) |
-| ECAP-010 | Evidence Management | `lib/audit`, `app/api/internal`, `lib/monitoring` | ✅ operational (append-only walls, P1-verified) | (6) already P1-audited · (9) · (10) |
+| ECAP-010 | Evidence Management | `lib/audit`, `lib/chat/classifierAuditSink`, `lib/jurisdiction/geocode/supabaseAuditSink`, `lib/monitoring`, `app/api/internal` | ✅ operational (append-only walls, P1-verified) | **DELIVERED through PROC-100** (RPT-008): 5 walls re-verified live, tested, validated, released. No code gap. Deferred: audit AlertSink delivery assurance. |
 
 ## What Wave-1 delivery actually needs (honest)
 Because the code exists, the value-add is:
