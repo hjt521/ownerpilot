@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 57,
+  "count": 58,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -1836,6 +1836,48 @@
         "delivery-record",
         "ecap-002",
         "document-generation"
+      ],
+      "program_phase": "enterprise-delivery",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-010",
+      "title": "ECAP-003 Serve & Track — PROC-100 Delivery Record",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/RPT-010_ECAP-003_delivery_record.md",
+      "depends_on": [
+        "ECAP-003",
+        "PROC-100",
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "PROC-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "ECAP-003",
+        "RPT-006"
+      ],
+      "registry_tags": [
+        "delivery-record",
+        "ecap-003",
+        "serve-and-track"
       ],
       "program_phase": "enterprise-delivery",
       "version": "1.0",

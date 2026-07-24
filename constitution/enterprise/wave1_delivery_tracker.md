@@ -34,7 +34,7 @@ checksum_scope: file
 |---|---|---|---|---|
 | ECAP-001 | AI Assistant | `app/chat`, `app/api/chat`, `lib/chat`, `lib/flow`, `lib/intake`, `lib/safety` | ✅ operational | **Runtime monitoring SHIPPED** (all 5 chat error exits → `captureException`: rate-limit, classifier, perplexity-502 [PR #265]; session + persist-500 [this PR]). **DELIVERED through PROC-100** (RPT-007): security-reviewed, validated, released. First Wave-1 stream complete. |
 | ECAP-002 | Document Generation | `lib/documents`, `lib/produce`, `lib/compliance/lockedProse.ts`, `lib/filing`, `app/api/documents`, `app/api/notices`, `app/notice` | ✅ operational | **DELIVERED through PROC-100** (RPT-009): IP guards (locked-prose, attorney-attribution, banned-terms) verified GREEN + CI-wired; validated; released. No code gap. Deferred: produce-path monitoring (post-flip). |
-| ECAP-003 | Serve & Track | `lib/tracking.ts`, `lib/filing`, `app/riskpath`, `app/api/riskpath` | ✅ operational | (6) · (8) E2E coverage check · (9) · (10) |
+| ECAP-003 | Serve & Track | `lib/filing`, `lib/riskpath`, `app/riskpath`, `app/api/riskpath` | ✅ operational | **DELIVERED through PROC-100** (RPT-010): riskpath_records + lahd_filing_records RLS owner-scoped (verified live), claimed-only route, tested, released. No code gap. |
 | ECAP-010 | Evidence Management | `lib/audit`, `lib/chat/classifierAuditSink`, `lib/jurisdiction/geocode/supabaseAuditSink`, `lib/monitoring`, `app/api/internal` | ✅ operational (append-only walls, P1-verified) | **DELIVERED through PROC-100** (RPT-008): 5 walls re-verified live, tested, validated, released. No code gap. Deferred: audit AlertSink delivery assurance. |
 
 ## What Wave-1 delivery actually needs (honest)
