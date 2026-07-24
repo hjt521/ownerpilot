@@ -33,19 +33,27 @@ checksum_scope: file
 
 This does not freeze the Constitution. It raises the threshold for changing the pieces every other artifact depends on: additive extension is normal; material redesign is an explicit, versioned, ADR-backed decision.
 
-## The foundation set (closed unless explicitly superseded)
+## The Constitutional Foundation set (closed — ADR-010, ADR-011)
 | CRID | Artifact | State | Closed |
 |---|---|---|---|
+| EA-000 | Constitutional Meta-Architecture | **Ratified** (2026-07-24 · ADR-011) | ✅ |
 | MAP-001 | Canonical Architecture Mapping | **Ratified** (2026-07-24) | ✅ |
-| EA-010 | Constitutional Knowledge Library | **Ratified** (2026-07-24) | ✅ |
 | STD-003 | Constitutional Metadata Schema | Ratified | ✅ |
 | CBS-001 | Constitutional Build System | Implemented | ✅ |
-| EA-000 | Constitutional Meta-Architecture | **Proposed** (scope mandate; rules already normative via MAP-001) | ⏳ **upon ratification** |
+| EA-010 | Constitutional Knowledge Library | **Ratified** (2026-07-24) | ✅ |
 
-"Closed" = stable substrate: extend, do not redesign. EA-000 joins the closed set when the Founder ratifies it; until then its CRID/Dependency rules are already binding through MAP-001.
+The set is **complete**. These five collectively define the permanent architectural substrate of the Constitutional Operating System. "Closed" = stable substrate: extend, do not redesign.
 
-## What "material redesign" means (requires new EA version + ADR)
-Changing the CRID scheme's identity rules; changing the eight-relation dependency model; changing the metadata schema's required fields incompatibly; replacing the build pipeline's canonical-source model; making the Knowledge Library a second source of truth. **Not** material (allowed additively): new artifacts, new CRIDs, new optional metadata fields, new generated indexes, new validation checks, new registry entries.
+## Material change to a Foundation Artifact — required process (ADR-011)
+A material change to any Foundation Artifact requires **all** of:
+1. A **new Enterprise Architecture version**.
+2. An **ADR** documenting the rationale.
+3. **Founder ratification**.
+4. **Constitutional validation** (CBS-001 `check` + CA-001).
+5. **Preservation of backward traceability** (`supersedes`/`superseded_by`; the old version is retained, never deleted).
+
+## What "material change" means (triggers the process above)
+Changing the CRID scheme's identity rules; changing the eight-relation dependency model; changing the metadata schema's required fields incompatibly; replacing the build pipeline's canonical-source model; making the Knowledge Library a second source of truth; changing the meta-architecture's taxonomy/layering/ratification model. **Not** material (allowed additively, routine): new artifacts, new CRIDs, new optional metadata fields, new generated indexes, new validation checks, new registry entries, doc-refresh corrections.
 
 ## Consequence for the program
 From here, the emphasis shifts from inventing constitutional mechanisms to **using the COS** to build, govern, and evolve business capabilities. New capabilities plug into the COS (via the Capability Registry) rather than modifying it. CA-001 enforces this: a PR that materially alters a closed foundation without a new EA version + ADR is a finding.

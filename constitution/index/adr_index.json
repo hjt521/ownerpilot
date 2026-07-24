@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 10,
+  "count": 11,
   "adrs": [
     {
       "crid": "ADR-001",
@@ -52,6 +52,11 @@
     {
       "crid": "ADR-010",
       "title": "Constitutional Stability Principle + ratification of MAP-001 and EA-010",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-011",
+      "title": "Ratify EA-000 and close the Constitutional Foundation set",
       "path": "constitution/adr/adr_log.md"
     }
   ]

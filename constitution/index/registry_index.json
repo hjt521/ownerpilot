@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 1,
+  "count": 2,
   "artifacts": [
     {
       "crid": "IMR-001",
@@ -25,6 +25,50 @@
       "registry_tags": [],
       "program_phase": null,
       "version": null
+    },
+    {
+      "crid": "REG-CAP-001",
+      "title": "Constitutional Capability Registry",
+      "object_type": "registry",
+      "lifecycle_state": "Architecture Draft",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/REG-CAP-001_capability_registry.md",
+      "depends_on": [
+        "EA-000",
+        "MAP-001",
+        "STD-003",
+        "CBS-001"
+      ],
+      "required_by": [
+        "CKG-001",
+        "IMR-001",
+        "CK-001"
+      ],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "CA-001",
+        "CK-001",
+        "EA-010"
+      ],
+      "registry_tags": [
+        "capability-registry",
+        "semantic-center",
+        "P5"
+      ],
+      "program_phase": "P5",
+      "version": "1.0"
     }
   ]
 }

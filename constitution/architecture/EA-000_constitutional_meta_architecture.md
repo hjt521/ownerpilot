@@ -3,8 +3,8 @@ constitutional_id: EA-000
 governed_by: [CON-001]
 object_type: enterprise_architecture
 title: Constitutional Meta-Architecture
-status: Proposed
-lifecycle_state: Proposed
+status: Ratified
+lifecycle_state: Ratified
 authority_source: Founder (2026-07-24 — directed introducing EA-000 as the map of the Constitution; architecture NOT yet authorized to begin)
 canonical_owner: Constitutional Governance
 ratification_authority: Founder
@@ -12,9 +12,9 @@ governs: [all constitutional artifact types and their relationships]
 program_priority: elevate during P2 (Canonical Architecture Mapping is its evidence base); ratify early — it is the frame the other artifacts hang on
 ---
 
-# EA-000 — Constitutional Meta-Architecture™ (PROPOSED)
+# EA-000 — Constitutional Meta-Architecture™ (RATIFIED)
 
-> **Recorded, not designed.** The Founder directed pausing new domain EAs to introduce **EA-000**: not an architecture of a feature, but the architecture of the Constitution itself — its table of contents and dependency map. This file records the **required scope**; the map itself is **Architecture-Draft work not performed here** and not authorized to begin until the Founder says so. EA-000 is meta-governance: it governs how all other constitutional artifacts relate.
+> **RATIFIED (Founder, 2026-07-24 · ADR-011) — the governing architecture of the Constitution; a closed Foundation Artifact (STD-004).** The Founder directed pausing new domain EAs to introduce **EA-000**: not an architecture of a feature, but the architecture of the Constitution itself — its table of contents and dependency map. This file records the **required scope**; the map itself is **Architecture-Draft work not performed here** and not authorized to begin until the Founder says so. EA-000 is meta-governance: it governs how all other constitutional artifacts relate.
 
 ## Purpose
 Be the single architectural map of the Constitution — what kinds of artifacts exist, in what order they are created, which may reference which, which are normative vs descriptive, which require Founder ratification, and what the overall dependency graph is. It reduces the risk of the repository drifting as it grows.
@@ -62,4 +62,4 @@ The Canonical Architecture Mapping (`MAP-001`, `architecture/canonical_architect
 EA-000 must classify every artifact type as normative (imposes obligations — e.g. standards, ratified ADRs, EAs) or descriptive (records state — e.g. STATUS.md, inventories, reports). This distinction drives what CA-001 audits for compliance vs merely for accuracy.
 
 ## Status in program
-**Proposed** (lifecycle: Proposed) · scope mandate recorded · **no architecture, no schema, no DB change, no ratification** until the Founder authorizes EA-000 design and later ratifies the completed map. Recommended as an early ratification because it frames every other artifact.
+**Ratified** (Founder, 2026-07-24 · ADR-011). EA-000 governs: artifact taxonomy, CRIDs, the Constitutional Dependency Rule, lifecycle governance (STD-002), metadata architecture (STD-003), the generated-artifact model, the Build System (CBS-001), Knowledge Library (EA-010), Constitutional Index (CIX-001), constitutional layering, and repository-first governance. Future artifacts EXTEND EA-000, they do not redefine these principles. Closed Foundation Artifact (STD-004).

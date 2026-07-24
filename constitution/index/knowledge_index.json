@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 34,
+  "count": 35,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -407,7 +407,7 @@
       "crid": "EA-000",
       "title": "Constitutional Meta-Architecture",
       "object_type": "enterprise_architecture",
-      "lifecycle_state": "Proposed",
+      "lifecycle_state": "Ratified",
       "canonical_owner": "Constitutional Governance",
       "ratification_authority": "Founder",
       "path": "constitution/architecture/EA-000_constitutional_meta_architecture.md",
@@ -664,6 +664,50 @@
       ],
       "program_phase": "continuity",
       "version": null
+    },
+    {
+      "crid": "REG-CAP-001",
+      "title": "Constitutional Capability Registry",
+      "object_type": "registry",
+      "lifecycle_state": "Architecture Draft",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/architecture/REG-CAP-001_capability_registry.md",
+      "depends_on": [
+        "EA-000",
+        "MAP-001",
+        "STD-003",
+        "CBS-001"
+      ],
+      "required_by": [
+        "CKG-001",
+        "IMR-001",
+        "CK-001"
+      ],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "CA-001",
+        "CK-001",
+        "EA-010"
+      ],
+      "registry_tags": [
+        "capability-registry",
+        "semantic-center",
+        "P5"
+      ],
+      "program_phase": "P5",
+      "version": "1.0"
     },
     {
       "crid": "ROAD-001",
