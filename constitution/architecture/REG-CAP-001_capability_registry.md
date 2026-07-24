@@ -1,16 +1,16 @@
 ---
 constitutional_id: REG-CAP-001
-operational_maturity: architecture-draft
+operational_maturity: ratified
 security_classification: internal
 capability_class: constitutional
 object_type: registry
 title: Constitutional Capability Registry
-status: Architecture Draft
+status: Ratified
 version: 1.0
 canonical_owner: Governance
 governing_authority: EA-000
 ratification_authority: Founder
-lifecycle_state: Architecture Draft
+lifecycle_state: Ratified
 created: 2026-07-24
 updated: 2026-07-24
 depends_on: [EA-000, MAP-001, STD-003, CBS-001]
@@ -39,7 +39,7 @@ Enterprise Architecture → Knowledge Library → Knowledge Graph → Intelligen
    AI Organizations  →  Runtime  →  OwnerPilot products
 ```
 
-Lifecycle: **Architecture Draft** — built as P5, awaiting Founder ratification. Governed by EA-000; a Layer-2 infrastructure artifact. **No new intelligence models** are designed here (the registry is infrastructure — it honors the standing hold).
+**Ratified** (Founder, 2026-07-24 · ADR-012) — the enterprise semantic backbone. Governed by EA-000; a Layer-2 infrastructure artifact. **No new intelligence models** are designed here (the registry is infrastructure — it honors the standing hold).
 
 ## What it registers (capability classes)
 Constitutional capabilities · Enterprise capabilities · Runtime capabilities · AI capabilities · Human capabilities (where governed) · Future intelligence capabilities. Classes are declared now; slots are filled additively as capabilities are ratified.
@@ -84,4 +84,4 @@ The authoritative **database** store for registered capabilities is the **existi
 Everything now depends on capabilities: EAs describe them, the Knowledge Library catalogs them, the Knowledge Graph links them, Intelligence Models are capabilities, AI Organizations own them, Runtime binds them, and OwnerPilot products consume them. The registry is the single place those layers meet.
 
 ## Governance
-Governed by EA-000; validated by CBS-001 (metadata/reference integrity) + CA-001; generated view kept current by CBS-001. Registering a capability is additive; a capability never becomes a second source of architectural truth. **Status:** Architecture Draft — awaiting Founder ratification.
+Governed by EA-000; validated by CBS-001 (metadata/reference integrity) + CA-001; generated view kept current by CBS-001. Registering a capability is additive; a capability never becomes a second source of architectural truth. **Status:** Ratified (Founder, 2026-07-24 · ADR-012).

@@ -179,6 +179,11 @@
       "layer": 1
     },
     {
+      "crid": "PROC-100",
+      "title": "ECAP Delivery-Stream Lifecycle",
+      "layer": 1
+    },
+    {
       "crid": "REC-001",
       "title": "Recovery Kit and Bundle",
       "layer": 0
@@ -221,6 +226,11 @@
     {
       "crid": "RPT-005",
       "title": "OwnerPilot Enterprise Readiness Report",
+      "layer": 1
+    },
+    {
+      "crid": "RPT-006",
+      "title": "OwnerPilot Product Build — Wave 1 Delivery Tracker",
       "layer": 1
     },
     {
@@ -741,6 +751,26 @@
       "rel": "implements"
     },
     {
+      "from": "PROC-100",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "PROC-100",
+      "to": "REG-CAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "PROC-100",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "PROC-100",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
       "from": "REC-001",
       "to": "BASE-001",
       "rel": "depends_on"
@@ -967,6 +997,31 @@
     },
     {
       "from": "RPT-005",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-006",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-006",
+      "to": "PROC-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-006",
+      "to": "REG-CAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-006",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-006",
       "to": "EA-100",
       "rel": "implements"
     },

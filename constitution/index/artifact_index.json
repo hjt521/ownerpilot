@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 52,
+  "count": 54,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -560,7 +560,7 @@
       "crid": "EA-100",
       "title": "OwnerPilot Enterprise Architecture",
       "object_type": "enterprise_architecture",
-      "lifecycle_state": "Architecture Draft",
+      "lifecycle_state": "Ratified",
       "canonical_owner": "Enterprise",
       "ratification_authority": "Founder",
       "path": "constitution/enterprise/EA-100_ownerpilot_enterprise_architecture.md",
@@ -1261,6 +1261,59 @@
       "runtime_bindings": []
     },
     {
+      "crid": "PROC-100",
+      "title": "ECAP Delivery-Stream Lifecycle",
+      "object_type": "process",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/PROC-100_ecap_delivery_lifecycle.md",
+      "depends_on": [
+        "EA-100",
+        "REG-CAP-001"
+      ],
+      "required_by": [
+        "ECAP-001",
+        "ECAP-002",
+        "ECAP-003",
+        "ECAP-004",
+        "ECAP-005",
+        "ECAP-006",
+        "ECAP-007",
+        "ECAP-008",
+        "ECAP-009",
+        "ECAP-010",
+        "ECAP-011",
+        "ECAP-012"
+      ],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "PROC-001"
+      ],
+      "registry_tags": [
+        "delivery",
+        "product",
+        "lifecycle"
+      ],
+      "program_phase": "enterprise-delivery",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
       "crid": "REC-001",
       "title": "Recovery Kit and Bundle",
       "object_type": "infrastructure",
@@ -1300,7 +1353,7 @@
       "crid": "REG-CAP-001",
       "title": "Constitutional Capability Registry",
       "object_type": "registry",
-      "lifecycle_state": "Architecture Draft",
+      "lifecycle_state": "Ratified",
       "canonical_owner": "Governance",
       "ratification_authority": "Founder",
       "path": "constitution/architecture/REG-CAP-001_capability_registry.md",
@@ -1341,7 +1394,7 @@
       "version": "1.0",
       "capability_class": "constitutional",
       "security_classification": "internal",
-      "operational_maturity": "architecture-draft",
+      "operational_maturity": "ratified",
       "runtime_bindings": []
     },
     {
@@ -1614,6 +1667,50 @@
         "report"
       ],
       "program_phase": "enterprise",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-006",
+      "title": "OwnerPilot Product Build — Wave 1 Delivery Tracker",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/enterprise/wave1_delivery_tracker.md",
+      "depends_on": [
+        "EA-100",
+        "PROC-100",
+        "REG-CAP-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "ECAP-001",
+        "ECAP-002",
+        "ECAP-003",
+        "ECAP-010"
+      ],
+      "registry_tags": [
+        "delivery",
+        "wave-1",
+        "tracker"
+      ],
+      "program_phase": "enterprise-delivery",
       "version": "1.0",
       "capability_class": null,
       "security_classification": null,
