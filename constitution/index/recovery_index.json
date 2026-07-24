@@ -34,7 +34,11 @@
         "recovery"
       ],
       "program_phase": "continuity",
-      "version": null
+      "version": null,
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": []
     }
   ]
 }

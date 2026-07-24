@@ -1,5 +1,8 @@
 ---
 constitutional_id: PROC-001
+operational_maturity: operational
+security_classification: internal
+capability_class: constitutional
 object_type: process
 title: Migration Workflow
 status: Operational

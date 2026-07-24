@@ -23,13 +23,13 @@ const INDEX_DIR = join(ROOT, 'index');
 // CRIDs that are planned (referenced before a file exists). Not errors when referenced.
 const PLANNED_CRIDS = new Set(['EA-010', 'EA-011', 'REG-CAP-001', 'MODEL-BEH', 'MODEL-DEC', 'MODEL-NEG', 'BOOK-001', 'VOL-001']);
 // Prefixes that denote a *constitutional* CRID (so we only reference-check these tokens).
-const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS'];
-const CRID_TOKEN = new RegExp('\\b(?:' + KNOWN_PREFIXES.join('|') + ')-[0-9A-Za-z_]+\\b', 'g');
+const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS', 'ECAP', 'RPT'];
+const CRID_TOKEN = new RegExp('\\b(?:' + KNOWN_PREFIXES.join('|') + ')-[0-9A-Za-z_]+(?:-[0-9A-Za-z_]+)*\\b', 'g');
 const VALID_OBJECT_TYPES = new Set([
   'constitution', 'enterprise_architecture', 'adr', 'adr_log', 'standard', 'doctrine',
   'process', 'registry', 'constitutional_registry', 'model', 'constitutional_intelligence_model',
   'capability', 'constitutional_capability', 'infrastructure', 'constitutional_infrastructure',
-  'baseline', 'validation', 'roadmap', 'mapping', 'canonical_architecture_mapping', 'dashboard', 'migration', 'architecture', 'report'
+  'baseline', 'validation', 'roadmap', 'mapping', 'canonical_architecture_mapping', 'dashboard', 'migration', 'architecture', 'report', 'enterprise_capability'
 ]);
 const RELATION_FIELDS = ['depends_on', 'required_by', 'implements', 'governed_by', 'validated_by', 'supersedes', 'superseded_by', 'related_artifacts', 'governs'];
 const REQUIRED_FIELDS = ['constitutional_id', 'object_type', 'title', 'canonical_owner', 'lifecycle_state', 'governed_by'];
@@ -146,7 +146,10 @@ function build(artifacts, adrs) {
     validated_by: cridsIn(a.validated_by), supersedes: cridsIn(a.supersedes),
     superseded_by: cridsIn(a.superseded_by), related_artifacts: cridsIn(a.related_artifacts),
     registry_tags: Array.isArray(a.registry_tags) ? a.registry_tags : (a.registry_tags ? [a.registry_tags] : []),
-    program_phase: a.program_phase || null, version: a.version || null
+    program_phase: a.program_phase || null, version: a.version || null,
+    capability_class: a.capability_class || null, security_classification: a.security_classification || null,
+    operational_maturity: a.operational_maturity || null,
+    runtime_bindings: Array.isArray(a.runtime_bindings) ? a.runtime_bindings : (a.runtime_bindings ? [a.runtime_bindings] : [])
   });
   const all = artifacts.map(slim).sort((x, y) => x.crid.localeCompare(y.crid));
   const writeIdx = (name, arr) => writeFileSync(join(INDEX_DIR, name), JSON.stringify({ ...gen, count: arr.length, artifacts: arr }, null, 2) + '\n');
@@ -156,7 +159,7 @@ function build(artifacts, adrs) {
   writeIdx('standard_index.json', all.filter(a => a.object_type === 'standard'));
   writeIdx('doctrine_index.json', all.filter(a => a.object_type === 'doctrine'));
   writeIdx('registry_index.json', all.filter(a => a.object_type.includes('registry')));
-  writeIdx('capability_index.json', all.filter(a => a.object_type.includes('capability')));
+  writeIdx('capability_index.json', all.filter(a => a.object_type.includes('capability') || a.capability_class));
   writeIdx('recovery_index.json', all.filter(a => a.crid === 'REC-001' || /recovery/.test(a.path)));
   writeIdx('validation_index.json', all.filter(a => a.object_type === 'validation' || a.crid.startsWith('VAL-')));
   writeIdx('roadmap_index.json', all.filter(a => a.object_type === 'roadmap' || /roadmap\//.test(a.path)));
@@ -175,6 +178,13 @@ function build(artifacts, adrs) {
   // repository inventory
   const inv = walk(ROOT).map(f => relative(REPO, f)).sort();
   writeFileSync(join(INDEX_DIR, 'repository_inventory.json'), JSON.stringify({ ...gen, markdown_files: inv.length, files: inv }, null, 2) + '\n');
+  // Constitution v1.1 Foundation Manifest (the closed foundation set — STD-004 / ADR-010,011)
+  const FOUNDATION = ['EA-000', 'MAP-001', 'STD-003', 'CBS-001', 'EA-010'];
+  writeFileSync(join(INDEX_DIR, 'foundation_manifest.json'), JSON.stringify({
+    ...gen, constitution_version: 'v1.1', principle: 'STD-004 Constitutional Stability Principle',
+    decision: 'ADR-010, ADR-011', note: 'Closed foundation set; material change requires new EA version + ADR + Founder ratification + validation + backward traceability.',
+    foundation_artifacts: FOUNDATION.map(c => { const a = all.find(x => x.crid === c); return a ? { crid: a.crid, title: a.title, lifecycle_state: a.lifecycle_state, path: a.path } : { crid: c, missing: true }; })
+  }, null, 2) + '\n');
   return all;
 }
 

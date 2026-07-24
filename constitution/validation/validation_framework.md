@@ -1,5 +1,8 @@
 ---
 constitutional_id: VAL-001
+operational_maturity: implemented
+security_classification: internal
+capability_class: constitutional
 object_type: validation
 title: Validation Framework and Runner
 status: Implemented

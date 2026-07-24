@@ -32,7 +32,11 @@
         "validation"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "implemented",
+      "runtime_bindings": []
     },
     {
       "crid": "VAL-002",
@@ -63,7 +67,11 @@
         "ci"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     }
   ]
 }

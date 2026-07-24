@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 35,
+  "count": 52,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -33,7 +33,11 @@
         "adr"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "ARCH-001",
@@ -63,7 +67,11 @@
         "architecture"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "ARCH-002",
@@ -93,7 +101,11 @@
         "architecture"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "BASE-001",
@@ -125,7 +137,11 @@
         "genesis"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "BASE-002",
@@ -151,7 +167,11 @@
         "baseline"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "CA-001",
@@ -174,7 +194,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": []
     },
     {
       "crid": "CBS-001",
@@ -216,7 +240,11 @@
         "tooling"
       ],
       "program_phase": "P4-foundation",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "implemented",
+      "runtime_bindings": []
     },
     {
       "crid": "CIX-001",
@@ -238,7 +266,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "proposed",
+      "runtime_bindings": []
     },
     {
       "crid": "CK-001",
@@ -266,7 +298,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "CKG-001",
@@ -288,7 +324,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "CM-001",
@@ -310,7 +350,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "CON-001",
@@ -335,7 +379,11 @@
         "root"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "DOC-001",
@@ -370,7 +418,11 @@
         "intelligence"
       ],
       "program_phase": "intelligence",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "DOC-002",
@@ -401,7 +453,11 @@
         "handbook"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "EA-000",
@@ -423,7 +479,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "EA-010",
@@ -464,7 +524,11 @@
         "metadata"
       ],
       "program_phase": "P3",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": []
     },
     {
       "crid": "EA-012",
@@ -486,7 +550,550 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "EA-100",
+      "title": "OwnerPilot Enterprise Architecture",
+      "object_type": "enterprise_architecture",
+      "lifecycle_state": "Architecture Draft",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/EA-100_ownerpilot_enterprise_architecture.md",
+      "depends_on": [
+        "EA-000",
+        "MAP-001",
+        "REG-CAP-001"
+      ],
+      "required_by": [
+        "ECAP-001",
+        "ECAP-002",
+        "ECAP-003",
+        "ECAP-004",
+        "ECAP-005",
+        "ECAP-006",
+        "ECAP-007",
+        "ECAP-008",
+        "ECAP-009",
+        "ECAP-010",
+        "ECAP-011",
+        "ECAP-012"
+      ],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001",
+        "EA-010"
+      ],
+      "registry_tags": [
+        "enterprise",
+        "ownerpilot",
+        "capability-model"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "ECAP-001",
+      "title": "AI Assistant",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Product",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-001_ai_assistant.md",
+      "depends_on": [
+        "EA-100",
+        "CA-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "guidance"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "pii-sensitive",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "app/chat",
+        "api/chat"
+      ]
+    },
+    {
+      "crid": "ECAP-002",
+      "title": "Document Generation",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Product",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-002_document_generation.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "production"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "notice-rail",
+        "clause-registry",
+        "pdf-pipeline"
+      ]
+    },
+    {
+      "crid": "ECAP-003",
+      "title": "Serve and Track",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Product",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-003_serve_and_track.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "production"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "serve-log"
+      ]
+    },
+    {
+      "crid": "ECAP-004",
+      "title": "RiskPath",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Product",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-004_riskpath.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "guidance"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "app/riskpath",
+        "api/riskpath"
+      ]
+    },
+    {
+      "crid": "ECAP-005",
+      "title": "Property Intelligence",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Engineering",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-005_property_intelligence.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "data"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "parcel-health",
+        "geocode",
+        "lahd-cron",
+        "rtc-cron"
+      ]
+    },
+    {
+      "crid": "ECAP-006",
+      "title": "Pricing Intelligence",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Product",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-006_pricing_intelligence.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "data"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "internal",
+      "operational_maturity": "concept",
+      "runtime_bindings": [
+        "planned"
+      ]
+    },
+    {
+      "crid": "ECAP-007",
+      "title": "Compliance Guidance",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Product",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-007_compliance_guidance.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "governance"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "regulated",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "compliance-gates",
+        "produce-gate-chain"
+      ]
+    },
+    {
+      "crid": "ECAP-008",
+      "title": "Workflow Automation",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Engineering",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-008_workflow_automation.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "platform"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "pg_cron",
+        "edge-functions",
+        "produce-gates"
+      ]
+    },
+    {
+      "crid": "ECAP-009",
+      "title": "Communication",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Engineering",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-009_communication.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "platform"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "pii-sensitive",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "resend-email",
+        "owner-notify"
+      ]
+    },
+    {
+      "crid": "ECAP-010",
+      "title": "Evidence Management",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Engineering",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-010_evidence_management.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "governance"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "audit-logs",
+        "artifacts"
+      ]
+    },
+    {
+      "crid": "ECAP-011",
+      "title": "Reporting",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Product",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-011_reporting.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "insight"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "internal",
+      "operational_maturity": "proposed",
+      "runtime_bindings": [
+        "analytics",
+        "reporting"
+      ]
+    },
+    {
+      "crid": "ECAP-012",
+      "title": "Customer Portal",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Product",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/ECAP-012_customer_portal.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001"
+      ],
+      "registry_tags": [
+        "enterprise-capability",
+        "access"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "pii-sensitive",
+      "operational_maturity": "operational",
+      "runtime_bindings": [
+        "auth",
+        "magic-link",
+        "portal"
+      ]
     },
     {
       "crid": "IMR-001",
@@ -508,7 +1115,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "MAP-001",
@@ -539,7 +1150,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "MIG-const_0001",
@@ -569,7 +1184,11 @@
         "migration"
       ],
       "program_phase": "release",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "PROC-001",
@@ -601,7 +1220,11 @@
         "workflow"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": []
     },
     {
       "crid": "PROC-002",
@@ -631,7 +1254,11 @@
         "process"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "REC-001",
@@ -663,7 +1290,11 @@
         "recovery"
       ],
       "program_phase": "continuity",
-      "version": null
+      "version": null,
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": []
     },
     {
       "crid": "REG-CAP-001",
@@ -707,7 +1338,11 @@
         "P5"
       ],
       "program_phase": "P5",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "architecture-draft",
+      "runtime_bindings": []
     },
     {
       "crid": "ROAD-001",
@@ -731,7 +1366,11 @@
         "roadmap"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "ROAD-002",
@@ -755,7 +1394,11 @@
         "roadmap"
       ],
       "program_phase": "governance",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "RPT-001",
@@ -797,7 +1440,185 @@
         "P4"
       ],
       "program_phase": "P2.1-P3-P4-foundation",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-002",
+      "title": "Enterprise Intelligence Readiness (substrate only — no models)",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/enterprise/RPT-002_intelligence_readiness.md",
+      "depends_on": [
+        "EA-100",
+        "REG-CAP-001",
+        "EA-010"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "EA-012",
+        "DOC-001",
+        "IMR-001",
+        "CKG-001"
+      ],
+      "registry_tags": [
+        "intelligence",
+        "readiness",
+        "extension-points"
+      ],
+      "program_phase": "enterprise-F",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-003",
+      "title": "Auditor Readiness Package (evidence assembled; disposition NOT executed)",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Assurance",
+      "ratification_authority": "n/a",
+      "path": "constitution/audit/RPT-003_auditor_readiness_package_2026-07-24.md",
+      "depends_on": [
+        "CA-001",
+        "MAP-001",
+        "REG-CAP-001",
+        "CBS-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "CA-001"
+      ],
+      "governed_by": [
+        "CA-001"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "EA-100"
+      ],
+      "registry_tags": [
+        "auditor",
+        "evidence",
+        "readiness"
+      ],
+      "program_phase": "enterprise-G",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-004",
+      "title": "Constitutional Foundation Completion Report",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Governance",
+      "ratification_authority": "n/a",
+      "path": "constitution/architecture/RPT-004_foundation_completion_report.md",
+      "depends_on": [
+        "EA-000",
+        "MAP-001",
+        "STD-003",
+        "CBS-001",
+        "EA-010",
+        "STD-004"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001",
+        "EA-100"
+      ],
+      "registry_tags": [
+        "foundation",
+        "completion",
+        "report"
+      ],
+      "program_phase": "enterprise-A",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-005",
+      "title": "OwnerPilot Enterprise Readiness Report",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/enterprise/RPT-005_enterprise_readiness_report.md",
+      "depends_on": [
+        "EA-100",
+        "REG-CAP-001",
+        "RPT-002",
+        "RPT-003",
+        "RPT-004"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "MAP-001",
+        "EA-010",
+        "CIX-001"
+      ],
+      "registry_tags": [
+        "enterprise",
+        "readiness",
+        "report"
+      ],
+      "program_phase": "enterprise",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "STD-001",
@@ -827,7 +1648,11 @@
         "standards"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "STD-002",
@@ -858,7 +1683,11 @@
         "lifecycle"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "STD-003",
@@ -900,7 +1729,11 @@
         "schema"
       ],
       "program_phase": "P2.1",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "STD-004",
@@ -942,7 +1775,11 @@
         "governance"
       ],
       "program_phase": "foundation",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "SYS-001",
@@ -975,7 +1812,11 @@
         "dashboard"
       ],
       "program_phase": "operational",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "TM-001",
@@ -997,7 +1838,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "VAL-001",
@@ -1027,7 +1872,11 @@
         "validation"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "implemented",
+      "runtime_bindings": []
     },
     {
       "crid": "VAL-002",
@@ -1058,7 +1907,11 @@
         "ci"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     }
   ]
 }

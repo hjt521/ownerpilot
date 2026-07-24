@@ -1,5 +1,8 @@
 ---
 constitutional_id: CIX-001
+operational_maturity: proposed
+security_classification: internal
+capability_class: constitutional
 object_type: constitutional_infrastructure
 title: Constitutional Index
 status: Proposed

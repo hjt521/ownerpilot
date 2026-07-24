@@ -1,7 +1,7 @@
 {
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
-  "artifacts_with_metadata": 35,
+  "artifacts_with_metadata": 52,
   "adrs": 11,
   "markdown_without_frontmatter": [
     "constitution/audit/P1_founder_ratifications_2026-07-24.md",

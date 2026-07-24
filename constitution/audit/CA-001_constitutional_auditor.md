@@ -1,5 +1,8 @@
 ---
 constitutional_id: CA-001
+operational_maturity: operational
+security_classification: internal
+capability_class: constitutional
 governed_by: [ADR-009, CON-001]
 lifecycle_state: Operational
 object_type: constitutional_capability

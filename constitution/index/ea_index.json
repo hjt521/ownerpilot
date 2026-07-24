@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 3,
+  "count": 4,
   "artifacts": [
     {
       "crid": "EA-000",
@@ -24,7 +24,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "EA-010",
@@ -65,7 +69,11 @@
         "metadata"
       ],
       "program_phase": "P3",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "operational",
+      "runtime_bindings": []
     },
     {
       "crid": "EA-012",
@@ -87,7 +95,66 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "EA-100",
+      "title": "OwnerPilot Enterprise Architecture",
+      "object_type": "enterprise_architecture",
+      "lifecycle_state": "Architecture Draft",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/EA-100_ownerpilot_enterprise_architecture.md",
+      "depends_on": [
+        "EA-000",
+        "MAP-001",
+        "REG-CAP-001"
+      ],
+      "required_by": [
+        "ECAP-001",
+        "ECAP-002",
+        "ECAP-003",
+        "ECAP-004",
+        "ECAP-005",
+        "ECAP-006",
+        "ECAP-007",
+        "ECAP-008",
+        "ECAP-009",
+        "ECAP-010",
+        "ECAP-011",
+        "ECAP-012"
+      ],
+      "implements": [
+        "EA-000"
+      ],
+      "governed_by": [
+        "EA-000"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "REG-CAP-001",
+        "EA-010"
+      ],
+      "registry_tags": [
+        "enterprise",
+        "ownerpilot",
+        "capability-model"
+      ],
+      "program_phase": "enterprise-D",
+      "version": "0.1",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     }
   ]
 }

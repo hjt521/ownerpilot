@@ -32,7 +32,11 @@
         "standards"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "STD-002",
@@ -63,7 +67,11 @@
         "lifecycle"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "STD-003",
@@ -105,7 +113,11 @@
         "schema"
       ],
       "program_phase": "P2.1",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "STD-004",
@@ -147,7 +159,11 @@
         "governance"
       ],
       "program_phase": "foundation",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     }
   ]
 }
