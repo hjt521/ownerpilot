@@ -20,6 +20,10 @@ import { verifyCaptchaToken } from '@/lib/safety/captcha';
 import { loadSession, createSession, hashAnonToken, serviceClient } from '@/lib/chat/session';
 import { unsupportedLanguageNotice } from '@/lib/chat/refusalBank';
 import { e2eTagFromHeaders } from '@/lib/testing/e2eRunTag';
+// ECAP-001 delivery (PROC-100 stage 6/9): wire the AI-Assistant runtime degradation points into the scrubbed
+// monitoring pipeline. captureException is a no-op unless monitoring is enabled and scrubs PII via the A15
+// denylist, so this is additive and behavior-preserving — it only makes existing failures observable.
+import { captureException } from '@/lib/monitoring';
 // Omnibus §3 row 2 — FF-3 telemetry (pre-staged; no-op unless FF3_TELEMETRY_ENABLED + consent).
 import { emitFf3Event, ff3TelemetryConsentFromCookie } from '@/lib/analytics/ff3Telemetry';
 import type { ChatMessage } from '@/lib/chat/responseFormat';
@@ -83,6 +87,7 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       // Rate-limit store failure must not take down chat; log and continue (degrade open, same posture as classifier).
       console.warn('rate-limit store error — allowing request', (e as Error).message);
+      await captureException(e, { tags: { area: 'chat', op: 'rate_limit_store' }, extra: { session_id: session.id } });
     }
   }
 
@@ -119,12 +124,16 @@ export async function POST(req: NextRequest) {
         }));
       } catch (e) {
         console.warn('classifier error — passing through', (e as Error).message);
+        await captureException(e, { tags: { area: 'chat', op: 'classifier' }, extra: { session_id: session.id } });
       }
     }
 
     let model;
     try { model = await callPerplexity(messages); }
     catch (e) {
+      // Core AI-outage signal: the model call failed → 502. Surface it to monitoring (scrubbed, no-op unless enabled)
+      // so AI-Assistant availability is observable in production; response behavior is unchanged.
+      await captureException(e, { tags: { area: 'chat', op: 'perplexity' }, extra: { session_id: session.id } });
       return NextResponse.json({ error: 'assistant unavailable', detail: (e as Error).message }, { status: 502 });
     }
 
