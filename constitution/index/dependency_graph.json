@@ -89,6 +89,71 @@
       "layer": 1
     },
     {
+      "crid": "EA-100",
+      "title": "OwnerPilot Enterprise Architecture",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-001",
+      "title": "AI Assistant",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-002",
+      "title": "Document Generation",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-003",
+      "title": "Serve and Track",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-004",
+      "title": "RiskPath",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-005",
+      "title": "Property Intelligence",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-006",
+      "title": "Pricing Intelligence",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-007",
+      "title": "Compliance Guidance",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-008",
+      "title": "Workflow Automation",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-009",
+      "title": "Communication",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-010",
+      "title": "Evidence Management",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-011",
+      "title": "Reporting",
+      "layer": 1
+    },
+    {
+      "crid": "ECAP-012",
+      "title": "Customer Portal",
+      "layer": 1
+    },
+    {
       "crid": "IMR-001",
       "title": "Intelligence Model Registry",
       "layer": 3
@@ -136,6 +201,26 @@
     {
       "crid": "RPT-001",
       "title": "Constitutional Metadata Foundation — Implementation Report and Migration Plan",
+      "layer": 1
+    },
+    {
+      "crid": "RPT-002",
+      "title": "Enterprise Intelligence Readiness (substrate only — no models)",
+      "layer": 1
+    },
+    {
+      "crid": "RPT-003",
+      "title": "Auditor Readiness Package (evidence assembled; disposition NOT executed)",
+      "layer": 1
+    },
+    {
+      "crid": "RPT-004",
+      "title": "Constitutional Foundation Completion Report",
+      "layer": 1
+    },
+    {
+      "crid": "RPT-005",
+      "title": "OwnerPilot Enterprise Readiness Report",
       "layer": 1
     },
     {
@@ -386,6 +471,216 @@
       "rel": "governed_by"
     },
     {
+      "from": "EA-100",
+      "to": "EA-000",
+      "rel": "depends_on"
+    },
+    {
+      "from": "EA-100",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "EA-100",
+      "to": "REG-CAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "EA-100",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "EA-100",
+      "to": "EA-000",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-001",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-001",
+      "to": "CA-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-001",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-001",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-002",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-002",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-002",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-003",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-003",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-003",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-004",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-004",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-004",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-005",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-005",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-005",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-006",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-006",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-006",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-007",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-007",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-007",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-008",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-008",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-008",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-009",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-009",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-009",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-010",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-010",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-010",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-011",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-011",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-011",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "ECAP-012",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "ECAP-012",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "ECAP-012",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
       "from": "IMR-001",
       "to": "EA-012",
       "rel": "governed_by"
@@ -543,6 +838,136 @@
     {
       "from": "RPT-001",
       "to": "EA-000",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-002",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-002",
+      "to": "REG-CAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-002",
+      "to": "EA-010",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-002",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-002",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-003",
+      "to": "CA-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-003",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-003",
+      "to": "REG-CAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-003",
+      "to": "CBS-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-003",
+      "to": "CA-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-003",
+      "to": "CA-001",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-004",
+      "to": "EA-000",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-004",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-004",
+      "to": "STD-003",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-004",
+      "to": "CBS-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-004",
+      "to": "EA-010",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-004",
+      "to": "STD-004",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-004",
+      "to": "EA-000",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-004",
+      "to": "EA-000",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-005",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-005",
+      "to": "REG-CAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-005",
+      "to": "RPT-002",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-005",
+      "to": "RPT-003",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-005",
+      "to": "RPT-004",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-005",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-005",
+      "to": "EA-100",
       "rel": "implements"
     },
     {

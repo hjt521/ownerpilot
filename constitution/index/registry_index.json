@@ -24,7 +24,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "REG-CAP-001",
@@ -68,7 +72,11 @@
         "P5"
       ],
       "program_phase": "P5",
-      "version": "1.0"
+      "version": "1.0",
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "architecture-draft",
+      "runtime_bindings": []
     }
   ]
 }

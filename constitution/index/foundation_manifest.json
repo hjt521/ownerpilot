@@ -1,0 +1,41 @@
+{
+  "generated_by": "CBS-001",
+  "generated_at": "2026-07-24",
+  "source": "constitution/ front-matter (canonical)",
+  "constitution_version": "v1.1",
+  "principle": "STD-004 Constitutional Stability Principle",
+  "decision": "ADR-010, ADR-011",
+  "note": "Closed foundation set; material change requires new EA version + ADR + Founder ratification + validation + backward traceability.",
+  "foundation_artifacts": [
+    {
+      "crid": "EA-000",
+      "title": "Constitutional Meta-Architecture",
+      "lifecycle_state": "Ratified",
+      "path": "constitution/architecture/EA-000_constitutional_meta_architecture.md"
+    },
+    {
+      "crid": "MAP-001",
+      "title": "Canonical Architecture Mapping (Constitutional Operating System)",
+      "lifecycle_state": "Ratified",
+      "path": "constitution/architecture/canonical_architecture_mapping.md"
+    },
+    {
+      "crid": "STD-003",
+      "title": "Constitutional Metadata Schema",
+      "lifecycle_state": "Ratified",
+      "path": "constitution/standards/constitutional_metadata_schema.md"
+    },
+    {
+      "crid": "CBS-001",
+      "title": "Constitutional Build System",
+      "lifecycle_state": "Implemented",
+      "path": "constitution/tools/CBS-001_constitutional_build_system.md"
+    },
+    {
+      "crid": "EA-010",
+      "title": "Constitutional Knowledge Library",
+      "lifecycle_state": "Ratified",
+      "path": "constitution/architecture/EA-010_constitutional_knowledge_library.md"
+    }
+  ]
+}

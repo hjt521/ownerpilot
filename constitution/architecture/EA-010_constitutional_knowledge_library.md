@@ -1,5 +1,8 @@
 ---
 constitutional_id: EA-010
+operational_maturity: operational
+security_classification: internal
+capability_class: constitutional
 object_type: enterprise_architecture
 title: Constitutional Knowledge Library
 status: Ratified

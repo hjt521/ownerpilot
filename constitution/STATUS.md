@@ -145,6 +145,9 @@ The Constitutional Operating System is the **permanent governance substrate**. F
 ## P5 — Capability Registry (DELIVERED, Architecture Draft, awaiting Founder ratification)
 **REG-CAP-001** (`architecture/REG-CAP-001_capability_registry.md`) — the canonical **semantic center** connecting Enterprise Architecture → Knowledge Library → Knowledge Graph → Intelligence Models → AI Organizations → Runtime → OwnerPilot products. Each capability is a governed object (14 fields: permanent capability ID, name, purpose, owner, lifecycle, dependencies, implementing artifacts, governing EA, governing ADRs, validation authority, security classification, operational maturity, related capabilities, runtime bindings). **Extends the live `constitution.capabilities` table** (audit-and-extend, no parallel registry); repository catalog + generated `index/capability_index.json` (CA-001, CK-001 registered) is source-of-truth; DB-row registration is a future reviewed migration (none applied). Honors the model hold (infrastructure, not a new intelligence model). Awaiting Founder ratification.
 
+## Enterprise Build Program — Constitution as platform (2026-07-24)
+The pivot is delivered: **the Constitution is now the platform OwnerPilot is built on.** EA-100 OwnerPilot Enterprise Architecture (Architecture Draft) governs **12 modeled capabilities** (ECAP-001…012 — AI Assistant, Document Generation, Serve & Track, RiskPath, Property Intelligence, Pricing Intelligence, Compliance Guidance, Workflow Automation, Communication, Evidence Management, Reporting, Customer Portal) as governed metadata objects — **modeling, not business logic**. **REG-CAP-001** is the semantic backbone: **21 capabilities registered** (8 constitutional + 12 enterprise + CK-001) via metadata, **extending the live `constitution.capabilities` table** (no parallel registry). CBS-001 now generates `capability_index.json` + `foundation_manifest.json`; MAP-001 snapshot doc-refreshed; readiness packages prepared (RPT-002 intelligence substrate — no models; RPT-003 auditor evidence — no disposition); reports RPT-004 (foundation completion) + RPT-005 (enterprise readiness). Holds honored: no new intelligence models, no business-logic/schema/runtime change, no AI self-ratification. **Awaiting Founder ratification:** REG-CAP-001, EA-100 (ECAPs are Concept models).
+
 ## Constitutional cadence (post-P5)
 After P5, constitutional development **slows to a deliberate cadence** — new constitutional work only when justified by clear architectural need. Remaining sequence is mostly application work on top of the COS: P5.5 Knowledge Graph → EA-012 → IMR-001 → TM-001 → CM-001 → CK-001 → OwnerPilot Intelligence Applications. Primary focus shifts to applying the governance framework to the OwnerPilot platform.
 
@@ -152,10 +155,10 @@ After P5, constitutional development **slows to a deliberate cadence** — new c
 The COS is now **metadata-driven**: every durable artifact is self-describing (STD-003 front-matter + permanent CRID), and **CBS-001** (`tools/cbs.mjs`) compiles that metadata into all derived artifacts — no hand-synchronization. `node constitution/tools/cbs.mjs build` regenerates `constitution/index/*` reproducibly; `check` fails CI on metadata drift (dup CRID, broken reference, dependency cycle, missing metadata). Delivered: STD-003 metadata schema · P2.1 front-matter retrofit + CRIDs across ~20 artifacts · **CBS-001** build system · **EA-010** Knowledge Library (generated view) · **CIX-001** generated indexes (13 files, 31 nodes / 76 edges) · implementation report (RPT-001). No production/schema/runtime change; no AI ratification.
 
 <!-- CBS-001 GENERATED STATS (regenerate: node constitution/tools/cbs.mjs status) -->
-- **Artifacts (with metadata):** 35 · **ADRs:** 11
-- **By lifecycle:** Architecture Draft 1 · Implemented 3 · Operational 14 · Proposed 7 · Ratified 10
+- **Artifacts (with metadata):** 52 · **ADRs:** 11
+- **By lifecycle:** Architecture Draft 2 · Concept 12 · Implemented 3 · Operational 18 · Proposed 7 · Ratified 10
 - **Outstanding Proposed:** EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
-- **Ratification queue (Proposed/Architecture Draft):** REG-CAP-001, EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
+- **Ratification queue (Proposed/Architecture Draft):** EA-012, REG-CAP-001, EA-100, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
 
 ## Layer model (Founder-articulated 2026-07-24)
 - **L0 Meta-Governance:** EA-000, STD-002 lifecycle, Recovery Kit+Bundle, CIX-001, MAP-001.

@@ -1,5 +1,8 @@
 ---
 constitutional_id: CBS-001
+operational_maturity: implemented
+security_classification: internal
+capability_class: constitutional
 object_type: infrastructure
 title: Constitutional Build System
 status: Implemented

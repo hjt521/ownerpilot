@@ -37,7 +37,11 @@
         "intelligence"
       ],
       "program_phase": "intelligence",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "DOC-002",
@@ -68,7 +72,11 @@
         "handbook"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     }
   ]
 }

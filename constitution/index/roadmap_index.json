@@ -24,7 +24,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": "constitutional",
+      "security_classification": "internal",
+      "operational_maturity": "proposed",
+      "runtime_bindings": []
     },
     {
       "crid": "CK-001",
@@ -52,7 +56,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "CKG-001",
@@ -74,7 +82,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "CM-001",
@@ -96,7 +108,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "IMR-001",
@@ -118,7 +134,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "ROAD-001",
@@ -142,7 +162,11 @@
         "roadmap"
       ],
       "program_phase": "foundation",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "ROAD-002",
@@ -166,7 +190,11 @@
         "roadmap"
       ],
       "program_phase": "governance",
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     },
     {
       "crid": "TM-001",
@@ -188,7 +216,11 @@
       "related_artifacts": [],
       "registry_tags": [],
       "program_phase": null,
-      "version": null
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
     }
   ]
 }

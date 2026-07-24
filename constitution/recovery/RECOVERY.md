@@ -1,5 +1,8 @@
 ---
 constitutional_id: REC-001
+operational_maturity: operational
+security_classification: internal
+capability_class: constitutional
 object_type: infrastructure
 title: Recovery Kit and Bundle
 status: Ratified

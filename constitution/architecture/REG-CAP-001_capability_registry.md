@@ -1,5 +1,8 @@
 ---
 constitutional_id: REG-CAP-001
+operational_maturity: architecture-draft
+security_classification: internal
+capability_class: constitutional
 object_type: registry
 title: Constitutional Capability Registry
 status: Architecture Draft
