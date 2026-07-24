@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-24",
   "source": "constitution/ front-matter (canonical)",
-  "count": 54,
+  "count": 55,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -1709,6 +1709,48 @@
         "delivery",
         "wave-1",
         "tracker"
+      ],
+      "program_phase": "enterprise-delivery",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-007",
+      "title": "ECAP-001 AI Assistant — PROC-100 Delivery Record",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/RPT-007_ECAP-001_delivery_record.md",
+      "depends_on": [
+        "ECAP-001",
+        "PROC-100",
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [
+        "PROC-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "ECAP-001",
+        "RPT-006"
+      ],
+      "registry_tags": [
+        "delivery-record",
+        "ecap-001",
+        "ai-assistant"
       ],
       "program_phase": "enterprise-delivery",
       "version": "1.0",
