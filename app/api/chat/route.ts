@@ -59,7 +59,10 @@ export async function POST(req: NextRequest) {
     rawToken = created.rawToken; setCookie = true;
     session = await loadSession(rawToken, sb);
   }
-  if (!session) return NextResponse.json({ error: 'session error' }, { status: 500 });
+  if (!session) {
+    await captureException(new Error('chat_session_unavailable_after_create'), { tags: { area: 'chat', op: 'session' } });
+    return NextResponse.json({ error: 'session error' }, { status: 500 });
+  }
 
   const now = new Date().toISOString();
   const nowMs = Date.now();
@@ -174,7 +177,12 @@ export async function POST(req: NextRequest) {
     // intake columns). Empty for every non-FF-3 turn, so this spread is a no-op unless FF-3 capture is active.
     ...(turn.ff3Persist ?? {}),
   }).eq('id', session.id);
-  if (updated.error) return NextResponse.json({ error: 'persist failed' }, { status: 500 });
+  if (updated.error) {
+    // Data-loss signal: the turn's chat_sessions write failed → the owner's message + intake state were not saved.
+    // Highest-severity chat failure; surface it to monitoring (scrubbed, no-op unless enabled). Response unchanged.
+    await captureException(updated.error, { tags: { area: 'chat', op: 'persist' }, extra: { session_id: session.id } });
+    return NextResponse.json({ error: 'persist failed' }, { status: 500 });
+  }
 
   // Omnibus §3 row 2 — capture-start seam. Fires once, when FF-3 capture transitions from inactive to active on
   // this turn. No-op unless FF3_TELEMETRY_ENABLED + consent; never throws (soak-safe).
