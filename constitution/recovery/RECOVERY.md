@@ -34,5 +34,20 @@ On recovery, confirm production still matches the committed baseline: run `run_c
 ## Emergency Agent Prompt (minimal re-briefing)
 > You are Engineering on OwnerPilot's Constitutional platform. The GitHub repository `hjt521/ownerpilot` (`/constitution`) is the single source of truth; `STATUS.md` is the canonical current state. Constitutional separation of powers holds: **Engineering implements, CA-001 assures, the Founder ratifies, the repository is canonical.** Repository-first, architecture-first, additive-by-default, semantic versioning. Never make an unreviewed production database change. Governance identities are logical (`approved_by text`). Every artifact carries one lifecycle state (Concept→Proposed→Architecture Draft→Founder Review→Ratified→Implemented→Operational→Superseded→Archived); AI never self-advances past Architecture Draft and never ratifies. Missing evidence → `Indeterminate`. Read STATUS.md and the artifact-lifecycle standard before acting.
 
+## Recovery Bundle (per-release, self-restoring — ADOPTED direction 2026-07-24)
+Every constitutional release SHALL produce a **Recovery Bundle** — a single ZIP that makes each release self-restoring. Contents:
+```
+Recovery Bundle (constitution_recovery_v<version>.zip)
+├── constitution/            # the repository subtree at the release commit
+├── STATUS.md                # canonical state at release
+├── Repository Inventory     # dated inventory (recovery/repository_inventory_<date>.md)
+├── Checksums                # constitution_checksum.sha256 (+ per-category)
+├── RECOVERY.md              # this runbook
+├── Emergency Agent Prompt   # the minimal re-briefing (below)
+├── Release Notes            # what changed this release
+└── Version Manifest         # constitution_v<version>_manifest.json
+```
+This becomes a step in the migration workflow's release phase (bundle produced + attached to the release). Rebuilding from any bundle reconstitutes the platform at that version without external state. **No secrets in the bundle** — it references credentials, never stores them. (Bundle automation is build-work, not yet implemented; this records the required output.)
+
 ## Maintenance
-Refresh the dated repository inventory and (optionally) snapshot STATUS.md on every constitutional release (migration-workflow step 7). Keep this folder free of secrets — it references, it does not store credentials.
+Refresh the dated repository inventory and (optionally) snapshot STATUS.md on every constitutional release (migration-workflow step 7), and produce the Recovery Bundle above. Keep this folder free of secrets — it references, it does not store credentials.
