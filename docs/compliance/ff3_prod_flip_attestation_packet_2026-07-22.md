@@ -1,6 +1,8 @@
 # FF-3 Production-Flip Attestation Packet — §1.6
 
-**Status:** DRAFT — assembling 2026-07-22 · **files on/after 2026-07-27** (FF-3 soak clean-expiry). Three items finalize at filing (flagged ⏳): the closing Sentry-window extract, rollback drill **Run 2**, and the soak-clean confirmation. Everything else is complete now.
+**Status:** DRAFT — assembling 2026-07-22 · **refreshed 2026-07-25** · **files on/after 2026-07-27** (FF-3 soak clean-expiry). Three items finalize at filing (flagged ⏳): the closing Sentry-window extract, rollback drill **Run 2**, and the soak-clean confirmation. Everything else is complete now.
+
+**2026-07-25 refresh:** two pre-flip checklist items advanced — **leaked-password protection ENABLED + advisor-verified (07-24)**, and the Run-1 follow-up **silent-error-swallow fix in `loadAwaitingReview` shipped (#178)**. Fresh live backlog reading below. Remaining blockers unchanged: Run 2 (broker-executed, ~07-25–27), closing Sentry extract, soak-clean confirmation (clears 07-27).
 
 **Authority:** `ff3_prod_flip_and_scope_a_closure_omnibus_broker_ruling_2026-07-13.md` §1.6 (conditional pre-authorization). Production `FF3_CAPTURE_ENABLED=true` becomes effective **only** upon engineering filing this packet demonstrating §1.1–§1.5 satisfied + soak clean, and broker countersign.
 
@@ -21,7 +23,7 @@
 
 No guard regression on `main` during soak (criterion 3). The 050 drift caught in Run 1 was a DB-apply gap, **not** a CI-guard failure — guards stayed green throughout; remediated per standing ruling #5.
 
-**(c) Anomaly-rate readouts (ties to §1.1(4) / monitoring §C).** Preview traffic is E2E-driven pre-launch → the **low-volume regime governs** (absolute thresholds operative: `ff3_resume_scope_mismatch > 5/24h` or `ff3_resume_already_consumed > 2/24h`). No threshold breach to date; the only resume traffic is the drill's expected `409 ff3_resume_not_authorized` baselines (correct behavior, not anomalies). Live DB backlog check 2026-07-22: **awaiting-review open = 0, over-48h = 0, authorized-unconsumed = 0** — zero stuck holds, zero dangling one-shot authorizations. ⏳ Closing rolling-window counts + denominators at filing.
+**(c) Anomaly-rate readouts (ties to §1.1(4) / monitoring §C).** Preview traffic is E2E-driven pre-launch → the **low-volume regime governs** (absolute thresholds operative: `ff3_resume_scope_mismatch > 5/24h` or `ff3_resume_already_consumed > 2/24h`). No threshold breach to date; the only resume traffic is the drill's expected `409 ff3_resume_not_authorized` baselines (correct behavior, not anomalies). Live DB backlog check 2026-07-22: **awaiting-review open = 0, over-48h = 0, authorized-unconsumed = 0** — zero stuck holds, zero dangling one-shot authorizations. **Re-confirmed 2026-07-25 (MCP `execute_sql`):** FF-3 sessions with capture status = 0, `authorized_unconsumed` = 0, FF-3-unresolved-over-48h = 0 — backlog remains clean. ⏳ Closing rolling-window counts + denominators at filing.
 
 **(d) Manifest history at 130.** Held at 130 across soak; enforced continuously by the green `ci:verify-locked-prose` guard. No FF-3-scoped locked-prose amendment occurred during soak (no §1.1(5) soak-continuation event).
 
@@ -79,8 +81,12 @@ After 72h with no Sev-1/Sev-2 and a clean backlog, drops to normal monitoring ca
 - [ ] **Migration 050 (`broker_reply_thread`) confirmed present in prod `chat_sessions`** + admin-review query verified functional against live schema — `SELECT column_name FROM information_schema.columns WHERE table_name='chat_sessions' AND column_name='broker_reply_thread'` returns one row (confirmed 2026-07-18/07-22); Run 2 exercises the admin-resolve path end-to-end. The specific defect caught mid-drill, listed as its own confirmed item.
 - [ ] **Service-role key + seed-secret rotation** (exposed in the drill channel) — #181
 - [ ] **Broker: Sentry FF-3 alert rules configured** (§1.2 §B, 6 rules) + Data Scrubber/Scrub IP toggles (§2.2)
-- [ ] **Leaked-password protection enabled** (Auth dashboard) — clears the standing Advisors WARN
+- [x] **Leaked-password protection ENABLED + verified** (Auth dashboard, 2026-07-24) — advisor re-scan confirms `auth_leaked_password_protection` WARN cleared (P1 finding D remediated).
 - [ ] Closing Sentry-window extract + day-7 anomaly baseline attached (Item 1a/1c)
+
+### Cleared since draft (2026-07-25)
+- **Silent-error-swallow fix in `loadAwaitingReview` — SHIPPED (#178).** The Run-1 root cause (unchecked destructure swallowed a PostgREST error → empty awaiting-review list) is now fail-loud: query errors throw `ff3_review_query_failed`, the admin route returns 500 `review_query_failed`, and the UI shows a distinct error banner (not the empty-state). Removes the failure mode that masked the migration-050 gap.
+- **Least-privilege grant tidy — STAGED, NOT a flip gate (056).** `supabase/migrations/056_owner_tables_grant_tidy.sql` revokes the unused anon/authenticated grants on `chat_sessions`/`riskpath_records`/`lahd_filing_records` (all access is service-role; verified). **Explicitly scheduled to apply AFTER the flip** — listed here only so it is not conflated with a pre-flip requirement.
 
 ## Supporting evidence (bonus, not a §1.6-required item)
 
