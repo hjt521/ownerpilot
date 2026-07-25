@@ -1,8 +1,8 @@
 {
   "generated_by": "CBS-001",
-  "generated_at": "2026-07-24",
+  "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
-  "count": 58,
+  "count": 60,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -171,6 +171,66 @@
       "capability_class": null,
       "security_classification": null,
       "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "BTRM-001",
+      "title": "Behavioral Trust and Resolution Model",
+      "object_type": "enterprise_capability",
+      "lifecycle_state": "Architecture Draft",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "Founder",
+      "path": "constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md",
+      "depends_on": [
+        "EA-100",
+        "EA-012",
+        "REG-CAP-001",
+        "TM-001",
+        "CM-001",
+        "ENR-001",
+        "BAE-001",
+        "ICOA-001",
+        "RIE-001",
+        "OCM-001",
+        "CS-001",
+        "POL-001"
+      ],
+      "required_by": [],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100",
+        "EA-012"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "RPT-011",
+        "TM-001",
+        "CM-001",
+        "EA-012",
+        "IMR-001",
+        "MODEL-BEH"
+      ],
+      "registry_tags": [
+        "btrm",
+        "behavioral",
+        "trust",
+        "reliance",
+        "resolution",
+        "intelligence",
+        "architecture-draft"
+      ],
+      "program_phase": "enterprise-delivery",
+      "version": "0.1",
+      "capability_class": "enterprise",
+      "security_classification": "internal",
+      "operational_maturity": "architecture-draft",
       "runtime_bindings": []
     },
     {
@@ -1878,6 +1938,61 @@
         "delivery-record",
         "ecap-003",
         "serve-and-track"
+      ],
+      "program_phase": "enterprise-delivery",
+      "version": "1.0",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-011",
+      "title": "BTRM-001 Reconciliation Memo (Phase-1)",
+      "object_type": "report",
+      "lifecycle_state": "Operational",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/enterprise/RPT-011_BTRM-001_reconciliation_memo.md",
+      "depends_on": [
+        "EA-100",
+        "EA-012",
+        "REG-CAP-001",
+        "MAP-001"
+      ],
+      "required_by": [
+        "BTRM-001"
+      ],
+      "implements": [
+        "EA-100"
+      ],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001",
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "BTRM-001",
+        "TM-001",
+        "CM-001",
+        "BAE-001",
+        "ENR-001",
+        "ICOA-001",
+        "RIE-001",
+        "OCM-001",
+        "CS-001",
+        "POL-001"
+      ],
+      "registry_tags": [
+        "btrm",
+        "reconciliation",
+        "phase-1",
+        "intelligence",
+        "dedup"
       ],
       "program_phase": "enterprise-delivery",
       "version": "1.0",

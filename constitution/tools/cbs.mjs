@@ -21,9 +21,12 @@ const REPO = join(ROOT, '..');                                              // r
 const INDEX_DIR = join(ROOT, 'index');
 
 // CRIDs that are planned (referenced before a file exists). Not errors when referenced.
-const PLANNED_CRIDS = new Set(['EA-010', 'EA-011', 'REG-CAP-001', 'MODEL-BEH', 'MODEL-DEC', 'MODEL-NEG', 'BOOK-001', 'VOL-001']);
+const PLANNED_CRIDS = new Set(['EA-010', 'EA-011', 'REG-CAP-001', 'MODEL-BEH', 'MODEL-DEC', 'MODEL-NEG', 'BOOK-001', 'VOL-001',
+  // BTRM-001 component CRIDs — reserved at Architecture Draft, specified inline in BTRM-001; each splits into its own
+  // ratified artifact on Founder approval. BAE-001 concretizes the reserved MODEL-BEH behavioral slot.
+  'ENR-001', 'BAE-001', 'ICOA-001', 'RIE-001', 'OCM-001', 'CS-001', 'POL-001']);
 // Prefixes that denote a *constitutional* CRID (so we only reference-check these tokens).
-const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS', 'ECAP', 'RPT'];
+const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS', 'ECAP', 'RPT', 'BTRM', 'ENR', 'BAE', 'ICOA', 'RIE', 'OCM', 'CS', 'POL'];
 const CRID_TOKEN = new RegExp('\\b(?:' + KNOWN_PREFIXES.join('|') + ')-[0-9A-Za-z_]+(?:-[0-9A-Za-z_]+)*\\b', 'g');
 const VALID_OBJECT_TYPES = new Set([
   'constitution', 'enterprise_architecture', 'adr', 'adr_log', 'standard', 'doctrine',
