@@ -25,7 +25,7 @@ checksum_scope: file
 
 # Constitutional Operating System — STATUS
 
-> Canonical, always-current status of the `constitution` subsystem. Point anyone here (or paste this) instead of re-deriving. Refresh this file on each constitutional release (migration workflow, step 7). **Last updated: 2026-07-25 · Constitution v1.1 · Phase II in progress. BTRM-001 ratified (ADR-013), Stage 0 shipped; RP research-proposal family adopted (ADR-014). Phase II is NOT complete.**
+> Canonical, always-current status of the `constitution` subsystem. Point anyone here (or paste this) instead of re-deriving. Refresh this file on each constitutional release (migration workflow, step 7). **Last updated: 2026-07-25 · Constitution v1.1 · Phase II in progress. BTRM-001 ratified (ADR-013), Stage 0 shipped; RP research-proposal family adopted (ADR-014); DOC-003 AI Operating Charter adopted (PR #277, merged). Phase II is NOT complete.**
 
 ## Headline
 The `constitution` schema (Enterprise Constitutional AI layer) transitioned from an undocumented, database-first subsystem into a governed, repository-first software product at **version v1.1**. The repository is the authoritative source of truth. No unplanned production change was made.
@@ -162,10 +162,10 @@ After P5, constitutional development **slows to a deliberate cadence** — new c
 The COS is now **metadata-driven**: every durable artifact is self-describing (STD-003 front-matter + permanent CRID), and **CBS-001** (`tools/cbs.mjs`) compiles that metadata into all derived artifacts — no hand-synchronization. `node constitution/tools/cbs.mjs build` regenerates `constitution/index/*` reproducibly; `check` fails CI on metadata drift (dup CRID, broken reference, dependency cycle, missing metadata). Delivered: STD-003 metadata schema · P2.1 front-matter retrofit + CRIDs across ~20 artifacts · **CBS-001** build system · **EA-010** Knowledge Library (generated view) · **CIX-001** generated indexes (13 files, 31 nodes / 76 edges) · implementation report (RPT-001). No production/schema/runtime change; no AI ratification.
 
 <!-- CBS-001 GENERATED STATS (regenerate: node constitution/tools/cbs.mjs status) -->
-- **Artifacts (with metadata):** 64 · **ADRs:** 14
-- **By lifecycle:** Concept 16 · Implemented 3 · Operational 24 · Proposed 7 · Ratified 14
-- **Outstanding Proposed:** EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
-- **Ratification queue (Proposed/Architecture Draft):** EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
+- **Artifacts (with metadata):** 65 · **ADRs:** 14
+- **By lifecycle:** Concept 16 · Implemented 3 · Operational 24 · Proposed 7 · Ratified 15
+- **Outstanding Proposed:** CIX-001, CK-001, CKG-001, CM-001, EA-012, IMR-001, TM-001
+- **Ratification queue (Proposed/Architecture Draft):** CIX-001, CK-001, CKG-001, CM-001, EA-012, IMR-001, TM-001
 
 ## Layer model (Founder-articulated 2026-07-24)
 - **L0 Meta-Governance:** EA-000, STD-002 lifecycle, Recovery Kit+Bundle, CIX-001, MAP-001.
