@@ -43,9 +43,11 @@ checksum_scope: file
 | DIRP (Decision Intelligence Research Program) | **ADR-014** (the RP family and its research pipeline, adopted 2026-07-25, same day as this proposal) | ADR-014 already established a standing research-to-constitution pipeline. Recommend folding DIRP's named research areas (negotiation science, decision theory, game theory, behavioral economics, etc.) into that existing pipeline as topics for future RPs, rather than standing up a second, parallel research program the same day the first one was ratified. |
 | Validation Program (200+ scenarios) | — | Execution-stage activity, not a constitutional artifact. Appropriate only once (if) RP-005 reaches an Architecture Draft with a specific enough shape to test — testing a proposal this unformed against 200 scenarios now would validate the wrong thing. |
 
-## 2. Constitutional conflict — flagged, not resolved
+## 2. Constitutional conflict — RESOLVED 2026-07-25 (see closure note below); original analysis preserved
 
 RP-005 asks the Outcome Projection Engine to produce numeric probabilities: settlement probability, litigation probability, collection probability, expected financial recovery. BTRM-001 §3.7/§15 ratified OCM-001 specifically as **qualitative** — support bands (Strongly supported / Supported / Uncertain / Weakly supported / Insufficient evidence) — and explicitly prohibits fabricated probabilities. This is a direct conflict with a ratified safeguard, not a drafting nuance, and this assessment does not resolve it. Any future Architecture Draft for RP-005 must do one of two things: propose a principled, evidence-grounded probability methodology and carry it through the same independent architecture-review-board challenge BTRM-001's design underwent, or drop numeric-probability framing in favor of OCM-001's existing qualitative bands. Silently keeping both isn't an option a reconciliation memo can wave through.
+
+**Closure note (2026-07-25):** resolved by **RPT-014**, ratified by **ADR-015**. OCM-001 remains controlling; the numeric-probability framing described above does not proceed. See RPT-014 for the full reconciliation and BTRM-001 §3.7.1 for the conforming amendment.
 
 ## 3. Transparency note — self-critique, not a conflict
 

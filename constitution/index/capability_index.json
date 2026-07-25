@@ -46,7 +46,11 @@
         "CM-001",
         "EA-012",
         "IMR-001",
-        "MODEL-BEH"
+        "MODEL-BEH",
+        "RPT-014",
+        "ADR-015",
+        "RP-005",
+        "RP-006"
       ],
       "registry_tags": [
         "btrm",
@@ -58,7 +62,7 @@
         "architecture-draft"
       ],
       "program_phase": "enterprise-delivery",
-      "version": "1.0",
+      "version": "1.1",
       "capability_class": "enterprise",
       "security_classification": "internal",
       "operational_maturity": "architecture-draft",

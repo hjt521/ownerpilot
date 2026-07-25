@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
-  "count": 14,
+  "count": 15,
   "adrs": [
     {
       "crid": "ADR-001",
@@ -72,6 +72,11 @@
     {
       "crid": "ADR-014",
       "title": "Introduce the RP (Research Proposal) artifact family and the standing idea-to-constitution pipeline",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-015",
+      "title": "Ratify the RQS–OCM-001 reconciliation; amend BTRM-001 §3.7 with §3.7.1 (RQS as subordinate qualitative-first assurance framework)",
       "path": "constitution/adr/adr_log.md"
     }
   ]
