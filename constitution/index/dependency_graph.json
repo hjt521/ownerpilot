@@ -234,6 +234,11 @@
       "layer": 1
     },
     {
+      "crid": "RP-005",
+      "title": "OwnerPilot Adaptive Decision Intelligence (Research Proposal)",
+      "layer": 1
+    },
+    {
       "crid": "RPT-001",
       "title": "Constitutional Metadata Foundation — Implementation Report and Migration Plan",
       "layer": 1
@@ -286,6 +291,11 @@
     {
       "crid": "RPT-011",
       "title": "BTRM-001 Reconciliation Memo (Phase-1)",
+      "layer": 1
+    },
+    {
+      "crid": "RPT-012",
+      "title": "RP-005 Architecture Impact Assessment",
       "layer": 1
     },
     {
@@ -1056,6 +1066,26 @@
       "rel": "governed_by"
     },
     {
+      "from": "RP-005",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-005",
+      "to": "RP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-005",
+      "to": "RP-004",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-005",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
       "from": "RPT-001",
       "to": "MAP-001",
       "rel": "depends_on"
@@ -1372,6 +1402,41 @@
     },
     {
       "from": "RPT-011",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-012",
+      "to": "RP-005",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-012",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-012",
+      "to": "EA-012",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-012",
+      "to": "BTRM-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-012",
+      "to": "RPT-011",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-012",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-012",
       "to": "EA-100",
       "rel": "implements"
     },
