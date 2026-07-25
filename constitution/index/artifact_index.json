@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
-  "count": 60,
+  "count": 64,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -1508,6 +1508,174 @@
       ],
       "program_phase": "governance",
       "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RP-001",
+      "title": "Decision Intelligence (Research Proposal)",
+      "object_type": "research_proposal",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/research/RP-001_decision_intelligence.md",
+      "depends_on": [
+        "EA-100"
+      ],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "BTRM-001",
+        "TM-001",
+        "CM-001",
+        "RP-002",
+        "RP-003",
+        "RP-004",
+        "ADR-014"
+      ],
+      "registry_tags": [
+        "research-proposal",
+        "non-constitutional",
+        "decision-intelligence"
+      ],
+      "program_phase": "research",
+      "version": "0.1",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RP-002",
+      "title": "Decision Calibration (Research Proposal — proposed name \"DCM\")",
+      "object_type": "research_proposal",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/research/RP-002_decision_calibration.md",
+      "depends_on": [
+        "EA-100",
+        "RP-001"
+      ],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "BTRM-001",
+        "TM-001",
+        "CM-001",
+        "RIE-001",
+        "OCM-001",
+        "RP-001",
+        "ADR-014"
+      ],
+      "registry_tags": [
+        "research-proposal",
+        "non-constitutional",
+        "decision-calibration"
+      ],
+      "program_phase": "research",
+      "version": "0.1",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RP-003",
+      "title": "Portfolio Memory (Research Proposal)",
+      "object_type": "research_proposal",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/research/RP-003_portfolio_memory.md",
+      "depends_on": [
+        "EA-100",
+        "RP-001"
+      ],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "BTRM-001",
+        "POL-001",
+        "ECAP-004",
+        "RP-001",
+        "ADR-014"
+      ],
+      "registry_tags": [
+        "research-proposal",
+        "non-constitutional",
+        "portfolio-memory"
+      ],
+      "program_phase": "research",
+      "version": "0.1",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RP-004",
+      "title": "Negotiation Intelligence (Research Proposal)",
+      "object_type": "research_proposal",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/research/RP-004_negotiation_intelligence.md",
+      "depends_on": [
+        "EA-100",
+        "RP-001"
+      ],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "BTRM-001",
+        "RIE-001",
+        "CS-001",
+        "ICOA-001",
+        "RP-001",
+        "ADR-014"
+      ],
+      "registry_tags": [
+        "research-proposal",
+        "non-constitutional",
+        "negotiation-intelligence"
+      ],
+      "program_phase": "research",
+      "version": "0.1",
       "capability_class": null,
       "security_classification": null,
       "operational_maturity": null,
