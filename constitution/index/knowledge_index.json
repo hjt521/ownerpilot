@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
-  "count": 64,
+  "count": 65,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -511,6 +511,53 @@
       "registry_tags": [
         "doctrine",
         "handbook"
+      ],
+      "program_phase": "foundation",
+      "version": null,
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "DOC-003",
+      "title": "AI Operating Charter (Configuration Manager, Constitutional Librarian, Release Manager)",
+      "object_type": "doctrine",
+      "lifecycle_state": "Ratified",
+      "canonical_owner": "Governance",
+      "ratification_authority": "Founder",
+      "path": "constitution/doctrines/DOC-003_ai_operating_charter.md",
+      "depends_on": [
+        "CON-001",
+        "DOC-002",
+        "STD-002",
+        "EA-010"
+      ],
+      "required_by": [],
+      "implements": [
+        "CON-001"
+      ],
+      "governed_by": [
+        "CON-001",
+        "DOC-002"
+      ],
+      "validated_by": [
+        "CA-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "EA-010",
+        "PROC-001",
+        "PROC-002",
+        "ADR-014"
+      ],
+      "registry_tags": [
+        "doctrine",
+        "ai-charter",
+        "governance",
+        "drive-sync",
+        "institutional-memory"
       ],
       "program_phase": "foundation",
       "version": null,

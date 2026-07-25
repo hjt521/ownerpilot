@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
-  "markdown_files": 71,
+  "markdown_files": 72,
   "files": [
     "constitution/CONSTITUTION.md",
     "constitution/STATUS.md",
@@ -27,6 +27,7 @@
     "constitution/baseline/CONSTITUTION_BASELINE_v1.md",
     "constitution/database/baseline/BASELINE.md",
     "constitution/database/migrations/const_0001_updated_at_trigger_coverage_record.md",
+    "constitution/doctrines/DOC-003_ai_operating_charter.md",
     "constitution/doctrines/constitutional_intelligence_layer.md",
     "constitution/doctrines/governance_handbook.md",
     "constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md",
