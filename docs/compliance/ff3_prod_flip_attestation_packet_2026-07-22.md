@@ -1,8 +1,8 @@
 # FF-3 Production-Flip Attestation Packet — §1.6
 
-**Status:** DRAFT — assembling 2026-07-22 · **refreshed 2026-07-25** · **files on/after 2026-07-27** (FF-3 soak clean-expiry). Three items finalize at filing (flagged ⏳): the closing Sentry-window extract, rollback drill **Run 2**, and the soak-clean confirmation. Everything else is complete now.
+**Status:** DRAFT — assembling 2026-07-22 · **refreshed 2026-07-25** · **files on/after 2026-07-27** (FF-3 soak clean-expiry). **Rollback drill Run 2 is now COMPLETE + CLEAN (2026-07-25).** Two items finalize at filing (flagged ⏳): the closing Sentry-window extract and the soak-clean confirmation (clears 07-27). Everything else is complete now.
 
-**2026-07-25 refresh:** two pre-flip checklist items advanced — **leaked-password protection ENABLED + advisor-verified (07-24)**, and the Run-1 follow-up **silent-error-swallow fix in `loadAwaitingReview` shipped (#178)**. Fresh live backlog reading below. Remaining blockers unchanged: Run 2 (broker-executed, ~07-25–27), closing Sentry extract, soak-clean confirmation (clears 07-27).
+**2026-07-25 refresh:** three pre-flip checklist items advanced — **leaked-password protection ENABLED + advisor-verified (07-24)**, the Run-1 follow-up **silent-error-swallow fix in `loadAwaitingReview` shipped (#178)**, and **rollback drill Run 2 COMPLETE + CLEAN (07-25)** — bidirectional rollback re-confirmed, 3d resume matched the frozen baseline byte-for-byte. Fresh live backlog reading below. Remaining blockers: closing Sentry extract + soak-clean confirmation (clears 07-27).
 
 **Authority:** `ff3_prod_flip_and_scope_a_closure_omnibus_broker_ruling_2026-07-13.md` §1.6 (conditional pre-authorization). Production `FF3_CAPTURE_ENABLED=true` becomes effective **only** upon engineering filing this packet demonstrating §1.1–§1.5 satisfied + soak clean, and broker countersign.
 
@@ -36,7 +36,7 @@ Filed: **`ff3_prod_monitoring_parity_attestation_2026-07-13.md`**. Three layers:
 Runbook + evidence: **`ff3_rollback_drill_runbook_and_evidence_2026-07-13.md`**.
 
 - **Run 1 — COMPLETE + CLEAN (2026-07-18).** Bidirectional rollback proven: flag ON baseline 3-passed → OFF dark at all four layers (produce 200 skip / **zero `compliance_gates` rows** — Sev-1 canary clear / all FF-3 columns NULL / resume `409 ff3_resume_not_authorized`) → back ON parity 3-passed → independent fresh-shell probe 3-passed. Surfaced + remediated the migration-050 schema-before-flag drift mid-drill (standing ruling #5). Merged to `main` (PR #238).
-- **Run 2 — ⏳ SCHEDULED ~2026-07-25–27** (within 48h before this filing). Same procedure; the Run-1 3d resume response is **frozen** and Run 2 must match byte-for-byte (any delta = §1.5 Sev-3 anomaly). Run-2 evidence block completes at filing.
+- **Run 2 — COMPLETE + CLEAN (2026-07-25).** Same procedure, re-confirmed bidirectional: flag ON baseline 3-passed → OFF dark at all four layers (produce 200 skip / **zero `compliance_gates` rows** — Sev-1 canary clear / `ff3_capture_status` NULL, resume+reconciliation fields NULL by construction / resume `409 ff3_resume_not_authorized`) → back ON parity 3-passed → independent fresh-shell probe 3-passed. **3d resume matched the frozen Run-1 baseline byte-for-byte — zero delta.** Evidence block filled in the runbook.
 
 ## Item 4 — §1.4 data-volume affirmation
 
@@ -76,9 +76,9 @@ After 72h with no Sev-1/Sev-2 and a clean backlog, drops to normal monitoring ca
 
 ## Pre-flip checklist (must clear before the flip action)
 
-- [ ] **Run 2 rollback drill** (~07-25–27) — 3-passed round-trip + frozen-baseline match (#183)
+- [x] **Run 2 rollback drill** (2026-07-25) — 3-passed round-trip (baseline 45.0s / parity 39.5s / probe 36.5s) + frozen-baseline match, zero delta (#183)
 - [ ] **Prod `ADMIN_EMAILS` provisioned** (Vercel, Production) — #184
-- [ ] **Migration 050 (`broker_reply_thread`) confirmed present in prod `chat_sessions`** + admin-review query verified functional against live schema — `SELECT column_name FROM information_schema.columns WHERE table_name='chat_sessions' AND column_name='broker_reply_thread'` returns one row (confirmed 2026-07-18/07-22); Run 2 exercises the admin-resolve path end-to-end. The specific defect caught mid-drill, listed as its own confirmed item.
+- [x] **Migration 050 (`broker_reply_thread`) confirmed present in prod `chat_sessions`** + admin-review query verified functional against live schema — `SELECT column_name FROM information_schema.columns WHERE table_name='chat_sessions' AND column_name='broker_reply_thread'` returns one row (confirmed 2026-07-18/07-22); Run 2 (2026-07-25) exercised the admin-resolve path end-to-end (escalate → broker resolve → owner resume → produce, 3-passed). The specific defect caught mid-drill, listed as its own confirmed item.
 - [ ] **Service-role key + seed-secret rotation** (exposed in the drill channel) — #181
 - [ ] **Broker: Sentry FF-3 alert rules configured** (§1.2 §B, 6 rules) + Data Scrubber/Scrub IP toggles (§2.2)
 - [x] **Leaked-password protection ENABLED + verified** (Auth dashboard, 2026-07-24) — advisor re-scan confirms `auth_leaked_password_protection` WARN cleared (P1 finding D remediated).
