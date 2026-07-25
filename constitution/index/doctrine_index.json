@@ -109,7 +109,10 @@
         "EA-010",
         "PROC-001",
         "PROC-002",
-        "ADR-014"
+        "ADR-014",
+        "RP-005",
+        "RP-006",
+        "RPT-013"
       ],
       "registry_tags": [
         "doctrine",

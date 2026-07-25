@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
-  "markdown_files": 74,
+  "markdown_files": 76,
   "files": [
     "constitution/CONSTITUTION.md",
     "constitution/STATUS.md",
@@ -62,7 +62,9 @@
     "constitution/research/RP-003_portfolio_memory.md",
     "constitution/research/RP-004_negotiation_intelligence.md",
     "constitution/research/RP-005_adaptive_decision_intelligence.md",
+    "constitution/research/RP-006_executive_decision_intelligence_directive.md",
     "constitution/research/RPT-012_RP-005_architecture_impact_assessment.md",
+    "constitution/research/RPT-013_RP-006_architecture_impact_assessment.md",
     "constitution/roadmap/CK-001_constitutional_query_engine_proposal.md",
     "constitution/roadmap/CM-001_confidence_model_proposal.md",
     "constitution/roadmap/P5_5_constitutional_knowledge_graph_proposal.md",
