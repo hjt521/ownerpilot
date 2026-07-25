@@ -1,0 +1,25 @@
+name: notion-constitutional-index-sync
+# DOC-003 §5 synchronization policy — one-way push: constitution/index/artifact_index.json (CBS-001,
+# GitHub canonical) -> the "OwnerPilot Constitutional Index" Notion database (create-or-update by CRID).
+# Notion is a mirror; nothing here ever reads back from Notion into the repo. Runs only on merges to
+# main that touch constitution/, plus manual dispatch. Requires repo secret NOTION_TOKEN (a Notion
+# internal integration secret shared with the target database) — set by the Founder, not committed.
+on:
+  push:
+    branches: [main]
+    paths: ['constitution/**']
+  workflow_dispatch: {}
+jobs:
+  sync-notion-constitutional-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild constitution indexes
+        run: node constitution/tools/cbs.mjs build
+      - name: Sync to Notion Constitutional Index
+        run: node constitution/tools/notion_sync.mjs
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
