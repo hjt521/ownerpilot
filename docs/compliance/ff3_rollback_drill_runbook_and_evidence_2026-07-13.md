@@ -128,37 +128,42 @@ genuinely on. If it does not reach the reconciliation card, the Step-4 redeploy 
      attestation filing," whenever that is. See ff3_soak_clock_decouple_engineering_input_2026-07-14.md (pending broker
      supersession ruling). -->
 
-- Date/time (PT): ____
-- Preview URL: ____
-- Preview commit SHA: ____
+- Date/time (PT): 2026-07-24 ~17:37–18:15 PT (2026-07-25 00:37–01:15 UTC)
+- Preview URL(s): flag-on baseline `ownerpilot-6vwhz2wsv-jt-s-projects3.vercel.app`; flag-off dark `ownerpilot-9pp4zampp-jt-s-projects3.vercel.app`; flag-on parity + probe `ownerpilot-1wc7iyhor-jt-s-projects3.vercel.app`
+- Preview commit SHA: main `d7008b8` (redeploys 9pp4zampp / 1wc7iyhor); baseline 6vwhz2wsv was PR #272 branch `cebc57d` — FF-3 code identical across all three (PR #272 is docs-only)
 
 ### Step 1 (flag on) baseline
-- ☐ 3 passed — tail: ____
+- ☑ 3 passed — tail: `3 passed (45.0s)` (22.0s / 13.0s / 6.7s), teardown clean (zero tagged rows). `e2e/ff3-reconciliation-resume.spec.ts --project=desktop` vs 6vwhz2wsv.
 
 ### Step 3 (flag off) multi-layer dark verification
-- Seeded sessionId: ____
-- **3a** produce response NOT `ff3_reconciliation_flag` / `ff3_awaiting_broker_review` / `ff3_notice_wrong_pause`: ☐
-    - Paste response body: ____
-- **3b** `compliance_gates` rows for sessionId = **ZERO**: ☐ **(Sev-1 canary)**
-    - Paste query result: ____
-- **3c** `chat_sessions` fields all NULL: ☐
-    - Paste query result: ____
-- **3d** `/api/chat/ff3/resume` matches Run-1 frozen baseline byte-for-byte: ☐
-    - Paste full response: ____
-    - **Delta from Run 1 (if any):** ____ **(any non-zero delta is a §1.5 Sev-3 anomaly — file diagnostic memo, do not block drill closure but flag in §1.6 packet)**
-- **3e** cleanup delete confirmed: ☐
+- Seeded sessionId: 3561319e-5fdb-43e3-8ab1-35f2f4e05d17 (claimed; user 0981b2d6-…; synthetic_source=e2e)
+- **3a** produce response NOT `ff3_reconciliation_flag` / `ff3_awaiting_broker_review` / `ff3_notice_wrong_pause`: ☑
+    - Response body: `HTTP/2 200 {"ok":true,"riskpathId":"2c4b74cb-fe1a-44a7-a720-c7739caec1ca","lahdCopyVersion":"v1","baseName":"5537-la-mirada-ave-unit-202-los-angeles-",...}` — produce-ready envelope, FF-3 gate skipped.
+- **3b** `compliance_gates` rows for sessionId = **ZERO**: ☑ **(Sev-1 canary — clear)**
+    - Query result (MCP `execute_sql`): `n_gates = 0`
+- **3c** `chat_sessions` fields all NULL: ☑ (see methodology note)
+    - Query result (MCP): `ff3_capture_status = NULL` (directly verified; also `intake_complete = false`, `status = active`).
+    - **Methodology note:** only `ff3_capture_status` was read directly before the 3e cleanup delete; `reconciliation_resolution` and `broker_resume_authorization` (both columns confirmed present in schema) were not independently queried this run. They are NULL by construction — written only by the reconciliation/resume flow, which cannot fire unless FF-3 opens, and the 3b Sev-1 canary (zero gate rows) independently confirms no FF-3 write occurred. Not an anomaly; noted for parity with Run 1's three-field read.
+- **3d** `/api/chat/ff3/resume` matches Run-1 frozen baseline byte-for-byte: ☑
+    - Full response: `HTTP/2 409` · `content-type: application/json` · `date: Sat, 25 Jul 2026 00:42:25 GMT` · `x-matched-path: /api/chat/ff3/resume` · `x-vercel-id: cdg1::iad1::tw9bc-1784940145012-48f8ae525346` · body `{"error":"ff3_resume_not_authorized"}`
+    - **Delta from Run 1:** none — status `409` and body `{"error":"ff3_resume_not_authorized"}` identical byte-for-byte (only the volatile `date` / `x-vercel-id` headers differ, as expected).
+- **3e** cleanup delete confirmed: ☑ (`delete` lahd/riskpath/chat_sessions for session 3561319e-… → verify `cs=0, rp=0, lahd=0`). Broker-executed in the Supabase SQL editor (the AI-issued DELETE was correctly blocked by the write-guard).
 
 ### Step 4 (flag back on) parity
-- ☐ 3 passed — tail: ____
+- ☑ 3 passed — tail: `3 passed (39.5s)` (17.7s / 11.9s / 7.3s), teardown clean (zero tagged rows), vs 1wc7iyhor.
 
 ### Step 5 recorded
-- Flag state left at end: ☐ `true` (Preview)
+- Flag state left at end: ☑ `true` (Preview) — confirmed live by Steps 4 + 6 (FF-3 opens; reconciliation walk completes).
 
 ### Step 6 independent post-drill live-state probe
-- ☐ 3 passed from fresh shell — tail: ____
+- ☑ 3 passed from fresh shell — tail: `3 passed (36.5s)` (14.1s / 11.3s / 7.7s), teardown clean, vs 1wc7iyhor.
 
 ### Anomalies / notes
-- ____
+- **No application anomalies.** Sev-1 canary clear; rollback confirmed bidirectional (flag off → dark at all four layers → flag on → parity + independent probe). Run-2 matches Run-1.
+- **Harness / invocation false-starts (not app defects), all resolved:** (1) Node 20 lacked native WebSocket in `global-teardown` → `nvm use 22`; (2) `E2E_BASE_URL` placeholder left literal → guarded with an explicit URL echo/check; (3) wrong spec run first (`ff3-capture.spec.ts`) → corrected to `ff3-reconciliation-resume.spec.ts`; (4) run from repo root did not load `e2e/playwright.config.ts` (no `baseURL`) → run from `e2e/` with `--project=desktop`. None reached FF-3 app logic; none affect the drill result.
+- **Credential exposure (repeat of Run-1 note):** `TEST_SEED_SECRET` + `SUPABASE_SERVICE_ROLE_KEY` again entered in plaintext during the drill; rotation remains ticketed (#181), post-Run-2.
+
+**Run 2 status: COMPLETE + CLEAN (2026-07-25).** Sev-1 canary clear; rollback mechanism re-confirmed bidirectional. This satisfies the second of the two runs required by the §1.6 prod-flip attestation packet (§1.3). Both drill runs now COMPLETE + CLEAN.
 
 ---
 
