@@ -1,5 +1,5 @@
 // lib/btrm/safeguards/guard.ts
-// BTRM-001 §6/§11 hard-constraint assertions. These are the CI-enforceable guards the independent
+// BTRM-001 §6/§11 hard-constraint assertions. These are the guards CI checks, the ones the independent
 // architecture-review-board challenge (spec §13) conditioned approval on: "the guards in §11 ship before any
 // advisory output reaches a user." Every component boundary that emits free text or a ResolutionOption must call
 // the relevant assertion here before returning. A thrown error here means the output must NOT ship — it is not a

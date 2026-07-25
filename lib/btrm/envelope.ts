@@ -1,7 +1,7 @@
 // lib/btrm/envelope.ts
 // BTRM-001 explainability envelope (spec §5): "Every returned assessment/option must carry an explainability
-// envelope … Outputs missing the envelope are invalid (no black-box results)." This is the CI-enforceable
-// safeguard the independent architecture-review-board challenge (spec §13) conditioned approval on — the guard
+// envelope … Outputs missing the envelope are invalid (no black-box results)." This is the safeguard CI checks
+// for — the one the independent architecture-review-board challenge (spec §13) conditioned approval on — the guard
 // tests in this repo assert every RIE-001/OCM-001/CS-001 output satisfies isCompleteEnvelope() before it can be
 // treated as a valid recommendation.
 
