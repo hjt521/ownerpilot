@@ -3,7 +3,7 @@ constitutional_id: BTRM-001
 object_type: enterprise_capability
 title: Behavioral Trust and Resolution Model
 status: Ratified
-version: 1.0
+version: 1.1
 canonical_owner: Enterprise
 governing_authority: EA-100
 ratification_authority: Founder
@@ -20,7 +20,7 @@ governed_by: [EA-100, EA-012]
 validated_by: [CBS-001, CA-001]
 supersedes: []
 superseded_by: []
-related_artifacts: [RPT-011, TM-001, CM-001, EA-012, IMR-001, MODEL-BEH]
+related_artifacts: [RPT-011, TM-001, CM-001, EA-012, IMR-001, MODEL-BEH, RPT-014, ADR-015, RP-005, RP-006]
 registry_tags: [btrm, behavioral, trust, reliance, resolution, intelligence, architecture-draft]
 program_phase: enterprise-delivery
 repository_path: constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md
@@ -30,6 +30,8 @@ checksum_scope: file
 # BTRM-001 — Behavioral Trust and Resolution Model (Ratified)
 
 > **Lifecycle: Ratified** (Founder, 2026-07-25 · ADR-013 — "build all eight components," given twice; ADR-013 also lifts the ADR-012 intelligence hold **scoped to this component set only**). Authored by Engineering under the Founder's design directive, reviewed via a self-critique and an independent architecture-review-board challenge (§12–13), then ratified with the full eight-component build authorized — overriding the board's reduced-increment recommendation, while preserving every safeguard the board conditioned approval on. **Implementation now proceeds** in dependency-ordered, flag-gated PROC-100 stages (§10, updated build log below). The EA-012 posture still governs: *no automated adverse decisions* — no runtime path may reach an adverse action (eviction, denial, escalation, financial penalty) without `human_review_required` (§6/§11), absent further Founder direction. Component CRIDs (ENR/BAE/ICOA/RIE/OCM/CS/POL) remain reserved-planned pending their own individual ratification; this document governs their implementation under BTRM-001 in the interim. Reconciliation: RPT-011. Ratification record: ADR-013.
+>
+> **v1.1 amendment (Founder, 2026-07-25 · ADR-015):** §3.7.1 added below, codifying RQS as a subordinate, qualitative-first recommendation-assurance framework operating under OCM-001. This resolves the RQS/OCM-001 conflict raised in RPT-012 §2 and RPT-013 §1; both are formally closed by RPT-014. §3.7's original qualitative-only rule is unchanged — §3.7.1 clarifies how RQS fits underneath it, not a replacement of it.
 
 ## Build log (updated as stages land)
 | Stage | Component | Status |
@@ -136,6 +138,14 @@ Each component below is at **Architecture Draft**. Inputs/outputs are typed agai
 ### 3.7 OCM-001 — Outcome Comparison Model
 - **Responsibility:** compare the negotiated path against the likely alternative (BATNA-style) **without fabricated precision.**
 - **Rule:** qualitative bands only — **Strongly supported / Supported / Uncertain / Weakly supported / Insufficient evidence.** Numeric probabilities are prohibited until backed by validated, sufficiently large, relevant datasets (Founder-gated).
+
+### 3.7.1 RQS — Recommendation Quality & Assurance Framework (added 2026-07-25, ADR-015)
+- **Status:** subordinate to OCM-001, not a replacement. Added by RPT-014's reconciliation memorandum to resolve the RQS/OCM-001 conflict identified in RPT-012 §2 and RPT-013 §1.
+- **Form:** a qualitative-first, multidimensional recommendation-assurance framework evaluating seven dimensions individually — factual grounding, legal analysis, objective alignment, alternative consideration, risk analysis, communication strategy, execution readiness. No dimension, and no combination of dimensions, produces a single composite number.
+- **Quality vs. confidence, distinguished:** quality asks whether the required reasoning process was completed rigorously; confidence asks whether the evidence is sufficient and reliable (CM-001). The two are never merged into one figure — the same rule §3.4 already applies to reliance vs. confidence.
+- **Prohibited:** a universal composite recommendation score; false precision (e.g. "87% recommendation quality") anywhere in user-facing output or the constitutional reasoning record; averaging away a critical failure (a weak dimension is not diluted by strength elsewhere).
+- **Permitted internal use only:** numeric telemetry for testing, calibration, benchmarking, model-version comparison, and system-health monitoring. Such numbers may never independently approve, reject, rank, or execute a material recommendation, and may never be surfaced as if they were the recommendation's quality or confidence.
+- **Gating unaffected:** §6/§11's human-review-gate for material-consequence outputs applies exactly as before; RQS dimensions may inform what a reviewer sees, never substitute for that review.
 
 ### 3.8 CS-001 — Communication Strategy
 - **Responsibility:** recommend structured communications. **The only component where tone is a first-class input** — and even here tone shapes *delivery*, never the underlying reliance.

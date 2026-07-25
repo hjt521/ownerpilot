@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
-  "markdown_files": 76,
+  "markdown_files": 77,
   "files": [
     "constitution/CONSTITUTION.md",
     "constitution/STATUS.md",
@@ -52,6 +52,7 @@
     "constitution/enterprise/RPT-009_ECAP-002_delivery_record.md",
     "constitution/enterprise/RPT-010_ECAP-003_delivery_record.md",
     "constitution/enterprise/RPT-011_BTRM-001_reconciliation_memo.md",
+    "constitution/enterprise/RPT-014_RQS_OCM-001_reconciliation_memorandum.md",
     "constitution/enterprise/wave1_delivery_tracker.md",
     "constitution/process/governance_automation.md",
     "constitution/process/migration_workflow.md",

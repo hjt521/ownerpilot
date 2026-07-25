@@ -309,6 +309,11 @@
       "layer": 1
     },
     {
+      "crid": "RPT-014",
+      "title": "RQS – OCM-001 Reconciliation Memorandum (Founder Ratification)",
+      "layer": 1
+    },
+    {
       "crid": "STD-001",
       "title": "Development Standards",
       "layer": 1
@@ -1502,6 +1507,56 @@
     },
     {
       "from": "RPT-013",
+      "to": "EA-100",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-014",
+      "to": "BTRM-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-014",
+      "to": "OCM-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-014",
+      "to": "RP-005",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-014",
+      "to": "RP-006",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-014",
+      "to": "RPT-012",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-014",
+      "to": "RPT-013",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-014",
+      "to": "ADR-015",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-014",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-014",
+      "to": "EA-012",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-014",
       "to": "EA-100",
       "rel": "implements"
     },

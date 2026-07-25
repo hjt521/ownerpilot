@@ -56,3 +56,7 @@ The Founder's closing note — that OwnerPilot's long-term positioning could ext
 ## Status
 
 Captured 2026-07-25 per Founder direction. Architecture Impact Assessment: **RPT-012**. Not reconciled, not drafted, not reviewed, not ratified. No sub-engine (Facts Engine, Legal & Compliance Engine, Negotiation Engine, Outcome Projection Engine, Owner Context Engine, Strategic Communication Engine) is assigned a CRID of its own — per ADR-014, that only happens after Reconciliation → Architecture Draft → self-critique → independent review-board challenge → ADR → Founder ratification, the path BTRM-001 took.
+
+## Closure note (2026-07-25, ADR-015 / RPT-014) — original text above preserved unchanged, per DOC-003 §9
+
+RPT-012 §2 flagged that this RP's **Outcome Projection Engine** (numeric settlement/litigation/collection probability, expected financial recovery) conflicted with BTRM-001 §3.7's ratified qualitative-only OCM-001 mandate. That conflict is **now resolved** by **RPT-014** and ratified by **ADR-015**: OCM-001 remains controlling; numeric probability output as originally described here does not proceed. Any future Architecture Draft touching outcome projection must use OCM-001's qualitative bands (and, where a quality/assurance dimension is wanted, the qualitative-first RQS framework added at BTRM-001 §3.7.1) rather than reopening numeric-probability framing.
