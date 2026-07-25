@@ -79,6 +79,11 @@
       "layer": 1
     },
     {
+      "crid": "DOC-003",
+      "title": "AI Operating Charter (Configuration Manager, Constitutional Librarian, Release Manager)",
+      "layer": 1
+    },
+    {
       "crid": "EA-000",
       "title": "Constitutional Meta-Architecture",
       "layer": 0
@@ -567,6 +572,41 @@
     },
     {
       "from": "DOC-002",
+      "to": "CON-001",
+      "rel": "implements"
+    },
+    {
+      "from": "DOC-003",
+      "to": "CON-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "DOC-003",
+      "to": "DOC-002",
+      "rel": "depends_on"
+    },
+    {
+      "from": "DOC-003",
+      "to": "STD-002",
+      "rel": "depends_on"
+    },
+    {
+      "from": "DOC-003",
+      "to": "EA-010",
+      "rel": "depends_on"
+    },
+    {
+      "from": "DOC-003",
+      "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "DOC-003",
+      "to": "DOC-002",
+      "rel": "governed_by"
+    },
+    {
+      "from": "DOC-003",
       "to": "CON-001",
       "rel": "implements"
     },
