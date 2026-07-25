@@ -56,6 +56,9 @@ Every constitutional artifact carries a **permanent CRID**. **The CRID is not th
 | `MIG-` | Migrations | MIG-const_0001 |
 | `SYS-` | Operational/descriptive | SYS-001 (STATUS.md) |
 | `BOOK-`/`VOL-` | Knowledge content (future) | — (none yet) |
+| `RP-` | Research Proposals — **non-constitutional idea capture** | RP-001…004 |
+
+**RP is a special case (ADR-014).** A Research Proposal carries a CRID for reference stability but is **never constitutional** — it has no `lifecycle_state` progression toward Ratified, cannot be `depends_on`'d by a constitutional artifact, and cannot itself become authoritative. It graduates only by being superseded: a *new*, ordinarily-numbered artifact (EA-/MODEL-/CAP-/etc.) is authored through the full pipeline — reconciliation memo → Architecture Draft → self-critique → independent review-board challenge → ADR → Founder ratification (the path BTRM-001 took) — and that new artifact's `supersedes` field points back to the RP, and the RP's `superseded_by` field points forward. An un-graduated RP asserts nothing about the platform's actual architecture; it exists only so a promising idea isn't lost while awaiting analysis.
 
 ## 2. CRID registry (current artifacts)
 

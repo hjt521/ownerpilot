@@ -8,7 +8,7 @@ governing_authority: CON-001
 ratification_authority: n/a
 lifecycle_state: Operational
 created: 2026-07-22
-updated: 2026-07-24
+updated: 2026-07-25
 depends_on: [MAP-001]
 required_by: [REC-001]
 implements: []
@@ -25,7 +25,7 @@ checksum_scope: file
 
 # Constitutional Operating System — STATUS
 
-> Canonical, always-current status of the `constitution` subsystem. Point anyone here (or paste this) instead of re-deriving. Refresh this file on each constitutional release (migration workflow, step 7). **Last updated: 2026-07-24 · Constitution v1.1 · Phase II in progress. P1 security evidence Founder-approved; roadmap revised (Knowledge Graph P5.5, CM-001 added); Constitutional Intelligence Layer adopted. Phase II is NOT complete.**
+> Canonical, always-current status of the `constitution` subsystem. Point anyone here (or paste this) instead of re-deriving. Refresh this file on each constitutional release (migration workflow, step 7). **Last updated: 2026-07-25 · Constitution v1.1 · Phase II in progress. BTRM-001 ratified (ADR-013), Stage 0 shipped; RP research-proposal family adopted (ADR-014). Phase II is NOT complete.**
 
 ## Headline
 The `constitution` schema (Enterprise Constitutional AI layer) transitioned from an undocumented, database-first subsystem into a governed, repository-first software product at **version v1.1**. The repository is the authoritative source of truth. No unplanned production change was made.
@@ -162,10 +162,10 @@ After P5, constitutional development **slows to a deliberate cadence** — new c
 The COS is now **metadata-driven**: every durable artifact is self-describing (STD-003 front-matter + permanent CRID), and **CBS-001** (`tools/cbs.mjs`) compiles that metadata into all derived artifacts — no hand-synchronization. `node constitution/tools/cbs.mjs build` regenerates `constitution/index/*` reproducibly; `check` fails CI on metadata drift (dup CRID, broken reference, dependency cycle, missing metadata). Delivered: STD-003 metadata schema · P2.1 front-matter retrofit + CRIDs across ~20 artifacts · **CBS-001** build system · **EA-010** Knowledge Library (generated view) · **CIX-001** generated indexes (13 files, 31 nodes / 76 edges) · implementation report (RPT-001). No production/schema/runtime change; no AI ratification.
 
 <!-- CBS-001 GENERATED STATS (regenerate: node constitution/tools/cbs.mjs status) -->
-- **Artifacts (with metadata):** 58 · **ADRs:** 12
-- **By lifecycle:** Concept 12 · Implemented 3 · Operational 23 · Proposed 7 · Ratified 13
+- **Artifacts (with metadata):** 64 · **ADRs:** 14
+- **By lifecycle:** Concept 16 · Implemented 3 · Operational 24 · Proposed 7 · Ratified 14
 - **Outstanding Proposed:** EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
-- **Ratification queue (Proposed):** EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
+- **Ratification queue (Proposed/Architecture Draft):** EA-012, CK-001, CM-001, CKG-001, TM-001, CIX-001, IMR-001
 
 ## Layer model (Founder-articulated 2026-07-24)
 - **L0 Meta-Governance:** EA-000, STD-002 lifecycle, Recovery Kit+Bundle, CIX-001, MAP-001.
@@ -188,3 +188,21 @@ CA-001 ✅ · **P1 security evidence ✅ (Founder-approved, merged `339a0f8`)** 
 
 ## Merged PRs (~9)
 reverse-eng + ESL-005 draft (`2150678`) · Phase 0 (`8fa17cb`) · Phases 1–5 (`360d207`) · validation runner (`05baf89`) · Genesis dump + tool (`fa9ae47`) · v1.1 release (`c7d0b6d`) · v1.1 dump (`9d39c8e`) · ADR-008 accepted (`848fcab`).
+
+## BTRM-001 — Behavioral Trust and Resolution Model (RATIFIED 2026-07-25 · ADR-013)
+- **Status:** **Ratified.** Authored to Architecture Draft with a Phase-3 self-critique and an independent architecture-review-board challenge (the board recommended a reduced first increment — ENR-001 + minimal BAE-001 + safeguards — rather than all eight components). The Founder considered this and directed the **full eight-component build** instead, given twice ("build all eight components").
+- **ADR-013** ratifies BTRM-001 and **lifts the ADR-012 intelligence hold, scoped only to the BTRM-001 component set** (ENR-001, BAE-001, TM-001, CM-001, ICOA-001, RIE-001, OCM-001, CS-001, POL-001). The hold remains in force for everything else (CIX-001, CKG-001, CK-001, IMR-001).
+- **TM-001 and CM-001 are reused, not redesigned** — their existing Proposed specs are implemented inside BTRM-001; this does not itself ratify them as standalone artifacts.
+- **Stage 0 shipped** (foundation every later stage depends on): `lib/btrm/flag.ts` (default-off kill switch + per-stage flags), `lib/btrm/types.ts` (the full §4 data model), `lib/btrm/envelope.ts` (mandatory explainability envelope — no black-box outputs), `lib/btrm/safeguards/` (no-personality-labeling / no-protected-characteristic / human-review-gate runtime guards — the CI safeguards the review board conditioned approval on), `supabase/migrations/057_btrm_enr_evidence_schema.sql` (3 new owner-scoped-RLS tables, staged not applied). 24 tests passing; full-repo `tsc --noEmit` clean. All additive, dark by default (`BTRM_ENABLED` off everywhere).
+- **Build order:** Stage 0 ✅ → ENR-001 → BAE-001 → TM-001/CM-001 wiring → ICOA-001 → RIE-001 → OCM-001/CS-001 → POL-001, each its own reviewable PR. **No runtime path may reach an adverse action (eviction, denial, escalation, financial penalty) without `human_review_required`.**
+- Reconciliation memo: **RPT-011** (dedup against TM-001/CM-001, BAE-001 concretizes the reserved `MODEL-BEH` slot). Full spec: `constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md`.
+
+## RP — Research Proposal family (ADOPTED 2026-07-25 · ADR-014)
+- **Status:** **Adopted.** A new idea (informally "DCM-001," Decision Calibration) was proposed for direct creation in Google Drive during knowledge-library sync planning. Engineering flagged that this both inverted the GitHub-is-source-of-truth hierarchy and skipped reconciliation against likely-overlapping artifacts (TM-001, CM-001, BTRM-001's own RIE-001/OCM-001). The Founder agreed and directed a standing fix instead of a one-off exception.
+- **Decision:** introduced the `RP-` CRID family — **explicitly non-constitutional.** An RP is never `depends_on`-able by a constitutional artifact and never self-advances. It graduates only through the same pipeline BTRM-001 already used: **Research Proposal → Reconciliation memo → Architecture Draft → self-critique → independent review-board challenge → ADR → Founder ratification.**
+- **Captured:** **RP-001** Decision Intelligence, **RP-002** Decision Calibration ("DCM," not yet a real CRID), **RP-003** Portfolio Memory, **RP-004** Negotiation Intelligence — all `lifecycle_state: Concept`, each with an explicit overlap-check note that must be resolved before any real CRID is assigned. Files: `constitution/research/RP-001…004_*.md`.
+- **Google Drive posture reaffirmed:** Drive is a generated, downstream mirror of this repository. No constitutional artifact — RP or otherwise — originates in Drive.
+
+<!-- CBS-001 GENERATED STATS refreshed after BTRM-001/RP work — see the block above (~line 164) for the auto-generated count; this section is the hand-authored narrative for 2026-07-25. -->
+## Next
+BTRM-001 Stage 1 (ENR-001) implementation. Independently, if the Founder wants to pursue RP-002 (Decision Calibration), the next step is a reconciliation memo checking it against TM-001/CM-001/BTRM-001's RIE-001/OCM-001 — not a new CRID.

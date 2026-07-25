@@ -209,6 +209,26 @@
       "layer": 1
     },
     {
+      "crid": "RP-001",
+      "title": "Decision Intelligence (Research Proposal)",
+      "layer": 1
+    },
+    {
+      "crid": "RP-002",
+      "title": "Decision Calibration (Research Proposal — proposed name \"DCM\")",
+      "layer": 1
+    },
+    {
+      "crid": "RP-003",
+      "title": "Portfolio Memory (Research Proposal)",
+      "layer": 1
+    },
+    {
+      "crid": "RP-004",
+      "title": "Negotiation Intelligence (Research Proposal)",
+      "layer": 1
+    },
+    {
       "crid": "RPT-001",
       "title": "Constitutional Metadata Foundation — Implementation Report and Migration Plan",
       "layer": 1
@@ -938,6 +958,61 @@
     {
       "from": "ROAD-002",
       "to": "CON-001",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RP-001",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-001",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RP-002",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-002",
+      "to": "RP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-002",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RP-003",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-003",
+      "to": "RP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-003",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RP-004",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-004",
+      "to": "RP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-004",
+      "to": "EA-100",
       "rel": "governed_by"
     },
     {

@@ -26,13 +26,13 @@ const PLANNED_CRIDS = new Set(['EA-010', 'EA-011', 'REG-CAP-001', 'MODEL-BEH', '
   // ratified artifact on Founder approval. BAE-001 concretizes the reserved MODEL-BEH behavioral slot.
   'ENR-001', 'BAE-001', 'ICOA-001', 'RIE-001', 'OCM-001', 'CS-001', 'POL-001']);
 // Prefixes that denote a *constitutional* CRID (so we only reference-check these tokens).
-const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS', 'ECAP', 'RPT', 'BTRM', 'ENR', 'BAE', 'ICOA', 'RIE', 'OCM', 'CS', 'POL'];
+const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS', 'ECAP', 'RPT', 'BTRM', 'ENR', 'BAE', 'ICOA', 'RIE', 'OCM', 'CS', 'POL', 'RP'];
 const CRID_TOKEN = new RegExp('\\b(?:' + KNOWN_PREFIXES.join('|') + ')-[0-9A-Za-z_]+(?:-[0-9A-Za-z_]+)*\\b', 'g');
 const VALID_OBJECT_TYPES = new Set([
   'constitution', 'enterprise_architecture', 'adr', 'adr_log', 'standard', 'doctrine',
   'process', 'registry', 'constitutional_registry', 'model', 'constitutional_intelligence_model',
   'capability', 'constitutional_capability', 'infrastructure', 'constitutional_infrastructure',
-  'baseline', 'validation', 'roadmap', 'mapping', 'canonical_architecture_mapping', 'dashboard', 'migration', 'architecture', 'report', 'enterprise_capability'
+  'baseline', 'validation', 'roadmap', 'mapping', 'canonical_architecture_mapping', 'dashboard', 'migration', 'architecture', 'report', 'enterprise_capability', 'research_proposal'
 ]);
 const RELATION_FIELDS = ['depends_on', 'required_by', 'implements', 'governed_by', 'validated_by', 'supersedes', 'superseded_by', 'related_artifacts', 'governs'];
 const REQUIRED_FIELDS = ['constitutional_id', 'object_type', 'title', 'canonical_owner', 'lifecycle_state', 'governed_by'];
