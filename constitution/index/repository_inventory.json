@@ -1,8 +1,8 @@
 {
   "generated_by": "CBS-001",
-  "generated_at": "2026-07-24",
+  "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
-  "markdown_files": 65,
+  "markdown_files": 67,
   "files": [
     "constitution/CONSTITUTION.md",
     "constitution/STATUS.md",
@@ -29,6 +29,7 @@
     "constitution/database/migrations/const_0001_updated_at_trigger_coverage_record.md",
     "constitution/doctrines/constitutional_intelligence_layer.md",
     "constitution/doctrines/governance_handbook.md",
+    "constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md",
     "constitution/enterprise/EA-100_ownerpilot_enterprise_architecture.md",
     "constitution/enterprise/ECAP-001_ai_assistant.md",
     "constitution/enterprise/ECAP-002_document_generation.md",
@@ -49,6 +50,7 @@
     "constitution/enterprise/RPT-008_ECAP-010_delivery_record.md",
     "constitution/enterprise/RPT-009_ECAP-002_delivery_record.md",
     "constitution/enterprise/RPT-010_ECAP-003_delivery_record.md",
+    "constitution/enterprise/RPT-011_BTRM-001_reconciliation_memo.md",
     "constitution/enterprise/wave1_delivery_tracker.md",
     "constitution/process/governance_automation.md",
     "constitution/process/migration_workflow.md",

@@ -1,6 +1,6 @@
 {
   "generated_by": "CBS-001",
-  "generated_at": "2026-07-24",
+  "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
   "nodes": [
     {
@@ -27,6 +27,11 @@
       "crid": "BASE-002",
       "title": "Baseline Notes",
       "layer": 2
+    },
+    {
+      "crid": "BTRM-001",
+      "title": "Behavioral Trust and Resolution Model",
+      "layer": 1
     },
     {
       "crid": "CA-001",
@@ -254,6 +259,11 @@
       "layer": 1
     },
     {
+      "crid": "RPT-011",
+      "title": "BTRM-001 Reconciliation Memo (Phase-1)",
+      "layer": 1
+    },
+    {
       "crid": "STD-001",
       "title": "Development Standards",
       "layer": 1
@@ -359,6 +369,81 @@
       "from": "BASE-002",
       "to": "CON-001",
       "rel": "governed_by"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "EA-012",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "REG-CAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "TM-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "CM-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "ENR-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "BAE-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "ICOA-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "RIE-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "OCM-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "CS-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "POL-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "EA-012",
+      "rel": "governed_by"
+    },
+    {
+      "from": "BTRM-001",
+      "to": "EA-100",
+      "rel": "implements"
     },
     {
       "from": "CA-001",
@@ -1143,6 +1228,36 @@
     {
       "from": "RPT-010",
       "to": "PROC-100",
+      "rel": "implements"
+    },
+    {
+      "from": "RPT-011",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-011",
+      "to": "EA-012",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-011",
+      "to": "REG-CAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-011",
+      "to": "MAP-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-011",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
+      "from": "RPT-011",
+      "to": "EA-100",
       "rel": "implements"
     },
     {
