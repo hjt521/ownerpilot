@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-25",
   "source": "constitution/ front-matter (canonical)",
-  "count": 12,
+  "count": 13,
   "adrs": [
     {
       "crid": "ADR-001",
@@ -62,6 +62,11 @@
     {
       "crid": "ADR-012",
       "title": "Ratify REG-CAP-001 + EA-100; authorize OwnerPilot Product Build Program",
+      "path": "constitution/adr/adr_log.md"
+    },
+    {
+      "crid": "ADR-013",
+      "title": "Ratify BTRM-001; lift the intelligence hold for the BTRM-001 component set; authorize the eight-component build",
       "path": "constitution/adr/adr_log.md"
     }
   ]

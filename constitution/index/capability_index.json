@@ -8,7 +8,7 @@
       "crid": "BTRM-001",
       "title": "Behavioral Trust and Resolution Model",
       "object_type": "enterprise_capability",
-      "lifecycle_state": "Architecture Draft",
+      "lifecycle_state": "Ratified",
       "canonical_owner": "Enterprise",
       "ratification_authority": "Founder",
       "path": "constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md",
@@ -58,7 +58,7 @@
         "architecture-draft"
       ],
       "program_phase": "enterprise-delivery",
-      "version": "0.1",
+      "version": "1.0",
       "capability_class": "enterprise",
       "security_classification": "internal",
       "operational_maturity": "architecture-draft",

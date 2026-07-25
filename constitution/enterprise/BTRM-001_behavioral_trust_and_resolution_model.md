@@ -2,12 +2,12 @@
 constitutional_id: BTRM-001
 object_type: enterprise_capability
 title: Behavioral Trust and Resolution Model
-status: Architecture Draft
-version: 0.1
+status: Ratified
+version: 1.0
 canonical_owner: Enterprise
 governing_authority: EA-100
 ratification_authority: Founder
-lifecycle_state: Architecture Draft
+lifecycle_state: Ratified
 created: 2026-07-25
 updated: 2026-07-25
 security_classification: internal
@@ -27,9 +27,23 @@ repository_path: constitution/enterprise/BTRM-001_behavioral_trust_and_resolutio
 checksum_scope: file
 ---
 
-# BTRM-001 — Behavioral Trust and Resolution Model (Architecture Draft)
+# BTRM-001 — Behavioral Trust and Resolution Model (Ratified)
 
-> **Lifecycle: Architecture Draft.** Authored by Engineering under the Founder's design directive. **Not ratified. No implementation, model training, or decision-path wiring is authorized by this document.** Advancement past Architecture Draft requires Founder ratification (STD-002). The EA-012 posture governs: *architecture-and-evidence-model-first; no automated adverse decisions.* Component CRIDs (ENR/BAE/ICOA/RIE/OCM/CS/POL) are **reserved-planned** and split into individually ratified artifacts on approval. Reconciliation: RPT-011.
+> **Lifecycle: Ratified** (Founder, 2026-07-25 · ADR-013 — "build all eight components," given twice; ADR-013 also lifts the ADR-012 intelligence hold **scoped to this component set only**). Authored by Engineering under the Founder's design directive, reviewed via a self-critique and an independent architecture-review-board challenge (§12–13), then ratified with the full eight-component build authorized — overriding the board's reduced-increment recommendation, while preserving every safeguard the board conditioned approval on. **Implementation now proceeds** in dependency-ordered, flag-gated PROC-100 stages (§10, updated build log below). The EA-012 posture still governs: *no automated adverse decisions* — no runtime path may reach an adverse action (eviction, denial, escalation, financial penalty) without `human_review_required` (§6/§11), absent further Founder direction. Component CRIDs (ENR/BAE/ICOA/RIE/OCM/CS/POL) remain reserved-planned pending their own individual ratification; this document governs their implementation under BTRM-001 in the interim. Reconciliation: RPT-011. Ratification record: ADR-013.
+
+## Build log (updated as stages land)
+| Stage | Component | Status |
+|---|---|---|
+| 0 | Schema + feature flag + safeguards + explainability envelope | in progress |
+| 1 | ENR-001 | pending |
+| 2 | BAE-001 | pending |
+| 3 | TM-001 / CM-001 (implementation under BTRM-001) | pending |
+| 4 | ICOA-001 | pending |
+| 5 | RIE-001 | pending |
+| 6 | OCM-001 / CS-001 | pending |
+| 7 | POL-001 | pending |
+
+*All stages ship additive and unwired (inert) — no existing runtime path is modified until a separate, explicitly-approved integration PR connects BTRM-001 outputs to Chat/RiskPath/Notice surfaces with human-review gates on material-consequence actions.*
 
 ## 0. What this is, and what it is not
 

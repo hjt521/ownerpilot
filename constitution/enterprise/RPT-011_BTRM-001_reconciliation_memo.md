@@ -82,3 +82,5 @@ Owner-facing surfaces (AI Chat, RiskPath, Serve & Track, Notice/Document generat
 5. **Safeguards are load-bearing, not appendix.** No personality labeling; no protected-characteristic inference or proxies; symmetrical standards across all party types; observable conduct dominates language. These are specified as hard constraints in BTRM-001, mirroring TM-001's prohibition set.
 
 **Recommendation:** proceed to author BTRM-001 as an Architecture-Draft enterprise capability under EA-100, reusing TM-001/CM-001 and slotting BAE-001 into the reserved behavioral position, then subject it to a self-critique and an independent architecture-review-board challenge. Stop at Architecture Draft pending Founder ratification.
+
+**Update (2026-07-25):** the Founder reviewed BTRM-001's self-critique and review-board challenge and ratified BTRM-001 with the full eight-component build authorized (ADR-013), which also lifts the ADR-012 intelligence hold scoped to this component set. Implementation proceeds in dependency-ordered, flag-gated stages per BTRM-001's build log.
