@@ -24,7 +24,10 @@ const INDEX_DIR = join(ROOT, 'index');
 const PLANNED_CRIDS = new Set(['EA-010', 'EA-011', 'REG-CAP-001', 'MODEL-BEH', 'MODEL-DEC', 'MODEL-NEG', 'BOOK-001', 'VOL-001',
   // BTRM-001 component CRIDs — reserved at Architecture Draft, specified inline in BTRM-001; each splits into its own
   // ratified artifact on Founder approval. BAE-001 concretizes the reserved MODEL-BEH behavioral slot.
-  'ENR-001', 'BAE-001', 'ICOA-001', 'RIE-001', 'OCM-001', 'CS-001', 'POL-001']);
+  'ENR-001', 'BAE-001', 'ICOA-001', 'RIE-001', 'OCM-001', 'CS-001', 'POL-001',
+  // EA-101 — reserved per ADR-016 (top layer of the EA-101/OPOS/OPIL-EA-012 three-layer stack). Referenced in
+  // prose by EA-102 but not yet its own ratified artifact; mirrors the BTRM-001 component-CRID precedent above.
+  'EA-101']);
 // Prefixes that denote a *constitutional* CRID (so we only reference-check these tokens).
 const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS', 'ECAP', 'RPT', 'BTRM', 'ENR', 'BAE', 'ICOA', 'RIE', 'OCM', 'CS', 'POL', 'RP'];
 const CRID_TOKEN = new RegExp('\\b(?:' + KNOWN_PREFIXES.join('|') + ')-[0-9A-Za-z_]+(?:-[0-9A-Za-z_]+)*\\b', 'g');
