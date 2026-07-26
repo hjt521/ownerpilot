@@ -1,6 +1,6 @@
 // lib/btrm/tm/reliance.ts
 // TM-001 — Trust & Reliance Model (BTRM-001 spec §3.3, §5 interface: TM.reliance). Reused, not redesigned, per
-// roadmap/TM-001_enterprise_trust_model_proposal.md. Consumes BAE-001's BehavioralObservation[] plus CM-001's
+// the TM-001 enterprise trust model proposal. Consumes BAE-001's BehavioralObservation[] plus CM-001's
 // ConfidenceAssessment (spec §1 processing model: BAE-001 -> CM-001 -> TM-001) and produces a claim-specific
 // RelianceAssessment — never a global/permanent trust score (spec §3.3 "absolute rule").
 //

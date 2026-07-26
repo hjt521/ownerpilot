@@ -1,6 +1,6 @@
 // lib/btrm/cm/assess.ts
 // CM-001 — Confidence Model (BTRM-001 spec §3.4, §5 interface: CM.assess). Reused, not redesigned, per
-// roadmap/CM-001_confidence_model_proposal.md: measures the completeness/quality of the EVIDENCE behind an
+// the CM-001 confidence model proposal: measures the completeness/quality of the EVIDENCE behind an
 // assessment, never the actor (that is TM-001's job, which in turn consumes this output — spec §1 processing
 // model: BAE-001 -> CM-001 -> TM-001). Deterministic and rules-only, same posture as ENR-001/BAE-001: every
 // number here is computed from structural fields already present on TimelineEvent/Commitment, never inferred
