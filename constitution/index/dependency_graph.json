@@ -1,6 +1,6 @@
 {
   "generated_by": "CBS-001",
-  "generated_at": "2026-07-25",
+  "generated_at": "2026-07-26",
   "source": "constitution/ front-matter (canonical)",
   "nodes": [
     {
@@ -244,6 +244,11 @@
       "layer": 1
     },
     {
+      "crid": "RP-007",
+      "title": "Tenant Behavioral Intelligence Engine (TBIE) and Case Evolution Engine (CEE) — Founder's Engineering Directive",
+      "layer": 1
+    },
+    {
       "crid": "RPT-001",
       "title": "Constitutional Metadata Foundation — Implementation Report and Migration Plan",
       "layer": 1
@@ -311,6 +316,11 @@
     {
       "crid": "RPT-014",
       "title": "RQS – OCM-001 Reconciliation Memorandum (Founder Ratification)",
+      "layer": 1
+    },
+    {
+      "crid": "RPT-015",
+      "title": "RP-007 (TBIE / CEE) Architecture Impact Assessment",
       "layer": 1
     },
     {
@@ -1116,6 +1126,21 @@
       "rel": "governed_by"
     },
     {
+      "from": "RP-007",
+      "to": "BTRM-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-007",
+      "to": "EA-100",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RP-007",
+      "to": "EA-100",
+      "rel": "governed_by"
+    },
+    {
       "from": "RPT-001",
       "to": "MAP-001",
       "rel": "depends_on"
@@ -1559,6 +1584,21 @@
       "from": "RPT-014",
       "to": "EA-100",
       "rel": "implements"
+    },
+    {
+      "from": "RPT-015",
+      "to": "RP-007",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-015",
+      "to": "BTRM-001",
+      "rel": "depends_on"
+    },
+    {
+      "from": "RPT-015",
+      "to": "EA-100",
+      "rel": "governed_by"
     },
     {
       "from": "STD-001",
