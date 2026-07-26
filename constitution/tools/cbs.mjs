@@ -24,11 +24,18 @@ const INDEX_DIR = join(ROOT, 'index');
 const PLANNED_CRIDS = new Set(['EA-010', 'EA-011', 'REG-CAP-001', 'MODEL-BEH', 'MODEL-DEC', 'MODEL-NEG', 'BOOK-001', 'VOL-001',
   // BTRM-001 component CRIDs — reserved at Architecture Draft, specified inline in BTRM-001; each splits into its own
   // ratified artifact on Founder approval. BAE-001 concretizes the reserved MODEL-BEH behavioral slot.
-  'ENR-001', 'BAE-001', 'ICOA-001', 'RIE-001', 'OCM-001', 'CS-001', 'POL-001']);
+  'ENR-001', 'BAE-001', 'ICOA-001', 'RIE-001', 'OCM-001', 'CS-001', 'POL-001',
+  // Reserved per ADR-019 (EA-101 v0.2 ratification): namespace + drafting intent only, per ADR-019 control #2 —
+  // reservation does not create, ratify, or authorize implementation of any of the four. OPOS-001 (doctrine) is
+  // EA-101's operating ruleset, drafted separately as a Doctrine Draft (not an Architecture Draft), per ADR-019
+  // control #1. RCO-001/DECG-001 (standard) are the future Recommendation Object / Decision Graph contracts;
+  // constitution/implementation-specs/*_v0.1.md remain drafting inputs only, not adopted by implication.
+  // FIE-001 (enterprise_architecture) is the Financial Intelligence Engine, research/drafting only.
+  'OPOS-001', 'RCO-001', 'DECG-001', 'FIE-001']);
   // EA-101 is no longer planned — it is now a real registered artifact (constitution/architecture/
-  // EA-101_ownerpilot_cognitive_architecture.md, Architecture Draft), so its own front-matter registers it.
+  // EA-101_ownerpilot_cognitive_architecture.md, Ratified v0.2), so its own front-matter registers it.
 // Prefixes that denote a *constitutional* CRID (so we only reference-check these tokens).
-const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS', 'ECAP', 'RPT', 'BTRM', 'ENR', 'BAE', 'ICOA', 'RIE', 'OCM', 'CS', 'POL', 'RP'];
+const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS', 'ECAP', 'RPT', 'BTRM', 'ENR', 'BAE', 'ICOA', 'RIE', 'OCM', 'CS', 'POL', 'RP', 'OPOS', 'RCO', 'DECG', 'FIE'];
 const CRID_TOKEN = new RegExp('\\b(?:' + KNOWN_PREFIXES.join('|') + ')-[0-9A-Za-z_]+(?:-[0-9A-Za-z_]+)*\\b', 'g');
 const VALID_OBJECT_TYPES = new Set([
   'constitution', 'enterprise_architecture', 'adr', 'adr_log', 'standard', 'doctrine',
