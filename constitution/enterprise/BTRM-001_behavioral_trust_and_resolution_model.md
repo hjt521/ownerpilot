@@ -36,8 +36,8 @@ checksum_scope: file
 ## Build log (updated as stages land)
 | Stage | Component | Status |
 |---|---|---|
-| 0 | Schema + feature flag + safeguards + explainability envelope | in progress |
-| 1 | ENR-001 | pending |
+| 0 | Schema + feature flag + safeguards + explainability envelope | shipped |
+| 1 | ENR-001 | shipped (dark — `BTRM_STAGE_ENR_ENABLED` unset everywhere; no caller wired yet) |
 | 2 | BAE-001 | pending |
 | 3 | TM-001 / CM-001 (implementation under BTRM-001) | pending |
 | 4 | ICOA-001 | pending |
@@ -110,6 +110,7 @@ Each component below is at **Architecture Draft**. Inputs/outputs are typed agai
 - **Inputs:** `EvidenceItem[]` (raw). **Outputs:** `TimelineEvent[]`, `Commitment[]`, `ProvenanceLedger`.
 - **Hard rules:** original evidence is **immutable** and never replaced by an AI summary; every derived event carries a provenance class (§4) and links to its source item(s); alleged vs. confirmed events are distinguished; missing/uncertain timestamps are flagged, never invented.
 - **Non-goals:** no behavioral judgment, no reliance, no interest inference.
+- **Stage 1 implementation note (2026-07-25, `lib/btrm/enr/`):** two scoping decisions worth recording explicitly rather than leaving implicit. (1) **Corroboration across items is not computed here.** Cross-item corroboration is CM-001's responsibility (§4 `ConfidenceAssessment.corroboration`, Stage 3) — ENR-001 classifies provenance from `verificationStatus` + `evidenceType` alone (`lib/btrm/enr/provenance.ts`), so it does not pre-empt a component that does not exist yet. (2) **Commitment extraction never parses free text for implied promises.** Doing so would be inference, not deterministic pre-processing, and would blur into BAE-001/AI-inference territory. A `Commitment` is materialized only when the caller has already tagged the source `EvidenceItem` with an explicit `commitmentHint` (`lib/btrm/types.ts`). Deduplication (`lib/btrm/enr/dedupe.ts`) is exact-match only (source + author + evidenceType + timestamp + originalContentRef) — deliberately conservative, since over-merging would silently drop evidence. Shipped dark: `BTRM_STAGE_ENR_ENABLED` is unset everywhere and no caller invokes `normalize()` yet.
 
 ### 3.2 BAE-001 — Behavioral Analysis Engine  *(concretizes reserved MODEL-BEH)*
 - **Responsibility (descriptive):** classify observable behavioral events from the timeline. Answers *"what behavior is supported by the evidence?"* — **no trust assigned**.
