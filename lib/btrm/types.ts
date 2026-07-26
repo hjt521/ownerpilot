@@ -8,6 +8,8 @@
 // NOTE ON POSTURE: nothing in this file is wired into any runtime path. Constructing these types has no effect
 // on the application until a stage explicitly reads/writes them behind its own flag (lib/btrm/flag.ts).
 
+import type { ExplainabilityEnvelope } from './envelope';
+
 /** Provenance classes (spec §4 Provenance enum) — the strength of an evidentiary claim. Every derived event
  *  MUST carry one; ENR-001 defaults to the WEAKEST compatible class (BTRM-001 §12 self-critique #3). */
 export type Provenance =
@@ -264,6 +266,15 @@ export interface ResolutionOption {
   documentationRequired: string[];
   recommendedCommunicationRef?: string; // links to a CS-001 recommendation
   materialConsequence: boolean; // true => humanReviewRequired MUST be true downstream (state-machine guard, §6)
+  /** Stage 5 (RIE-001, `lib/btrm/rie/`): true whenever materialConsequence is true, or whenever the reliance/
+   *  confidence records cited in support of this option are too weak or insufficient to act on without review.
+   *  §6/§11's guard (lib/btrm/safeguards/guard.ts assertHumanReviewGated) enforces this is never false when
+   *  materialConsequence is true. */
+  humanReviewRequired: boolean;
+  /** Spec §5: "Every returned assessment/option must carry an explainability envelope … Outputs missing the
+   *  envelope are invalid (no black-box results)." Populated by lib/btrm/rie/options.ts before an option is ever
+   *  returned to a caller — see lib/btrm/envelope.ts assertCompleteEnvelope. */
+  envelope: ExplainabilityEnvelope;
 }
 
 /** Qualitative support bands (spec §3.7 / OCM-001). Numeric probabilities are PROHIBITED at this stage
