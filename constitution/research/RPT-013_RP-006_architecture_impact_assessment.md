@@ -9,7 +9,7 @@ governing_authority: EA-100
 ratification_authority: n/a
 lifecycle_state: Operational
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-26
 depends_on: [RP-006, RP-005, RPT-012, EA-100, EA-012, BTRM-001]
 required_by: []
 implements: [EA-100]
@@ -17,7 +17,7 @@ governed_by: [EA-100]
 validated_by: [CBS-001, CA-001]
 supersedes: []
 superseded_by: []
-related_artifacts: [RP-006, RP-005, RPT-012, BTRM-001, OCM-001, ICOA-001, ADR-014, EA-012, DOC-003]
+related_artifacts: [RP-006, RP-005, RPT-012, BTRM-001, OCM-001, ICOA-001, ADR-014, ADR-016, EA-012, DOC-003]
 registry_tags: [architecture-impact-assessment, rp-006, reconciliation, decision-intelligence, opos, opil]
 program_phase: research
 repository_path: constitution/research/RPT-013_RP-006_architecture_impact_assessment.md
@@ -25,6 +25,8 @@ checksum_scope: file
 ---
 
 # RPT-013 — RP-006 Architecture Impact Assessment (New Elements Addendum)
+
+> **§1's OPOS/OPIL-vs-EA-012 naming-collision finding is CLOSED by ADR-016 (2026-07-26, Founder ruling):** EA-101/OPOS/OPIL-EA-012 are a real three-layer stack (EA-101 = architecture document; OPOS = reasoning kernel; OPIL/EA-012 = runtime intelligence layer), not one concept under three names. This annotation records the closure per DOC-003 §9; the original finding below is preserved unmodified for the record.
 
 **Purpose.** RP-006 restates most of RP-005, already assessed in RPT-012. This addendum covers only what RP-006 adds: Recommendation Object, Decision Graph, OPOS, OPIL, RQS, DIRP, EDIC, and the Nine Foundational Questions. It makes no constitutional change and authorizes no implementation.
 
