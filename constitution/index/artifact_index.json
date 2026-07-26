@@ -2,7 +2,7 @@
   "generated_by": "CBS-001",
   "generated_at": "2026-07-26",
   "source": "constitution/ front-matter (canonical)",
-  "count": 72,
+  "count": 74,
   "artifacts": [
     {
       "crid": "ADR-LOG",
@@ -1908,6 +1908,74 @@
       "runtime_bindings": []
     },
     {
+      "crid": "RP-008",
+      "title": "OwnerPilot Cognitive Architecture (EA-101) — Phase II Executive Decision Intelligence Build Program, Founder's Omnibus Directive",
+      "object_type": "research_proposal",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/research/RP-008_cognitive_architecture_omnibus_directive.md",
+      "depends_on": [
+        "BTRM-001",
+        "EA-100",
+        "EA-012",
+        "RP-004",
+        "RP-007"
+      ],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "BTRM-001",
+        "ENR-001",
+        "BAE-001",
+        "TM-001",
+        "CM-001",
+        "RIE-001",
+        "CS-001",
+        "POL-001",
+        "ICOA-001",
+        "RP-004",
+        "RP-005",
+        "RP-006",
+        "RP-007",
+        "RPT-012",
+        "RPT-013",
+        "RPT-014",
+        "RPT-015",
+        "RPT-016",
+        "ADR-015",
+        "DOC-003",
+        "EA-012",
+        "IMR-001"
+      ],
+      "registry_tags": [
+        "research-proposal",
+        "non-constitutional",
+        "cognitive-architecture",
+        "ea-101",
+        "opos",
+        "opil",
+        "edic",
+        "decision-engineering-lab",
+        "evaluation-lab",
+        "engineering-directive"
+      ],
+      "program_phase": "research",
+      "version": "0.1",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
       "crid": "RPT-001",
       "title": "Constitutional Metadata Foundation — Implementation Report and Migration Plan",
       "object_type": "report",
@@ -2619,6 +2687,68 @@
       ],
       "program_phase": "research",
       "version": "0.2",
+      "capability_class": null,
+      "security_classification": null,
+      "operational_maturity": null,
+      "runtime_bindings": []
+    },
+    {
+      "crid": "RPT-016",
+      "title": "RP-008 (Cognitive Architecture Omnibus) Architecture Impact Assessment",
+      "object_type": "report",
+      "lifecycle_state": "Concept",
+      "canonical_owner": "Enterprise",
+      "ratification_authority": "n/a",
+      "path": "constitution/enterprise/RPT-016_RP-008_architecture_impact_assessment.md",
+      "depends_on": [
+        "RP-008",
+        "BTRM-001"
+      ],
+      "required_by": [],
+      "implements": [],
+      "governed_by": [
+        "EA-100"
+      ],
+      "validated_by": [
+        "CBS-001"
+      ],
+      "supersedes": [],
+      "superseded_by": [],
+      "related_artifacts": [
+        "RP-008",
+        "BTRM-001",
+        "ENR-001",
+        "BAE-001",
+        "TM-001",
+        "CM-001",
+        "RIE-001",
+        "CS-001",
+        "POL-001",
+        "ICOA-001",
+        "RP-004",
+        "RP-005",
+        "RP-006",
+        "RP-007",
+        "RPT-012",
+        "RPT-013",
+        "RPT-014",
+        "RPT-015",
+        "ADR-015",
+        "DOC-003",
+        "EA-012",
+        "IMR-001"
+      ],
+      "registry_tags": [
+        "report",
+        "architecture-impact-assessment",
+        "cognitive-architecture",
+        "ea-101",
+        "opos",
+        "opil",
+        "non-constitutional"
+      ],
+      "program_phase": "research",
+      "version": "0.1",
       "capability_class": null,
       "security_classification": null,
       "operational_maturity": null,
