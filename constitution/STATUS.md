@@ -8,7 +8,7 @@ governing_authority: CON-001
 ratification_authority: n/a
 lifecycle_state: Operational
 created: 2026-07-22
-updated: 2026-07-25
+updated: 2026-07-26
 depends_on: [MAP-001]
 required_by: [REC-001]
 implements: []
@@ -25,7 +25,7 @@ checksum_scope: file
 
 # Constitutional Operating System — STATUS
 
-> Canonical, always-current status of the `constitution` subsystem. Point anyone here (or paste this) instead of re-deriving. Refresh this file on each constitutional release (migration workflow, step 7). **Last updated: 2026-07-25 · Constitution v1.1 · Phase II in progress. BTRM-001 ratified (ADR-013), Stage 0 shipped, amended to v1.1 with §3.7.1 (ADR-015); RP research-proposal family adopted (ADR-014); DOC-003 AI Operating Charter adopted (PR #277, merged), extended with §15 addendum on assistant implementation-authority posture; RP-005/RPT-012 and RP-006/RPT-013 captured (research, non-constitutional); RQS–OCM-001 conflict formally reconciled and ratified (RPT-014, ADR-015 — see below). Phase II is NOT complete.**
+> Canonical, always-current status of the `constitution` subsystem. Point anyone here (or paste this) instead of re-deriving. Refresh this file on each constitutional release (migration workflow, step 7). **Last updated: 2026-07-26 · Constitution v1.1 · Phase II in progress. BTRM-001 ratified (ADR-013) and now fully built — all seven stages (ENR-001, BAE-001, TM-001/CM-001, ICOA-001, RIE-001, OCM-001/CS-001, POL-001) shipped, dark, 280 tests; RQS–OCM-001 conflict reconciled (RPT-014, ADR-015); EA-101/OPOS/OPIL-EA-012 naming collision resolved as a three-layer stack (ADR-016); RP research-proposal family adopted (ADR-014, RP-001…008 captured); DOC-003 AI Operating Charter adopted, extended with §15. Phase II is NOT complete.**
 
 ## Headline
 The `constitution` schema (Enterprise Constitutional AI layer) transitioned from an undocumented, database-first subsystem into a governed, repository-first software product at **version v1.1**. The repository is the authoritative source of truth. No unplanned production change was made.
@@ -162,7 +162,7 @@ After P5, constitutional development **slows to a deliberate cadence** — new c
 The COS is now **metadata-driven**: every durable artifact is self-describing (STD-003 front-matter + permanent CRID), and **CBS-001** (`tools/cbs.mjs`) compiles that metadata into all derived artifacts — no hand-synchronization. `node constitution/tools/cbs.mjs build` regenerates `constitution/index/*` reproducibly; `check` fails CI on metadata drift (dup CRID, broken reference, dependency cycle, missing metadata). Delivered: STD-003 metadata schema · P2.1 front-matter retrofit + CRIDs across ~20 artifacts · **CBS-001** build system · **EA-010** Knowledge Library (generated view) · **CIX-001** generated indexes (13 files, 31 nodes / 76 edges) · implementation report (RPT-001). No production/schema/runtime change; no AI ratification.
 
 <!-- CBS-001 GENERATED STATS (regenerate: node constitution/tools/cbs.mjs status) -->
-- **Artifacts (with metadata):** 72 · **ADRs:** 15
+- **Artifacts (with metadata):** 74 · **ADRs:** 16
 - **By lifecycle:** Concept 20 · Implemented 3 · Operational 27 · Proposed 7 · Ratified 15
 - **Outstanding Proposed:** CIX-001, CK-001, CKG-001, CM-001, EA-012, IMR-001, TM-001
 - **Ratification queue (Proposed/Architecture Draft):** CIX-001, CK-001, CKG-001, CM-001, EA-012, IMR-001, TM-001
