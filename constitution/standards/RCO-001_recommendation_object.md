@@ -3,7 +3,7 @@ constitutional_id: RCO-001
 object_type: standard
 title: Recommendation Object — Canonical Semantic Contract
 status: Proposed
-version: "0.2"
+version: "0.3"
 canonical_owner: Enterprise
 governing_authority: EA-101
 ratification_authority: Founder
@@ -26,7 +26,7 @@ checksum_scope: file
 
 # RCO-001 — Recommendation Object: Canonical Semantic Contract (Proposed)
 
-> **Lifecycle: Proposed** (per STD-002 — specification recorded, not yet designed/ratified). **Revision 2** (2026-07-26), incorporating a Founder/architect review of the v0.1 draft (PR #299). Still Proposed — this revision is not itself a ratification event; it is the second iteration of RCO-001's own drafting pipeline (standard draft → self-critique → independent review-board challenge → ADR → Founder ratification), which remains fully intact and unshortened. **This document does not authorize implementation.** It reconciles RP-006's 14-field proposal and RP-008's 18-field proposal, using RPT-017 §1's finding (the disagreement between them is itself evidence a fixed list was the wrong instrument) and RPT-018 §2's recommended boundaries as its starting inputs — not as pre-ratified content. The existing `recommendation_object_spec_v0.1.md` implementation spec is treated the same way: a drafting input, superseded in role by this document, not silently adopted.
+> **Lifecycle: Proposed** (per STD-002 — specification recorded, not yet designed/ratified). **Revision 3** (2026-07-26), incorporating RPT-019's joint reconciliation against DECG-001 v0.1 — specifically, §8's access-control guarantee is amended to distinguish content access from validity-state access, resolving the tension DECG-001 §11 flagged. Still Proposed — this revision is not itself a ratification event; it is the third iteration of RCO-001's own drafting pipeline (standard draft → self-critique → a genuine independent review-board challenge → ADR → Founder ratification), which remains fully intact and unshortened. Revision 2 incorporated a Founder/architect review of the v0.1 draft (PR #299). **This document does not authorize implementation.** It reconciles RP-006's 14-field proposal and RP-008's 18-field proposal, using RPT-017 §1's finding (the disagreement between them is itself evidence a fixed list was the wrong instrument) and RPT-018 §2's recommended boundaries as its starting inputs — not as pre-ratified content. The existing `recommendation_object_spec_v0.1.md` implementation spec is treated the same way: a drafting input, superseded in role by this document, not silently adopted.
 >
 > **What changed in Revision 2:** new §1 (normative definitions and lifecycle states, previously absent and required before invariants could distinguish draft/quarantined material from authoritative material); revised invariants distinguishing evidence/assumptions/unknowns/disputed-facts/inferences/judgment, permitting labeled derivative synthesis without displacing authoritative references, narrowing the no-unsupported-content rule to substantive claims only, expressing provenance as semantic concepts rather than literal field names, scoping the DECG-001 reference requirement to authoritative/material candidates only, and adding correction/active-version/supersession rules; a new §8 stating constitutional-minimum persistence guarantees (identity, reproducibility, version preservation, correction lineage, graph association, validation state, auditability, access control, historical retrieval) while leaving physical persistence to ECAP Phase B; the self-administered challenge renamed to make clear it is simulated/preparatory, not a substitute for a genuine independent review; an expanded self-critique. See the change matrix delivered alongside this revision for the full old-invariant-to-new-invariant mapping.
 
@@ -108,7 +108,7 @@ Physical persistence and materialization strategy (whether RCO-001 requires its 
 - **Graph association** — the DECG-001 reference (invariant 12) remains resolvable for the life of the Recommendation Object, including superseded versions.
 - **Validation state** — a Recommendation Object's lifecycle state (§1) is itself persisted and auditable, not re-derived on demand from other fields.
 - **Auditability** — every state transition and correction is logged in a form a human reviewer or CA-001-equivalent process can inspect.
-- **Access control** — Quarantined and Draft-state candidates are never exposed through the same access path as Candidate/Authoritative material.
+- **Access control** — Quarantined and Draft-state candidates' *substantive content* is never exposed through the same access path as Candidate/Authoritative material. A governed diagnostic or traversal process (e.g., DECG-001) may read a candidate's lifecycle state alone, without content access, for the sole purpose of validity classification; this is a distinct, narrower operation from content access and does not weaken this guarantee. (Amended per RPT-019 §2-3, resolving the access-parity/quarantine-visibility tension DECG-001 §11 flagged.)
 - **Historical retrieval** — Superseded and Archived records remain retrievable for audit, even though they are excluded from normal operational access paths.
 
 These are constitutional minimums, not a schema. ECAP Phase B's migration specification determines how they are physically satisfied.
