@@ -2,31 +2,33 @@
 constitutional_id: EA-102
 object_type: enterprise_architecture
 title: Closed-Loop Learning Architecture
-status: Architecture Draft
-version: "0.1"
+status: Ratified
+version: "0.2"
 canonical_owner: Enterprise
 governing_authority: EA-100
 ratification_authority: Founder
-lifecycle_state: Architecture Draft
+lifecycle_state: Ratified
 created: 2026-07-26
 updated: 2026-07-26
-depends_on: [EA-100, EA-012, BTRM-001, POL-001, IMR-001, ADR-015, ADR-016]
+depends_on: [EA-100, EA-012, BTRM-001, POL-001, IMR-001, ADR-015, ADR-016, ADR-017]
 required_by: []
 implements: [EA-100]
 governed_by: [EA-100, EA-012]
 validated_by: [CBS-001, CA-001]
 supersedes: []
 superseded_by: []
-related_artifacts: [RP-006, RP-008, RPT-016, ADR-015, ADR-016, RQS, BTRM-001, POL-001, IMR-001, EA-012, ESL-005]
-registry_tags: [learning, feedback, outcome, calibration, architecture-draft]
+related_artifacts: [RP-006, RP-008, RPT-016, ADR-015, ADR-016, ADR-017, ADR-018, RQS, BTRM-001, POL-001, IMR-001, EA-012, ESL-005]
+registry_tags: [learning, feedback, outcome, calibration, closed-loop, anti-corruption-boundary]
 program_phase: enterprise-delivery
 repository_path: constitution/architecture/EA-102_closed_loop_learning_architecture.md
 checksum_scope: file
 ---
 
-# EA-102 — Closed-Loop Learning Architecture (Architecture Draft)
+# EA-102 — Closed-Loop Learning Architecture (Ratified)
 
-> **Lifecycle: Architecture Draft — not yet constitutional, not yet authorized to build.** Authored per a Founder directive (2026-07-26) issued after an external architecture review (the Founder consulted a second AI system acting as "chief architect" and is endorsing and extending its recommendations here). Follows the standard lifecycle: Architecture Draft → Founder Review → ADR → Ratification → Implementation → Operational. This document performs the same reconciliation-first discipline BTRM-001 and every RP impact assessment this program has produced already require — see §6 for what already exists and must be reused, not duplicated.
+> **Lifecycle: Ratified** (Founder, 2026-07-26 · ADR-017). EA-102 is ratified in full as the controlling target-state Closed-Loop Learning Architecture. Ratification of the architecture and authorization of implementation are formally distinct: **implementation is authorized now only for Outcome Analysis (§2.2) and Recommendation Evaluation (§2.3)**, together with the minimum shared infrastructure, adapters, provenance, testing, observability, audit, and migration support reasonably necessary to implement and validate those two components — no additional new EA-102 capability is authorized by this ADR. Prediction/Confidence Calibration (§2.4), Strategy Comparison Retrospective (§2.5), and Knowledge Evolution (§2.7) remain ratified roadmap capabilities, activation-gated on a documented readiness review plus a separately recorded authorization — the review establishes eligibility only and never itself confers authority, and may never collapse into a composite score (OCM-001/ADR-015 remain controlling; no critical deficiency may be averaged away). EA-102 proceeds now against BTRM-001's existing shipped types only through the new §2.0 Anti-Corruption Boundary added by this amendment (version 0.1 → 0.2). RP-006/RP-008's reconciliation of EA-101, Recommendation Object, and Decision Graph is designated the next scheduled constitutional reconciliation following this ADR, subject only to intervening security, legal, production-critical, or Founder-directed priority. Authored by Engineering under a Founder directive following an external "chief architect" AI review; reviewed via a self-critique and an independent architecture-review-board challenge (§10–11) whose reduced-first-increment recommendation the Founder adopted. Ratification record: ADR-017. §13 below is preserved as the original pre-ratification record per DOC-003 §9 — see the closure note above it.
+>
+> **EDIC (Founder, 2026-07-26 · ADR-018):** the hybrid EDIC architecture is approved. The synthetic path (§2.11) is authorized now, subject to approved subject-matter, jurisdictional, provenance, safety, and evaluation constraints — this does not authorize indiscriminate corpus expansion, unreviewed external-source incorporation, or promotion of generated assertions into institutional knowledge. The real-matter path remains prohibited pending a separately approved governance package (lawful use, consent, confidentiality, ownership, provenance, de-identification, re-identification risk, access, security, retention, deletion, auditing, and qualified-counsel review). Full ruling: ADR-018.
 
 ## 0. What this is, and what it is not
 
@@ -52,7 +54,17 @@ Learning never terminates for the *platform*; it is explicitly bounded and revie
 
 ## 2. Component specifications
 
-Every component below is Architecture Draft. None is authorized to be built. Each states what it reuses before what it adds — per the reconciliation rule this whole program has enforced since RPT-011.
+Each component below states what it reuses before what it adds — per the reconciliation rule this whole program has enforced since RPT-011. Per ADR-017, only §2.2 (Outcome Analysis) and §2.3 (Recommendation Evaluation) are presently authorized for implementation, together with the minimum supporting infrastructure described in §2.0. §2.4, §2.5, and §2.7 remain ratified roadmap, activation-gated per ADR-017's readiness-review-and-separate-authorization rule.
+
+### 2.0 Anti-Corruption Boundary (Learning Representation Adapter)
+
+No EA-102 component — present or future — may consume `ResolutionOption`, `OutcomeComparison`, or `OutcomeRecord` directly, nor contain source-schema-specific translation logic. All source-specific translation shall occur behind **one governed logical translation boundary** — not necessarily one literal function; multiple adapter implementations may exist for distinct source schemas or versions, provided each conforms to the same normalized contract and governance controls.
+
+Components consume a versioned **Normalized Learning Contract**, defined by semantic invariants rather than a fixed field list. The contract shall preserve, at minimum: source and schema provenance — kept as independently versioned identifiers distinguishing source system, source artifact type, source schema version, and normalization-contract version, each separate from EA-102's own document version (this amendment is EA-102 v0.2; that numbers the document only, never the contract, an adapter implementation, or a source schema); stable correlation identifiers; a recommendation/strategy reference; predicted outcome information; confidence information kept separately represented from prediction (no adapter may combine them into a single composite value); execution or chosen-action information where available; observed outcome information where available; observation status and temporal scope; known unknowns, completeness limitations, and dispute status; governing authorization and data-classification metadata where applicable; and original event/capture timestamps preserved as first recorded — corrections, supplements, or reclassifications must be append-only or otherwise historically traceable through version lineage, never a silent overwrite of the original record. The precise field schema is maintained in a subordinate, version-controlled implementation specification (authored at implementation time) and may evolve without amending EA-102 so long as these invariants hold.
+
+The boundary shall support explicit schema versioning, backward-compatible reading where reasonably practicable, deterministic migration or replay testing, and preservation of original source provenance; historical records may not be silently reinterpreted under a newer schema. Records that fail normalization, provenance, required-field, or authorization validation must be quarantined or rejected — they may not silently enter Outcome Analysis, Recommendation Evaluation, calibration, retrospective analysis, or knowledge evolution. Missing data must remain represented as missing, unknown, pending, disputed, or not applicable; the adapter may not invent, infer, or fabricate absent source facts to satisfy the contract.
+
+The adapter is a semantic translation and validation boundary only. It may normalize, classify, validate, and preserve provenance, but it may not independently select a winning strategy, alter the substance of a recommendation, approve execution, determine recommendation correctness, or manufacture an observed outcome. When Recommendation Object and/or Decision Graph are later ratified (§6, RP-006/RP-008), migration should ordinarily be confined to this adapter/contract layer — any required downstream change to an analytical component must be documented, compatibility-tested, and justified as an exception, not assumed away.
 
 ### 2.1 Outcome Capture
 **Already exists.** This is POL-001 (BTRM-001 §3.9, shipped dark in `lib/btrm/pol/record.ts`, Stage 7): `record()` already produces an `OutcomeRecord` (result, contextNotes preserved verbatim, `recencyWeight` recomputed from a caller-supplied `asOf` reference time, `relevantToCurrentClaim` gating). **EA-102 adds no new capture engine.** Any additional outcome states the Founder's directive names (settlement, judgment entered, tenant vacated, etc.) are values within POL-001's existing closed `OutcomeResult` enum (`lib/btrm/types.ts`) or a ratified amendment to it — not a new component.
@@ -85,7 +97,7 @@ Updates to the P5.5 Knowledge Graph, and to any Decision Graph once that constru
 Unchanged from ADR-015/BTRM-001 §3.7.1. Recommendation quality under EA-102 may be *informed* by §2.2–§2.5's outcome evidence, but remains a qualitative, seven-dimension, no-composite-score framework. Numeric calibration metrics from §2.4 are internal telemetry only, exactly as ADR-015 already requires industry-wide across this platform — EA-102 adds no exception.
 
 ### 2.11 EDIC integration
-Every completed matter is a *candidate* EDIC case, subject to the pipeline: de-identification → fact extraction → generalization → variant generation → expert review → corpus inclusion. **This is explicitly a recommendation only, not an answer to the still-open EDIC data-sourcing/privacy/IP prerequisite** (RPT-013, still unresolved per STATUS.md — see §6). EA-102 does not authorize any EDIC corpus work; it records what the pipeline *would* look like if and when the Founder answers that prerequisite.
+Every completed matter is a *candidate* EDIC case, subject to the pipeline: de-identification → fact extraction → generalization → variant generation → expert review → corpus inclusion. **Resolved by ADR-018 (hybrid architecture):** the synthetic path (schema design, provenance, scenario generation, adversarial testing, evaluation, versioning, benchmarking) is authorized now, subject to approved subject-matter/jurisdictional/provenance/safety/evaluation constraints. The real-matter path (any record-level or matter-derived real client/tenant/financial/litigation/communication/operational/outcome data, including anything described as de-identified, pseudonymized, redacted, summarized, transformed, embedded, or aggregated from a small population) remains prohibited pending a separately approved governance package with qualified-counsel review. Synthetic scenarios must be expressly labeled synthetic and are never empirical evidence of real-world effectiveness — see ADR-018 for the full ruling, superseding this section's original "still-open" framing (RPT-013).
 
 ### 2.12 Governance, oversight, and the Constitutional Learning Principle
 See §8 and §9.
@@ -201,6 +213,8 @@ This is the gate referenced throughout §8 — it is not a separate mechanism, i
 | — | EDIC integration | De-identified case corpus pipeline | Recommendation only — **EDIC itself remains blocked** (§2.11) |
 
 ## 13. What requires Founder decision before any code
+
+> **All five items below are CLOSED by Founder ruling, 2026-07-26 (ADR-017 resolves items 1, 2, 3, and 5; ADR-018 resolves item 4).** This section is preserved unmodified below as the original pre-ratification record, per DOC-003 §9. See ADR-017/ADR-018 for the controlling text, the ratification blockquote at the top of this document, and the §2.0 Anti-Corruption Boundary added by ADR-017.
 
 1. **Ratify** EA-102 to advance past Architecture Draft (STD-002), or direct revisions first.
 2. **Choose the build scope:** the review board's reduced first increment (Outcome Analysis + Recommendation Evaluation only) versus the Founder's full eleven-component directive. This is the same "board recommends less, Founder may override" decision point BTRM-001 itself had (ADR-013) — precedent exists either way, but the choice is the Founder's, not engineering's.
