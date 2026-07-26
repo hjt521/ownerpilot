@@ -3,7 +3,7 @@ constitutional_id: DECG-001
 object_type: standard
 title: Decision Graph — Canonical Traversal Contract
 status: Proposed
-version: "0.1"
+version: "0.2"
 canonical_owner: Enterprise
 governing_authority: EA-101
 ratification_authority: Founder
@@ -17,7 +17,7 @@ governed_by: [EA-101, EA-100]
 validated_by: [CBS-001]
 supersedes: []
 superseded_by: []
-related_artifacts: [RCO-001, CKG-001, BTRM-001, POL-001]
+related_artifacts: [RCO-001, CKG-001, BTRM-001, POL-001, RPT-019]
 registry_tags: [decision-graph, traversal-contract, proposed, decg-001]
 program_phase: enterprise-delivery
 repository_path: constitution/standards/DECG-001_decision_graph.md
@@ -26,7 +26,7 @@ checksum_scope: file
 
 # DECG-001 — Decision Graph: Canonical Traversal Contract (Proposed)
 
-> **Lifecycle: Proposed** (per STD-002 — specification recorded, not yet designed/ratified). Drafted under the authority ADR-019 established: `DECG-001` (`standard`) is reserved as a separate constitutional identifier, and its own drafting pipeline (standard draft → self-critique → a genuine independent review-board challenge → ADR → Founder ratification) is required before any of the content below binds anything. **This document does not authorize implementation.** It reconciles RPT-017 §2's finding (Decision Graph is "already most of a decision graph" once ICOA-001, RIE-001, and OCM-001 are read together) and RPT-018 §3's recommended boundaries, using the existing `decision_graph_spec_v0.1.md` implementation spec as a drafting input only — not pre-ratified content. Drafted immediately after RCO-001's own Revision 2 (PR #300) and deliberately built to the same rigor from the outset: labeled derivations, a genuine-vs-simulated review distinction, and explicit lifecycle/staleness handling are present in this first draft rather than added in a later correction round.
+> **Lifecycle: Proposed** (per STD-002 — specification recorded, not yet designed/ratified). **Revision 2** (2026-07-26), incorporating RPT-019's joint reconciliation against RCO-001 v0.3 — §3 invariant 8, §9's access-parity guarantee, and §11's self-critique are amended to distinguish content access from validity-state access, resolving the tension originally flagged in Revision 1. Drafted under the authority ADR-019 established: `DECG-001` (`standard`) is reserved as a separate constitutional identifier, and its own drafting pipeline (standard draft → self-critique → a genuine independent review-board challenge → ADR → Founder ratification) is required before any of the content below binds anything. **This document does not authorize implementation.** It reconciles RPT-017 §2's finding (Decision Graph is "already most of a decision graph" once ICOA-001, RIE-001, and OCM-001 are read together) and RPT-018 §3's recommended boundaries, using the existing `decision_graph_spec_v0.1.md` implementation spec as a drafting input only — not pre-ratified content. Revision 1 was drafted immediately after RCO-001's own Revision 2 (PR #300) and deliberately built to the same rigor from the outset: labeled derivations, a genuine-vs-simulated review distinction, and explicit lifecycle/staleness handling were present from that first draft rather than added in a later correction round.
 
 ## 0. What this is, and the naming collision it must not become
 
@@ -67,7 +67,7 @@ No node type above is invented by this document — all are already-real per BTR
 5. **CKG-001 non-collision.** No CKG-001 node/edge vocabulary may appear in a DECG-001 trace, and no DECG-001 node/edge vocabulary may appear in CKG-001. Cross-reference by id only (§0).
 6. **Trace version-awareness is mandatory** (§1). A trace must expose, for every node it passes through, which version of that node was traversed. This is what makes RCO-001 §2 invariant 14's correction/supersession lineage meaningful in practice — a correction is only traceable if DECG-001 can show which version a given trace actually used.
 7. **Staleness must be surfaced, never hidden.** If a node in a previously reconstructed trace is later corrected or superseded (§1, trace currency), DECG-001 must be able to indicate the trace is stale relative to that node's current state. A stale trace may still be served for audit purposes but must be explicitly labeled as historical.
-8. **Trace completeness and trace validity are distinguished, never conflated** (§1). A complete-but-invalid trace (every edge resolves, but a traversed node is itself Quarantined or otherwise non-authoritative per its own governing standard) must be flagged as invalid, never silently treated as supporting an Authoritative recommendation.
+8. **Trace completeness and trace validity are distinguished, never conflated** (§1). A complete-but-invalid trace (every edge resolves, but a traversed node is itself Quarantined or otherwise non-authoritative per its own governing standard) must be flagged as invalid, never silently treated as supporting an Authoritative recommendation. Flagging uses only the traversed node's lifecycle-state metadata (e.g., RCO-001 §1's states, per RCO-001 §8 as amended) — never that node's substantive content when the node is Quarantined or Draft. (Amended per RPT-019 §2/§4, resolving the tension originally flagged in §11 below.)
 9. **A DECG-001 trace is referenced by RCO-001; it is never embedded inline.** This restates RCO-001 §2 invariant 12 and RCO-001 §5 as DECG-001's own binding statement of the same boundary. Once RCO-001 exists as a node type (§2), DECG-001 may include it, referenced by id, never with RCO-001's own content duplicated inline.
 10. **Governed relationships first; no graph database is assumed.** Per CKG-001's own P5.5 "governed-relationships-first" precedent, a dedicated graph substrate is a possible future optimization decided on evidence, not a precondition of this standard. DECG-001 may be satisfied entirely by querying existing relational structures directly.
 
@@ -104,7 +104,7 @@ Physical persistence, query mechanics, and storage substrate (§4) are deliberat
 - **Non-fabrication** — no edge or node is materialized without a resolving reference (§3 invariant 2).
 - **Explainability preservation** — a trace remains usable as an explainability tool, not merely a data diagram (§3 invariant 4).
 - **Non-collision enforcement** — CKG-001 and DECG-001 vocabularies never mix (§3 invariant 5).
-- **Access parity** — a trace must never expose a node to a requester who could not otherwise access that node directly through its own governing component.
+- **Access parity** — a trace must never expose a node's *substantive content* to a requester who could not otherwise access that content directly through its own governing component; a trace's validity-state flag (derived from lifecycle-state metadata alone, per §3 invariant 8) is not subject to this restriction. (Amended per RPT-019 §4.)
 - **Auditability** — which nodes and node versions a given trace traversed is itself inspectable by a human reviewer or CA-001-equivalent process.
 
 These are constitutional minimums, not a schema or API contract. Implementation determines how they are physically satisfied.
@@ -119,7 +119,9 @@ These are constitutional minimums, not a schema or API contract. Implementation 
 
 ## 11. Self-critique
 
-The largest structural risk in this draft is asserting that DECG-001's lifecycle concepts (§1: completeness, validity, currency, version-awareness) compose cleanly with RCO-001's own lifecycle states (Draft/Quarantined/Candidate/Authoritative/Corrected/Superseded/Archived) without having yet run a genuine joint reconciliation to confirm it. The claim in §3 invariant 8 — that a trace can be "complete but invalid" if it resolves to a Quarantined RCO-001 node — assumes RCO-001's quarantine state is itself visible to a DECG-001 traversal; this has not been checked against how RCO-001's access-control guarantee (RCO-001 §8: "Quarantined and Draft-state candidates are never exposed through the same access path as Candidate/Authoritative material") might restrict DECG-001 from even seeing a quarantined node to flag it as invalid in the first place — this is a genuine open tension between RCO-001 §8 and DECG-001 §3 invariant 8/§9's access-parity guarantee, flagged here rather than resolved, and is exactly the kind of question the joint reconciliation (§10, last bullet) exists to settle. A second risk: §3 invariant 7's staleness-surfacing rule is stated as a strong "must," but this draft does not define what happens to a trace that becomes stale mid-reconstruction (a node is corrected while a trace is being computed) — a timing/concurrency question this document is not positioned to resolve and does not attempt to.
+> **Closed per RPT-019 (2026-07-26).** The tension described below — between RCO-001 §8's access-control guarantee and DECG-001 §3 invariant 8/§9's access-parity guarantee — is resolved by distinguishing content access from validity-state access. RCO-001 §8 and DECG-001 §3 invariant 8/§9 have been amended accordingly (this revision). The original self-critique is preserved below per DOC-003 §9, as the record of the open question before its resolution.
+
+The largest structural risk in this draft is asserting that DECG-001's lifecycle concepts (§1: completeness, validity, currency, version-awareness) compose cleanly with RCO-001's own lifecycle states (Draft/Quarantined/Candidate/Authoritative/Corrected/Superseded/Archived) without having yet run a genuine joint reconciliation to confirm it. The claim in §3 invariant 8 — that a trace can be "complete but invalid" if it resolves to a Quarantined RCO-001 node — assumes RCO-001's quarantine state is itself visible to a DECG-001 traversal; this has not been checked against how RCO-001's access-control guarantee (RCO-001 §8: "Quarantined and Draft-state candidates are never exposed through the same access path as Candidate/Authoritative material") might restrict DECG-001 from even seeing a quarantined node to flag it as invalid in the first place — this is a genuine open tension between RCO-001 §8 and DECG-001 §3 invariant 8/§9's access-parity guarantee, flagged here rather than resolved, and is exactly the kind of question the joint reconciliation (§10, last bullet) exists to settle. A second risk: §3 invariant 7's staleness-surfacing rule is stated as a strong "must," but this draft does not define what happens to a trace that becomes stale mid-reconstruction (a node is corrected while a trace is being computed) — a timing/concurrency question this document is not positioned to resolve and does not attempt to, and remains open after this revision.
 
 ## 12. Simulated/preparatory review-board challenge (not a substitute for genuine independent review)
 
