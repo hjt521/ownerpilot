@@ -28,14 +28,13 @@ const PLANNED_CRIDS = new Set(['EA-010', 'EA-011', 'REG-CAP-001', 'MODEL-BEH', '
   // Reserved per ADR-019 (EA-101 v0.2 ratification): namespace + drafting intent only, per ADR-019 control #2 —
   // reservation does not create, ratify, or authorize implementation of any of the four. OPOS-001 (doctrine) is
   // EA-101's operating ruleset, drafted separately as a Doctrine Draft (not an Architecture Draft), per ADR-019
-  // control #1. DECG-001 (standard) is the future Decision Graph contract; constitution/implementation-specs/
-  // decision_graph_spec_v0.1.md remains a drafting input only, not adopted by implication.
-  // FIE-001 (enterprise_architecture) is the Financial Intelligence Engine, research/drafting only.
-  'OPOS-001', 'DECG-001', 'FIE-001']);
+  // control #1. FIE-001 (enterprise_architecture) is the Financial Intelligence Engine, research/drafting only.
+  'OPOS-001', 'FIE-001']);
   // EA-101 is no longer planned — it is now a real registered artifact (constitution/architecture/
   // EA-101_ownerpilot_cognitive_architecture.md, Ratified v0.2), so its own front-matter registers it.
-  // RCO-001 is likewise no longer planned — it is now a real registered artifact, Proposed status
-  // (constitution/standards/RCO-001_recommendation_object.md), self-registering via front matter.
+  // RCO-001 and DECG-001 are likewise no longer planned — both are now real registered artifacts, Proposed
+  // status (constitution/standards/RCO-001_recommendation_object.md, constitution/standards/
+  // DECG-001_decision_graph.md), self-registering via front matter.
 // Prefixes that denote a *constitutional* CRID (so we only reference-check these tokens).
 const KNOWN_PREFIXES = ['CON', 'EA', 'ADR', 'STD', 'DOC', 'PROC', 'REG', 'MODEL', 'CAP', 'INFRA', 'BASE', 'VAL', 'MIG', 'SYS', 'BOOK', 'VOL', 'IMR', 'CIX', 'CKG', 'CK', 'CA', 'TM', 'CM', 'MAP', 'REC', 'ROAD', 'ARCH', 'CBS', 'ECAP', 'RPT', 'BTRM', 'ENR', 'BAE', 'ICOA', 'RIE', 'OCM', 'CS', 'POL', 'RP', 'OPOS', 'RCO', 'DECG', 'FIE'];
 const CRID_TOKEN = new RegExp('\\b(?:' + KNOWN_PREFIXES.join('|') + ')-[0-9A-Za-z_]+(?:-[0-9A-Za-z_]+)*\\b', 'g');
