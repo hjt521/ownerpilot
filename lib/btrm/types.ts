@@ -85,6 +85,7 @@ export interface TimelineEvent {
   sourceItemIds: string[]; // links back to EvidenceItem.id — never orphaned
   provenance: Provenance;
   disputed: boolean;
+  behavioralHint?: BehavioralHint; // see BehavioralHint below — BAE-001 never derives this itself
 }
 
 /** A tracked promise/deadline (spec §4 Commitment). A representation CREATES a commitment; it does not itself
@@ -138,6 +139,25 @@ export type BehavioralEventClass =
   | 'conflict_deescalated'
   | 'required_action_completed'
   | 'required_action_incomplete';
+
+/** A caller-supplied hint that a TimelineEvent represents a specific behavioral event (spec §3.2 closed
+ *  vocabulary). BAE-001 derives 'commitment_*' and 'deadline_missed' observations itself, deterministically,
+ *  from Commitment/TimelineEvent structure alone (spec fields already carry that signal). Everything else in
+ *  the closed vocabulary (documentation supplied/requested, communication answered/ignored, contradiction
+ *  made/corrected, agreement accepted/rejected/breached, cooperation increased/declined, conflict
+ *  escalated/de-escalated, required action completed/incomplete, delay disclosed, deadline acknowledged)
+ *  describes a semantic judgment about evidence content that ENR-001's structured output does not carry
+ *  (TimelineEvent.eventType is a passthrough of evidenceType, not a classification of what happened) — BAE-001
+ *  does not infer these from free text (that would be inference, not descriptive classification, spec §3.2).
+ *  A caller (a future, separately-scoped classification step) supplies this hint once it has determined the
+ *  event class; BAE-001's role stays limited to turning it into a properly-shaped, dimension-tagged
+ *  BehavioralObservation. Dimension is always computed centrally from eventClass (see lib/btrm/bae/dimensions.ts)
+ *  — never taken from the hint — so there is a single source of truth for the eventClass->dimension mapping. */
+export interface BehavioralHint {
+  eventClass: BehavioralEventClass;
+  subjectId: string;
+  magnitude?: number;
+}
 
 /** A single descriptive behavioral fact (spec §3.2). BAE-001's ONLY output type — never a character label. */
 export interface BehavioralObservation {
