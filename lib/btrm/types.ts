@@ -287,6 +287,41 @@ export interface OutcomeComparison {
   optionIds: string[];
   supportBand: SupportBand;
   rationale: string;
+  /** Spec §5: every RIE-001/OCM-001/CS-001 output must carry a complete explainability envelope — no black-box
+   *  results. Populated by lib/btrm/ocm/compare.ts (Stage 6) before a comparison is ever returned to a caller. */
+  envelope: ExplainabilityEnvelope;
+}
+
+/** A caller-supplied statement of who this communication is for and how it should be adapted (spec §3.8 CS-001
+ *  is "the only component where tone is a first-class input" — but tone shapes delivery only, never the
+ *  underlying reliance). CS-001 does not infer reading level, language preference, or de-escalation need from
+ *  free text — a caller supplies it, mirroring every other BTRM-001 hint. */
+export interface AudienceContext {
+  partyId: string;
+  readingLevel: 'plain' | 'standard';
+  languagePreference?: string; // e.g. 'es', 'zh' — CS-001 never translates; it only flags that translation/interpretation is needed
+  deEscalationNeeded?: boolean;
+}
+
+/** CS-001's output (spec §5 CS.strategy interface; the data model in spec §4 does not enumerate this type
+ *  explicitly, so it is defined here per the §5 contract). Facts and allegations are held in SEPARATE fields —
+ *  never concatenated into one blob — satisfying spec §3.8's "separate facts from allegations" rule structurally,
+ *  not by convention. */
+export interface CommunicationRecommendation {
+  id: string;
+  matterId: string;
+  resolutionOptionRef: string; // ResolutionOption.id this communication supports
+  audience: AudienceContext;
+  factsStatement: string; // caller-supplied, factual only — scanned by assertNoCharacterLabel before return
+  allegationsStatement?: string; // caller-supplied, kept structurally distinct from factsStatement
+  requestedAction: string;
+  deadline?: string; // ISO 8601 — passed through from the referenced ResolutionOption.deadlineImplications, or overridden
+  offeredOptions: string[]; // caller-supplied — alternative paths offered to the recipient
+  styleAdaptations: string[]; // deterministic notes derived from AudienceContext (lib/btrm/cs/adaptations.ts), never invented content
+  /** True whenever the referenced ResolutionOption itself requires human review (§6/§11) — a communication
+   *  implementing a material-consequence option inherits the same gate; CS-001 never lowers it. */
+  humanReviewRequired: boolean;
+  envelope: ExplainabilityEnvelope;
 }
 
 /** Recorded actual outcome (spec §3.9 / POL-001). Feeds back into ENR-001/BAE-001 with recency+relevance
@@ -312,4 +347,11 @@ export interface OutcomeRecord {
   result: OutcomeResult;
   contextNotes?: string; // e.g. "documented emergency" — preserved so recency weighting doesn't flatten context
   recordedAt: string;
+  /** Stage 7 (POL-001, `lib/btrm/pol/record.ts`) addition: a computed recency/relevance decay weight in [0, 1],
+   *  used only internally when this record re-enters BAE-001's observation stream on a FUTURE assessment — never
+   *  a stored per-person score (spec §3.9's absolute rule). Always recomputed relative to a caller-supplied `asOf`
+   *  reference time, never derived from the wall clock, and zeroed outright when the caller marks the outcome as
+   *  not relevant to the claim under current assessment (spec §3.9: "recent, relevant behavior outweighs old or
+   *  unrelated behavior" — both recency AND relevance gate the weight, not recency alone). */
+  recencyWeight: number;
 }
