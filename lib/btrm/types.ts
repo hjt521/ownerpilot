@@ -29,6 +29,16 @@ export const PROVENANCE_STRENGTH: Record<Provenance, number> = {
   confirmed_fact: 5,
 };
 
+/** A caller-supplied hint that an EvidenceItem records a promise/deadline (spec §3.1 "commitment extraction").
+ *  ENR-001 is deterministic pre-processing, not a learned model — it does not infer implied promises from free
+ *  text (that would be inference, and would blur into BAE-001/AI-inference territory, spec §3.1 non-goals). It
+ *  only materializes a Commitment when a caller has already identified one via this hint. */
+export interface CommitmentHint {
+  committer: string;
+  description: string;
+  promisedBy: string; // ISO 8601 — the deadline the commitment names
+}
+
 /** Raw evidence, as collected (spec §4 EvidenceItem). Original content is IMMUTABLE and never replaced by an
  *  AI-generated summary (BTRM-001 §3.1). */
 export interface EvidenceItem {
@@ -44,6 +54,24 @@ export interface EvidenceItem {
   verificationStatus: 'verified' | 'unverified' | 'disputed';
   extractionConfidence?: number; // 0..1, optional — how confident the extraction step is, distinct from CM-001
   accessPermissions: string[]; // owner-scoped ACL tags
+  commitmentHint?: CommitmentHint; // see CommitmentHint above — ENR-001 never derives this itself
+}
+
+/** One entry in ENR-001's provenance ledger (spec §4 ProvenanceLedger, spec §5 ENR.normalize output). Records,
+ *  for a single derived TimelineEvent or Commitment, which class it was assigned and why — the audit trail
+ *  CM-001 (Stage 3, evidence sufficiency) and any human reviewer can walk back to source evidence. ENR-001 does
+ *  NOT compute cross-item corroboration here (spec §4 ConfidenceAssessment.corroboration is CM-001's job); this
+ *  ledger only explains the classification ENR-001 itself performed. */
+export interface ProvenanceLedgerEntry {
+  targetId: string; // a TimelineEvent.id or Commitment.id
+  targetType: 'timeline_event' | 'commitment';
+  provenance: Provenance;
+  sourceItemIds: string[]; // EvidenceItem.id(s) this classification rests on (>1 only for exact-duplicate merges)
+  rationale: string; // plain-language reason for the assigned class — never a bare enum with no explanation
+}
+
+export interface ProvenanceLedger {
+  entries: ProvenanceLedgerEntry[];
 }
 
 /** A reconstructed point in the matter timeline (spec §4 TimelineEvent). */
