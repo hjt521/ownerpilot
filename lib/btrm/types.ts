@@ -233,6 +233,21 @@ export interface InterestConstraint {
   sourceEventIds: string[];
 }
 
+/** A caller-supplied candidate interest/constraint to evaluate (spec §3.5). ICOA-001 does not invent WHAT an
+ *  interest or constraint is from free text — identifying the candidate statement (e.g. "tenant wants a payment
+ *  plan") is a separately-scoped classification step, the same posture ENR-001's commitmentHint and BAE-001's
+ *  behavioralHint already establish. ICOA-001's own job is strictly the SupportLabel a candidate deserves given
+ *  the referenced evidence — never asserting the candidate as fact, never generating the candidate itself. */
+export interface InterestConstraintHint {
+  matterId: string;
+  partyId: string;
+  kind: 'interest' | 'constraint';
+  statement: string;
+  explicitlyStatedEventId?: string; // a TimelineEvent where the party is recorded directly stating this
+  relatedEventIds?: string[]; // additional TimelineEvent.id references offered as supporting pattern evidence
+  relatedCommitmentIds?: string[]; // additional Commitment.id references offered as supporting pattern evidence
+}
+
 /** A resolution option (spec §3.6 / RIE-001). Every option must carry an ExplainabilityEnvelope (see envelope.ts). */
 export interface ResolutionOption {
   id: string;
