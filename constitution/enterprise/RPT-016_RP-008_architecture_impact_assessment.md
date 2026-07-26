@@ -17,7 +17,7 @@ governed_by: [EA-100]
 validated_by: [CBS-001]
 supersedes: []
 superseded_by: []
-related_artifacts: [RP-008, BTRM-001, ENR-001, BAE-001, TM-001, CM-001, RIE-001, CS-001, POL-001, ICOA-001, RP-004, RP-005, RP-006, RP-007, RPT-012, RPT-013, RPT-014, RPT-015, ADR-015, DOC-003, EA-012, IMR-001]
+related_artifacts: [RP-008, BTRM-001, ENR-001, BAE-001, TM-001, CM-001, RIE-001, CS-001, POL-001, ICOA-001, RP-004, RP-005, RP-006, RP-007, RPT-012, RPT-013, RPT-014, RPT-015, ADR-015, ADR-016, DOC-003, EA-012, IMR-001]
 registry_tags: [report, architecture-impact-assessment, cognitive-architecture, ea-101, opos, opil, non-constitutional]
 program_phase: research
 repository_path: constitution/enterprise/RPT-016_RP-008_architecture_impact_assessment.md
@@ -25,6 +25,8 @@ checksum_scope: file
 ---
 
 # RPT-016 — Architecture Impact Assessment: RP-008 (Cognitive Architecture Omnibus)
+
+> **§1's naming-collision finding is CLOSED by ADR-016 (2026-07-26, Founder ruling):** the Founder chose option (b) below — EA-101/OPOS/OPIL-EA-012 are a real three-layer stack, not one concept under three names. This annotation records the closure per DOC-003 §9; the original finding is preserved unmodified for the record.
 
 > **NON-CONSTITUTIONAL.** Companion impact assessment to RP-008, in the same role RPT-012/013/015 played for RP-005/006/007. Findings, not decisions. Nothing here amends BTRM-001, OCM-001, EA-012, or any ratified artifact.
 
