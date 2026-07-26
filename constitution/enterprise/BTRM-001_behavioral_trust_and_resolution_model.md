@@ -9,7 +9,7 @@ governing_authority: EA-100
 ratification_authority: Founder
 lifecycle_state: Ratified
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-26
 security_classification: internal
 capability_class: enterprise
 operational_maturity: architecture-draft
@@ -39,8 +39,8 @@ checksum_scope: file
 | 0 | Schema + feature flag + safeguards + explainability envelope | shipped |
 | 1 | ENR-001 | shipped (dark — `BTRM_STAGE_ENR_ENABLED` unset everywhere; no caller wired yet) |
 | 2 | BAE-001 | shipped (dark — `BTRM_STAGE_BAE_ENABLED` unset everywhere; no caller wired yet) |
-| 3 | TM-001 / CM-001 (implementation under BTRM-001) | pending |
-| 4 | ICOA-001 | pending |
+| 3 | TM-001 / CM-001 (implementation under BTRM-001) | shipped (dark — `BTRM_STAGE_TM_ENABLED` / `BTRM_STAGE_CM_ENABLED` unset everywhere; no caller wired yet) |
+| 4 | ICOA-001 | shipped (dark — `BTRM_STAGE_ICOA_ENABLED` unset everywhere; no caller wired yet) |
 | 5 | RIE-001 | pending |
 | 6 | OCM-001 / CS-001 | pending |
 | 7 | POL-001 | pending |
@@ -123,14 +123,17 @@ Each component below is at **Architecture Draft**. Inputs/outputs are typed agai
 - **Consumes** BAE-001 observations + CM-001. **Produces** claim-specific reliance across independent dimensions: Performance, Commitment, Communication, Documentation, Agreement, Representation-Consistency, Resolution-Participation.
 - **Reliance levels:** No / Limited / Conditional / Operational / Elevated / **Indeterminate** (mandatory when evidence insufficient).
 - **Absolute rule:** **no global/permanent trust score.** Reliance is always about *a specific claim or commitment in a specific context*, time-bounded and reversible.
+- **Stage 3 implementation note (2026-07-26, `lib/btrm/tm/`):** TM-001's seven reliance dimensions are **not** the same seven as BAE-001's own behavioral dimensions, even though both are derived from the same 25-class event vocabulary — BAE-001 groups by descriptive category (`lib/btrm/bae/dimensions.ts`), TM-001 groups the same event classes by which reliance question they answer (`lib/btrm/tm/dimensions.ts`), so e.g. `agreement_breached` is a BAE-001 `commitment`-dimension observation but its own dedicated TM-001 `agreement` dimension. Each event class also carries a fixed **polarity** (positive / negative / neutral) — e.g. `commitment_made` is neutral (a commitment being made says nothing about fulfillment yet), while its resolution classes carry direction. A dimension is `indeterminate` whenever it has zero *decisive* (positive-or-negative) observations — neutral-only or empty — never silently defaulted to a numeric-feeling level. The headline `relianceLevel` is a **weakest-link rule, not an average**: any dimension at `no_reliance` controls the headline outright regardless of how strong the other six are; failing that, any `limited` dimension controls; failing that, a majority of `indeterminate` dimensions controls; only when assessed dimensions are the majority and every one of them is `elevated` does the headline reach `elevated`. This mirrors the same "a hard failure is not averaged away" principle §3.7.1 already applies to RQS. Shipped dark: `BTRM_STAGE_TM_ENABLED` is unset everywhere and no caller invokes `reliance()` yet.
 
 ### 3.4 CM-001 — Confidence Model  *(REUSE — see `roadmap/CM-001_…`)*
 - **Consumes** the evidence base for an assessment. **Produces** a confidence measure on *the analysis itself*: evidence completeness, corroboration, timeline certainty, contradictions, missing records, extraction certainty, sample size, relevance, subjective-language dependence.
 - **Rule:** confidence is reported **alongside, never merged into,** reliance. A strong recommendation must never mask low confidence.
+- **Stage 3 implementation note (2026-07-26, `lib/btrm/cm/`):** the three numeric measures (`completeness`, `corroboration`, `timelineCertainty`) are each a direct structural count against ENR-001's already-classified output — the fraction of `TimelineEvent`s with known (non-`unknown`) provenance, the fraction backed by more than one original `EvidenceItem` (`sourceItemIds.length > 1`), and the fraction with a certain `occurredAt` — never a semantic read of evidence content. `missing` surfaces two structural gaps: events ENR-001 could not classify, and commitments still `open` past their `promisedBy` as of a caller-supplied `assessedAt` (never `Date.now()`, mirroring BAE-001's `observedAt` convention, so output is a function of recorded evidence and a stated reference time, not of when the code happens to run). The qualitative `band` is derived from those three measures by fixed thresholds — this is CM-001's own already-ratified categorical output (§4 `ConfidenceAssessment.band`), not a new composite score subject to the RQS/OCM-001 prohibition on fused recommendation scores (§3.7.1): it is scoped to evidence quality only, one of four fixed bands, never a numeric percentage. A single unresolved contradiction (a `disputed` event) caps the band at `moderate` even when the three numeric measures would otherwise justify `high` — the same "a hard failure is not averaged away" rule applied again. Shipped dark: `BTRM_STAGE_CM_ENABLED` is unset everywhere and no caller invokes `assess()` yet.
 
 ### 3.5 ICOA-001 — Interest, Constraint & Objective Analysis
 - **Responsibility:** infer each participant's supported interests and constraints (owner: recover rent, preserve tenancy, regain possession, cure violation, document record, reduce burden; tenant: remain, more time, repairs, dispute amount, payment plan, orderly move-out; constraints: funds, statutory deadlines, existing notices, lease terms, evidence quality, owner risk tolerance).
 - **Rule:** every inferred interest is labelled **Confirmed / Likely / Possible / Unknown** — never asserted as fact.
+- **Stage 4 implementation note (2026-07-26, `lib/btrm/icoa/`):** identifying *what* a candidate interest or constraint even is (e.g. "tenant wants a payment plan") is a semantic classification step this module does not perform — the same posture ENR-001's `commitmentHint` and BAE-001's `behavioralHint` already establish. ICOA-001 accepts an explicit caller-supplied `InterestConstraintHint` (statement + party + kind, plus either a direct-statement event reference or pattern references) and its own job is strictly the deterministic `SupportLabel` a candidate deserves given the referenced evidence. A direct statement is graded by the *stated event's own provenance* (confirmed_fact/document_supported → confirmed; unverified_statement → likely; disputed_statement/ai_inference/unknown → possible) — the fact that a party said something is never itself treated as confirming the underlying interest regardless of how well the saying-of-it is documented. Absent a direct statement, pattern-based support is graded purely by **count of resolved references** (two or more → likely, exactly one → possible, zero → unknown); a hint citing an event or commitment id that does not exist in the supplied evidence scope contributes nothing, preventing a caller from fabricating support by citing ids outside the matter's actual evidence. Shipped dark: `BTRM_STAGE_ICOA_ENABLED` is unset everywhere and no caller invokes `analyze()` yet.
 
 ### 3.6 RIE-001 — Resolution Intelligence Engine
 - **Consumes:** confirmed facts, BAE observations, TM reliance, CM confidence, ICOA interests/constraints, owner objective, applicable workflow rules, legal/compliance boundaries.
