@@ -82,7 +82,7 @@ export const LA_CITY_HOLIDAYS: Record<number, CityHolidayYear> = {
       '2026-12-25', // (a)(13) Christmas Day — Fri
     ],
     verified: true,
-    verifiedBy: 'Jack Taglyan, CalDRE B9445457',
+    verifiedBy: 'Jack Taglyan, CalDRE 01871659',
     verifiedOn: '2026-06-19',
     source: LA_CITY_SOURCE_2026,
   },
@@ -108,7 +108,7 @@ export const LA_CITY_HOLIDAYS: Record<number, CityHolidayYear> = {
       '2027-12-31', // (a)(1)  NYD-2028 cross-year — Jan 1 2028 = Sat -> (c) preceding Fri
     ],
     verified: true,
-    verifiedBy: 'Jack Taglyan, CalDRE B9445457',
+    verifiedBy: 'Jack Taglyan, CalDRE 01871659',
     verifiedOn: '2026-06-19',
     source: LA_CITY_SOURCE_2027,
   },

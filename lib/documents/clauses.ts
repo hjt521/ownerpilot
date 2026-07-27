@@ -57,4 +57,4 @@ export const RESERVATION_OF_RIGHTS_SLOT = { present: false as const, prose: '[BR
 
 /** Broker attribution block — shown on every produced document footer. */
 export const BROKER_ATTRIBUTION =
-  'Prepared with OwnerPilot AI under California real estate broker supervision (CalDRE B9445457). Not a law firm; not legal advice.';
+  'Prepared with OwnerPilot AI under California real estate broker supervision (CalDRE 01871659). Not a law firm; not legal advice.';

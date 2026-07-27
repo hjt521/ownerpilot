@@ -48,7 +48,7 @@ export interface HolidayYear {
   /** Provenance, e.g. "CCP § 135 + Judicial Council 2026 schedule, retrieved YYYY-MM-DD". */
   source: string;
   /**
-   * Broker of record who verified this table, e.g. "Jack Taglyan, Broker, CalDRE #B9445457".
+   * Broker of record who verified this table, e.g. "Jack Taglyan, Broker, CalDRE #01871659".
    * Recorded so a challenged table points to the specific licensed broker's sign-off under
    * Cal. Bus. & Prof. Code § 10131(b), not just "someone reviewed this". Broker attribution
    * only — never an attorney identifier or bar number (per codebase_prose_correction_2026-07-05).
@@ -98,7 +98,7 @@ export const CA_JUDICIAL_HOLIDAYS: Record<number, HolidayYear> = {
       '2026-12-25', // Christmas Day
     ],
     verified: true,
-    verifiedBy: 'Jack Taglyan, Broker, CalDRE #B9445457',
+    verifiedBy: 'Jack Taglyan, Broker, CalDRE #01871659',
     verifiedOn: '2026-05-31',
     source:
       'Judicial Branch of CA 2026 Court Holiday Schedule, ' +
@@ -143,7 +143,7 @@ export const CA_JUDICIAL_HOLIDAYS: Record<number, HolidayYear> = {
       '2027-12-31', // NYD-2028 observed early (Jan 1 2028 = Sat → preceding Fri, CRC 1.11)
     ],
     verified: true,
-    verifiedBy: 'Jack Taglyan, Broker, CalDRE #B9445457',
+    verifiedBy: 'Jack Taglyan, Broker, CalDRE #01871659',
     verifiedOn: '2026-06-05',
     source:
       'Judicial Branch of CA Court Holiday Schedule, ' +

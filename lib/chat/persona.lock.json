@@ -1,12 +1,12 @@
 {
   "file": "lib/chat/persona.ts",
   "constant": "OWNERPILOT_PERSONA_SYSTEM_PROMPT",
-  "sha256": "e5fad561a13bace16f6fb1076ec2f452531943ce7dd763f3a36965814ca6ef89",
+  "sha256": "a4c31b843757989e4bf77d026a34ee92f6c087a73f3c6591d646f1fcb65b6501",
   "bytes": 16185,
   "status": "LOCKED_UD_PRO_PER",
-  "approvedBy": "Jack Taglyan / CalDRE B9445457",
-  "approvedOn": "2026-07-05",
-  "sourceRevision": null,
-  "note": "Add 'Filing authority and the pro per path' paragraph per persona_correction_ud_filing_pro_per_authority_2026-07-05 (corrects the false mandatory-attorney claim).",
-  "lockedAt": "2026-07-05T07:42:41.286Z"
+  "approvedBy": "Jack Taglyan / CalDRE 01871659",
+  "approvedOn": "2026-07-28",
+  "sourceRevision": "CalDRE license-number correction (B9445457 -> 01871659), broker-instructed 2026-07-27/28",
+  "note": "CalDRE license-number correction only (B9445457 -> 01871659); no prose content change beyond the credential number.",
+  "lockedAt": "2026-07-27T23:37:46.772Z"
 }

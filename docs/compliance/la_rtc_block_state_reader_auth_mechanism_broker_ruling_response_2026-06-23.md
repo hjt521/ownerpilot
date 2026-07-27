@@ -214,3 +214,17 @@ The one-time mint script needs the JWT signing secret to produce the reader JWT.
 ## §0 posture footer
 
 This determination is issued under broker scope per Bus. & Prof. Code § 10131(b). OwnerPilot AI operates exclusively as a California licensed real estate broker. Janna Taglyan (JD, SBN 269639) has no operative authority on this project; her name does not appear on operative files going forward. All compliance review is performed by Jack Taglyan, CalDRE B9445457. This file is not legal advice; it is a broker-authority substrate determination governing OwnerPilot AI's internal build process.
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.

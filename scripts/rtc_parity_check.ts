@@ -63,7 +63,7 @@ export async function runParityCheck(deps: {
 export function formatReport(report: ParityReport): string {
   const L: string[] = [];
   L.push(`RTC parity check — ${report.ranAt}`);
-  L.push('Run by: broker (CalDRE B9445457)');
+  L.push('Run by: broker (CalDRE 01871659)');
   L.push('Network: live LAHD CDN');
   L.push('Mechanism: M1 (broker-run script, identical fetcher code) — predicate 7 evidence');
   L.push('');

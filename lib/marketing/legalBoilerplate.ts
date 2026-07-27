@@ -14,7 +14,7 @@ export const SITEWIDE_DISCLAIMER =
   'your specific situation, consult a California licensed attorney.';
 
 /** Broker license line — broker-only attribution (ruling §Required elements #2, addendum §4A). */
-export const BROKER_LICENSE_LINE = 'California Licensed Real Estate Broker · CalDRE B9445457';
+export const BROKER_LICENSE_LINE = 'California Licensed Real Estate Broker · CalDRE 01871659';
 
 /** Short-form disclaimer variant for constrained creative (9:16 video end-cards, tight ad slots). */
 export const SITEWIDE_DISCLAIMER_SHORT =

@@ -20,7 +20,7 @@
 
 export interface VerifiedRuleEntry {
   verified: boolean;
-  verifiedBy?: string; // "Jack Taglyan, CalDRE B9445457"
+  verifiedBy?: string; // "Jack Taglyan, CalDRE 01871659"
   verifiedOn?: string; // 'YYYY-MM-DD'
   source: string;
 }
@@ -81,7 +81,7 @@ export const LA_RTC_RULES: VerifiedRuleEntry & {
   filingScope: 'all_eviction_notices',
   filingDeadlineBusinessDays: 3,
   verified: true,
-  verifiedBy: 'Jack Taglyan, CalDRE B9445457', // broker-verified per primary-source citation pull 2026-06-01
+  verifiedBy: 'Jack Taglyan, CalDRE 01871659', // broker-verified per primary-source citation pull 2026-06-01
   verifiedOn: '2026-06-01',
   source:
     'LAHD RTC page (https://housing.lacity.gov/rtc) and JCO page ' +
@@ -158,7 +158,7 @@ export interface LaProductionDependencies {
  * synced in this PR. cityOfLaZipsAuthoritative flipped TRUE per the predicate-5
  * attestation packet (2026-06-27). parcelEndpointHealthCheckLive flipped TRUE per the
  * predicate-6 attestation packet (predicate_6_parcel_endpoint_health_check_live_
- * attestation_packet_2026-06-27 §8, broker CalDRE B9445457): all six predicates are now
+ * attestation_packet_2026-06-27 §8, broker CalDRE 01871659): all six predicates are now
  * satisfied — isLaProductionUnblocked() returns true and the LA production gate is OPEN.
  *
  * Build marker 2026-06-28: content change to force a fresh client-bundle compile of this

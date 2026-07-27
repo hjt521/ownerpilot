@@ -1,7 +1,7 @@
 // bankDepositMethodHelper / bankDepositMethodDisclosure
 // Source: bank_deposit_disclosure_copy_ratification_broker_determination_2026-06-18.md §2
 // Authority: broker_blanket_authorization_2026-06-15.md
-// CalDRE B9445457
+// CalDRE 01871659
 //
 // LOCKED wizard copy — verbatim. Do NOT edit at render time, template, or run
 // through i18n mutation. Rendered as-is beneath the Bank Deposit payment option

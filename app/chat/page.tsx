@@ -12,7 +12,7 @@ export default function ChatPage() {
       <SiteHeader />
       <ChatSurface />
       <p className="px-4 pb-3 text-center text-xs text-neutral-400">
-        California broker-supervised. CalDRE B9445457. Not a law firm.
+        California broker-supervised. CalDRE 01871659. Not a law firm.
       </p>
     </div>
   );

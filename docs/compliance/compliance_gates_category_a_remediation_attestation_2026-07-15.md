@@ -91,3 +91,17 @@ I have reviewed the Category A remediation applied to production project `txpetd
 **Process observation preserved for the record:** engineering surfaced `audit_cliff` as a recommendation with reasoning on the first Category A pass. That was correct posture for a first ruling. Going forward, when a finding is squarely inside a standing ruling and the fix is the standard remediation for that class, engineering has authority to draft the migration and batch it for review under the authorizing ruling — no separate go/no-go required. Judgment calls (ambiguous intent, downstream impact, standing ruling doesn't cover the class) still route to me. This is codified for the Step-3 triage brief and everything downstream.
 
 — Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · 2026-07-15
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.

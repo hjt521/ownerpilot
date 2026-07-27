@@ -29,7 +29,7 @@ export interface CityHolidayYear {
   /** Observed city-holiday dates, 'YYYY-MM-DD'. */
   dates: string[];
   verified: boolean;
-  verifiedBy?: string; // "Jack Taglyan, CalDRE B9445457" — filled by broker after primary-source citation pull
+  verifiedBy?: string; // "Jack Taglyan, CalDRE 01871659" — filled by broker after primary-source citation pull
   verifiedOn?: string; // 'YYYY-MM-DD'
   source: string;
 }

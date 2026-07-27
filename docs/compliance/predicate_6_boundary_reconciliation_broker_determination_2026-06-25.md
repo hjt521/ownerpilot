@@ -151,3 +151,17 @@ Honest, exact, self-consistent with the file it sits on.
 OwnerPilot AI = broker-scope only under Bus. & Prof. Code § 10131(b). Jack Taglyan, CalDRE B9445457, sole compliance authority. No attorney attribution attaches to this determination. This determination reconciles a discrepancy between the recovered §2.5 prose of `la_rtc_refresh_runner_architecture_broker_ruling_response_2026-06-23.md` (which states `> 14 days`) and the shipped predicate-6 boundary (`age ≥ 14d → block`). The `≥` boundary stands as a deliberate supersession on singularity-analysis grounds; the prior provenance note's "unrecoverable" framing is rewritten to honestly characterize §2.5 as present-and-superseded-at-the-boundary. The pre-commit ruling's §2.1 paragraph that authored the "unrecoverable" framing is amended; the rest of that ruling stands. Build caught this pre-commit under correct surface-don't-decide discipline; logging it alongside the gitignore-vs-guard catch as system-working-as-designed.
 
 — Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · 2026-06-25
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.
