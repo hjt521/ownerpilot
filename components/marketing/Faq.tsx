@@ -8,7 +8,7 @@ const NEW_FAQ_ITEMS = [
   },
   {
     q: 'What if my address is at a jurisdiction boundary?',
-    a: 'If our automated checks can’t confidently identify which city’s rules apply, we route your address to our California licensed real estate broker (CalDRE B9445457) for personal review. You typically hear back within 24 hours by email. While you wait, you can keep filling out the notice details — we just hold off on producing the PDF until the jurisdiction is confirmed.',
+    a: 'If our automated checks can’t confidently identify which city’s rules apply, we route your address to our California licensed real estate broker (CalDRE 01871659) for personal review. You typically hear back within 24 hours by email. While you wait, you can keep filling out the notice details — we just hold off on producing the PDF until the jurisdiction is confirmed.',
   },
   {
     q: 'When does OwnerPilot route me to an attorney instead of producing a notice?',
@@ -16,7 +16,7 @@ const NEW_FAQ_ITEMS = [
   },
   {
     q: 'What does broker-supervised mean?',
-    a: 'OwnerPilot is built and operated under California real estate broker supervision (CalDRE B9445457) with defined document-preparation boundaries. The broker authored the templates and supervises the workflows that fill them with your inputs. We are not a law firm, do not provide legal advice, and do not represent you in court.',
+    a: 'OwnerPilot is built and operated under California real estate broker supervision (CalDRE 01871659) with defined document-preparation boundaries. The broker authored the templates and supervises the workflows that fill them with your inputs. We are not a law firm, do not provide legal advice, and do not represent you in court.',
   },
 ];
 

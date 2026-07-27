@@ -69,7 +69,7 @@ for (const root of ROOTS) {
 
 if (hits.length) {
   console.error('ci:check-attorney-attribution: FAIL — attorney/SBN attribution found in production source.');
-  console.error('Broker-only attribution (Jack Taglyan / CalDRE B9445457); no attorney of record, no SBN.');
+  console.error('Broker-only attribution (Jack Taglyan / CalDRE 01871659); no attorney of record, no SBN.');
   for (const h of hits) console.error('  ' + h);
   process.exit(1);
 }

@@ -48,7 +48,7 @@ check('2026 dates match the verified set exactly',
   JSON.stringify(LA_CITY_HOLIDAYS[2026].dates) === JSON.stringify(CITY_2026));
 check('2026 verified true', LA_CITY_HOLIDAYS[2026].verified === true);
 check('2026 verifiedBy is broker (no attorney token)',
-  LA_CITY_HOLIDAYS[2026].verifiedBy === 'Jack Taglyan, CalDRE B9445457');
+  LA_CITY_HOLIDAYS[2026].verifiedBy === 'Jack Taglyan, CalDRE 01871659');
 
 console.log('\n=== §8.8(b) 2027 table ===');
 check('2027 length is 14', LA_CITY_HOLIDAYS[2027].dates.length === 14);

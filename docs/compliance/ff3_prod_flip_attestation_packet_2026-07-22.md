@@ -107,3 +107,17 @@ Engineering attests that §1.1–§1.5 are satisfied and the FF-3 Preview soak i
 Upon countersign of the finalized packet, Production `FF3_CAPTURE_ENABLED=true` is authorized to become effective (LA-only). Pre-authorization lapses if the packet is not filed within 45 days of soak clean-expiry.
 
 — Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · __________
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.

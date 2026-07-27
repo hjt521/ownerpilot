@@ -8,7 +8,7 @@ const FEATURES = [
   },
   {
     heading: 'Real broker review when it counts',
-    body: 'If your address sits at a jurisdictional boundary that automated checks can’t resolve, we route it to our California licensed real estate broker (CalDRE B9445457) for personal review — usually within 24 hours. You get an email when it’s confirmed; you keep editing your draft in the meantime. We do not file with the court, do not serve papers, and do not give legal advice.',
+    body: 'If your address sits at a jurisdictional boundary that automated checks can’t resolve, we route it to our California licensed real estate broker (CalDRE 01871659) for personal review — usually within 24 hours. You get an email when it’s confirmed; you keep editing your draft in the meantime. We do not file with the court, do not serve papers, and do not give legal advice.',
   },
   {
     heading: 'We route you to counsel when we should',

@@ -104,3 +104,17 @@ All eight predicates carry PASS verdicts above. The attestation evidence index f
 **Self-corrections of record.** Three system-working catches during this work stream are noted for the audit trail: (a) the gitignore-vs-guard precedent from earlier in the session; (b) the §2.5 supersession framing — runner ruling §2.5 was initially mischaracterized as unrecoverable and is in fact present at lines 121–137 stating `> 14 days`; the predicate-6 boundary `≥ 14d` stands as deliberate supersession per `predicate_6_boundary_reconciliation_broker_determination_2026-06-25.md`, not gap-fill; (c) the §0 footer parenthetical of `attestation_packet_pre_commit_disposition_broker_ruling_2026-06-25.md` carrying the superseded "unrecoverable" phrase independently of §2.1, reconciled via inline option-(c) ruling appended to the boundary-reconciliation determination. The build authoring discipline (diagnose-and-surface, refuse-to-extract on unattributed sources) operated correctly on each.
 
 — Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · 2026-06-25
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.

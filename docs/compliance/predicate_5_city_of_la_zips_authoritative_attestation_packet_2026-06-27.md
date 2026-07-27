@@ -236,3 +236,17 @@ I, Jack Taglyan, California Licensed Real Estate Broker (CalDRE B9445457), havin
 6. Predicate 5 (`cityOfLaZipsAuthoritative`) is satisfied. Build is authorized to apply the predicate-flip diff in §7 of this packet as a single signing commit, and to merge the wire-up PR once the host-pending gates in §6.2 pass clean and predicate 6 (`parcelEndpointHealthCheckLive`) is also attested.
 
 `— Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · 2026-06-27`
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.

@@ -53,3 +53,17 @@ tsc clean · dark-behavior test green · banned-terms OK · vercel.json valid. N
 **COUNTERSIGNED** — approved per `queue_drainer_four_items_broker_ruling_2026-07-05` item 4. Reservation carried to the 042 follow-up queue (not a blocker): the cron's **first live fire after FF-3 goes on is treated as the populated smoke test** — the broker reviews the delivered digest email before the second fire is authorized.
 
 — Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · 2026-07-05
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.

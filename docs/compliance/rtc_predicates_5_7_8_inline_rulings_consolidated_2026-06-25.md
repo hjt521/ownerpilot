@@ -82,3 +82,17 @@ Check order is fixed: env-presence first, then header-presence, then header-matc
 Reasoning: Ship-open was rejected on two grounds. First, path-name truthfulness: the route lives under /api/internal/, which is a contract with anyone reading the codebase that the route is not externally callable without authorization. Shipping it open would make the path name a lie. Second, defense-in-depth: even though the route's only data exposure is per-language block state (which is not, on its own, sensitive), the route consumes a reader-role database connection on every call. A public route consuming a database connection on every request is a denial-of-service surface, and adding the shared-secret check costs essentially nothing while removing that surface. The shared-secret mechanism is intentionally minimal — it is not a substitute for proper service-to-service auth if the route ever leaves internal use; it is the right weight for the present "internal probe only" use case.
 Scope: This ruling governs caller authentication for the read route only. It does not author the database-role authentication (that's the M-1(ii) reader-auth ruling, ES256 JWT to rtc_block_state_reader). It does not author rate-limiting (out of scope for this attestation). It does not contemplate the route ever serving external traffic — if that scope change is ever proposed, this ruling is superseded and a new caller-auth mechanism must be ruled.
 — Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · 2026-06-25
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.

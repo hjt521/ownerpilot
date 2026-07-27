@@ -32,7 +32,7 @@
  *   locked_prose_ci_guard_scope_broker_determination_2026-06-15.md
  *   bank_deposit_disclosure_copy_ratification_broker_determination_2026-06-18.md
  *
- * — Jack Taglyan, CalDRE B9445457
+ * — Jack Taglyan, CalDRE 01871659
  */
 
 import { createHash } from "node:crypto";

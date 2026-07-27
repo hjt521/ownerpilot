@@ -27,7 +27,7 @@ check('summarize: empty → fallback', summarizeGates([]) === 'see basis documen
 // activeHoldBannerMessage — locked template with all placeholders interpolated, none left over
 const hold: DnsHold = {
   id: 'h1', case_id: 'c1',
-  imposed_at: '2026-06-29T18:00:00Z', imposed_by: 'Jack Taglyan CalDRE B9445457',
+  imposed_at: '2026-06-29T18:00:00Z', imposed_by: 'Jack Taglyan CalDRE 01871659',
   basis_document_path: 'lahd_eviction_filing_cover_sheet_and_3day_count_defect_broker_ruling_2026-06-30.md',
   basis_section: '§3.6',
   gates: [{ id: 'g1', description: 'Day-count engine correctness', required: true, satisfied_at: null }],

@@ -6,7 +6,7 @@
  * value is normalized.
  *
  * Source: packet_test4_broker_compliance_review_2026-06-18.md (bank-name display)
- * Authority: broker_blanket_authorization_2026-06-15.md / CalDRE B9445457
+ * Authority: broker_blanket_authorization_2026-06-15.md / CalDRE 01871659
  */
 
 export const BANK_NAME_NORMALIZER_VERSION = 'v1';

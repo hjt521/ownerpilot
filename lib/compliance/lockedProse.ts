@@ -13,7 +13,7 @@
 // When you reference a key here, annotate the call site with `// LockedKey: <KEY>` so the
 // guard's dangling-reference scanner can confirm the key resolves.
 //
-// Authority: broker authors all locked prose; engineering only reads it. CalDRE B9445457.
+// Authority: broker authors all locked prose; engineering only reads it. CalDRE 01871659.
 
 import assembly from "@/docs/compliance/locked_prose_manifest_phase2_assembly.json";
 

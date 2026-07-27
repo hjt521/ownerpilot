@@ -2,7 +2,7 @@
 // Source: daycount_defect_workflow_fork_broker_ruling_2026-06-30.md §2.4 +
 //         pr_a_field_placement_b1_supersession_branch_split_broker_ruling_2026-06-30.md (locked-prose authored, final)
 // Authority: broker_blanket_authorization_2026-06-15.md
-// CalDRE B9445457
+// CalDRE 01871659
 //
 // LOCKED wizard copy — verbatim. Do NOT edit at render time, template, or run
 // through i18n mutation. Rendered as-is beneath the Review-step intended-service-date

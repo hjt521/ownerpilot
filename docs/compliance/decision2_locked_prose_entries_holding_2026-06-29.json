@@ -36,7 +36,7 @@
       "constant": "routeToCounselDisclaimer",
       "tier": "B",
       "file": "lib/flow/routeToCounselCopy.ts",
-      "verbatim": "OwnerPilot AI operates as a California real estate broker (CalDRE B9445457). We do not refer to specific attorneys, we do not receive referral fees, and we have no fee-splitting arrangement with any attorney or law firm. The referral services above are independent of OwnerPilot AI.",
+      "verbatim": "OwnerPilot AI operates as a California real estate broker (CalDRE 01871659). We do not refer to specific attorneys, we do not receive referral fees, and we have no fee-splitting arrangement with any attorney or law firm. The referral services above are independent of OwnerPilot AI.",
       "hash": "9c390baa49499126245e09c9bcf4e09da888121fd258ae1a6391d61c8b620035",
       "version_stamp": "routeToCounselCopyVersion=v1",
       "source_determination": "docs/compliance/decision2_backend_build_section0_flags_broker_ruling_2026-06-28.md",

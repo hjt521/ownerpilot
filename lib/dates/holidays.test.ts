@@ -31,7 +31,7 @@ console.log('\n=== 2027 table is verified with the 15-entry / dual Jan+Dec shape
   // verifiedBy is the broker of record. Asserting the exact string keeps a silent
   // edit to the attribution from passing unnoticed (broker only — no attorney, no SBN).
   check('2027 verifiedBy = broker of record (name + CalDRE #)',
-    e?.verifiedBy === 'Jack Taglyan, Broker, CalDRE #B9445457');
+    e?.verifiedBy === 'Jack Taglyan, Broker, CalDRE #01871659');
 }
 {
   const set = getVerifiedHolidaySet(2027); // must NOT throw now

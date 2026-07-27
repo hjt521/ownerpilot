@@ -315,3 +315,17 @@ California Licensed Real Estate Broker · CalDRE B9445457
 Broker Compliance Review · 2026-06-30
 
 *Posture footer.* OwnerPilot AI operates as broker-scope only under Bus. & Prof. Code § 10131(b). Jack Taglyan (CalDRE B9445457) is the sole compliance authority on this project. This determination resolves three implementation forks (field placement, B1 supersession, branch split) under the prior 2026-06-30 day-count and flag-state rulings. The B1 supersession is a broker rule change on the broker's own authority; no attorney engagement attaches. Locked-prose entries in §4 are authoritative; engineering inserts verbatim and the verify guard enforces. Operator action on the live Clifton Alexander notice remains as previously ruled: DO NOT SERVE the existing Jul-2 notice; regenerate on the day of service.
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.

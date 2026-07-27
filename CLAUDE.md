@@ -7,7 +7,7 @@ California property owner AI guidance platform. Target users are 50+ property ow
 Name: OwnerPilot AI
 Domain: ownerpilot.ai
 Tagline: The AI Advantage for California Property Owners
-Backed by: California Licensed Real Estate Broker · CalDRE B9445457 (broker credential appears above the fold). Broker-only attribution — attorney credentials and SBN references must not appear on any public or marketing surface (per marketing_tranche1_broker_ruling_2026-07-14a_addendum.md §4A and §0 governance).
+Backed by: California Licensed Real Estate Broker · CalDRE 01871659 (broker credential appears above the fold). Broker-only attribution — attorney credentials and SBN references must not appear on any public or marketing surface (per marketing_tranche1_broker_ruling_2026-07-14a_addendum.md §4A and §0 governance).
 
 ## Stack
 Next.js 16 App Router, TypeScript, Tailwind CSS, Supabase for auth + database, Stripe for payments, Anthropic Claude API for AI features, Resend for transactional email
@@ -16,7 +16,7 @@ Next.js 16 App Router, TypeScript, Tailwind CSS, Supabase for auth + database, S
 - Minimum font size: 16px body, 14px secondary
 - Minimum tap target: 48px height on all interactive elements
 - Maximum one primary CTA per section
-- Broker credential line (California Licensed Real Estate Broker · CalDRE B9445457) above the fold on every page — broker-only, never paired with attorney credentials
+- Broker credential line (California Licensed Real Estate Broker · CalDRE 01871659) above the fold on every page — broker-only, never paired with attorney credentials
 - Google SSO as primary signup, magic link secondary, password never first
 - Error messages in plain English only
 - Feature names use problem language not product language ("My tenant won't pay" not "Tenant Issue Assistant")

@@ -19,7 +19,7 @@
  *   decision_latency_ms, chain_head_sha, input_decision_hash (HMAC-SHA-256, non-reversible).
  *   classifier_audit_log MUST NOT capture input_text. Enforcement: see §2.4 CI guard.
  *   Gateway dashboard remains source of truth for live operational visibility.
- *   — Jack Taglyan / CalDRE B9445457 / 2026-06-20
+ *   — Jack Taglyan / CalDRE 01871659 / 2026-06-20
  */
 
 export type ClassifierSideName = 'input' | 'output';

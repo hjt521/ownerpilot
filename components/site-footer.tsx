@@ -13,7 +13,7 @@ export function SiteFooter() {
         <p className="max-w-3xl text-sm leading-relaxed text-white/75">
           OwnerPilot AI is not a law firm and does not provide legal advice. OwnerPilot provides broker-supervised document preparation workflows and recordkeeping tools for California property owners. For legal advice about your specific situation, consult a California licensed attorney.
         </p>
-        <p className="text-xs text-white/60">California Licensed Real Estate Broker · CalDRE B9445457</p>
+        <p className="text-xs text-white/60">California Licensed Real Estate Broker · CalDRE 01871659</p>
         {/* CCPA/CPRA "Do Not Sell or Share" opt-out link (Lane 6 §Q). */}
         <div className="text-sm text-white/75 [&_a]:text-white/90"><DoNotSellLink /></div>
         <p className="text-xs text-white/50">

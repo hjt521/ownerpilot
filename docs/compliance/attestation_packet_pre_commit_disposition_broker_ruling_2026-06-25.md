@@ -121,3 +121,17 @@ That paragraph is intentionally explicit about what "parity confirmed" means and
 OwnerPilot AI = broker-scope only under Bus. & Prof. Code § 10131(b). Jack Taglyan, CalDRE B9445457, sole compliance authority. No attorney attribution attaches to this ruling. This ruling commits three recoverable authority files (one with a prepended provenance note marking §2.5's boundary supersession by the predicate-6 determination) plus a consolidated inline-rulings file to `docs/compliance/`, folds the stability re-run into the packet commit as supporting predicate-7 evidence, and locks the verbatim M1 clarification paragraph for the packet intro. The attestation packet's authority chain after this PR will be fully readable from the repo alone; no authority is left broker-held-by-reference. Note: §2.1 of this ruling, which originally characterized §2.5 as 'unrecoverable,' is superseded by `predicate_6_boundary_reconciliation_broker_determination_2026-06-25.md` after recovery of §2.5's full text from the runner architecture ruling. All other dispositions in this pre-commit ruling stand unchanged.
 
 — Jack Taglyan / California Licensed Real Estate Broker / CalDRE B9445457 / Broker Compliance Review · 2026-06-25
+
+
+---
+
+> **Annotated correction — CalDRE license number (2026-07-28):** This document's original text above
+> references CalDRE **B9445457**. That number was an error; the broker's correct license number is
+> **CalDRE 01871659**. Per DOC-003 §9, this is an annotated correction appended to this closed record —
+> the original text above is preserved unmodified, not rewritten or deleted. See the broker's direct
+> instruction (session of 2026-07-27/28) authorizing this correction, and the paired
+> `docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md`, which already carries the corrected
+> number.
+>
+> — Appended by engineering (Claude/Cowork) per broker instruction, 2026-07-28. Not a new ruling; does
+> not reopen or otherwise alter this document's original disposition.
