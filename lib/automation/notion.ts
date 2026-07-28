@@ -56,7 +56,6 @@ async function callNotionApi(payload: RunRecord): Promise<void> {
       'Changes Found': { number: payload.changes_found },
       'Summary':       { rich_text: [{ text: { content: payload.summary.slice(0, 2000) } }] },
       'Report Link':   { url: payload.report_link || null },
-      'Next Run':      { date: null },
     },
   } as Parameters<typeof notion.pages.create>[0]);
 }
