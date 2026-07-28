@@ -1,0 +1,188 @@
+name: e2e-preview
+
+# Manual-only execution surface for the PR #307 characterization suite (Playwright), run against a
+# human-supplied, already-existing isolated Vercel Preview deployment. Deliberately NOT wired to
+# push/pull_request/deployment_status/schedule/workflow_run — this never runs unless a human
+# dispatches it. Does not call the Vercel API or attempt to discover a Preview URL or its deployed
+# commit automatically; both are operator-supplied attestations. The production denylist below is a
+# defense-in-depth check on known hostnames as of this writing — it CANNOT conclusively determine a
+# Vercel deployment's target environment. Before every dispatch, the operator must independently
+# confirm in the Vercel dashboard that the supplied deployment's Environment is Preview, not
+# Production. Matching Preview env vars (E2E_RUN_ACTIVE, TEST_SEED_SECRET, E2E_TEST_USER_ID,
+# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) must already be configured on that Preview deployment —
+# this workflow does not configure them. See the PR body for the exact manual setup checklist.
+#
+# Security prerequisite (outside this PR): CRON_SECRET was exposed in public branch commit history
+# this session. This workflow does not reference CRON_SECRET and is technically independent of that
+# exposure, but first real execution of this workflow remains blocked until the Production
+# CRON_SECRET is rotated/invalidated and the Production vs. Preview env var scopes on this project
+# are independently re-verified. See PR body.
+
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'Isolated Vercel Preview URL to test, e.g. https://ownerpilot-<hash>-jt-s-projects3.vercel.app — HTTPS only, root path, no query/fragment/credentials. Must NOT be a production URL.'
+        required: true
+        type: string
+      preview_commit_sha:
+        description: 'Full 40-character commit SHA that the supplied Preview URL was deployed from (operator attestation — not independently verified by this workflow against Vercel).'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ownerpilot-preview-e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e-preview:
+    runs-on: ubuntu-latest
+    environment: ownerpilot-e2e-preview
+    steps:
+      - name: Validate inputs and reject production targets
+        env:
+          PREVIEW_URL: ${{ inputs.preview_url }}
+          PREVIEW_COMMIT_SHA: ${{ inputs.preview_commit_sha }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # --- 1. Commit SHA format ---
+          if [[ ! "$PREVIEW_COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "::error::preview_commit_sha must be exactly 40 hexadecimal characters. Got: '$PREVIEW_COMMIT_SHA'"
+            exit 1
+          fi
+          NORM_PREVIEW_SHA="$(printf '%s' "$PREVIEW_COMMIT_SHA" | tr '[:upper:]' '[:lower:]')"
+          NORM_WORKFLOW_SHA="$(printf '%s' "$WORKFLOW_SHA" | tr '[:upper:]' '[:lower:]')"
+
+          # --- 2. Strict URL shape: https only, no creds, no query, no fragment, root path only ---
+          if [[ ! "$PREVIEW_URL" =~ ^https:// ]]; then
+            echo "::error::preview_url must start with https:// (got a non-https or malformed scheme)."
+            exit 1
+          fi
+          REST="${PREVIEW_URL#https://}"
+          if [[ -z "$REST" ]]; then
+            echo "::error::preview_url has no host after https://"
+            exit 1
+          fi
+          if [[ "$REST" == *"?"* ]]; then
+            echo "::error::preview_url must not contain a query string."
+            exit 1
+          fi
+          if [[ "$REST" == *"#"* ]]; then
+            echo "::error::preview_url must not contain a fragment."
+            exit 1
+          fi
+          HOST="${REST%%/*}"
+          PATH_PART="${REST#"$HOST"}"
+          if [[ -n "$PATH_PART" && "$PATH_PART" != "/" ]]; then
+            echo "::error::preview_url must not contain a non-root path. Got path: '$PATH_PART'"
+            exit 1
+          fi
+          if [[ "$HOST" == *"@"* ]]; then
+            echo "::error::preview_url must not contain embedded credentials (userinfo@host)."
+            exit 1
+          fi
+          HOST_LC="$(printf '%s' "$HOST" | tr '[:upper:]' '[:lower:]')"
+
+          # --- 3. Hostname must be within the OwnerPilot Vercel project naming space ---
+          if [[ ! "$HOST_LC" =~ ^ownerpilot-git-[a-z0-9-]+-jt-s-projects3\.vercel\.app$ ]] && \
+             [[ ! "$HOST_LC" =~ ^ownerpilot-[a-z0-9]+-jt-s-projects3\.vercel\.app$ ]]; then
+            echo "::error::preview_url hostname '$HOST_LC' is not within the expected OwnerPilot Vercel project naming space."
+            exit 1
+          fi
+
+          # --- 4. Production denylist (defense-in-depth only; NOT conclusive — see header comment) ---
+          DENYLIST=(
+            "ownerpilot.ai"
+            "www.ownerpilot.ai"
+            "ownerpilot-git-main-jt-s-projects3.vercel.app"
+            "ownerpilot-bqpziapqz-jt-s-projects3.vercel.app"
+            "ownerpilot-8wyte8pyt-jt-s-projects3.vercel.app"
+            "ownerpilot-np2tceooj-jt-s-projects3.vercel.app"
+            "ownerpilot-nafavmsbl-jt-s-projects3.vercel.app"
+            "ownerpilot-543h33fk6-jt-s-projects3.vercel.app"
+            "ownerpilot-fgikv2mvs-jt-s-projects3.vercel.app"
+            "ownerpilot-n3dfn8wyw-jt-s-projects3.vercel.app"
+            "ownerpilot-73oa3ubvo-jt-s-projects3.vercel.app"
+          )
+          for bad in "${DENYLIST[@]}"; do
+            if [[ "$HOST_LC" == "$bad" ]]; then
+              echo "::error::preview_url hostname '$HOST_LC' matches a known Production target ('$bad'). Refusing to run."
+              exit 1
+            fi
+          done
+          case "$HOST_LC" in
+            *-git-main-*.vercel.app)
+              echo "::error::preview_url hostname '$HOST_LC' matches the Production git-branch alias pattern. Refusing to run."
+              exit 1
+              ;;
+          esac
+
+          echo "::notice::This denylist check is NOT conclusive proof of Preview vs. Production. Independently confirm in the Vercel dashboard that this deployment's Environment is Preview before relying on this run."
+
+          # --- 5. Commit-SHA match: workflow checkout vs. operator-attested Preview commit ---
+          if [[ "$NORM_PREVIEW_SHA" != "$NORM_WORKFLOW_SHA" ]]; then
+            echo "::error::preview_commit_sha ($NORM_PREVIEW_SHA) does not match the workflow checkout SHA ($NORM_WORKFLOW_SHA). Refusing to run — dispatch this workflow from the same branch/commit the Preview URL was built from."
+            exit 1
+          fi
+
+          NORM_URL="https://${HOST_LC}"
+          echo "Preview target accepted: $NORM_URL (commit $NORM_PREVIEW_SHA)"
+          echo "NORM_PREVIEW_URL=${NORM_URL}" >> "$GITHUB_ENV"
+          echo "NORM_PREVIEW_SHA=${NORM_PREVIEW_SHA}" >> "$GITHUB_ENV"
+          echo "NORM_WORKFLOW_SHA=${NORM_WORKFLOW_SHA}" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright (Chromium only)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run PR #307 characterization suite
+        env:
+          E2E_BASE_URL: ${{ env.NORM_PREVIEW_URL }}
+          E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          TEST_SEED_SECRET: ${{ secrets.TEST_SEED_SECRET }}
+          E2E_TEST_USER_ID: ${{ secrets.E2E_TEST_USER_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -o pipefail
+          npx playwright test --config=e2e/playwright.config.ts \
+            e2e/beta-pathway-characterization.spec.ts \
+            e2e/beta-pathway-cross-device-characterization.spec.ts \
+            2>&1 | tee "${RUNNER_TEMP}/e2e-run.log"
+
+      - name: Job summary
+        if: ${{ !cancelled() }}
+        env:
+          E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+        run: |
+          LOGFILE="${RUNNER_TEMP}/e2e-run.log"
+          CLEANUP_STATUS="not established from the runner output"
+          if [[ -f "$LOGFILE" ]]; then
+            if grep -qF "[e2e-teardown] cleanup verified: zero tagged rows remain." "$LOGFILE"; then
+              CLEANUP_STATUS="completed"
+            elif grep -qF "[e2e-teardown] CLEANUP VERIFY FAILED" "$LOGFILE"; then
+              CLEANUP_STATUS="failed"
+            fi
+          fi
+          {
+            echo "### OwnerPilot Preview E2E — PR #307 characterization run"
+            echo "- Preview hostname: ${NORM_PREVIEW_URL:-unavailable — validation step did not complete}"
+            echo "- Workflow checkout SHA: ${NORM_WORKFLOW_SHA:-${{ github.sha }}}"
+            echo "- Operator-supplied Preview deployment SHA: ${NORM_PREVIEW_SHA:-unavailable — validation step did not complete}"
+            echo "- E2E run identifier: $E2E_RUN_ID"
+            echo "- Test/pass/fail/skip counts: see the Playwright step output above"
+            echo "- Cleanup status: $CLEANUP_STATUS"
+          } >> "$GITHUB_STEP_SUMMARY"
