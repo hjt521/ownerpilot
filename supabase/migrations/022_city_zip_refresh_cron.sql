@@ -28,18 +28,23 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
-select cron.schedule(
-  'city-zip-refresh',
-  '0 11 * * *',
-  $$
-  select net.http_post(
-    url := 'https://txpetdrfsmqnyooydmas.supabase.co/functions/v1/city-zip-refresh',
-    headers := jsonb_build_object(
-      'x-city-zip-refresh-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'CITY_ZIP_REFRESH_SECRET'),
-      'Content-Type', 'application/json'
-    ),
-    body := '{}'::jsonb,
-    timeout_milliseconds := 30000
-  );
-  $$
-);
+-- NEUTRALIZED FOR ISOLATED E2E BRANCH ONLY (chore/e2e-supabase-isolation-2026-07-29):
+-- this branch must never register a cron job that calls out to the real Production project's
+-- Edge Function URL (txpetdrfsmqnyooydmas.supabase.co, hardcoded below). The extensions above
+-- remain enabled (harmless). This file is otherwise byte-identical to the authoritative
+-- Production migration and must NEVER be merged to main in this neutralized form.
+-- select cron.schedule(
+--   'city-zip-refresh',
+--   '0 11 * * *',
+--   $$
+--   select net.http_post(
+--     url := 'https://txpetdrfsmqnyooydmas.supabase.co/functions/v1/city-zip-refresh',
+--     headers := jsonb_build_object(
+--       'x-city-zip-refresh-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'CITY_ZIP_REFRESH_SECRET'),
+--       'Content-Type', 'application/json'
+--     ),
+--     body := '{}'::jsonb,
+--     timeout_milliseconds := 30000
+--   );
+--   $$
+-- );

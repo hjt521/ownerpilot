@@ -30,21 +30,27 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
+-- NEUTRALIZED FOR ISOLATED E2E BRANCH ONLY (chore/e2e-supabase-isolation-2026-07-29):
+-- this branch must never register a cron job that calls out to the real Production project's
+-- Edge Function URL (txpetdrfsmqnyooydmas.supabase.co, hardcoded below). The extensions above
+-- remain enabled (harmless). This file is otherwise byte-identical to the authoritative
+-- Production migration and must NEVER be merged to main in this neutralized form.
+--
 -- Invariant: cron cadence must be <= freshness window (currently 30 min). If the freshness
 -- window changes, this cron cadence must change in parallel — the two are coupled by the
 -- determination's structure, not independent knobs.
-select cron.schedule(
-  'parcel-health-probe',
-  '*/30 * * * *',
-  $$
-  select net.http_post(
-    url := 'https://txpetdrfsmqnyooydmas.supabase.co/functions/v1/parcel-health',
-    headers := jsonb_build_object(
-      'x-parcel-health-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'PARCEL_HEALTH_PROBE_SECRET'),
-      'Content-Type', 'application/json'
-    ),
-    body := '{}'::jsonb,
-    timeout_milliseconds := 30000
-  );
-  $$
-);
+-- select cron.schedule(
+--   'parcel-health-probe',
+--   '*/30 * * * *',
+--   $$
+--   select net.http_post(
+--     url := 'https://txpetdrfsmqnyooydmas.supabase.co/functions/v1/parcel-health',
+--     headers := jsonb_build_object(
+--       'x-parcel-health-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'PARCEL_HEALTH_PROBE_SECRET'),
+--       'Content-Type', 'application/json'
+--     ),
+--     body := '{}'::jsonb,
+--     timeout_milliseconds := 30000
+--   );
+--   $$
+-- );
