@@ -130,7 +130,7 @@ test.describe('Free-beta pathway characterization — persistence and continuity
       [DRAFT_KEY, noticeDraftEnvelopeJson(4)] as const,
     );
     await page.goto('/notice/3-day/serve');
-    await expect(page.getByRole('heading', { name: 'Serve & track' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Serve & track', exact: true })).toBeVisible();
     await expect(page.getByText('Record what happened when you served')).toBeVisible();
   });
 
@@ -147,7 +147,7 @@ test.describe('Free-beta pathway characterization — persistence and continuity
     await page.goto('/notice/3-day/serve');
 
     await page.getByLabel(/Date of this attempt/i).fill('2026-06-05');
-    await page.getByRole('button', { name: 'Service was completed', exact: false }).click();
+    await page.getByRole('radio', { name: 'Service was completed' }).check();
     await page.getByLabel(/Name of person who served/i).fill('E2E Characterization Server');
     await page.getByLabel(/Address of person who served/i).fill('1 Characterization Way, Fresno, CA 93701');
     await page.getByLabel(/is 18 years of age or older/i).check();
@@ -239,7 +239,7 @@ test.describe('Free-beta pathway characterization — persistence and continuity
       [DRAFT_KEY, noticeDraftEnvelopeJson(4)] as const,
     );
     await page.goto('/notice/3-day/serve');
-    await expect(page.getByRole('heading', { name: 'Serve & track' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Serve & track', exact: true })).toBeVisible();
     await page.getByLabel(/Date of this attempt/i).fill('2026-06-05');
     await page.getByLabel(/is 18 years of age or older/i).check();
     await page.getByLabel(/not a party to this notice/i).check();
