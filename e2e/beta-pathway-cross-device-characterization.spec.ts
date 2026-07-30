@@ -35,7 +35,7 @@ test('CHARACTERIZATION: a wizard draft created in one browser context is invisib
       [DRAFT_KEY, noticeDraftEnvelopeJson(4)] as const,
     );
     await pageA.goto('/notice/3-day/serve');
-    await expect(pageA.getByRole('heading', { name: 'Serve & track' })).toBeVisible();
+    await expect(pageA.getByRole('heading', { name: 'Serve & track', exact: true })).toBeVisible();
 
     const pageB = await contextB.newPage();
     await pageB.goto('/notice/3-day/serve');
