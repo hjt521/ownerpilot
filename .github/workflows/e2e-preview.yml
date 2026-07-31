@@ -18,17 +18,22 @@ name: e2e-preview
 # CRON_SECRET is rotated/invalidated and the Production vs. Preview env var scopes on this project
 # are independently re-verified. See PR body.
 #
-# Deployment-freshness manual preflight (added 2026-07-30, narrow diagnostic authorization, after
-# run #30562689654 targeted a stale, pre-rescoping Preview deployment): this workflow still has no
-# Vercel credential and does not call the Vercel API, so it cannot independently confirm a
-# deployment is current. `deployment_id` and `deployment_freshness_ack` require the operator to
-# name the exact deployment and explicitly attest, immediately before dispatch, that it is READY,
-# is the latest deployment for the branch, postdates the most recent branch-scoped env var update,
-# and has no Production alias. The workflow fails closed if the acknowledgment string doesn't match
-# exactly. This is Option 3 (manual preflight control) from the deployment-target protection
-# proposal in this PR's description — Options 1/2 (automatic Vercel-side verification) are
-# proposed but not implemented, since they would require a persistent Vercel credential not
-# authorized here.
+# Mandatory deployment-specific operator attestation (added 2026-07-30, narrow diagnostic
+# authorization, after run #30562689654 targeted a stale, pre-rescoping Preview deployment; revised
+# 2026-07-31 per architect review of PR #312): this workflow still has no Vercel credential and does
+# not call the Vercel API, so it CANNOT independently verify that a deployment is current — nothing
+# below is an automated freshness check. `deployment_id` and `deployment_freshness_ack` instead
+# require the operator to compute a deployment-specific acknowledgment string that embeds both the
+# exact deployment_id and the exact normalized Preview hostname for this dispatch
+# (I-VERIFIED-<deployment_id>-<preview-hostname>-IS-THE-LATEST-READY-PREVIEW), attesting immediately
+# before dispatch that THAT deployment is READY, is the latest deployment for the branch, postdates
+# the most recent branch-scoped env var update, and has no Production alias. Because the expected
+# string is derived from this run's own deployment_id and preview_url inputs, a generic or reused
+# phrase — or an attestation copied from a different deployment — will not match and the job exits
+# non-zero. This is Option 3 (mandatory deployment-specific operator attestation) from the
+# deployment-target protection proposal in PR #312's description — Options 1/2 (automatic Vercel-side
+# verification) are proposed but not implemented, since they would require a persistent Vercel
+# credential not authorized here.
 
 on:
   workflow_dispatch:
@@ -42,11 +47,11 @@ on:
         required: true
         type: string
       deployment_id:
-        description: 'Vercel deployment ID (e.g. dpl_xxx) for the exact deployment behind preview_url. Manual preflight control (added after run #30562689654 targeted a stale, pre-rescoping deployment): operator attestation, not independently verified against the Vercel API by this workflow.'
+        description: 'Vercel deployment ID (e.g. dpl_xxx) for the exact deployment behind preview_url. Operator attestation, not independently verified against the Vercel API by this workflow. This exact value must also appear in the deployment_freshness_ack input below.'
         required: true
         type: string
       deployment_freshness_ack:
-        description: 'Type exactly: I-VERIFIED-THIS-IS-THE-LATEST-DEPLOYMENT — confirming in the Vercel dashboard, immediately before this dispatch, that deployment_id is READY, is the latest deployment for this branch, was created after the most recent branch-scoped environment-variable update, and has no Production alias.'
+        description: 'Mandatory deployment-specific operator attestation (NOT a fixed/reusable phrase). Enter exactly: I-VERIFIED-<deployment_id>-<preview-hostname>-IS-THE-LATEST-READY-PREVIEW, substituting the literal deployment_id value entered above and the exact hostname from preview_url (no scheme, e.g. ownerpilot-<hash>-jt-s-projects3.vercel.app). Confirms, immediately before this dispatch, that THIS deployment is READY, is the latest deployment for this branch, was created after the most recent branch-scoped environment-variable update, and has no Production alias. This workflow has no Vercel credential and cannot verify any of this independently — entering the wrong deployment_id or hostname here will not match and the job will fail.'
         required: true
         type: string
 
@@ -72,16 +77,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          # --- 0. Manual deployment-freshness preflight (added after run #30562689654 targeted a
-          # stale, pre-rescoping deployment — see PR body). This workflow has no Vercel credential
-          # and cannot independently verify deployment freshness; it can only fail closed if the
-          # operator has not explicitly typed the exact acknowledgment below. ---
+          # --- 0. deployment_id format (the deployment-specific attestation itself is checked in
+          # step 4 below, once HOST_LC is known — see that step's comment for why). ---
           if [[ -z "$DEPLOYMENT_ID" || ! "$DEPLOYMENT_ID" =~ ^dpl_[A-Za-z0-9]+$ ]]; then
             echo "::error::deployment_id must be a Vercel deployment ID of the form 'dpl_...'. Got: '$DEPLOYMENT_ID'"
-            exit 1
-          fi
-          if [[ "$DEPLOYMENT_FRESHNESS_ACK" != "I-VERIFIED-THIS-IS-THE-LATEST-DEPLOYMENT" ]]; then
-            echo "::error::deployment_freshness_ack must be exactly 'I-VERIFIED-THIS-IS-THE-LATEST-DEPLOYMENT'. This confirms you just checked, in the Vercel dashboard, that deployment_id is READY, is the latest deployment for this branch, was built after the most recent branch-scoped env var update, and has no Production alias. Refusing to run without this explicit confirmation."
             exit 1
           fi
 
@@ -130,7 +129,22 @@ jobs:
             exit 1
           fi
 
-          # --- 4. Production denylist (defense-in-depth only; NOT conclusive — see header comment) ---
+          # --- 4. Mandatory deployment-specific operator attestation (added after run #30562689654
+          # targeted a stale, pre-rescoping deployment; tightened 2026-07-31 per architect review of
+          # PR #312 — the prior version accepted a fixed, reusable phrase regardless of which
+          # deployment_id/preview_url was supplied). This workflow has no Vercel credential and
+          # cannot independently verify deployment freshness — it can only require the operator to
+          # attest to THIS EXACT deployment, by deriving the expected acknowledgment from this run's
+          # own deployment_id and normalized preview hostname (HOST_LC, computed above). An
+          # acknowledgment that is generic, or was copied from a different deployment_id/hostname
+          # pair, will not match and this step fails closed. ---
+          EXPECTED_FRESHNESS_ACK="I-VERIFIED-${DEPLOYMENT_ID}-${HOST_LC}-IS-THE-LATEST-READY-PREVIEW"
+          if [[ "$DEPLOYMENT_FRESHNESS_ACK" != "$EXPECTED_FRESHNESS_ACK" ]]; then
+            echo "::error::deployment_freshness_ack does not match this dispatch's deployment_id ('$DEPLOYMENT_ID') and preview_url hostname ('$HOST_LC'). Expected exactly: '$EXPECTED_FRESHNESS_ACK'. Got: '$DEPLOYMENT_FRESHNESS_ACK'. This confirms you just checked, in the Vercel dashboard, that THIS deployment is READY, is the latest deployment for this branch, was built after the most recent branch-scoped env var update, and has no Production alias. Refusing to run without this exact, deployment-specific attestation."
+            exit 1
+          fi
+
+          # --- 5. Production denylist (defense-in-depth only; NOT conclusive — see header comment) ---
           DENYLIST=(
             "ownerpilot.ai"
             "www.ownerpilot.ai"
@@ -159,7 +173,7 @@ jobs:
 
           echo "::notice::This denylist check is NOT conclusive proof of Preview vs. Production. Independently confirm in the Vercel dashboard that this deployment's Environment is Preview before relying on this run."
 
-          # --- 5. Commit-SHA match: workflow checkout vs. operator-attested Preview commit ---
+          # --- 6. Commit-SHA match: workflow checkout vs. operator-attested Preview commit ---
           if [[ "$NORM_PREVIEW_SHA" != "$NORM_WORKFLOW_SHA" ]]; then
             echo "::error::preview_commit_sha ($NORM_PREVIEW_SHA) does not match the workflow checkout SHA ($NORM_WORKFLOW_SHA). Refusing to run — dispatch this workflow from the same branch/commit the Preview URL was built from."
             exit 1
@@ -231,7 +245,7 @@ jobs:
             echo "- Workflow checkout SHA: ${NORM_WORKFLOW_SHA:-${{ github.sha }}}"
             echo "- Operator-supplied Preview deployment SHA: ${NORM_PREVIEW_SHA:-unavailable — validation step did not complete}"
             echo "- Operator-supplied deployment ID: ${{ inputs.deployment_id }}"
-            echo "- Deployment-freshness acknowledgment: ${{ inputs.deployment_freshness_ack }}"
+            echo "- Deployment-specific operator attestation: ${{ inputs.deployment_freshness_ack }}"
             echo "- E2E run identifier: $E2E_RUN_ID"
             echo "- Test/pass/fail/skip counts: see the Playwright step output above"
             echo "- Cleanup status: $CLEANUP_STATUS"
