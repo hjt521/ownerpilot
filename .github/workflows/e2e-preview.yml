@@ -17,6 +17,23 @@ name: e2e-preview
 # exposure, but first real execution of this workflow remains blocked until the Production
 # CRON_SECRET is rotated/invalidated and the Production vs. Preview env var scopes on this project
 # are independently re-verified. See PR body.
+#
+# Mandatory deployment-specific operator attestation (added 2026-07-30, narrow diagnostic
+# authorization, after run #30562689654 targeted a stale, pre-rescoping Preview deployment; revised
+# 2026-07-31 per architect review of PR #312): this workflow still has no Vercel credential and does
+# not call the Vercel API, so it CANNOT independently verify that a deployment is current — nothing
+# below is an automated freshness check. `deployment_id` and `deployment_freshness_ack` instead
+# require the operator to compute a deployment-specific acknowledgment string that embeds both the
+# exact deployment_id and the exact normalized Preview hostname for this dispatch
+# (I-VERIFIED-<deployment_id>-<preview-hostname>-IS-THE-LATEST-READY-PREVIEW), attesting immediately
+# before dispatch that THAT deployment is READY, is the latest deployment for the branch, postdates
+# the most recent branch-scoped env var update, and has no Production alias. Because the expected
+# string is derived from this run's own deployment_id and preview_url inputs, a generic or reused
+# phrase — or an attestation copied from a different deployment — will not match and the job exits
+# non-zero. This is Option 3 (mandatory deployment-specific operator attestation) from the
+# deployment-target protection proposal in PR #312's description — Options 1/2 (automatic Vercel-side
+# verification) are proposed but not implemented, since they would require a persistent Vercel
+# credential not authorized here.
 
 on:
   workflow_dispatch:
@@ -27,6 +44,14 @@ on:
         type: string
       preview_commit_sha:
         description: 'Full 40-character commit SHA that the supplied Preview URL was deployed from (operator attestation — not independently verified by this workflow against Vercel).'
+        required: true
+        type: string
+      deployment_id:
+        description: 'Vercel deployment ID (e.g. dpl_xxx) for the exact deployment behind preview_url. Operator attestation, not independently verified against the Vercel API by this workflow. This exact value must also appear in the deployment_freshness_ack input below.'
+        required: true
+        type: string
+      deployment_freshness_ack:
+        description: 'Mandatory deployment-specific operator attestation (NOT a fixed/reusable phrase). Enter exactly: I-VERIFIED-<deployment_id>-<preview-hostname>-IS-THE-LATEST-READY-PREVIEW, substituting the literal deployment_id value entered above and the exact hostname from preview_url (no scheme, e.g. ownerpilot-<hash>-jt-s-projects3.vercel.app). Confirms, immediately before this dispatch, that THIS deployment is READY, is the latest deployment for this branch, was created after the most recent branch-scoped environment-variable update, and has no Production alias. This workflow has no Vercel credential and cannot verify any of this independently — entering the wrong deployment_id or hostname here will not match and the job will fail.'
         required: true
         type: string
 
@@ -47,8 +72,17 @@ jobs:
           PREVIEW_URL: ${{ inputs.preview_url }}
           PREVIEW_COMMIT_SHA: ${{ inputs.preview_commit_sha }}
           WORKFLOW_SHA: ${{ github.sha }}
+          DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+          DEPLOYMENT_FRESHNESS_ACK: ${{ inputs.deployment_freshness_ack }}
         run: |
           set -euo pipefail
+
+          # --- 0. deployment_id format (the deployment-specific attestation itself is checked in
+          # step 4 below, once HOST_LC is known — see that step's comment for why). ---
+          if [[ -z "$DEPLOYMENT_ID" || ! "$DEPLOYMENT_ID" =~ ^dpl_[A-Za-z0-9]+$ ]]; then
+            echo "::error::deployment_id must be a Vercel deployment ID of the form 'dpl_...'. Got: '$DEPLOYMENT_ID'"
+            exit 1
+          fi
 
           # --- 1. Commit SHA format ---
           if [[ ! "$PREVIEW_COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
@@ -95,7 +129,22 @@ jobs:
             exit 1
           fi
 
-          # --- 4. Production denylist (defense-in-depth only; NOT conclusive — see header comment) ---
+          # --- 4. Mandatory deployment-specific operator attestation (added after run #30562689654
+          # targeted a stale, pre-rescoping deployment; tightened 2026-07-31 per architect review of
+          # PR #312 — the prior version accepted a fixed, reusable phrase regardless of which
+          # deployment_id/preview_url was supplied). This workflow has no Vercel credential and
+          # cannot independently verify deployment freshness — it can only require the operator to
+          # attest to THIS EXACT deployment, by deriving the expected acknowledgment from this run's
+          # own deployment_id and normalized preview hostname (HOST_LC, computed above). An
+          # acknowledgment that is generic, or was copied from a different deployment_id/hostname
+          # pair, will not match and this step fails closed. ---
+          EXPECTED_FRESHNESS_ACK="I-VERIFIED-${DEPLOYMENT_ID}-${HOST_LC}-IS-THE-LATEST-READY-PREVIEW"
+          if [[ "$DEPLOYMENT_FRESHNESS_ACK" != "$EXPECTED_FRESHNESS_ACK" ]]; then
+            echo "::error::deployment_freshness_ack does not match this dispatch's deployment_id ('$DEPLOYMENT_ID') and preview_url hostname ('$HOST_LC'). Expected exactly: '$EXPECTED_FRESHNESS_ACK'. Got: '$DEPLOYMENT_FRESHNESS_ACK'. This confirms you just checked, in the Vercel dashboard, that THIS deployment is READY, is the latest deployment for this branch, was built after the most recent branch-scoped env var update, and has no Production alias. Refusing to run without this exact, deployment-specific attestation."
+            exit 1
+          fi
+
+          # --- 5. Production denylist (defense-in-depth only; NOT conclusive — see header comment) ---
           DENYLIST=(
             "ownerpilot.ai"
             "www.ownerpilot.ai"
@@ -124,7 +173,7 @@ jobs:
 
           echo "::notice::This denylist check is NOT conclusive proof of Preview vs. Production. Independently confirm in the Vercel dashboard that this deployment's Environment is Preview before relying on this run."
 
-          # --- 5. Commit-SHA match: workflow checkout vs. operator-attested Preview commit ---
+          # --- 6. Commit-SHA match: workflow checkout vs. operator-attested Preview commit ---
           if [[ "$NORM_PREVIEW_SHA" != "$NORM_WORKFLOW_SHA" ]]; then
             echo "::error::preview_commit_sha ($NORM_PREVIEW_SHA) does not match the workflow checkout SHA ($NORM_WORKFLOW_SHA). Refusing to run — dispatch this workflow from the same branch/commit the Preview URL was built from."
             exit 1
@@ -163,6 +212,19 @@ jobs:
             e2e/beta-pathway-cross-device-characterization.spec.ts \
             2>&1 | tee "${RUNNER_TEMP}/e2e-run.log"
 
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            test-results/**/trace.zip
+            test-results/**/error-context.md
+            test-results/**/*.png
+            playwright-report/
+          retention-days: 3
+          if-no-files-found: ignore
+
       - name: Job summary
         if: ${{ !cancelled() }}
         env:
@@ -182,7 +244,10 @@ jobs:
             echo "- Preview hostname: ${NORM_PREVIEW_URL:-unavailable — validation step did not complete}"
             echo "- Workflow checkout SHA: ${NORM_WORKFLOW_SHA:-${{ github.sha }}}"
             echo "- Operator-supplied Preview deployment SHA: ${NORM_PREVIEW_SHA:-unavailable — validation step did not complete}"
+            echo "- Operator-supplied deployment ID: ${{ inputs.deployment_id }}"
+            echo "- Deployment-specific operator attestation: ${{ inputs.deployment_freshness_ack }}"
             echo "- E2E run identifier: $E2E_RUN_ID"
             echo "- Test/pass/fail/skip counts: see the Playwright step output above"
             echo "- Cleanup status: $CLEANUP_STATUS"
+            echo "- Failure artifacts (if any): see the 'Upload Playwright failure artifacts' step, retained 3 days"
           } >> "$GITHUB_STEP_SUMMARY"

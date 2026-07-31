@@ -9,7 +9,8 @@ export default defineConfig({
   globalTeardown: './global-teardown.ts',
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     extraHTTPHeaders: process.env.E2E_RUN_ID ? { 'X-E2E-Run-Id': process.env.E2E_RUN_ID } : {},
   },
   projects: [
