@@ -205,7 +205,9 @@ test.describe('Free-beta pathway characterization — persistence and continuity
     try {
       await expect(page.getByText(/Attempt recorded/i)).toBeVisible();
       await expect(page.getByText('Service recorded as complete.')).toBeVisible();
-      await expect(page.getByText('In person (personal service)')).toBeVisible();
+      await expect(
+        page.getByText('In person (personal service)', { exact: true }),
+      ).toBeVisible();
     } catch (assertionError) {
       const [
         dateFieldValue,
@@ -355,7 +357,13 @@ test.describe('Free-beta pathway characterization — persistence and continuity
 
     // Exercise the wizard/Serve & Track lane in a browser context carrying the SAME seeded cookie, so
     // any RiskPath row this activity might produce would be attributable to this unique session.
-    await page.context().addCookies([{ name: 'op_chat_token', value: cookie, url: page.url() || 'http://localhost:3000' }]);
+    await page.context().addCookies([
+      {
+        name: 'op_chat_token',
+        value: cookie,
+        url: E2E_BASE_URL,
+      },
+    ]);
     await page.addInitScript(
       ([key, json]) => window.localStorage.setItem(key, json),
       [DRAFT_KEY, noticeDraftEnvelopeJson(4)] as const,
