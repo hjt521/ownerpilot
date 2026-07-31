@@ -2,6 +2,7 @@
 // with E2E_RUN_ID (documents→riskpath→sessions FK order) and verifies zero remain; fails the run if not.
 import { createClient } from '@supabase/supabase-js';
 import { cleanupE2eRun } from '../lib/testing/e2eCleanup';
+import { runIdToUuid } from '../lib/testing/e2eRunTag';
 
 async function globalTeardown() {
   const runId = process.env.E2E_RUN_ID;
@@ -13,10 +14,14 @@ async function globalTeardown() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('[e2e-teardown] SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY required for cleanup');
 
+  // e2e_run_id is `uuid`-typed; the seed routes now stamp rows with runIdToUuid(runId), not the raw
+  // E2E_RUN_ID string (run #30599083648, :304 finding). Recompute the identical derived UUID here so
+  // cleanup finds the same rows the seed routes tagged — same input string, same pure derivation.
+  const taggedId = runIdToUuid(runId);
   const sb = createClient(url, key, { auth: { persistSession: false } });
-  const res = await cleanupE2eRun(sb, runId);
+  const res = await cleanupE2eRun(sb, taggedId);
   console.log(
-    `[e2e-teardown] runId=${runId} documentsDeleted=${res.documentsDeleted} remaining=${JSON.stringify(res.remaining)}`,
+    `[e2e-teardown] runId=${runId} taggedId=${taggedId} documentsDeleted=${res.documentsDeleted} remaining=${JSON.stringify(res.remaining)}`,
   );
   const leftover = res.remaining.documents + res.remaining.riskpath + res.remaining.sessions;
   if (leftover > 0) {

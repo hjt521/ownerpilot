@@ -32,9 +32,16 @@
 //    chat_sessions/riskpath_records rows it causes to be created — no new seed route or cleanup path is
 //    introduced.
 
-import { test, expect, request } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { e2eCharacterizationWizardData } from '../lib/testing/e2eWizardFixture';
 import { DRAFT_KEY, DRAFT_VERSION } from '../lib/flow/persistence';
+import { untracedFetch } from './helpers/untracedHttp';
+import { runIdToUuid } from '../lib/testing/e2eRunTag';
+
+// Matches e2e/playwright.config.ts's own baseURL default exactly, so calls made outside the
+// Playwright `request` fixture (see e2e/helpers/untracedHttp.ts's header comment for why) still
+// target the same Preview deployment as the rest of the test.
+const E2E_BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 
 // Condition #3: relevant persistence destinations only — not a blanket "zero POST/PATCH of every
 // kind" assertion. A request is "relevant" if its URL matches one of these; everything else (GA4,
@@ -158,7 +165,13 @@ test.describe('Free-beta pathway characterization — persistence and continuity
     );
     await page.goto('/notice/3-day/serve');
 
-    await page.getByLabel(/Date of this attempt/i).fill('2026-06-05');
+    // Repair for run #30599083648's :137 finding: the "Date of this attempt" control (DateField in
+    // components/notice-flow.tsx) is a masked, positional-digit text input that expects US-typed
+    // MM/DD/YYYY — it is not a native <input type="date">, so it does not accept an ISO value.
+    // Filling it with an ISO string here previously misparsed into a corrupted pseudo-ISO value
+    // ("0605-20-26") that crashed the page during render. Source/control inspection established the
+    // test supplied the wrong format; corrected to the format the control actually renders/accepts.
+    await page.getByLabel(/Date of this attempt/i).fill('06/05/2026');
     await page.getByRole('radio', { name: 'Service was completed' }).check();
     await page.getByLabel(/Name of person who served/i).fill('E2E Characterization Server');
     await page.getByLabel(/Address of person who served/i).fill('1 Characterization Way, Fresno, CA 93701');
@@ -316,20 +329,27 @@ test.describe('Free-beta pathway characterization — persistence and continuity
     // header comment); this test never calls produce with the seeded session, so that field has no
     // bearing on what is being characterized here — it is used solely to obtain a unique, claimed
     // session identity to anchor the absence check.
-    const ctx = await request.newContext();
-    const seed = await ctx.post('/api/test/seed-session', {
-      data: { complete: true, counselTrigger: 'bankruptcy_automatic_stay' },
-      headers: { authorization: `Bearer ${secret}` },
+    //
+    // Security repair for run #30599083648: this call carries the TEST_SEED_SECRET bearer token, and
+    // the later calls below carry the seeded session cookie. Both now go through untracedFetch
+    // (e2e/helpers/untracedHttp.ts) instead of the Playwright `request` fixture's APIRequestContext,
+    // because that fixture's calls are captured (headers included, unredacted) in the failure trace —
+    // that is exactly how TEST_SEED_SECRET ended up exposed in playwright-failure-30599083648-1.
+    const seed = await untracedFetch<{ cookie: string; sessionId: string }>(E2E_BASE_URL, '/api/test/seed-session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${secret}` },
+      body: JSON.stringify({ complete: true, counselTrigger: 'bankruptcy_automatic_stay' }),
     });
-    expect(seed.ok(), 'seed-session must succeed for this characterization to be meaningful').toBeTruthy();
-    const { cookie, sessionId } = await seed.json();
+    expect(seed.ok, 'seed-session must succeed for this characterization to be meaningful').toBeTruthy();
+    const { cookie, sessionId } = seed.json;
     expect(sessionId, 'the seed must return a unique session id to anchor the absence check').toBeTruthy();
 
-    const before = await ctx.get('/api/riskpath', { headers: { cookie: `op_chat_token=${cookie}` } });
-    expect(before.ok()).toBeTruthy();
-    const beforeBody = (await before.json()) as { records: unknown[] };
+    const before = await untracedFetch<{ records: unknown[] }>(E2E_BASE_URL, '/api/riskpath', {
+      headers: { cookie: `op_chat_token=${cookie}` },
+    });
+    expect(before.ok).toBeTruthy();
     expect(
-      beforeBody.records,
+      before.json.records,
       `expected zero RiskPath records linked to freshly seeded session ${sessionId} before any wizard activity`,
     ).toEqual([]);
 
@@ -342,15 +362,18 @@ test.describe('Free-beta pathway characterization — persistence and continuity
     );
     await page.goto('/notice/3-day/serve');
     await expect(page.getByRole('heading', { name: 'Serve & track', exact: true })).toBeVisible();
-    await page.getByLabel(/Date of this attempt/i).fill('2026-06-05');
+    // Repair for run #30599083648's :137 finding — see the identical fix/comment in the test above:
+    // this control expects US-typed MM/DD/YYYY, not an ISO string.
+    await page.getByLabel(/Date of this attempt/i).fill('06/05/2026');
     await page.getByLabel(/is 18 years of age or older/i).check();
     await page.getByLabel(/not a party to this notice/i).check();
     await page.getByRole('button', { name: 'Add attempt' }).click();
     await expect(page.getByText(/Attempt recorded/i)).toBeVisible();
 
-    const after = await ctx.get('/api/riskpath', { headers: { cookie: `op_chat_token=${cookie}` } });
-    expect(after.ok()).toBeTruthy();
-    const afterBody = (await after.json()) as { records: unknown[] };
+    const after = await untracedFetch<{ records: unknown[] }>(E2E_BASE_URL, '/api/riskpath', {
+      headers: { cookie: `op_chat_token=${cookie}` },
+    });
+    expect(after.ok).toBeTruthy();
     // CHARACTERIZATION OF KNOWN CURRENT GAP — NOT DESIRED TARGET BEHAVIOR (2026-07-27): the wizard/
     // Serve & Track lane has no write path into riskpath_records LINKED TO THIS SEEDED SESSION, so this
     // stays empty even after a produce-ready draft exists and a service attempt has been logged, tied
@@ -360,7 +383,7 @@ test.describe('Free-beta pathway characterization — persistence and continuity
     // (and must be deliberately updated, not silently left red) once the wizard or Serve & Track gain
     // RiskPath linkage.
     expect(
-      afterBody.records,
+      after.json.records,
       `expected zero RiskPath records linked to session ${sessionId} after wizard/Serve & Track activity`,
     ).toEqual([]);
 
@@ -374,12 +397,17 @@ test.describe('Free-beta pathway characterization — persistence and continuity
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (runId && supabaseUrl && supabaseKey) {
+      // Repair for run #30599083648's :304 finding: e2e_run_id is `uuid`-typed, and the raw
+      // E2E_RUN_ID string is not UUID-shaped — comparing it directly against the column raised
+      // "invalid input syntax for type uuid". Derive the same UUID the seed routes now stamp
+      // (runIdToUuid) rather than filtering on the raw string.
+      const taggedId = runIdToUuid(runId);
       const { createClient } = await import('@supabase/supabase-js');
       const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
       const { count } = await sb
         .from('riskpath_records')
         .select('*', { count: 'exact', head: true })
-        .eq('e2e_run_id', runId);
+        .eq('e2e_run_id', taggedId);
       // CHARACTERIZATION (best-effort, tag-scoped, 2026-07-27): no RiskPath record attributable to this
       // synthetic E2E run exists. Narrower in mechanism (a direct tag-scoped count, not a full-system
       // guarantee) but broader in coverage than the session-linked check above. Not a substitute for

@@ -21,6 +21,7 @@ import { buildRiskPathInsert } from '@/lib/riskpath/noticeGenerationEvent';
 import { captureProductionSnapshot } from '@/lib/flow/escalation';
 import { toNoticeFlowData } from '@/lib/chat/toNoticeFlowData';
 import { laProduceAuditSchema } from '@/lib/riskpath/produceAudit';
+import { runIdToUuid } from '@/lib/testing/e2eRunTag';
 
 // serviceDate is NOT part of the snapshot (lib/flow/escalation.ts omits it), so any valid date assembles a valid
 // NoticeFlowData without affecting the frozen snapshot. Fixed for determinism.
@@ -54,7 +55,10 @@ export async function POST(req: NextRequest) {
   const testUserId = process.env.E2E_TEST_USER_ID;
   if (!testUserId) return NextResponse.json({ error: 'E2E_TEST_USER_ID not provisioned' }, { status: 500 });
 
-  const runId = req.headers.get('x-e2e-run-id') || null;
+  // e2e_run_id is `uuid`-typed; the raw CI run-id string isn't UUID-shaped (run #30599083648, :304
+  // finding — see runIdToUuid's doc comment). Derive a deterministic UUID from the header instead.
+  const rawRunId = req.headers.get('x-e2e-run-id');
+  const runId = rawRunId ? runIdToUuid(rawRunId) : null;
   const rawToken = generateAnonToken();
   const sb = serviceClient();
   const intakeState = completeIntakeState();
@@ -111,5 +115,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'seed riskpath failed', detail: rErr?.message }, { status: 500 });
   }
 
-  return NextResponse.json({ cookie: rawToken, sessionId: sess.id, riskpathId: rp.id });
+  return NextResponse.json({ cookie: rawToken, sessionId: sess.id, riskpathId: rp.id, e2eRunIdTag: runId });
 }

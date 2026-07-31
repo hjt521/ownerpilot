@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { serviceClient, generateAnonToken, hashAnonToken } from '@/lib/chat/session';
 import { completeIntakeState } from '@/lib/testing/e2eIntakeFixture';
 import { isCounselRouteTrigger } from '@/lib/riskpath/triggers';
+import { runIdToUuid } from '@/lib/testing/e2eRunTag';
 
 const bodySchema = z
   .object({ complete: z.literal(true), counselTrigger: z.string().min(1) })
@@ -50,7 +51,13 @@ export async function POST(req: NextRequest) {
   const testUserId = process.env.E2E_TEST_USER_ID;
   if (!testUserId) return NextResponse.json({ error: 'E2E_TEST_USER_ID not provisioned' }, { status: 500 });
 
-  const runId = req.headers.get('x-e2e-run-id') || null;
+  // e2e_run_id is a `uuid`-typed column; the raw CI run-id string (e.g.
+  // "30599083648-1-<sha>") is not UUID-shaped and previously caused a 500 "invalid input syntax
+  // for type uuid" (run #30599083648, :304 finding). Derive a real, deterministic UUID from the
+  // header instead — see runIdToUuid's doc comment for why this needs no schema change and stays
+  // recomputable by teardown.
+  const rawRunId = req.headers.get('x-e2e-run-id');
+  const runId = rawRunId ? runIdToUuid(rawRunId) : null;
   const rawToken = generateAnonToken();
   const sb = serviceClient();
   const { data, error } = await sb
@@ -62,13 +69,16 @@ export async function POST(req: NextRequest) {
       intake_state: completeIntakeState(),
       intake_complete: true,
       counsel_route_trigger: counselTrigger, // S7: the only caller-controlled field
-      e2e_run_id: runId, // S5 tag for teardown
+      e2e_run_id: runId, // S5 tag for teardown — generated UUID derived from the caller's run id
       synthetic_source: 'e2e',
     })
     .select('id')
     .single();
   if (error) return NextResponse.json({ error: 'seed failed', detail: error.message }, { status: 500 });
 
-  // Spec reads { cookie } and sets op_chat_token.
-  return NextResponse.json({ cookie: rawToken, sessionId: data.id });
+  // Spec reads { cookie } and sets op_chat_token. sessionId is the row's own generated uuid
+  // (unaffected by this repair); e2eRunIdTag is additive — the derived uuid actually stamped into
+  // e2e_run_id, returned for caller-side debugging/verification only (cleanup itself recomputes
+  // this value independently from E2E_RUN_ID, it does not rely on this response field).
+  return NextResponse.json({ cookie: rawToken, sessionId: data.id, e2eRunIdTag: runId });
 }
