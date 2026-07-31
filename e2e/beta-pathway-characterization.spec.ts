@@ -136,9 +136,21 @@ test.describe('Free-beta pathway characterization — persistence and continuity
 
   test('EXPECTED: logging a service attempt (date, outcome, server identity) via the accessible ReServePanel form records it in the visible log', async ({
     page,
-  }) => {
+  }, testInfo) => {
     const requests: { url: string; method: string }[] = [];
     page.on('request', (req) => requests.push({ url: req.url(), method: req.method() }));
+
+    // DIAGNOSTIC INSTRUMENTATION (2026-07-30) — added under a narrow diagnostic-only authorization
+    // to investigate run #30562689654's :137 failure (waiting for "Attempt recorded" after the
+    // PR #311 radio-locator fix). Source review alone could not establish a cause since handleAdd()
+    // is a synchronous, no-network client state update. These listeners/attachments are diagnostic
+    // only — they do not change, weaken, or replace the real assertions below.
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text());
+    });
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
 
     await page.addInitScript(
       ([key, json]) => window.localStorage.setItem(key, json),
@@ -152,11 +164,88 @@ test.describe('Free-beta pathway characterization — persistence and continuity
     await page.getByLabel(/Address of person who served/i).fill('1 Characterization Way, Fresno, CA 93701');
     await page.getByLabel(/is 18 years of age or older/i).check();
     await page.getByLabel(/not a party to this notice/i).check();
-    await page.getByRole('button', { name: 'Add attempt' }).click();
 
-    await expect(page.getByText(/Attempt recorded/i)).toBeVisible();
-    await expect(page.getByText('Service recorded as complete.')).toBeVisible();
-    await expect(page.getByText('In person (personal service)')).toBeVisible();
+    const addAttemptButton = page.getByRole('button', { name: 'Add attempt' });
+    const buttonEnabledBeforeClick = await addAttemptButton.isEnabled();
+
+    let clickCompleted = false;
+    let clickError: string | null = null;
+    try {
+      await addAttemptButton.click();
+      clickCompleted = true;
+    } catch (err) {
+      clickError = String(err);
+    }
+
+    // Diagnostic-only: captured immediately after the click so it reflects the DOM at the moment
+    // in question; only attached to the report if the real assertion below fails.
+    const postClickScreenshot = await page.screenshot({ fullPage: true }).catch(() => null);
+
+    if (clickError) {
+      await testInfo.attach('diagnostic-137-click-error', {
+        body: JSON.stringify({ buttonEnabledBeforeClick, clickError }, null, 2),
+        contentType: 'application/json',
+      });
+      throw new Error(clickError);
+    }
+
+    try {
+      await expect(page.getByText(/Attempt recorded/i)).toBeVisible();
+      await expect(page.getByText('Service recorded as complete.')).toBeVisible();
+      await expect(page.getByText('In person (personal service)')).toBeVisible();
+    } catch (assertionError) {
+      const [
+        dateFieldValue,
+        serverNameValue,
+        serverAddressValue,
+        bodyText,
+        containsRecordedWord,
+        containsAddedToLog,
+        containsValidationPrompt,
+      ] = await Promise.all([
+        page.getByLabel(/Date of this attempt/i).inputValue().catch(() => null),
+        page.getByLabel(/Name of person who served/i).inputValue().catch(() => null),
+        page.getByLabel(/Address of person who served/i).inputValue().catch(() => null),
+        page.locator('body').innerText().catch(() => null),
+        page.getByText(/recorded/i).isVisible().catch(() => false),
+        page.getByText(/added to the log/i).isVisible().catch(() => false),
+        page.getByText(/enter the|confirm the/i).isVisible().catch(() => false),
+      ]);
+
+      if (postClickScreenshot) {
+        await testInfo.attach('diagnostic-137-after-click-screenshot', {
+          body: postClickScreenshot,
+          contentType: 'image/png',
+        });
+      }
+      await testInfo.attach('diagnostic-137-post-click-state', {
+        body: JSON.stringify(
+          {
+            buttonEnabledBeforeClick,
+            clickCompleted,
+            consoleErrors,
+            pageErrors,
+            // If the form fields are still populated, handleAdd() returned early (validation
+            // failed) before resetForm()/setRecordedFlash() ran — this alone would explain the
+            // missing success text without any product defect.
+            formStillPopulated: { dateFieldValue, serverNameValue, serverAddressValue },
+            alternateSuccessTextVisible: { containsRecordedWord, containsAddedToLog },
+            validationPromptVisible: containsValidationPrompt,
+          },
+          null,
+          2,
+        ),
+        contentType: 'application/json',
+      });
+      if (bodyText) {
+        await testInfo.attach('diagnostic-137-body-text-snapshot', {
+          body: bodyText,
+          contentType: 'text/plain',
+        });
+      }
+
+      throw assertionError;
+    }
 
     // CHARACTERIZATION OF KNOWN CURRENT GAP — NOT DESIRED TARGET BEHAVIOR (2026-07-27): logging a
     // service attempt writes only to localStorage; no relevant persistence destination is called.
@@ -172,9 +261,22 @@ test.describe('Free-beta pathway characterization — persistence and continuity
     await page.goto('/chat');
     await expect(page.getByText(/does not provide legal advice/i)).toBeVisible();
     await page.getByLabel('Message').fill('E2E characterization: this is a synthetic, non-substantive message.');
-    await page.getByRole('button', { name: 'Send' }).click();
-    // Allow the turn to complete without hard-coupling to intake mechanics not under test here.
-    await page.waitForTimeout(2000);
+
+    // Deterministic synchronization: wait for the actual /api/chat response rather than an
+    // arbitrary sleep. A hardcoded wait raced against cold-start/response latency and produced
+    // intermittent "cookie not yet set" failures (run #30562689654, tests :169 desktop/mobile).
+    const [chatResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/chat') &&
+          response.request().method() === 'POST',
+      ),
+      page.getByRole('button', { name: 'Send' }).click(),
+    ]);
+    expect(
+      chatResponse.ok(),
+      `chat request failed with HTTP ${chatResponse.status()}`,
+    ).toBeTruthy();
 
     const cookiesBefore = await page.context().cookies();
     const tokenBefore = cookiesBefore.find((c) => c.name === 'op_chat_token');
