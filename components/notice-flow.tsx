@@ -920,6 +920,13 @@ function DateField({
   onChange: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  // Set when a fully-typed 8-digit entry does not compose into a real calendar date (e.g. month
+  // 13, day 32, or Feb 30). Guards the ISO boundary: an invalid composed string must never reach
+  // onChange (and therefore never reach formatNoticeDate() or any other ISO consumer) — see the
+  // repair for run #30599083648's :137 finding (a malformed "0605-20-26" value crashed the
+  // attempt-log render via formatNoticeDate's strict validator). Reset whenever the field is
+  // incomplete or becomes valid again.
+  const [invalid, setInvalid] = useState(false);
 
   // Local DISPLAY string (MM/DD/YYYY, slashes auto-inserted). This is what the
   // user sees and edits. Storage (the `value` prop / onChange) is always ISO
@@ -955,11 +962,15 @@ function DateField({
     const valueDisplay = isoToDisplay(value);
     if (value && valueDisplay && valueDisplay !== display) {
       setDisplay(valueDisplay);
+      setInvalid(false);
       return;
     }
     if (!value) {
       const digits = display.replace(/\D/g, '');
-      if (digits.length === 8) setDisplay('');
+      if (digits.length === 8) {
+        setDisplay('');
+        setInvalid(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
@@ -969,12 +980,29 @@ function DateField({
     setDisplay(formatted);
     const digits = raw.replace(/\D/g, '').slice(0, 8); // MMDDYYYY
     if (digits.length < 8) {
+      setInvalid(false); // incomplete isn't "invalid" yet, just not done
       onChange(''); // incomplete -> store empty so validators keep the gate closed
       return;
     }
     const mm = digits.slice(0, 2);
     const dd = digits.slice(2, 4);
     const yyyy = digits.slice(4, 8);
+    const month = Number(mm);
+    const day = Number(dd);
+    const year = Number(yyyy);
+    // Guard the ISO boundary: reject any composed date that isn't a real calendar date (month
+    // out of range, or a day that doesn't exist in that month/year — e.g. Feb 30) BEFORE it is
+    // ever handed to onChange. A malformed value previously reached formatNoticeDate() unguarded
+    // and threw during render (run #30599083648, :137) — this field must never emit a pseudo-ISO
+    // string that a caller could mistake for a valid date.
+    const daysInMonth = month >= 1 && month <= 12 ? new Date(year, month, 0).getDate() : 0;
+    const isValidCalendarDate = month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth;
+    if (!isValidCalendarDate) {
+      setInvalid(true);
+      onChange(''); // never emit a malformed pseudo-ISO string; keep the gate closed like incomplete input
+      return;
+    }
+    setInvalid(false);
     onChange(`${yyyy}-${mm}-${dd}`);
   };
 
@@ -1051,6 +1079,10 @@ function DateField({
           </svg>
         </button>
       </div>
+
+      {invalid && (
+        <p className="mt-2 text-sm text-red-700">Enter a valid date (MM/DD/YYYY).</p>
+      )}
 
       {open && (
         <div className="absolute z-10 mt-2 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">

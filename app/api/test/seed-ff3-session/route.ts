@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { serviceClient, generateAnonToken, hashAnonToken } from '@/lib/chat/session';
 import { ff3ReadyIntakeState } from '@/lib/testing/e2eFf3Fixture';
+import { runIdToUuid } from '@/lib/testing/e2eRunTag';
 
 const bodySchema = z.object({ claimed: z.boolean().optional() }).strict();
 
@@ -46,7 +47,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'E2E_TEST_USER_ID not provisioned' }, { status: 500 });
   }
 
-  const runId = req.headers.get('x-e2e-run-id') || null;
+  // e2e_run_id is `uuid`-typed; the raw CI run-id string isn't UUID-shaped (run #30599083648, :304
+  // finding — see runIdToUuid's doc comment). Derive a deterministic UUID from the header instead.
+  const rawRunId = req.headers.get('x-e2e-run-id');
+  const runId = rawRunId ? runIdToUuid(rawRunId) : null;
   const rawToken = generateAnonToken();
   const sb = serviceClient();
   const { data, error } = await sb
@@ -58,13 +62,13 @@ export async function POST(req: NextRequest) {
       intake_state: ff3ReadyIntakeState(),
       intake_complete: false,
       ff3_capture_status: null,      // the next owner turn opens FF-3
-      e2e_run_id: runId,             // S5 tag for teardown
+      e2e_run_id: runId,             // S5 tag for teardown — generated UUID derived from the caller's run id
       synthetic_source: 'e2e',
     })
     .select('id')
     .single();
   if (error) return NextResponse.json({ error: 'seed failed', detail: error.message }, { status: 500 });
 
-  // Spec reads { cookie } and sets op_chat_token.
-  return NextResponse.json({ cookie: rawToken, sessionId: data.id });
+  // Spec reads { cookie } and sets op_chat_token. e2eRunIdTag is additive (debugging only).
+  return NextResponse.json({ cookie: rawToken, sessionId: data.id, e2eRunIdTag: runId });
 }
