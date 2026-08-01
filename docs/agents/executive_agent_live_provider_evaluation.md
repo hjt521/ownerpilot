@@ -130,3 +130,17 @@ output, repair a response, invoke another model, retry a request, or permit
 fallback. Results produced under prompt version 1 in which a model appended
 descriptions to otherwise recognizable evidence IDs are diagnostic only and
 must not be treated as directly comparable final evaluation evidence.
+
+## Full prompt-version-2 suite and disposition
+
+The complete four-case prompt-version-2 suite produced eight schema-valid and
+boundary-valid runs, with no blocking findings. All 24 observed qualitative
+comparisons were equivalent; eight unexercised dimensions were inconclusive.
+
+The resulting noncanonical human-review recommendation and disabled draft
+registry configuration are documented in:
+
+`docs/agents/executive_agent_provider_evaluation_disposition.md`
+
+No automatic winner was selected. No assignment was enabled, and no Preview or
+Production activation was performed.
