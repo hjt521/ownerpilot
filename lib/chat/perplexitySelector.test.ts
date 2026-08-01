@@ -130,6 +130,36 @@ async function main(): Promise<void> {
       sdkResult.reply === validResponse.reply,
     );
 
+    // SDK failure must propagate. It must not silently fall back to REST.
+    const failingSdkModel = new MockLanguageModelV3({
+      doGenerate: async () => {
+        throw new Error('synthetic SDK provider failure');
+      },
+    });
+
+    let sdkFailurePropagated = false;
+
+    try {
+      await callPerplexity(messages, {
+        apiKey: 'legacy-key-must-still-be-ignored',
+        aiSdkModel: failingSdkModel,
+        retries: 0,
+      });
+    } catch (error) {
+      sdkFailurePropagated =
+        error instanceof Error &&
+        error.message.includes('synthetic SDK provider failure');
+    }
+
+    check(
+      'SDK failure propagates to the route boundary',
+      sdkFailurePropagated,
+    );
+    check(
+      'SDK failure does not silently fall back to legacy REST',
+      unexpectedFetchCalls === 0,
+    );
+
     // Preview E2E remains first in precedence, even when the SDK flag is on.
     process.env.E2E_RUN_ACTIVE = 'true';
     process.env.VERCEL_ENV = 'preview';
