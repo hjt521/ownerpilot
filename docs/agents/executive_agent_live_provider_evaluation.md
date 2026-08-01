@@ -42,12 +42,18 @@ As of 2026-08-01, the initial bounded comparison pair is:
 | Slot | Model ID | Gateway provider restriction | Diagnostic input price | Diagnostic output price |
 |---|---|---|--:|--:
 | Primary | `anthropic/claude-sonnet-5` | `anthropic` | $2.00/M = `2000000` micros | $10.00/M = `10000000` micros |
-| Challenger | `openai/gpt-5.6-terra` | `openai` | $2.50/M = `2500000` micros | $15.00/M = `15000000` micros |
+| Challenger | `openai/gpt-5.6-terra` | `openai` | $2.00/M = `2000000` micros | $12.00/M = `12000000` micros |
 
 These are noncontrolling evaluation inputs. They do not represent
 provider or model approval, assignment, ranking, or selection. Model
 availability, provider slugs, and pricing must be reverified against
 the official Vercel AI Gateway catalog before each live run.
+
+The pair and diagnostic prices above were verified on 2026-08-01 through the
+installed AI SDK Gateway metadata client using an explicit bounded evaluation
+key. The metadata reported per-token prices equivalent to $2.00/M input and
+$10.00/M output for Claude Sonnet 5, and $2.00/M input and $12.00/M output for
+GPT 5.6 Terra. No model-generation request was made during that verification.
 
 ## Credential file
 
@@ -87,8 +93,8 @@ npx tsx scripts/agents/run_executive_agent_live_evaluation.ts \
   --challenger-model-id openai/gpt-5.6-terra \
   --challenger-pinned-model-version openai/gpt-5.6-terra \
   --challenger-reasoning-level standard \
-  --challenger-input-micros-per-million-tokens 2500000 \
-  --challenger-output-micros-per-million-tokens 15000000 \
+  --challenger-input-micros-per-million-tokens 2000000 \
+  --challenger-output-micros-per-million-tokens 12000000 \
   > "${TMPDIR:-/tmp}/ownerpilot-executive-agent-live-report.json"
 ```
 
