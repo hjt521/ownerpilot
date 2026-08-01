@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { OWNERPILOT_PERSONA_SYSTEM_PROMPT } from '@/lib/chat/persona';
 import { callPerplexity } from '@/lib/chat/perplexityClient';
+import { handleChatModelFailure } from '@/lib/chat/modelProviderFailure';
 import { applyTurn } from '@/lib/chat/orchestrate';
 import { activeCursorOf, runScriptedActiveTurn, maybeBeginScripted } from '@/lib/chat/scriptedOrchestrate';
 import { runtimeBannedTermGate } from '@/lib/chat/runtimeBannedTermGate';
@@ -134,10 +135,11 @@ export async function POST(req: NextRequest) {
     let model;
     try { model = await callPerplexity(messages); }
     catch (e) {
-      // Core AI-outage signal: the model call failed → 502. Surface it to monitoring (scrubbed, no-op unless enabled)
-      // so AI-Assistant availability is observable in production; response behavior is unchanged.
-      await captureException(e, { tags: { area: 'chat', op: 'perplexity' }, extra: { session_id: session.id } });
-      return NextResponse.json({ error: 'assistant unavailable', detail: (e as Error).message }, { status: 502 });
+      // Model-provider failures are reported with sanitized server-side detail.
+      // The browser receives only the stable generic 502 body. A selected SDK
+      // failure is not retried through the legacy REST adapter.
+      const failure = await handleChatModelFailure(e, session.id);
+      return NextResponse.json(failure.body, { status: failure.status });
     }
 
     // Transition check: if the LLM just captured the last non-scripted required field, override its reply with
