@@ -51,6 +51,7 @@
     "@upstash/redis": "^1.38.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "ai": "^6.0.239",
     "next": "16.2.6",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
