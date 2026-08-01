@@ -27,6 +27,8 @@ The implementation consists only of:
 - fail-closed deterministic registry-entry validation;
 - fail-closed deterministic run-request validation;
 - explicit Preview-only eligibility validation;
+- execution restricted to `preview_approved` registry entries;
+- selected model-slot assignment enablement validation;
 - explicit human-initiation and Founder-approval-reference validation;
 - pinned model-version and moving-alias validation;
 - provider-substitution and automatic-fallback prohibitions;
@@ -71,6 +73,8 @@ The validator rejects or blocks, among other things:
 
 - Production eligibility or execution;
 - non-Preview execution;
+- execution from `draft`, `suspended`, or `retired` registry entries;
+- execution through a disabled selected model assignment;
 - missing explicit human initiation;
 - missing or mismatched Founder approval references;
 - unpinned or moving model versions;

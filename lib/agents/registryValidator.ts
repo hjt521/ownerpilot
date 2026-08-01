@@ -62,6 +62,8 @@ export const REGISTRY_VALIDATION_ISSUE_CODES = [
   'missing_pinned_model_version',
   'moving_model_alias',
   'invalid_assignment_slot',
+  'assignment_disabled',
+  'registry_not_preview_approved',
   'missing_founder_approval',
   'missing_role_approval_reference',
   'role_approval_reference_mismatch',
@@ -1905,6 +1907,13 @@ function validateAuditMetadata(
         `${path}.modelSlot`,
         'Selected model slot has no assignment.',
       );
+    } else if (!assignment.enabled) {
+      addIssue(
+        issues,
+        'assignment_disabled',
+        `${path}.modelSlot`,
+        'Selected model assignment is disabled.',
+      );
     } else {
       const assignmentChecks: Array<{
         field:
@@ -1986,6 +1995,18 @@ export function validateExecutiveAgentRunRequest(
   const entry = entryResult.ok
     ? entryResult.value
     : null;
+
+  if (
+    entry !== null &&
+    entry.status !== 'preview_approved'
+  ) {
+    addIssue(
+      issues,
+      'registry_not_preview_approved',
+      'runRequest.registryEntry.status',
+      'Only a preview_approved registry entry may be used for execution.',
+    );
+  }
 
   if (input.environment !== 'preview') {
     addIssue(
