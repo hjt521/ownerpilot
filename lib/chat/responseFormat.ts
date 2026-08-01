@@ -9,6 +9,10 @@ export const PERPLEXITY_MODEL = 'sonar-pro';
 /** Contingency only — escalate on measured JSON-adherence failure under load, not preemptively. */
 export const PERPLEXITY_FALLBACK_MODEL = 'sonar-reasoning-pro';
 
+/** Generation settings shared by the legacy REST adapter and the AI SDK adapter. */
+export const PERPLEXITY_TEMPERATURE = 0.4;
+export const PERPLEXITY_MAX_OUTPUT_TOKENS = 800;
+
 /** The §E response envelope — keep in lockstep with lib/chat/intakeSchema.ts modelResponseSchema. */
 export const RESPONSE_FORMAT = {
   type: 'json_schema',
@@ -62,7 +66,7 @@ export function buildPerplexityRequest(messages: ChatMessage[], model: string = 
     messages,
     stream: false as const,
     response_format: RESPONSE_FORMAT,
-    temperature: 0.4,
-    max_tokens: 800,
+    temperature: PERPLEXITY_TEMPERATURE,
+    max_tokens: PERPLEXITY_MAX_OUTPUT_TOKENS,
   };
 }
