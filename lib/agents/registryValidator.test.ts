@@ -347,6 +347,90 @@ console.log(
   );
 }
 
+for (const status of [
+  'draft',
+  'suspended',
+  'retired',
+] as const) {
+  const run = cloneSyntheticFixture(
+    SYNTHETIC_VALID_RUN_REQUEST,
+  );
+
+  run.registryEntry.status = status;
+
+  const result =
+    validateExecutiveAgentRunRequest(run);
+
+  check(
+    `${status} registry entry cannot execute`,
+    !result.ok &&
+      hasIssue(
+        result,
+        'registry_not_preview_approved',
+      ),
+    result.ok
+      ? 'unexpected acceptance'
+      : JSON.stringify(result.issues),
+  );
+}
+
+{
+  const run = cloneSyntheticFixture(
+    SYNTHETIC_VALID_RUN_REQUEST,
+  );
+
+  run.registryEntry.primaryModel.enabled =
+    false;
+
+  const result =
+    validateExecutiveAgentRunRequest(run);
+
+  check(
+    'disabled selected primary assignment cannot execute',
+    !result.ok &&
+      hasIssue(
+        result,
+        'assignment_disabled',
+      ),
+    result.ok
+      ? 'unexpected acceptance'
+      : JSON.stringify(result.issues),
+  );
+}
+
+{
+  const run = cloneSyntheticFixture(
+    SYNTHETIC_VALID_RUN_REQUEST,
+  );
+
+  run.auditMetadata.modelSlot =
+    'challenger';
+  run.auditMetadata.providerId =
+    run.registryEntry.challengerModel.providerId;
+  run.auditMetadata.modelId =
+    run.registryEntry.challengerModel.modelId;
+  run.auditMetadata.pinnedModelVersion =
+    run.registryEntry.challengerModel
+      .pinnedModelVersion;
+  run.auditMetadata.adapterId =
+    run.registryEntry.challengerModel.adapterId;
+
+  const result =
+    validateExecutiveAgentRunRequest(run);
+
+  check(
+    'disabled selected challenger assignment cannot execute',
+    !result.ok &&
+      hasIssue(
+        result,
+        'assignment_disabled',
+      ),
+    result.ok
+      ? 'unexpected acceptance'
+      : JSON.stringify(result.issues),
+  );
+}
+
 {
   const entry = cloneSyntheticFixture(
     SYNTHETIC_VALID_REGISTRY_ENTRY,

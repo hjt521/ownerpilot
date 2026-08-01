@@ -159,6 +159,22 @@ function clockFactory(
   };
 }
 
+function gatewayOptionsFor(
+  model: MockLanguageModelV3,
+): Record<string, unknown> | undefined {
+  const gateway =
+    model.doGenerateCalls[0]
+      ?.providerOptions?.gateway;
+
+  return (
+    typeof gateway === 'object' &&
+    gateway !== null &&
+    !Array.isArray(gateway)
+  )
+    ? gateway as Record<string, unknown>
+    : undefined;
+}
+
 function baseOptions(
   primaryModels: MockLanguageModelV3[],
   challengerModels: MockLanguageModelV3[],
@@ -236,6 +252,16 @@ function baseOptions(
           10_000_000,
       },
     },
+    gatewayProviderRestrictions: {
+      primary: {
+        onlyProviderId:
+          primaryCandidate.providerId,
+      },
+      challenger: {
+        onlyProviderId:
+          challengerCandidate.providerId,
+      },
+    },
     clockFactory,
   };
 }
@@ -283,6 +309,57 @@ async function main(): Promise<void> {
       model =>
         model.doGenerateCalls.length === 1,
     ),
+  );
+
+  check(
+    'forwards the primary provider restriction to every primary run',
+    primaryModels.every(model => {
+      const gateway =
+        gatewayOptionsFor(model);
+      const only = gateway?.only;
+
+      return (
+        Array.isArray(only) &&
+        only.length === 1 &&
+        only[0] ===
+          primaryCandidate.providerId
+      );
+    }),
+  );
+
+  check(
+    'forwards the challenger provider restriction to every challenger run',
+    challengerModels.every(model => {
+      const gateway =
+        gatewayOptionsFor(model);
+      const only = gateway?.only;
+
+      return (
+        Array.isArray(only) &&
+        only.length === 1 &&
+        only[0] ===
+          challengerCandidate.providerId
+      );
+    }),
+  );
+
+  check(
+    'does not configure Gateway fallback models for either slot',
+    [
+      ...primaryModels,
+      ...challengerModels,
+    ].every(model => {
+      const gateway =
+        gatewayOptionsFor(model);
+
+      return (
+        gateway !== undefined &&
+        !Object.prototype.hasOwnProperty.call(
+          gateway,
+          'models',
+        )
+      );
+    }),
   );
 
   check(
@@ -387,6 +464,45 @@ async function main(): Promise<void> {
   );
 
   console.log('\nFail-closed suite validation');
+
+  const rejectedPrimaryModels:
+    MockLanguageModelV3[] = [];
+  const rejectedChallengerModels:
+    MockLanguageModelV3[] = [];
+
+  let mismatchedRestrictionRejected = false;
+
+  try {
+    await runEvaluationSuite({
+      ...baseOptions(
+        rejectedPrimaryModels,
+        rejectedChallengerModels,
+      ),
+      gatewayProviderRestrictions: {
+        primary: {
+          onlyProviderId:
+            primaryCandidate.providerId,
+        },
+        challenger: {
+          onlyProviderId:
+            'different-synthetic-provider',
+        },
+      },
+    });
+  } catch (error) {
+    mismatchedRestrictionRejected =
+      error instanceof Error &&
+      error.message.includes(
+        'must match the evaluation candidate provider ID',
+      );
+  }
+
+  check(
+    'rejects a mismatched suite provider restriction before creating models',
+    mismatchedRestrictionRejected &&
+      rejectedPrimaryModels.length === 0 &&
+      rejectedChallengerModels.length === 0,
+  );
 
   let humanInitiationRejected = false;
 

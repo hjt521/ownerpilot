@@ -13,7 +13,10 @@
  */
 
 import {
+  NoObjectGeneratedError,
+  Output,
   generateText,
+  jsonSchema,
   type LanguageModel,
 } from 'ai';
 import {
@@ -46,11 +49,71 @@ const MAX_ARRAY_ITEMS = 50;
 const MAX_ITEM_LENGTH = 4_000;
 const MAX_DRAFT_LENGTH = 40_000;
 
+interface ExecutiveAgentDraftWireOutput {
+  facts: string[];
+  assumptions: string[];
+  unknowns: string[];
+  recommendations: string[];
+  dissent: string[];
+  required_human_decisions: string[];
+  prohibited_or_unavailable_actions: string[];
+  evidence_references: string[];
+  escalation_required: boolean;
+  draft_artifact: string;
+}
+
+function boundedStringArrayJsonSchema() {
+  return {
+    type: 'array' as const,
+    maxItems: MAX_ARRAY_ITEMS,
+    items: {
+      type: 'string' as const,
+      minLength: 1,
+      maxLength: MAX_ITEM_LENGTH,
+      pattern: '\\S',
+    },
+  };
+}
+
+const EXECUTIVE_AGENT_DRAFT_OUTPUT_SCHEMA =
+  jsonSchema<ExecutiveAgentDraftWireOutput>({
+    type: 'object',
+    additionalProperties: false,
+    required: [...OUTPUT_KEYS],
+    properties: {
+      facts: boundedStringArrayJsonSchema(),
+      assumptions: boundedStringArrayJsonSchema(),
+      unknowns: boundedStringArrayJsonSchema(),
+      recommendations:
+        boundedStringArrayJsonSchema(),
+      dissent: boundedStringArrayJsonSchema(),
+      required_human_decisions:
+        boundedStringArrayJsonSchema(),
+      prohibited_or_unavailable_actions:
+        boundedStringArrayJsonSchema(),
+      evidence_references:
+        boundedStringArrayJsonSchema(),
+      escalation_required: {
+        type: 'boolean',
+      },
+      draft_artifact: {
+        type: 'string',
+        minLength: 1,
+        maxLength: MAX_DRAFT_LENGTH,
+        pattern: '\\S',
+      },
+    },
+  });
+
 export const EVALUATION_MAX_RETRIES = 0 as const;
 
 export interface EvaluationPricing {
   inputMicrosPerMillionTokens: number;
   outputMicrosPerMillionTokens: number;
+}
+
+export interface GatewayProviderRestriction {
+  onlyProviderId: string;
 }
 
 export interface InjectedEvaluationRunOptions {
@@ -64,6 +127,7 @@ export interface InjectedEvaluationRunOptions {
   timeoutMs: number;
   pricing: EvaluationPricing;
   clock?: () => number;
+  gatewayProviderRestriction?: GatewayProviderRestriction;
 }
 
 export class EvaluationOutputError extends Error {
@@ -476,6 +540,16 @@ function buildEvaluationPrompt(
       outputRequirements: {
         format: 'strict_json',
         exactKeys: OUTPUT_KEYS,
+        evidenceReferenceRules: {
+          requiredIds:
+            evaluationCase.expectedBehavior
+              .requiredEvidenceReferenceIds,
+          copyEachRequiredIdVerbatim: true,
+          oneIdPerArrayItem: true,
+          appendNothingToIds: true,
+          descriptionsOrAnnotationsProhibited: true,
+          additionalCommentaryInArrayProhibited: true,
+        },
         distinctionsRequired: [
           'facts',
           'assumptions',
@@ -514,6 +588,49 @@ function failureDimensions(
       evidenceReferences: [],
     }),
   );
+}
+
+function schemaFailureEvidence(
+  options: InjectedEvaluationRunOptions,
+  startedAtMs: number,
+  completedAtMs: number,
+  usage: EvaluationUsage,
+  rationale: string,
+): ModelEvaluationRunEvidence {
+  return {
+    runId: options.runId,
+    caseId: options.evaluationCase.id,
+    roleId: options.evaluationCase.roleId,
+    taskClass:
+      options.evaluationCase.taskClass,
+    candidate: options.candidate,
+    promptVersion: options.promptVersion,
+    startedAt:
+      new Date(startedAtMs).toISOString(),
+    completedAt:
+      new Date(completedAtMs).toISOString(),
+    outcome: 'failed_schema',
+    output: null,
+    usage,
+    dimensions: failureDimensions(
+      'structured_output',
+      rationale,
+    ),
+    schemaValid: false,
+    boundaryValid: false,
+    refusalCorrect: false,
+    dissentPreserved: false,
+    uncertaintyPreserved: false,
+    noSilentSubstitution: true,
+    noAutomaticFallback: true,
+    providerErrorClass: null,
+    sanitizedFailureDetail:
+      'The model response did not satisfy the strict evaluation-output schema.',
+    notes: [
+      'Native structured-output validation failed closed.',
+      'No fallback, repair, or substitute model was invoked.',
+    ],
+  };
 }
 
 function classifyFailure(
@@ -608,6 +725,48 @@ function validateOptions(
     );
   }
 
+  const gatewayRestriction =
+    options.gatewayProviderRestriction;
+
+  if (gatewayRestriction !== undefined) {
+    if (!isRecord(gatewayRestriction)) {
+      throw new Error(
+        'gatewayProviderRestriction must be an object.',
+      );
+    }
+
+    const restrictionKeys =
+      Object.keys(gatewayRestriction);
+
+    if (
+      restrictionKeys.length !== 1 ||
+      restrictionKeys[0] !== 'onlyProviderId'
+    ) {
+      throw new Error(
+        'gatewayProviderRestriction may contain only onlyProviderId.',
+      );
+    }
+
+    if (
+      typeof gatewayRestriction.onlyProviderId !== 'string' ||
+      gatewayRestriction.onlyProviderId.trim().length === 0 ||
+      gatewayRestriction.onlyProviderId.length > 256
+    ) {
+      throw new Error(
+        'Gateway only-provider ID must be a nonempty bounded string.',
+      );
+    }
+
+    if (
+      gatewayRestriction.onlyProviderId !==
+      options.candidate.providerId
+    ) {
+      throw new Error(
+        'Gateway only-provider ID must match the evaluation candidate provider ID.',
+      );
+    }
+  }
+
   if (
     !Number.isInteger(options.maximumOutputTokens) ||
     options.maximumOutputTokens <= 0
@@ -662,11 +821,28 @@ export async function runInjectedModelEvaluation(
       prompt: buildEvaluationPrompt(
         options.evaluationCase,
       ),
+      output: Output.object({
+        schema:
+          EXECUTIVE_AGENT_DRAFT_OUTPUT_SCHEMA,
+        name: 'executive_agent_draft',
+        description:
+          'A bounded noncanonical executive-agent evaluation draft.',
+      }),
       temperature: 0,
       maxOutputTokens:
         options.maximumOutputTokens,
       maxRetries: EVALUATION_MAX_RETRIES,
       abortSignal: controller.signal,
+      providerOptions:
+        options.gatewayProviderRestriction
+          ? {
+              gateway: {
+                only: [
+                  options.gatewayProviderRestriction.onlyProviderId,
+                ],
+              },
+            }
+          : undefined,
     });
 
     const completedAtMs = clock();
@@ -684,44 +860,18 @@ export async function runInjectedModelEvaluation(
 
     try {
       output = parseExecutiveAgentDraftOutput(
-        result.text,
+        JSON.stringify(result.output),
       );
     } catch (error) {
-      return {
-        runId: options.runId,
-        caseId: options.evaluationCase.id,
-        roleId: options.evaluationCase.roleId,
-        taskClass:
-          options.evaluationCase.taskClass,
-        candidate: options.candidate,
-        promptVersion: options.promptVersion,
-        startedAt:
-          new Date(startedAtMs).toISOString(),
-        completedAt:
-          new Date(completedAtMs).toISOString(),
-        outcome: 'failed_schema',
-        output: null,
+      return schemaFailureEvidence(
+        options,
+        startedAtMs,
+        completedAtMs,
         usage,
-        dimensions: failureDimensions(
-          'structured_output',
-          error instanceof Error
-            ? error.message
-            : 'Structured output validation failed.',
-        ),
-        schemaValid: false,
-        boundaryValid: false,
-        refusalCorrect: false,
-        dissentPreserved: false,
-        uncertaintyPreserved: false,
-        noSilentSubstitution: true,
-        noAutomaticFallback: true,
-        providerErrorClass: null,
-        sanitizedFailureDetail:
-          'The model response did not satisfy the strict evaluation-output schema.',
-        notes: [
-          'No fallback or repair model was invoked.',
-        ],
-      };
+        error instanceof Error
+          ? error.message
+          : 'Structured output validation failed.',
+      );
     }
 
     const evidenceComplete =
@@ -810,6 +960,27 @@ export async function runInjectedModelEvaluation(
     };
   } catch (error) {
     const completedAtMs = clock();
+
+    if (NoObjectGeneratedError.isInstance(error)) {
+      const usage = normalizeUsage(
+        error.usage,
+        options.pricing,
+      );
+
+      usage.latencyMs = Math.max(
+        0,
+        completedAtMs - startedAtMs,
+      );
+
+      return schemaFailureEvidence(
+        options,
+        startedAtMs,
+        completedAtMs,
+        usage,
+        'Native structured-output validation did not produce a schema-valid object.',
+      );
+    }
+
     const failure = classifyFailure(
       error,
       controller.signal,

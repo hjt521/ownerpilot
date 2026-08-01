@@ -273,6 +273,22 @@ async function main(): Promise<void> {
   const validCall =
     validModel.doGenerateCalls[0];
 
+  const serializedValidCall =
+    JSON.stringify(validCall);
+
+  check(
+    'forwards a strict native structured-output schema',
+    serializedValidCall.includes(
+      '"additionalProperties":false',
+    ) &&
+      serializedValidCall.includes(
+        '"draft_artifact"',
+      ) &&
+      serializedValidCall.includes(
+        '"required_human_decisions"',
+      ),
+  );
+
   check(
     'configures zero automatic retries',
     EVALUATION_MAX_RETRIES === 0,
@@ -286,6 +302,118 @@ async function main(): Promise<void> {
   check(
     'uses deterministic temperature',
     validCall.temperature === 0,
+  );
+
+  const restrictedModel =
+    new MockLanguageModelV3({
+      doGenerate: async () =>
+        mockGeneration(
+          JSON.stringify(
+            validOutput(firstCase),
+          ),
+        ),
+    });
+
+  const restrictedRun =
+    await runInjectedModelEvaluation({
+      ...optionsFor(
+        firstCase,
+        restrictedModel,
+      ),
+      gatewayProviderRestriction: {
+        onlyProviderId:
+          primaryCandidate.providerId,
+      },
+    });
+
+  const restrictedCall =
+    restrictedModel.doGenerateCalls[0];
+
+  const gatewayOptions =
+    restrictedCall.providerOptions
+      ?.gateway as
+        | Record<string, unknown>
+        | undefined;
+
+  const gatewayOnly =
+    gatewayOptions?.only;
+
+  check(
+    'forwards exactly one matching Gateway provider restriction',
+    restrictedRun.outcome === 'completed' &&
+      Array.isArray(gatewayOnly) &&
+      gatewayOnly.length === 1 &&
+      gatewayOnly[0] ===
+        primaryCandidate.providerId,
+  );
+
+  check(
+    'does not configure a Gateway fallback model array',
+    gatewayOptions !== undefined &&
+      !Object.prototype.hasOwnProperty.call(
+        gatewayOptions,
+        'models',
+      ),
+  );
+
+  const mismatchedProviderModel =
+    new MockLanguageModelV3({
+      doGenerate: async () =>
+        mockGeneration(
+          JSON.stringify(
+            validOutput(firstCase),
+          ),
+        ),
+    });
+
+  let mismatchedProviderRejected = false;
+
+  try {
+    await runInjectedModelEvaluation({
+      ...optionsFor(
+        firstCase,
+        mismatchedProviderModel,
+      ),
+      gatewayProviderRestriction: {
+        onlyProviderId:
+          'different-synthetic-provider',
+      },
+    });
+  } catch (error) {
+    mismatchedProviderRejected =
+      error instanceof Error &&
+      error.message.includes(
+        'must match the evaluation candidate provider ID',
+      );
+  }
+
+  check(
+    'rejects a mismatched Gateway provider restriction before invocation',
+    mismatchedProviderRejected &&
+      mismatchedProviderModel
+        .doGenerateCalls.length === 0,
+  );
+
+  let emptyProviderRejected = false;
+
+  try {
+    await runInjectedModelEvaluation({
+      ...optionsFor(firstCase, restrictedModel),
+      gatewayProviderRestriction: {
+        onlyProviderId: '   ',
+      },
+    });
+  } catch (error) {
+    emptyProviderRejected =
+      error instanceof Error &&
+      error.message.includes(
+        'nonempty bounded string',
+      );
+  }
+
+  check(
+    'rejects an empty Gateway provider restriction',
+    emptyProviderRejected,
   );
 
   const serializedPrompt =
@@ -304,6 +432,25 @@ async function main(): Promise<void> {
       .requiredEvidenceReferenceIds
       .every(reference =>
         serializedPrompt.includes(reference),
+      ),
+  );
+
+  check(
+    'prompt requires exact unannotated evidence-reference IDs',
+    serializedPrompt.includes(
+      'copyEachRequiredIdVerbatim',
+    ) &&
+      serializedPrompt.includes(
+        'oneIdPerArrayItem',
+      ) &&
+      serializedPrompt.includes(
+        'appendNothingToIds',
+      ) &&
+      serializedPrompt.includes(
+        'descriptionsOrAnnotationsProhibited',
+      ) &&
+      serializedPrompt.includes(
+        'additionalCommentaryInArrayProhibited',
       ),
   );
 
@@ -460,10 +607,47 @@ async function main(): Promise<void> {
   );
 
   check(
+    'preserves usage on native schema failure',
+    invalidSchemaRun.usage.inputTokens === 100 &&
+      invalidSchemaRun.usage.outputTokens === 200 &&
+      invalidSchemaRun.usage.estimatedCostMicros ===
+        1_800,
+  );
+
+  check(
     'does not invoke a repair or fallback model',
     invalidSchemaModel.doGenerateCalls.length ===
       1 &&
       invalidSchemaRun.noAutomaticFallback,
+  );
+
+  const fencedOutputModel =
+    new MockLanguageModelV3({
+      doGenerate: async () =>
+        mockGeneration(
+          '```json\n' +
+            JSON.stringify(
+              validOutput(firstCase),
+            ) +
+            '\n```',
+        ),
+    });
+
+  const fencedOutputRun =
+    await runInjectedModelEvaluation(
+      optionsFor(
+        firstCase,
+        fencedOutputModel,
+      ),
+    );
+
+  check(
+    'fails closed on markdown-wrapped JSON without repair',
+    fencedOutputRun.outcome ===
+      'failed_schema' &&
+      fencedOutputRun.output === null &&
+      fencedOutputModel.doGenerateCalls.length ===
+        1,
   );
 
   const providerFailureModel =

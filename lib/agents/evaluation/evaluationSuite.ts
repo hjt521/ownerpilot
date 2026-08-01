@@ -23,6 +23,7 @@ import {
 import {
   runInjectedModelEvaluation,
   type EvaluationPricing,
+  type GatewayProviderRestriction,
 } from './aiSdkEvaluationRunner';
 import type {
   ExecutiveRoleId,
@@ -31,6 +32,11 @@ import type {
 export interface EvaluationSuitePricing {
   primary: EvaluationPricing;
   challenger: EvaluationPricing;
+}
+
+export interface EvaluationSuiteGatewayProviderRestrictions {
+  primary: GatewayProviderRestriction;
+  challenger: GatewayProviderRestriction;
 }
 
 export interface EvaluationSuiteOptions {
@@ -51,6 +57,8 @@ export interface EvaluationSuiteOptions {
   maximumOutputTokens: number;
   timeoutMs: number;
   pricing: EvaluationSuitePricing;
+  gatewayProviderRestrictions?:
+    EvaluationSuiteGatewayProviderRestrictions;
   clockFactory?: (runId: string) => () => number;
 }
 
@@ -191,6 +199,91 @@ function validateSuiteOptions(
     );
   }
 
+  const gatewayRestrictions =
+    options.gatewayProviderRestrictions;
+
+  if (gatewayRestrictions !== undefined) {
+    const restrictionKeys =
+      Object.keys(gatewayRestrictions);
+
+    if (
+      restrictionKeys.length !== 2 ||
+      !Object.prototype.hasOwnProperty.call(
+        gatewayRestrictions,
+        'primary',
+      ) ||
+      !Object.prototype.hasOwnProperty.call(
+        gatewayRestrictions,
+        'challenger',
+      )
+    ) {
+      throw new Error(
+        'gatewayProviderRestrictions must contain exactly primary and challenger.',
+      );
+    }
+
+    for (const [
+      slot,
+      candidate,
+      restriction,
+    ] of [
+      [
+        'primary',
+        options.primaryCandidate,
+        gatewayRestrictions.primary,
+      ],
+      [
+        'challenger',
+        options.challengerCandidate,
+        gatewayRestrictions.challenger,
+      ],
+    ] as const) {
+      if (
+        typeof restriction !== 'object' ||
+        restriction === null ||
+        Array.isArray(restriction)
+      ) {
+        throw new Error(
+          `${slot} Gateway provider restriction must be an object.`,
+        );
+      }
+
+      const providerRestrictionKeys =
+        Object.keys(restriction);
+
+      if (
+        providerRestrictionKeys.length !== 1 ||
+        providerRestrictionKeys[0] !==
+          'onlyProviderId'
+      ) {
+        throw new Error(
+          `${slot} Gateway provider restriction may contain only onlyProviderId.`,
+        );
+      }
+
+      if (
+        typeof restriction.onlyProviderId !==
+          'string' ||
+        restriction.onlyProviderId.trim().length ===
+          0 ||
+        restriction.onlyProviderId.length > 256
+      ) {
+        throw new Error(
+          `${slot} Gateway only-provider ID must be a nonempty bounded string.`,
+        );
+      }
+
+      if (
+        restriction.onlyProviderId !==
+        candidate.providerId
+      ) {
+        throw new Error(
+          `${slot} Gateway only-provider ID must match the evaluation candidate provider ID.`,
+        );
+      }
+    }
+  }
+
   for (const evaluationCase of
     options.evaluationCases) {
     const result =
@@ -266,6 +359,9 @@ export async function runEvaluationSuite(
           options.maximumOutputTokens,
         timeoutMs: options.timeoutMs,
         pricing: options.pricing.primary,
+        gatewayProviderRestriction:
+          options.gatewayProviderRestrictions
+            ?.primary,
         clock:
           options.clockFactory?.(
             primaryRunId,
@@ -292,6 +388,9 @@ export async function runEvaluationSuite(
         timeoutMs: options.timeoutMs,
         pricing:
           options.pricing.challenger,
+        gatewayProviderRestriction:
+          options.gatewayProviderRestrictions
+            ?.challenger,
         clock:
           options.clockFactory?.(
             challengerRunId,
