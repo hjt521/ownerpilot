@@ -53,6 +53,10 @@ export interface EvaluationPricing {
   outputMicrosPerMillionTokens: number;
 }
 
+export interface GatewayProviderRestriction {
+  onlyProviderId: string;
+}
+
 export interface InjectedEvaluationRunOptions {
   runId: string;
   evaluationCase: ModelEvaluationCase;
@@ -64,6 +68,7 @@ export interface InjectedEvaluationRunOptions {
   timeoutMs: number;
   pricing: EvaluationPricing;
   clock?: () => number;
+  gatewayProviderRestriction?: GatewayProviderRestriction;
 }
 
 export class EvaluationOutputError extends Error {
@@ -608,6 +613,48 @@ function validateOptions(
     );
   }
 
+  const gatewayRestriction =
+    options.gatewayProviderRestriction;
+
+  if (gatewayRestriction !== undefined) {
+    if (!isRecord(gatewayRestriction)) {
+      throw new Error(
+        'gatewayProviderRestriction must be an object.',
+      );
+    }
+
+    const restrictionKeys =
+      Object.keys(gatewayRestriction);
+
+    if (
+      restrictionKeys.length !== 1 ||
+      restrictionKeys[0] !== 'onlyProviderId'
+    ) {
+      throw new Error(
+        'gatewayProviderRestriction may contain only onlyProviderId.',
+      );
+    }
+
+    if (
+      typeof gatewayRestriction.onlyProviderId !== 'string' ||
+      gatewayRestriction.onlyProviderId.trim().length === 0 ||
+      gatewayRestriction.onlyProviderId.length > 256
+    ) {
+      throw new Error(
+        'Gateway only-provider ID must be a nonempty bounded string.',
+      );
+    }
+
+    if (
+      gatewayRestriction.onlyProviderId !==
+      options.candidate.providerId
+    ) {
+      throw new Error(
+        'Gateway only-provider ID must match the evaluation candidate provider ID.',
+      );
+    }
+  }
+
   if (
     !Number.isInteger(options.maximumOutputTokens) ||
     options.maximumOutputTokens <= 0
@@ -667,6 +714,16 @@ export async function runInjectedModelEvaluation(
         options.maximumOutputTokens,
       maxRetries: EVALUATION_MAX_RETRIES,
       abortSignal: controller.signal,
+      providerOptions:
+        options.gatewayProviderRestriction
+          ? {
+              gateway: {
+                only: [
+                  options.gatewayProviderRestriction.onlyProviderId,
+                ],
+              },
+            }
+          : undefined,
     });
 
     const completedAtMs = clock();

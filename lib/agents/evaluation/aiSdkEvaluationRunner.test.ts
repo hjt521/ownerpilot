@@ -288,6 +288,118 @@ async function main(): Promise<void> {
     validCall.temperature === 0,
   );
 
+  const restrictedModel =
+    new MockLanguageModelV3({
+      doGenerate: async () =>
+        mockGeneration(
+          JSON.stringify(
+            validOutput(firstCase),
+          ),
+        ),
+    });
+
+  const restrictedRun =
+    await runInjectedModelEvaluation({
+      ...optionsFor(
+        firstCase,
+        restrictedModel,
+      ),
+      gatewayProviderRestriction: {
+        onlyProviderId:
+          primaryCandidate.providerId,
+      },
+    });
+
+  const restrictedCall =
+    restrictedModel.doGenerateCalls[0];
+
+  const gatewayOptions =
+    restrictedCall.providerOptions
+      ?.gateway as
+        | Record<string, unknown>
+        | undefined;
+
+  const gatewayOnly =
+    gatewayOptions?.only;
+
+  check(
+    'forwards exactly one matching Gateway provider restriction',
+    restrictedRun.outcome === 'completed' &&
+      Array.isArray(gatewayOnly) &&
+      gatewayOnly.length === 1 &&
+      gatewayOnly[0] ===
+        primaryCandidate.providerId,
+  );
+
+  check(
+    'does not configure a Gateway fallback model array',
+    gatewayOptions !== undefined &&
+      !Object.prototype.hasOwnProperty.call(
+        gatewayOptions,
+        'models',
+      ),
+  );
+
+  const mismatchedProviderModel =
+    new MockLanguageModelV3({
+      doGenerate: async () =>
+        mockGeneration(
+          JSON.stringify(
+            validOutput(firstCase),
+          ),
+        ),
+    });
+
+  let mismatchedProviderRejected = false;
+
+  try {
+    await runInjectedModelEvaluation({
+      ...optionsFor(
+        firstCase,
+        mismatchedProviderModel,
+      ),
+      gatewayProviderRestriction: {
+        onlyProviderId:
+          'different-synthetic-provider',
+      },
+    });
+  } catch (error) {
+    mismatchedProviderRejected =
+      error instanceof Error &&
+      error.message.includes(
+        'must match the evaluation candidate provider ID',
+      );
+  }
+
+  check(
+    'rejects a mismatched Gateway provider restriction before invocation',
+    mismatchedProviderRejected &&
+      mismatchedProviderModel
+        .doGenerateCalls.length === 0,
+  );
+
+  let emptyProviderRejected = false;
+
+  try {
+    await runInjectedModelEvaluation({
+      ...optionsFor(firstCase, restrictedModel),
+      gatewayProviderRestriction: {
+        onlyProviderId: '   ',
+      },
+    });
+  } catch (error) {
+    emptyProviderRejected =
+      error instanceof Error &&
+      error.message.includes(
+        'nonempty bounded string',
+      );
+  }
+
+  check(
+    'rejects an empty Gateway provider restriction',
+    emptyProviderRejected,
+  );
+
   const serializedPrompt =
     JSON.stringify(validCall.prompt);
 

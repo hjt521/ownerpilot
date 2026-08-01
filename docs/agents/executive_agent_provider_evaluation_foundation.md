@@ -73,3 +73,15 @@ After merge, the omnibus sequence may continue with bounded live-provider
 evaluation, documented evidence, human selection of pinned primary and
 challenger assignments, executable registry entries, and versioned prompts.
 All omnibus stop conditions remain controlling.
+
+## Subsequent implementation status — 2026-08-01
+
+On `feat/executive-agent-live-provider-evaluation`, the next authorized stage
+now includes a bounded local live-provider command, strict explicit-input
+configuration, exact primary/challenger Gateway provider restrictions,
+credential-file controls, clean-tree and source-commit preflight checks, and
+deterministic no-network tests.
+
+No live-provider request had been executed when this note was updated. No model
+assignment, Preview activation, persistence, Production action, automatic
+selection, fallback, or constitutional or legal consequence is created.
