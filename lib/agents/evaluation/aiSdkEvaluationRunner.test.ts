@@ -273,6 +273,22 @@ async function main(): Promise<void> {
   const validCall =
     validModel.doGenerateCalls[0];
 
+  const serializedValidCall =
+    JSON.stringify(validCall);
+
+  check(
+    'forwards a strict native structured-output schema',
+    serializedValidCall.includes(
+      '"additionalProperties":false',
+    ) &&
+      serializedValidCall.includes(
+        '"draft_artifact"',
+      ) &&
+      serializedValidCall.includes(
+        '"required_human_decisions"',
+      ),
+  );
+
   check(
     'configures zero automatic retries',
     EVALUATION_MAX_RETRIES === 0,
@@ -572,10 +588,47 @@ async function main(): Promise<void> {
   );
 
   check(
+    'preserves usage on native schema failure',
+    invalidSchemaRun.usage.inputTokens === 100 &&
+      invalidSchemaRun.usage.outputTokens === 200 &&
+      invalidSchemaRun.usage.estimatedCostMicros ===
+        1_800,
+  );
+
+  check(
     'does not invoke a repair or fallback model',
     invalidSchemaModel.doGenerateCalls.length ===
       1 &&
       invalidSchemaRun.noAutomaticFallback,
+  );
+
+  const fencedOutputModel =
+    new MockLanguageModelV3({
+      doGenerate: async () =>
+        mockGeneration(
+          '```json\n' +
+            JSON.stringify(
+              validOutput(firstCase),
+            ) +
+            '\n```',
+        ),
+    });
+
+  const fencedOutputRun =
+    await runInjectedModelEvaluation(
+      optionsFor(
+        firstCase,
+        fencedOutputModel,
+      ),
+    );
+
+  check(
+    'fails closed on markdown-wrapped JSON without repair',
+    fencedOutputRun.outcome ===
+      'failed_schema' &&
+      fencedOutputRun.output === null &&
+      fencedOutputModel.doGenerateCalls.length ===
+        1,
   );
 
   const providerFailureModel =
