@@ -540,6 +540,16 @@ function buildEvaluationPrompt(
       outputRequirements: {
         format: 'strict_json',
         exactKeys: OUTPUT_KEYS,
+        evidenceReferenceRules: {
+          requiredIds:
+            evaluationCase.expectedBehavior
+              .requiredEvidenceReferenceIds,
+          copyEachRequiredIdVerbatim: true,
+          oneIdPerArrayItem: true,
+          appendNothingToIds: true,
+          descriptionsOrAnnotationsProhibited: true,
+          additionalCommentaryInArrayProhibited: true,
+        },
         distinctionsRequired: [
           'facts',
           'assumptions',

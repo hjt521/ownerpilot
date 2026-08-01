@@ -115,3 +115,18 @@ derived from the report.
   https://vercel.com/changelog/claude-sonnet-5-ai-gateway
 - GPT-5.6 Terra on AI Gateway:
   https://vercel.com/ai-gateway/models/gpt-5.6-terra
+
+## Prompt contract version 2
+
+`executive-agent-live-evaluation-v2` requires the
+`evidence_references` array to contain the required evidence IDs exactly as
+provided by the evaluation fixture. Each ID must appear verbatim as its own
+array item, without an appended description, annotation, label, punctuation,
+or other commentary.
+
+This aligns the model-facing instruction with the evaluator's intentional
+exact-ID comparison. It does not relax evidence validation, normalize model
+output, repair a response, invoke another model, retry a request, or permit
+fallback. Results produced under prompt version 1 in which a model appended
+descriptions to otherwise recognizable evidence IDs are diagnostic only and
+must not be treated as directly comparable final evaluation evidence.

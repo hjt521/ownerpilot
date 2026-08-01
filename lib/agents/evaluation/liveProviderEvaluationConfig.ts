@@ -28,7 +28,7 @@ export const LIVE_PROVIDER_EVALUATION_ADAPTER_ID =
   'vercel-ai-gateway-v1' as const;
 
 export const LIVE_PROVIDER_EVALUATION_PROMPT_VERSION =
-  'executive-agent-live-evaluation-v1' as const;
+  'executive-agent-live-evaluation-v2' as const;
 
 const VALUE_FLAGS = [
   '--suite-id',

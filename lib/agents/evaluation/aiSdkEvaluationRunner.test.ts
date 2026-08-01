@@ -436,6 +436,25 @@ async function main(): Promise<void> {
   );
 
   check(
+    'prompt requires exact unannotated evidence-reference IDs',
+    serializedPrompt.includes(
+      'copyEachRequiredIdVerbatim',
+    ) &&
+      serializedPrompt.includes(
+        'oneIdPerArrayItem',
+      ) &&
+      serializedPrompt.includes(
+        'appendNothingToIds',
+      ) &&
+      serializedPrompt.includes(
+        'descriptionsOrAnnotationsProhibited',
+      ) &&
+      serializedPrompt.includes(
+        'additionalCommentaryInArrayProhibited',
+      ),
+  );
+
+  check(
     'prompt explicitly prohibits automatic selection',
     serializedPrompt.includes(
       'automaticSelectionProhibited',

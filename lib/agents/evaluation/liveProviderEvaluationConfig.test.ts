@@ -149,6 +149,12 @@ function main(): void {
   );
 
   check(
+    'uses evidence-reference prompt contract version 2',
+    LIVE_PROVIDER_EVALUATION_PROMPT_VERSION ===
+      'executive-agent-live-evaluation-v2',
+  );
+
+  check(
     'creates one exact provider restriction per slot',
     parsed.gatewayProviderRestrictions.primary
       .onlyProviderId === 'anthropic' &&
