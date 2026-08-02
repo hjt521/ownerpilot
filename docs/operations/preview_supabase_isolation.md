@@ -46,10 +46,14 @@ Modification authorized by this work: No
 
 ### Dedicated Preview
 
-Project name: Pending project creation
-Project ID: Pending project creation
+Project name: `OwnerPilot Preview Auth`
+Project ID: `uklahixoviheiydmiejl`
+Region: `us-west-1`
+Creation date: `2026-08-02`
+Current initialization state at record update: `COMING_UP`
 Role: Restricted Preview authentication and synthetic Preview operations only
 Must differ from Production project ID: Yes
+Confirmed different from Production project ID: Yes
 Production users permitted: No
 Production database connection permitted: No
 Production service-role credential permitted: No
@@ -58,7 +62,7 @@ Production service-role credential permitted: No
 
 ### Preview permitted origins
 
-Pending dedicated Preview project creation and deployment verification.
+Pending healthy-project verification and exact Vercel Preview deployment-origin selection.
 
 Initial successful callback destination is fixed server-side to:
 
@@ -84,8 +88,8 @@ The mapping below records variable names and scope only. Values must never be co
 
 | Variable | Vercel scope | Expected project | Secret value recorded here |
 | --- | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Preview only | Dedicated Preview Supabase project | No |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Preview only | Dedicated Preview Supabase project | No |
+| `NEXT_PUBLIC_SUPABASE_URL` | Preview only | Dedicated Preview project `uklahixoviheiydmiejl` | No |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Preview only | Dedicated Preview project `uklahixoviheiydmiejl` | No |
 | `ADMIN_EMAILS` | Preview only | Authorization metadata only | No |
 | `EXECUTIVE_AGENTS_PREVIEW_ENABLED` | Preview only | Exact value `true` | No |
 | `EXECUTIVE_AGENTS_PREVIEW_ROUTE_SECRET` | Preview only | Restricted Preview route | No |
@@ -97,8 +101,8 @@ Production Supabase variables must remain mapped to project `txpetdrfsmqnyooydma
 
 ## Required verification before login implementation
 
-- [ ] Dedicated Preview Supabase project ID recorded.
-- [ ] Preview and Production project IDs proven different.
+- [x] Dedicated Preview Supabase project ID recorded.
+- [x] Preview and Production project IDs proven different.
 - [ ] Preview Vercel variables point only to the Preview project.
 - [ ] Production Vercel variables remain unchanged.
 - [ ] Preview callback origins contain no Production destination.
@@ -112,7 +116,7 @@ Production Supabase variables must remain mapped to project `txpetdrfsmqnyooydma
 
 ## Founder account provisioning checkpoint
 
-Founder provisioning may occur only after the dedicated Preview project ID is recorded above and isolation checks pass.
+Founder provisioning may occur only after the dedicated Preview project is healthy, the Preview Vercel mapping is verified, callback origins are isolated, and the remaining isolation checks pass.
 
 Provisioning must be a documented human action in the dedicated Preview Auth tenant. It must not use E2E credentials, shared test identities, browser-exposed service-role credentials, database role tables, or any Production Auth action.
 
