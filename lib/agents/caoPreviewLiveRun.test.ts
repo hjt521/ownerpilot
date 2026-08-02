@@ -69,10 +69,8 @@ const validBody = JSON.stringify({
 
 function dependencies() {
   return {
-    deploymentEnvironment:
-      'preview',
-    previewEnabledValue:
-      'true',
+    deploymentEnvironment: 'preview',
+    previewEnabledValue: 'true',
     routeSecret:
       'synthetic-route-secret-123',
     sourceCommitSha:
@@ -120,36 +118,26 @@ CaoPreviewGatewayAdapter {
   };
 }
 
-function executionReport(
-  overrides?: {
-    schemaValid?: boolean;
-    boundaryValid?: boolean;
-    dissentPreserved?: boolean;
-    draftPresent?: boolean;
-    providerOutcome?:
-      | 'completed'
-      | 'failed_provider'
-      | 'failed_timeout';
-    providerErrorClass?: string | null;
-    limitFindings?: readonly string[];
-  },
+function report(
+  mode:
+    | 'valid'
+    | 'schema_failure'
+    | 'dissent_failure'
+    | 'timeout'
+    | 'limit' = 'valid',
 ): CaoPreviewExecutionReport {
   const draft = {
-    facts: [
-      'Synthetic fact.',
-    ],
-    assumptions: [
-      'Synthetic assumption.',
-    ],
+    facts: ['Synthetic fact.'],
+    assumptions: ['Synthetic assumption.'],
     unknowns: [],
     recommendations: [
-      'Human should review the synthetic dependency.',
+      'Human review is required.',
     ],
     dissent: [
-      'A material alternative is to defer the dependency.',
+      'A material alternative remains.',
     ],
     requiredHumanDecisions: [
-      'A human must decide whether to proceed.',
+      'A human must determine disposition.',
     ],
     prohibitedOrUnavailableActions: [
       'repository writes are unavailable',
@@ -167,6 +155,9 @@ function executionReport(
     draftArtifact:
       'Synthetic noncanonical advisory draft.',
   };
+
+  const valid = mode === 'valid' ||
+    mode === 'limit';
 
   return {
     executionVersion:
@@ -197,139 +188,39 @@ function executionReport(
       'NO PRODUCTION AUTHORITY',
     ],
     localExecution: {
-      executionMode:
-        'local_injected_single_role',
-      runRequestValidated: true,
-      roleId:
-        'executive.chief_architecture_officer',
-      taskClass:
-        'architecture_analysis',
-      modelSlot: 'primary',
       modelRun: {
-        runId:
-          'synthetic-cao-live-001',
-        caseId:
-          'cao-preview-synthetic-cao-live-001',
-        roleId:
-          'executive.chief_architecture_officer',
-        taskClass:
-          'architecture_analysis',
-        candidate: {
-          providerId:
-            CAO_PREVIEW_PRIMARY_PROVIDER_ID,
-          modelId:
-            CAO_PREVIEW_PRIMARY_MODEL_ID,
-          pinnedModelVersion:
-            CAO_PREVIEW_PRIMARY_PINNED_MODEL_VERSION,
-          adapterId:
-            CAO_PREVIEW_ADAPTER_ID,
-          slot: 'primary',
-          reasoningLevel: 'standard',
-        },
-        promptVersion:
-          'executive-agent-local-single-role-v1',
-        startedAt:
-          '2026-08-02T20:00:00.000Z',
-        completedAt:
-          '2026-08-02T20:00:01.000Z',
         outcome:
-          overrides?.providerOutcome ??
-          'completed',
-        output:
-          overrides?.draftPresent === false
-            ? null
-            : draft,
-        usage: {
-          latencyMs: 1000,
-          inputTokens: 100,
-          outputTokens: 200,
-          estimatedCostMicros: 500,
-        },
-        dimensions: [],
-        schemaValid:
-          overrides?.schemaValid ?? true,
-        boundaryValid:
-          overrides?.boundaryValid ?? true,
-        refusalCorrect: true,
+          mode === 'timeout'
+            ? 'failed_timeout'
+            : mode === 'schema_failure'
+              ? 'failed_schema'
+              : 'completed',
+        schemaValid: valid,
+        boundaryValid: valid,
         dissentPreserved:
-          overrides?.dissentPreserved ?? true,
-        uncertaintyPreserved: true,
+          mode !== 'dissent_failure',
         noSilentSubstitution: true,
         noAutomaticFallback: true,
         providerErrorClass:
-          overrides?.providerErrorClass ?? null,
-        sanitizedFailureDetail: null,
-        notes: [],
+          mode === 'timeout'
+            ? 'timeout'
+            : null,
       },
       finalAudit: {
-        runId:
-          'synthetic-cao-live-001',
-        roleId:
-          'executive.chief_architecture_officer',
-        registryVersion:
-          'executive-agent-cao-preview-registry-v1',
-        charterVersion:
-          'executive-agent-charter-v1',
-        registryEntryHash:
-          'a'.repeat(64),
-        environment: 'preview',
-        sourceCommitSha:
-          'a'.repeat(40),
-        requestedBy:
-          'human_engineering_reviewer:admin@example.test',
-        approvalReference:
-          'founder-omnibus-preview-integration-2026-08-02',
-        taskClass:
-          'architecture_analysis',
-        modelSlot: 'primary',
-        providerId:
-          CAO_PREVIEW_PRIMARY_PROVIDER_ID,
-        modelId:
-          CAO_PREVIEW_PRIMARY_MODEL_ID,
-        pinnedModelVersion:
-          CAO_PREVIEW_PRIMARY_PINNED_MODEL_VERSION,
-        adapterId:
-          CAO_PREVIEW_ADAPTER_ID,
-        reasoningLevel: 'standard',
-        effectiveToolPermissions: [],
-        toolCalls: [],
-        substitutionRequested: false,
-        substitutionReasonClass: null,
-        fallbackReasonClass: null,
-        startedAt:
-          '2026-08-02T20:00:00.000Z',
-        completedAt:
-          '2026-08-02T20:00:01.000Z',
-        latencyMs: 1000,
-        inputTokenCount: 100,
-        outputTokenCount: 200,
-        estimatedCostMicros: 500,
-        evidenceReferences: [
-          'synthetic-evidence-001',
-        ],
-        unknownsRecorded: [],
-        disagreements: [
-          'A material alternative is preserved.',
-        ],
-        outcome: 'draft_completed',
         humanDisposition: 'pending',
       },
-      actualDailyCostMicrosAfterRun: 500,
       actualLimitFindings:
-        overrides?.limitFindings ?? [],
+        mode === 'limit'
+          ? [
+              'actual_per_run_cost_limit_exceeded',
+            ]
+          : [],
       draftForHumanReview:
-        overrides?.draftPresent === false
-          ? null
-          : draft,
-      humanDecisionRequired: true,
-      automaticApproval: false,
-      automaticSelection: false,
+        valid ? draft : null,
       toolExecutionPerformed: false,
       persistencePerformed: false,
-      providerLookupPerformed: false,
       fallbackPerformed: false,
       substitutionPerformed: false,
-      previewActivationPerformed: false,
       productionEligible: false,
     },
     requestedTools: [],
@@ -346,325 +237,263 @@ function executionReport(
   } as unknown as CaoPreviewExecutionReport;
 }
 
-console.log(
-  '\nRestricted CAO Preview live run',
-);
+async function main(): Promise<void> {
+  console.log(
+    '\nRestricted CAO Preview live run',
+  );
 
-await check(
-  'is completely ineffective in Production',
-  async () => {
-    let adapterCalls = 0;
-
-    const response =
-      await executeCaoPreviewLiveRun(
-        {
-          ...dependencies(),
-          deploymentEnvironment:
-            'production',
-          createGatewayAdapter: () => {
-            adapterCalls += 1;
-            return adapter();
+  await check(
+    'is completely ineffective in Production',
+    async () => {
+      let adapterCalls = 0;
+      const response =
+        await executeCaoPreviewLiveRun(
+          {
+            ...dependencies(),
+            deploymentEnvironment:
+              'production',
+            createGatewayAdapter: () => {
+              adapterCalls += 1;
+              return adapter();
+            },
           },
-        },
-        {
-          contentType:
-            'application/json',
-          rawBody: validBody,
-        },
-      );
-
-    assert.equal(response.status, 404);
-    assert.equal(response.body.ok, false);
-    assert.equal(adapterCalls, 0);
-    assert.equal(
-      response.providerCallPerformed,
-      false,
-    );
-  },
-);
-
-await check(
-  'rejects a missing administrator before adapter construction',
-  async () => {
-    let adapterCalls = 0;
-
-    const response =
-      await executeCaoPreviewLiveRun(
-        {
-          ...dependencies(),
-          authenticatedAdmin: false,
-          createGatewayAdapter: () => {
-            adapterCalls += 1;
-            return adapter();
+          {
+            contentType:
+              'application/json',
+            rawBody: validBody,
           },
-        },
-        {
-          contentType:
-            'application/json',
-          rawBody: validBody,
-        },
-      );
+        );
 
-    assert.equal(response.status, 404);
-    assert.equal(adapterCalls, 0);
-  },
-);
-
-await check(
-  'requires exact explicit human initiation',
-  async () => {
-    const body = JSON.stringify({
-      ...JSON.parse(validBody),
-      explicitHumanInitiation: false,
-    });
-
-    const response =
-      await executeCaoPreviewLiveRun(
-        dependencies(),
-        {
-          contentType:
-            'application/json',
-          rawBody: body,
-        },
-      );
-
-    assert.equal(response.status, 400);
-    assert.deepEqual(
-      response.body,
-      {
-        ok: false,
-        error: 'invalid_request',
-      },
-    );
-  },
-);
-
-await check(
-  'requires the bounded Gateway credential and deterministic pricing',
-  async () => {
-    const response =
-      await executeCaoPreviewLiveRun(
-        {
-          ...dependencies(),
-          gatewayApiKey: '',
-        },
-        {
-          contentType:
-            'application/json',
-          rawBody: validBody,
-        },
-      );
-
-    assert.equal(response.status, 503);
-    assert.deepEqual(
-      response.body,
-      {
-        ok: false,
-        error: 'gateway_unavailable',
-      },
-    );
-  },
-);
-
-await check(
-  'invokes exactly one pinned adapter and one execution dependency',
-  async () => {
-    let adapterCalls = 0;
-    let executionCalls = 0;
-
-    const response =
-      await executeCaoPreviewLiveRun(
-        {
-          ...dependencies(),
-          createGatewayAdapter: options => {
-            adapterCalls += 1;
-            assert.equal(
-              options.apiKey,
-              'synthetic-gateway-key',
-            );
-            return adapter();
-          },
-          executePreview: async options => {
-            executionCalls += 1;
-            assert.equal(
-              options.gateAcceptance.modelSlot,
-              'primary',
-            );
-            assert.equal(
-              options.routeRequest.roleId,
-              'executive.chief_architecture_officer',
-            );
-            assert.deepEqual(
-              options.gateAcceptance
-                .requestedTools,
-              [],
-            );
-            return executionReport();
-          },
-        },
-        {
-          contentType:
-            'application/json',
-          rawBody: validBody,
-        },
-      );
-
-    assert.equal(adapterCalls, 1);
-    assert.equal(executionCalls, 1);
-    assert.equal(response.status, 200);
-    assert.equal(response.body.ok, true);
-
-    if (response.body.ok) {
+      assert.equal(response.status, 404);
+      assert.equal(adapterCalls, 0);
       assert.equal(
-        response.body.repairAttemptMaximum,
-        0,
-      );
-      assert.equal(
-        response.body.humanDisposition,
-        'pending',
-      );
-      assert.deepEqual(
-        response.body.toolCalls,
-        [],
-      );
-      assert.equal(
-        response.body.productionEligible,
+        response.providerCallPerformed,
         false,
       );
-    }
-  },
-);
+    },
+  );
 
-await check(
-  'withholds malformed or boundary-invalid output',
-  async () => {
-    const response =
-      await executeCaoPreviewLiveRun(
-        {
-          ...dependencies(),
-          createGatewayAdapter: () =>
-            adapter(),
-          executePreview: async () =>
-            executionReport({
-              schemaValid: false,
-              draftPresent: false,
+  await check(
+    'requires administrator access and explicit human initiation',
+    async () => {
+      const noAdmin =
+        await executeCaoPreviewLiveRun(
+          {
+            ...dependencies(),
+            authenticatedAdmin: false,
+          },
+          {
+            contentType:
+              'application/json',
+            rawBody: validBody,
+          },
+        );
+
+      assert.equal(noAdmin.status, 404);
+
+      const noInitiation =
+        await executeCaoPreviewLiveRun(
+          dependencies(),
+          {
+            contentType:
+              'application/json',
+            rawBody: JSON.stringify({
+              ...JSON.parse(validBody),
+              explicitHumanInitiation:
+                false,
             }),
-        },
+          },
+        );
+
+      assert.equal(noInitiation.status, 400);
+    },
+  );
+
+  await check(
+    'requires bounded server-only Gateway configuration',
+    async () => {
+      const response =
+        await executeCaoPreviewLiveRun(
+          {
+            ...dependencies(),
+            gatewayApiKey: '',
+          },
+          {
+            contentType:
+              'application/json',
+            rawBody: validBody,
+          },
+        );
+
+      assert.deepEqual(
+        response.body,
         {
-          contentType:
-            'application/json',
-          rawBody: validBody,
+          ok: false,
+          error: 'gateway_unavailable',
+        },
+      );
+    },
+  );
+
+  await check(
+    'invokes one pinned adapter and one execution dependency',
+    async () => {
+      let adapterCalls = 0;
+      let executionCalls = 0;
+
+      const response =
+        await executeCaoPreviewLiveRun(
+          {
+            ...dependencies(),
+            createGatewayAdapter: options => {
+              adapterCalls += 1;
+              assert.equal(
+                options.apiKey,
+                'synthetic-gateway-key',
+              );
+              return adapter();
+            },
+            executePreview: async options => {
+              executionCalls += 1;
+              assert.equal(
+                options.gateAcceptance.modelSlot,
+                'primary',
+              );
+              assert.equal(
+                options.routeRequest.roleId,
+                'executive.chief_architecture_officer',
+              );
+              return report();
+            },
+          },
+          {
+            contentType:
+              'application/json',
+            rawBody: validBody,
+          },
+        );
+
+      assert.equal(adapterCalls, 1);
+      assert.equal(executionCalls, 1);
+      assert.equal(response.status, 200);
+      assert.equal(response.body.ok, true);
+
+      if (response.body.ok) {
+        assert.equal(
+          response.body.repairAttemptMaximum,
+          0,
+        );
+        assert.equal(
+          response.body.humanDisposition,
+          'pending',
+        );
+        assert.deepEqual(
+          response.body.toolCalls,
+          [],
+        );
+        assert.equal(
+          response.body.productionEligible,
+          false,
+        );
+      }
+    },
+  );
+
+  await check(
+    'withholds invalid schema and missing dissent',
+    async () => {
+      for (const mode of [
+        'schema_failure',
+        'dissent_failure',
+      ] as const) {
+        const response =
+          await executeCaoPreviewLiveRun(
+            {
+              ...dependencies(),
+              createGatewayAdapter: () =>
+                adapter(),
+              executePreview: async () =>
+                report(mode),
+            },
+            {
+              contentType:
+                'application/json',
+              rawBody: validBody,
+            },
+          );
+
+        assert.equal(response.status, 422);
+        assert.equal(response.body.ok, false);
+        assert.equal(
+          'draft' in response.body,
+          false,
+        );
+      }
+    },
+  );
+
+  await check(
+    'sanitizes timeout and limit failures',
+    async () => {
+      const timeout =
+        await executeCaoPreviewLiveRun(
+          {
+            ...dependencies(),
+            createGatewayAdapter: () =>
+              adapter(),
+            executePreview: async () =>
+              report('timeout'),
+          },
+          {
+            contentType:
+              'application/json',
+            rawBody: validBody,
+          },
+        );
+
+      assert.deepEqual(
+        timeout.body,
+        {
+          ok: false,
+          error: 'provider_timeout',
         },
       );
 
-    assert.equal(response.status, 422);
-    assert.deepEqual(
-      response.body,
-      {
-        ok: false,
-        error: 'output_rejected',
-      },
-    );
-    assert.equal(
-      'draft' in response.body,
-      false,
-    );
-  },
-);
+      const limited =
+        await executeCaoPreviewLiveRun(
+          {
+            ...dependencies(),
+            createGatewayAdapter: () =>
+              adapter(),
+            executePreview: async () =>
+              report('limit'),
+          },
+          {
+            contentType:
+              'application/json',
+            rawBody: validBody,
+          },
+        );
 
-await check(
-  'rejects missing material dissent',
-  async () => {
-    const response =
-      await executeCaoPreviewLiveRun(
+      assert.deepEqual(
+        limited.body,
         {
-          ...dependencies(),
-          createGatewayAdapter: () =>
-            adapter(),
-          executePreview: async () =>
-            executionReport({
-              dissentPreserved: false,
-            }),
-        },
-        {
-          contentType:
-            'application/json',
-          rawBody: validBody,
+          ok: false,
+          error: 'limit_exceeded',
         },
       );
+    },
+  );
 
-    assert.equal(response.status, 422);
-    assert.equal(response.body.ok, false);
-  },
-);
+  console.log(
+    `\n${'-'.repeat(72)}\n` +
+    `  ${passed} passed, ${failed} failed\n` +
+    `${'-'.repeat(72)}`,
+  );
 
-await check(
-  'sanitizes provider timeout and limit failures',
-  async () => {
-    const timeout =
-      await executeCaoPreviewLiveRun(
-        {
-          ...dependencies(),
-          createGatewayAdapter: () =>
-            adapter(),
-          executePreview: async () =>
-            executionReport({
-              providerOutcome:
-                'failed_timeout',
-              draftPresent: false,
-            }),
-        },
-        {
-          contentType:
-            'application/json',
-          rawBody: validBody,
-        },
-      );
-
-    assert.deepEqual(
-      timeout.body,
-      {
-        ok: false,
-        error: 'provider_timeout',
-      },
-    );
-
-    const limited =
-      await executeCaoPreviewLiveRun(
-        {
-          ...dependencies(),
-          createGatewayAdapter: () =>
-            adapter(),
-          executePreview: async () =>
-            executionReport({
-              limitFindings: [
-                'actual_per_run_cost_limit_exceeded',
-              ],
-            }),
-        },
-        {
-          contentType:
-            'application/json',
-          rawBody: validBody,
-        },
-      );
-
-    assert.deepEqual(
-      limited.body,
-      {
-        ok: false,
-        error: 'limit_exceeded',
-      },
-    );
-  },
-);
-
-console.log(
-  `\n${'-'.repeat(72)}\n` +
-  `  ${passed} passed, ${failed} failed\n` +
-  `${'-'.repeat(72)}`,
-);
-
-if (failed > 0) {
-  process.exit(1);
+  if (failed > 0) {
+    process.exit(1);
+  }
 }
+
+void main();
