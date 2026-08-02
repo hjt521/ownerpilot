@@ -1,8 +1,8 @@
 /**
  * Server-only bridge for one restricted, human-initiated CAO Preview run.
  *
- * This module composes the existing authenticated UI preflight, Preview gate,
- * pinned Gateway adapter, and injected CAO execution core. It performs no
+ * It composes the existing authenticated UI preflight, Preview gate, pinned
+ * Gateway adapter, and injected CAO execution core. It performs no
  * persistence, tools, fallback, substitution, automatic continuation,
  * orchestration, background work, Preview activation, or Production action.
  */
@@ -189,6 +189,11 @@ export interface CaoPreviewLiveRunResult {
   productionActionPerformed: false;
 }
 
+type FailureStatus = Exclude<
+  CaoPreviewLiveRunResult['status'],
+  200
+>;
+
 function result(
   status: CaoPreviewLiveRunResult['status'],
   body: CaoPreviewLiveRunResult['body'],
@@ -206,7 +211,7 @@ function result(
 }
 
 function errorResult(
-  status: Exclude<CaoPreviewLiveRunResult['status'], 200>,
+  status: FailureStatus,
   error: CaoPreviewLiveRunErrorCode,
   providerCallPerformed = false,
 ): CaoPreviewLiveRunResult {
@@ -220,6 +225,30 @@ function errorResult(
   );
 }
 
+function preflightFailureStatus(
+  status: number,
+): FailureStatus {
+  if (status === 401) {
+    return 404;
+  }
+
+  if (
+    status === 400 ||
+    status === 404 ||
+    status === 413 ||
+    status === 415 ||
+    status === 422 ||
+    status === 429 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  ) {
+    return status;
+  }
+
+  return 400;
+}
+
 function isRecord(
   value: unknown,
 ): value is Record<string, unknown> {
@@ -230,7 +259,7 @@ function isRecord(
   );
 }
 
-function requireBoundedSecret(
+function boundedSecret(
   value: unknown,
 ): string | null {
   if (
@@ -246,7 +275,7 @@ function requireBoundedSecret(
   return value;
 }
 
-function parsePricing(
+function pricingValue(
   value: unknown,
 ): number | null {
   if (
@@ -263,7 +292,7 @@ function parsePricing(
     : null;
 }
 
-function parseValidatedUiRequest(
+function parsedUiRequest(
   rawBody: unknown,
 ): ExecutiveAgentsPreviewUiRequest | null {
   if (typeof rawBody !== 'string') {
@@ -290,7 +319,7 @@ function parseValidatedUiRequest(
     ExecutiveAgentsPreviewUiRequest;
 }
 
-function buildRouteRequest(
+function routeRequest(
   request: ExecutiveAgentsPreviewUiRequest,
   humanIdentifier: string,
 ): ExecutiveAgentsPreviewRouteRequest {
@@ -336,18 +365,17 @@ function registryEntryHash(): string {
     .digest('hex');
 }
 
-function buildRunRequest(
+function runRequest(
   request: ExecutiveAgentsPreviewRouteRequest,
   sourceCommitSha: string,
   nowIso: string,
 ): ExecutiveAgentRunRequest {
+  const taskClass: TaskClass =
+    request.taskClass;
   const evidenceReferences =
     request.evidence.map(
       item => item.reference,
     );
-
-  const taskClass: TaskClass =
-    request.taskClass;
 
   return {
     registryEntry:
@@ -412,8 +440,7 @@ function buildRunRequest(
       substitutionRequested: false,
       substitutionReasonClass: null,
       fallbackReasonClass: null,
-      startedAt:
-        nowIso,
+      startedAt: nowIso,
       completedAt: null,
       latencyMs: 0,
       inputTokenCount: 0,
@@ -428,7 +455,7 @@ function buildRunRequest(
   };
 }
 
-function requireAdapterMatch(
+function adapterMatches(
   adapter: CaoPreviewGatewayAdapter,
   gate: ExecutiveAgentsPreviewGateAcceptance,
 ): boolean {
@@ -454,69 +481,7 @@ function requireAdapterMatch(
   );
 }
 
-function mapExecutionFailure(
-  report: CaoPreviewExecutionReport,
-): CaoPreviewLiveRunResult {
-  if (
-    report.localExecution
-      .actualLimitFindings.length > 0
-  ) {
-    return errorResult(
-      422,
-      'limit_exceeded',
-      true,
-    );
-  }
-
-  const modelRun =
-    report.localExecution.modelRun;
-
-  if (modelRun.outcome === 'failed_timeout') {
-    return errorResult(
-      504,
-      'provider_timeout',
-      true,
-    );
-  }
-
-  if (modelRun.outcome === 'failed_provider') {
-    if (
-      modelRun.providerErrorClass ===
-      'authentication'
-    ) {
-      return errorResult(
-        502,
-        'provider_authentication_failed',
-        true,
-      );
-    }
-
-    if (
-      modelRun.providerErrorClass ===
-      'rate_limit'
-    ) {
-      return errorResult(
-        429,
-        'provider_rate_limited',
-        true,
-      );
-    }
-
-    return errorResult(
-      502,
-      'provider_failed',
-      true,
-    );
-  }
-
-  return errorResult(
-    422,
-    'output_rejected',
-    true,
-  );
-}
-
-function validateCompletedReport(
+function validatedDraft(
   report: CaoPreviewExecutionReport,
   evidenceReferences: readonly string[],
 ): ExecutiveAgentDraftOutput | null {
@@ -534,6 +499,7 @@ function validateCompletedReport(
     run.noAutomaticFallback !== true ||
     local.finalAudit.humanDisposition !==
       'pending' ||
+    local.actualLimitFindings.length > 0 ||
     local.toolExecutionPerformed !== false ||
     local.persistencePerformed !== false ||
     local.fallbackPerformed !== false ||
@@ -556,15 +522,70 @@ function validateCompletedReport(
   const available =
     new Set(draft.evidenceReferences);
 
-  if (
-    !evidenceReferences.every(
-      reference => available.has(reference),
-    )
-  ) {
-    return null;
+  return evidenceReferences.every(
+    reference => available.has(reference),
+  )
+    ? draft
+    : null;
+}
+
+function executionFailure(
+  report: CaoPreviewExecutionReport,
+): CaoPreviewLiveRunResult {
+  const local = report.localExecution;
+  const run = local.modelRun;
+
+  if (local.actualLimitFindings.length > 0) {
+    return errorResult(
+      422,
+      'limit_exceeded',
+      true,
+    );
   }
 
-  return draft;
+  if (run.outcome === 'failed_timeout') {
+    return errorResult(
+      504,
+      'provider_timeout',
+      true,
+    );
+  }
+
+  if (run.outcome === 'failed_provider') {
+    if (
+      run.providerErrorClass ===
+      'authentication'
+    ) {
+      return errorResult(
+        502,
+        'provider_authentication_failed',
+        true,
+      );
+    }
+
+    if (
+      run.providerErrorClass ===
+      'rate_limit'
+    ) {
+      return errorResult(
+        429,
+        'provider_rate_limited',
+        true,
+      );
+    }
+
+    return errorResult(
+      502,
+      'provider_failed',
+      true,
+    );
+  }
+
+  return errorResult(
+    422,
+    'output_rejected',
+    true,
+  );
 }
 
 export async function executeCaoPreviewLiveRun(
@@ -605,9 +626,9 @@ export async function executeCaoPreviewLiveRun(
       error === 'request_rejected'
     ) {
       return errorResult(
-        preflight.status === 401
-          ? 404
-          : preflight.status,
+        preflightFailureStatus(
+          preflight.status,
+        ),
         error,
       );
     }
@@ -633,7 +654,7 @@ export async function executeCaoPreviewLiveRun(
   }
 
   const uiRequest =
-    parseValidatedUiRequest(
+    parsedUiRequest(
       invocation.rawBody,
     );
 
@@ -644,23 +665,21 @@ export async function executeCaoPreviewLiveRun(
     );
   }
 
-  const gatewayApiKey =
-    requireBoundedSecret(
+  const apiKey =
+    boundedSecret(
       dependencies.gatewayApiKey,
     );
-
   const inputPricing =
-    parsePricing(
+    pricingValue(
       dependencies.inputMicrosPerMillionTokens,
     );
-
   const outputPricing =
-    parsePricing(
+    pricingValue(
       dependencies.outputMicrosPerMillionTokens,
     );
 
   if (
-    gatewayApiKey === null ||
+    apiKey === null ||
     inputPricing === null ||
     outputPricing === null
   ) {
@@ -670,17 +689,10 @@ export async function executeCaoPreviewLiveRun(
     );
   }
 
-  const routeRequest =
-    buildRouteRequest(
+  const request =
+    routeRequest(
       uiRequest,
       dependencies.authenticatedHumanIdentifier,
-    );
-
-  const runRequest =
-    buildRunRequest(
-      routeRequest,
-      dependencies.sourceCommitSha,
-      dependencies.nowIso,
     );
 
   const gate =
@@ -689,7 +701,11 @@ export async function executeCaoPreviewLiveRun(
         dependencies.deploymentEnvironment,
       previewEnabledValue:
         dependencies.previewEnabledValue,
-      runRequest,
+      runRequest: runRequest(
+        request,
+        dependencies.sourceCommitSha,
+        dependencies.nowIso,
+      ),
     });
 
   if (!gate.ok) {
@@ -699,15 +715,14 @@ export async function executeCaoPreviewLiveRun(
     );
   }
 
-  const createAdapter =
-    dependencies.createGatewayAdapter ??
-    createCaoPreviewGatewayAdapter;
-
   let adapter: CaoPreviewGatewayAdapter;
 
   try {
-    adapter = createAdapter({
-      apiKey: gatewayApiKey,
+    adapter = (
+      dependencies.createGatewayAdapter ??
+      createCaoPreviewGatewayAdapter
+    )({
+      apiKey,
     });
   } catch {
     return errorResult(
@@ -716,7 +731,7 @@ export async function executeCaoPreviewLiveRun(
     );
   }
 
-  if (!requireAdapterMatch(adapter, gate.value)) {
+  if (!adapterMatches(adapter, gate.value)) {
     return errorResult(
       422,
       'request_rejected',
@@ -730,17 +745,17 @@ export async function executeCaoPreviewLiveRun(
       outputPricing,
   };
 
-  const executePreview =
-    dependencies.executePreview ??
-    executeCaoPreview;
-
   let report: CaoPreviewExecutionReport;
 
   try {
-    report = await executePreview({
+    report = await (
+      dependencies.executePreview ??
+      executeCaoPreview
+    )({
       gateAcceptance:
         gate.value,
-      routeRequest,
+      routeRequest:
+        request,
       model:
         adapter.model,
       pricing,
@@ -754,18 +769,17 @@ export async function executeCaoPreviewLiveRun(
   }
 
   const evidenceReferences =
-    routeRequest.evidence.map(
+    request.evidence.map(
       item => item.reference,
     );
-
   const draft =
-    validateCompletedReport(
+    validatedDraft(
       report,
       evidenceReferences,
     );
 
   if (draft === null) {
-    return mapExecutionFailure(report);
+    return executionFailure(report);
   }
 
   return result(
@@ -780,7 +794,7 @@ export async function executeCaoPreviewLiveRun(
       roleId:
         'executive.chief_architecture_officer',
       taskClass:
-        routeRequest.taskClass,
+        request.taskClass,
       modelSlot: 'primary',
       providerId:
         CAO_PREVIEW_PRIMARY_PROVIDER_ID,
