@@ -1,0 +1,143 @@
+name: executive-agents
+
+on:
+  pull_request:
+    paths:
+      - 'lib/agents/**'
+      - 'lib/ai/modelRegistry.ts'
+      - 'scripts/agents/**'
+      - 'scripts/verification/**'
+      - 'app/api/internal/executive-agents/**'
+      - 'app/internal/executive-agents/**'
+      - '.github/workflows/executive-agents.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'docs/architecture/executive-agents/**'
+      - 'docs/governance/executive-agents/**'
+  push:
+    branches: [main]
+    paths:
+      - 'lib/agents/**'
+      - 'lib/ai/modelRegistry.ts'
+      - 'scripts/agents/**'
+      - 'scripts/verification/**'
+      - 'app/api/internal/executive-agents/**'
+      - 'app/internal/executive-agents/**'
+      - '.github/workflows/executive-agents.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'docs/architecture/executive-agents/**'
+      - 'docs/governance/executive-agents/**'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: executive-agents-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: executive-agent automation
+    runs-on: ubuntu-latest
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test verification automation
+        id: verifier_tests
+        run: npm run test:agents:verification
+
+      - name: Verify changed-file scope and whitespace
+        id: scope
+        if: ${{ !cancelled() }}
+        run: >-
+          node scripts/verification/verify_executive_agents.mjs
+          --mode scope
+          --base "$BASE_SHA"
+          --head "$HEAD_SHA"
+
+      - name: Verify Preview boundaries
+        id: boundaries
+        if: ${{ !cancelled() }}
+        run: >-
+          node scripts/verification/verify_executive_agents.mjs
+          --mode boundaries
+          --base "$BASE_SHA"
+          --head "$HEAD_SHA"
+
+      - name: Verify Production prohibition
+        id: production
+        if: ${{ !cancelled() }}
+        run: >-
+          node scripts/verification/verify_executive_agents.mjs
+          --mode production
+          --base "$BASE_SHA"
+          --head "$HEAD_SHA"
+
+      - name: Run executive-agent tests
+        id: agent_tests
+        if: ${{ !cancelled() }}
+        run: npm run test:agents
+
+      - name: Run targeted lint
+        id: lint
+        if: ${{ !cancelled() }}
+        run: >-
+          npx eslint
+          lib/agents
+          app/api/internal/executive-agents
+          app/internal/executive-agents
+          scripts/agents
+          scripts/verification/verify_executive_agents.test.mjs
+          --max-warnings=0
+
+      - name: Run production build
+        id: build
+        if: ${{ !cancelled() }}
+        run: npm run build
+
+      - name: Generate Founder review packet
+        id: packet
+        if: ${{ always() }}
+        run: |
+          node scripts/verification/verify_executive_agents.mjs \
+            --mode packet \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --packet executive-agent-review-packet.md \
+            --check-result "verification-tests=${{ steps.verifier_tests.outcome }}" \
+            --check-result "scope-and-whitespace=${{ steps.scope.outcome }}" \
+            --check-result "preview-boundaries=${{ steps.boundaries.outcome }}" \
+            --check-result "production-prohibition=${{ steps.production.outcome }}" \
+            --check-result "agent-tests=${{ steps.agent_tests.outcome }}" \
+            --check-result "targeted-lint=${{ steps.lint.outcome }}" \
+            --check-result "production-build=${{ steps.build.outcome }}" \
+            --check-result "full-repository-tests=external-required-ci" \
+            --check-result "typecheck=external-required-ci"
+          cat executive-agent-review-packet.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Founder review packet
+        if: ${{ always() && steps.packet.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: executive-agent-review-packet
+          path: executive-agent-review-packet.md
+          if-no-files-found: error
+          retention-days: 30
