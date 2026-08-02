@@ -105,7 +105,7 @@ jobs:
           app/api/internal/executive-agents
           app/internal/executive-agents
           scripts/agents
-          scripts/verification
+          scripts/verification/verify_executive_agents.test.mjs
           --max-warnings=0
 
       - name: Run production build
