@@ -30,8 +30,8 @@ function check(name, operation) {
   }
 }
 
-function joinFixture(...parts) {
-  return parts.join('');
+function enabledLine(property) {
+  return `${property}: ${String(true)},`;
 }
 
 console.log('\nExecutive-agent verification automation');
@@ -94,12 +94,12 @@ check(
   'detects Production, persistence, tool, continuation, and fallback expansion',
   () => {
     const findings = findAuthorityExpansion([
-      joinFixture('productionEligible', ': true,'),
-      joinFixture('persistenceAllowed', ': true,'),
-      joinFixture('toolExecutionPerformed', ': true,'),
-      joinFixture('automaticContinuationAllowed', ': true,'),
-      joinFixture('allowAutomaticPrimaryToFallback', ': true,'),
-      joinFixture('fallbackModel', ': {'),
+      enabledLine('productionEligible'),
+      enabledLine('persistenceAllowed'),
+      enabledLine('toolExecutionPerformed'),
+      enabledLine('automaticContinuationAllowed'),
+      enabledLine('allowAutomaticPrimaryToFallback'),
+      ['fallbackModel:', '{'].join(' '),
     ]);
 
     assert.deepEqual(
