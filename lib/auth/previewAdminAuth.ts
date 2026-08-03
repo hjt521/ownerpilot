@@ -1,5 +1,3 @@
-import 'server-only'
-
 export const PREVIEW_SUPABASE_PROJECT_ID = 'uklahixoviheiydmiejl' as const
 export const PRODUCTION_SUPABASE_PROJECT_ID = 'txpetdrfsmqnyooydmas' as const
 export const PREVIEW_AUTH_CALLBACK_PATH = '/api/internal/auth/callback' as const
@@ -49,7 +47,13 @@ function normalizedPreviewOrigin(value: string): string | null {
   try {
     const url = new URL(value)
     if (url.protocol !== 'https:') return null
-    if (url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    if (
+      url.username ||
+      url.password ||
+      url.pathname !== '/' ||
+      url.search ||
+      url.hash
+    ) {
       return null
     }
     if (!url.hostname.endsWith('.vercel.app')) return null
