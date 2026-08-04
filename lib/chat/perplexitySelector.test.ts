@@ -97,7 +97,8 @@ async function main(): Promise<void> {
       legacyResult.reply === validResponse.reply,
     );
 
-    // Flag ON: select the AI SDK adapter and do not call legacy fetch.
+    // Flag ON in Preview: select the AI SDK adapter and do not call legacy fetch.
+    process.env.VERCEL_ENV = 'preview';
     process.env.CHAT_AI_SDK_ENABLED = 'true';
 
     let unexpectedFetchCalls = 0;
