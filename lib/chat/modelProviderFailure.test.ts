@@ -83,6 +83,14 @@ async function main(): Promise<void> {
       kindOf(structuredError) === 'structured_output',
     );
 
+    const noOutputError = new Error('No output generated.');
+    noOutputError.name = 'AI_NoOutputGeneratedError';
+
+    check(
+      'AI SDK no-output failure is classified as structured output',
+      kindOf(noOutputError) === 'structured_output',
+    );
+
     const abortError = new Error('socket network timeout');
     abortError.name = 'AbortError';
 
