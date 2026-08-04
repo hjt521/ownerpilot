@@ -1,9 +1,10 @@
 // lib/chat/aiSdkFlag.test.ts
-// Default-off CHAT_AI_SDK_ENABLED feature-flag behavior.
+// Default-off, Preview-only CHAT_AI_SDK_ENABLED feature-flag behavior.
 
 import { chatAiSdkEnabled } from './aiSdkFlag';
 
-const original = process.env.CHAT_AI_SDK_ENABLED;
+const originalFlag = process.env.CHAT_AI_SDK_ENABLED;
+const originalEnvironment = process.env.VERCEL_ENV;
 let passed = 0;
 let failed = 0;
 
@@ -18,28 +19,46 @@ function check(name: string, condition: boolean): void {
 }
 
 try {
+  process.env.VERCEL_ENV = 'preview';
+
   delete process.env.CHAT_AI_SDK_ENABLED;
-  check('unset is off', chatAiSdkEnabled() === false);
+  check('Preview + unset is off', chatAiSdkEnabled() === false);
 
   process.env.CHAT_AI_SDK_ENABLED = 'false';
-  check('"false" is off', chatAiSdkEnabled() === false);
+  check('Preview + "false" is off', chatAiSdkEnabled() === false);
 
   process.env.CHAT_AI_SDK_ENABLED = '0';
-  check('"0" is off', chatAiSdkEnabled() === false);
+  check('Preview + "0" is off', chatAiSdkEnabled() === false);
 
   process.env.CHAT_AI_SDK_ENABLED = '1';
-  check('"1" is on', chatAiSdkEnabled() === true);
+  check('Preview + "1" is on', chatAiSdkEnabled() === true);
 
   process.env.CHAT_AI_SDK_ENABLED = 'TRUE';
-  check('case-insensitive "TRUE" is on', chatAiSdkEnabled() === true);
+  check('Preview matching is case-insensitive', chatAiSdkEnabled() === true);
 
   process.env.CHAT_AI_SDK_ENABLED = '  true  ';
-  check('surrounding whitespace is ignored', chatAiSdkEnabled() === true);
+  check('Preview ignores surrounding whitespace', chatAiSdkEnabled() === true);
+
+  process.env.CHAT_AI_SDK_ENABLED = 'true';
+  process.env.VERCEL_ENV = 'production';
+  check('Production remains off even when flag is true', chatAiSdkEnabled() === false);
+
+  process.env.VERCEL_ENV = 'development';
+  check('Development remains off even when flag is true', chatAiSdkEnabled() === false);
+
+  delete process.env.VERCEL_ENV;
+  check('Missing environment remains off even when flag is true', chatAiSdkEnabled() === false);
 } finally {
-  if (original === undefined) {
+  if (originalFlag === undefined) {
     delete process.env.CHAT_AI_SDK_ENABLED;
   } else {
-    process.env.CHAT_AI_SDK_ENABLED = original;
+    process.env.CHAT_AI_SDK_ENABLED = originalFlag;
+  }
+
+  if (originalEnvironment === undefined) {
+    delete process.env.VERCEL_ENV;
+  } else {
+    process.env.VERCEL_ENV = originalEnvironment;
   }
 }
 
