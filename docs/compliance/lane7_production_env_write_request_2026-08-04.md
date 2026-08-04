@@ -1,167 +1,125 @@
-# Lane 7 Production Environment-Write Request — 2026-08-04
+# Lane 7 Production Environment-Write Record — 2026-08-04
 
-**Status:** Founder action required; no Production environment write is authorized for the engineering operator.
+**Status:** Founder-executed; completed and incorporated into Lane 1b evidence.
 
 **Target project:** OwnerPilot Vercel Production
 
 **Target Notion Production sibling:**
 
 - Name: `OwnerPilot Lane 7 Cron Mirror — Production`
-- Data Source ID: `a32dcbb1-54f6-4532-8784-6fe9d74018db`
-- Page ID: `af32f514-d1ef-4742-9241-b082fc8c4573`
+- Database entity ID used by `NOTION_AUTOMATION_DB_ID`: `af32f514-d1ef-4742-9241-b082fc8c4573`
+- Data Source ID used for schema/query inspection: `a32dcbb1-54f6-4532-8784-6fe9d74018db`
 
-## 1. Notion integration ACL verification
+## 1. Founder ruling applied
 
-Before changing any Vercel environment variable, the Founder must open the Production sibling in Notion and explicitly confirm that the approved **OwnerPilot Lane 7 Mirror** integration has write access to it.
-
-Six existing `cron_9_geocode_audit` rows landed in this Production sibling from 2026-07-29 through 2026-08-03, so the integration probably already has access. That historical behavior is not a substitute for the required explicit ACL confirmation.
-
-Do not change the narrative database or Preview sibling permissions as part of this step.
-
-## 2. Production environment variables
-
-Perform these changes only in the **Production** environment scope.
-
-### `NOTION_TOKEN`
-
-- Value: the same approved Notion integration token used in Preview.
-- Requirement: the integration must have confirmed write access to `a32dcbb1-54f6-4532-8784-6fe9d74018db` before the token is written or retained.
-- Do not print, paste into GitHub, send in chat, or include the token in screenshots.
-- If the existing Production token is already the approved token, verify it in the Vercel dashboard without exposing its value and leave it unchanged unless a reset is needed.
-
-### `NOTION_AUTOMATION_DB_ID`
-
-Set or verify the exact Production value:
-
-```text
-a32dcbb1-54f6-4532-8784-6fe9d74018db
-```
-
-This is:
-
-- the existing Production sibling Data Source ID;
-- **not** the page ID `af32f514-d1ef-4742-9241-b082fc8c4573`;
-- **not** the Preview sibling ID `0ca120e3-068e-4c97-b7ed-89bfbf21f3d7`;
-- **not** the narrative database ID;
-- **not** any other value.
-
-The six existing Production `cron_9` rows indicate this environment variable may already be correct. Verify it in the Vercel dashboard and re-set it only if needed.
-
-### `AUTOMATION_LOG_SECRET`
-
-- Create a new high-entropy secret.
-- Scope it to Production only.
-- It must be distinct from Preview's value.
-- Do not reuse a prior or shared secret.
-- Do not disclose it in chat, screenshots, terminal history, documentation, commits, or logs.
-
-Issuing a fresh Production-only secret closes the previously unresolved shared-scope pathology by construction.
-
-### `DIAG_ENV_SECRET`
-
-- Create a new high-entropy diagnostic secret.
-- Scope it to Production only.
-- It must be distinct from Preview's value and from `AUTOMATION_LOG_SECRET`.
-- Do not disclose it in chat, screenshots, documentation, commits, or logs.
-
-This credential gates only `/api/diag/notion-db-hash` and is temporary. The diagnostic route is marked for removal after the Lane 1 attestation and Founder countersign.
-
-## 3. Required Vercel scope check
-
-Before saving, confirm each of the four variables is scoped to **Production**, not Preview, Development, or all environments:
+The Founder ruled that the working Production values for these variables were protected and must not be changed:
 
 - `NOTION_TOKEN`
 - `NOTION_AUTOMATION_DB_ID`
-- `AUTOMATION_LOG_SECRET`
+
+The six existing `cron_9_geocode_audit` rows and later G-2 result confirmed that this preservation posture was correct.
+
+## 2. Production-only variables executed
+
+The Founder generated and stored fresh, distinct, high-entropy Production-only values for:
+
 - `DIAG_ENV_SECRET`
+- `AUTOMATION_LOG_SECRET`
 
-Do not modify Preview values during Lane 1.
+Neither raw value was disclosed in chat, committed to the repository, included in screenshots, or recorded in this artifact.
 
-## 4. Production redeploy
+The Vercel environment-variable listing confirmed both variables were scoped to **Production**.
 
-After the ACL confirmation and any required environment-variable writes:
+## 3. Production redeployment
 
-1. trigger one Production redeploy so the runtime loads the current Production values;
-2. confirm the deployment is Ready;
-3. record the Production deployment URL and deployment identifier without exposing any secret;
-4. do not run the external-caller smoke yet.
+After the two Production-only variables were saved, the Founder redeployed the Production deployment associated with merged PR #336 and waited for it to reach Ready/Current status.
 
-## 5. Founder-run G-2 verification after redeploy
+The Production diagnostic route was first tested without a secret. It returned:
 
-### 5.1 Compute the expected hash locally
-
-Compute the SHA-256 hex digest of this exact 36-character string:
-
-```text
-a32dcbb1-54f6-4532-8784-6fe9d74018db
+```json
+{"error":"unauthorized"}
 ```
 
-The raw Data Source ID must not be sent through the diagnostic route. It is hashed locally for comparison.
+with HTTP status `401`, confirming that:
 
-### 5.2 Call the Production diagnostic route
+- the merged route was live in Production;
+- the environment allowlist admitted Production;
+- the secret gate remained active; and
+- no environment value was exposed on the unauthorized path.
 
-Using the new Production-only `DIAG_ENV_SECRET`, call:
+## 4. G-2 verification executed
 
-```text
-https://<production-url>/api/diag/notion-db-hash
-```
+The Founder called the Production diagnostic route with the fresh Production `DIAG_ENV_SECRET`.
 
-with the request header:
-
-```text
-x-diag-secret: <DIAG_ENV_SECRET>
-```
-
-Do not paste the actual secret into chat. Run the command locally and provide only the bounded response JSON.
-
-Expected response shape:
+The bounded response reported:
 
 ```json
 {
   "env": "production",
-  "hash": "<sha256-hex>",
+  "hash": "92da4ff4ba0e4a52f36e1866811d2dcf0e70372462d14752d64229cfc33bd4a0",
   "length": 36,
-  "prefix4": "a32d"
+  "prefix4": "af32"
 }
 ```
 
-The route must never return the raw environment-variable value.
+The returned hash matched the locally computed SHA-256 of:
 
-### 5.3 Return evidence for engineering comparison
+```text
+af32f514-d1ef-4742-9241-b082fc8c4573
+```
 
-Provide only:
+It did not match the data source ID candidate. This confirms that Production `NOTION_AUTOMATION_DB_ID` holds the database entity ID required by the shipped `parent.database_id` call.
 
-- the bounded response JSON;
-- the locally computed expected SHA-256 hash;
-- the Production deployment URL or deployment ID;
-- confirmation that the deployment is Ready.
+## 5. External-caller smoke executed
 
-Do not provide any environment-variable secret value.
+The Founder called:
 
-## 6. Decision boundary
+```text
+POST https://www.ownerpilot.ai/api/automation/log
+```
 
-Engineering may continue to §L1.6 only when all of the following are confirmed:
+using the exact wire header:
 
-- `env` is exactly `production`;
-- `length` is exactly `36`;
-- `prefix4` is exactly `a32d`;
-- the returned hash exactly matches the Founder-computed expected hash;
-- the Production deployment is Ready.
+```text
+x-automation-secret: <Production AUTOMATION_LOG_SECRET>
+```
 
-A mismatch, a non-Production `env`, a missing field, or an unexpected response requires an immediate stop. No §L1.7 external-caller smoke may occur until G-2 passes.
+and a bounded synthetic `cron_5_lahd_forms` payload.
 
-## 7. Explicit exclusions
+The route returned:
 
-This request does not authorize the Founder or engineering operator to:
+```json
+{"ok":true}
+```
 
-- modify the narrative database;
-- modify the Preview sibling;
-- backfill missing external-caller rows;
-- run the external-caller smoke before G-2 passes;
-- remove the diagnostic route;
-- open or merge the Lane 1 pull request;
-- expose any token or secret.
+with HTTP status `200`.
+
+A corresponding Production Notion row was verified with:
+
+- Run ID: `cron_5_lahd_forms_2026-08-04`
+- Cron: `LAHD forms refresh`
+- Cron Category: `external_source_watch`
+- Status: `clean`
+- Run Date: `2026-08-04T18:15:00.000Z`
+- Changes Found: `0`
+- Summary marker: `production_smoke_L1.7.1_2026-08-04T18:15:44Z SMOKE_TEST`
+- Report Link: `https://ownerpilot.ai/internal/reports/production_smoke_L1.7.1_2026-08-04`
+
+## 6. Protected-state confirmation
+
+Throughout this phase:
+
+- `NOTION_TOKEN` was not changed;
+- `NOTION_AUTOMATION_DB_ID` was not changed;
+- the narrative database was not written;
+- the Preview sibling was not written;
+- no secret value was committed or recorded in repository evidence; and
+- no backfill was performed.
+
+## 7. Supersession note
+
+This completed record supersedes the earlier four-variable draft instructions in this file. The earlier draft incorrectly treated the Production data source ID as the value for `NOTION_AUTOMATION_DB_ID`. The verified and controlling identifier is the Production database entity ID `af32f514-d1ef-4742-9241-b082fc8c4573`.
 
 ---
 
-Prepared under the Founder Omnibus Authorization dated 2026-08-04. Production environment writes and Production redeployment are Founder-executed only.
+Prepared under the Founder authorizations and execution record dated 2026-08-04. Production environment writes and Production redeployment were Founder-executed only.
