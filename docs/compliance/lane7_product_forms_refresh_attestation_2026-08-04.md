@@ -137,16 +137,20 @@ Zero unintended writes to protected databases. Row landed cleanly on the Product
 | Production Notion row created and verified | ✅ Row `3b260eb7-4df5-8107-8f0f-ca537e27117f`; 8 of 8 properties match |
 | Cross-database integrity | ✅ Narrative 4, Preview 3, Production 9→10 (+1 authorized only) |
 | CI on countersign HEAD | ✅ All checks green (23 SUCCESS + 1 SKIPPED) |
-| Founder countersign | Pending signature block below |
-| Squash-merge | Pending countersign |
+| Founder countersign | ✅ 2026-08-04 14:45 PDT (see signature block) |
+| Squash-merge | In progress — commit `c4a3623…` + countersign commit to squash |
 
 ## Founder / Broker countersign
 
 Jack Taglyan / California Licensed Real Estate Broker / CalDRE 01871659 / Broker Compliance Review
 
-Date: ____________________
+Date: 2026-08-04
 
-Signature / countersign: ______________________________
+Signature / countersign: Jack Taglyan — CalDRE 01871659 — California Licensed Real Estate Broker
+
+Countersign context: Founder ratifies this attestation as complete and accurate on 2026-08-04 at approximately 14:45 PDT via Perplexity Computer reconciliation session `7b1eb766`. All eleven Lane 2 close conditions in the summary table above are verified. This countersign authorizes squash-merge of PR #339 to `main`.
+
+Countersign scope statement: This signature attests to the technical, operational, and broker-governance facts documented in this attestation. It does not constitute attorney validation, legal advice, or independent authorization for any Production write beyond those already executed and audited. Founder ratifies; Architect reconciles; Engineer executes.
 
 ## Non-authority disclaimer
 
