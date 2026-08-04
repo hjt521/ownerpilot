@@ -1,233 +1,241 @@
 # OwnerPilot Enterprise AI Role Reconciliation — Draft
 
-**Status:** NONCANONICAL RECONCILIATION DRAFT
-**Date:** 2026-08-04
-**Runtime authority:** None
-**Implementation authority:** None
-**Preview authority:** None
-**Production authority:** None
-**Constitutional consequence:** None
+**Status:** NONCANONICAL RECONCILIATION DRAFT  
+**Date:** 2026-08-04  
+**Runtime authority:** None  
+**Implementation authority:** None  
+**Preview authority:** None  
+**Production authority:** None  
+**Constitutional consequence:** None  
 
-## 1. Purpose
+## 1. Reconciliation result
 
-This draft creates a controlled classification framework for reconciling OwnerPilot's previously discussed full AI-operated enterprise with the narrower executive-agent implementation now present in the repository.
+The recovery evidence does not support treating OwnerPilot as already having a ratified, fully staffed AI-native company. It supports:
 
-It does not ratify, activate, implement, or remove any role.
+1. a human Founder/governance layer;
+2. a three-role executive advisory vocabulary;
+3. one ratified repository-steward operating role expressed through three titles;
+4. ratified Product and Engineering capability ownership labels;
+5. assurance and independent-review processes;
+6. two newly proposed bounded operator roles;
+7. numerous architecture/program concepts that are not roles;
+8. a Founder-confirmed broader enterprise vision whose exact roster remains missing.
 
-## 2. Controlling distinction
+## 2. Source-status rules
 
-The complete enterprise-agent vision and the current executable role set are not the same thing.
+Each role or organization must remain in one of these classes:
 
-The current repository implements or represents only:
+- ratified human authority;
+- ratified operating responsibility;
+- current implemented Preview role;
+- approved/noncanonical role design;
+- capability owner or organizational label, not an agent;
+- nonconstitutional research/program concept, not a role;
+- Founder-confirmed prior concept pending exact source;
+- newly proposed role;
+- unresolved or conflicting terminology.
+
+No status class grants runtime authority by itself.
+
+## 3. Proposed normalized enterprise structure
+
+This structure is a reconciliation proposal for Founder review. It does not assert that every box previously existed.
+
+### 3.1 Human constitutional and corporate authority
+
+- Founder
+- human reviewers and decision owners
+- human engineering/repository operator
+- human deployment/Production operator
+- any future legally accountable corporate officers
+
+### 3.2 Board, governance and independent assurance
+
+**Recovered evidence:**
+
+- Independent Review Board Challenge — ratified architecture-governance stage.
+- Chief Configuration Manager / Constitutional Librarian / Release Manager — ratified repository operating charter.
+- CA-001 and CBS-001 — validation controls/artifacts.
+
+**Unresolved proposal:**
+
+- a standing AI Board, advisory board, or executive council;
+- independent risk, privacy, security, audit and dissent members.
+
+Founder must choose the governance form and whether any board is advisory, challenge-only, or decision-making. No AI board may ratify itself or bind the Founder.
+
+### 3.3 Executive advisory layer
+
+Verified role IDs:
 
 - `executive.ceo`
 - `executive.chief_of_staff`
 - `executive.chief_architecture_officer`
 
-The broader Founder-confirmed enterprise vision includes a board or advisory layer, sales and marketing agents, and additional executive, departmental, specialist, assurance, and operator functions. Exact names and status remain subject to source recovery.
+Terminology that must not silently become separate role IDs:
 
-## 3. Reconciliation categories
+- CTO / Chief Systems Architect — DOC-003 implementation-judgment posture;
+- Chief Product Builder;
+- Constitutional Implementation Officer;
+- Chief Configuration Manager;
+- Constitutional Librarian;
+- Release Manager.
 
-Every recovered role must be assigned to exactly one current source-status category pending Founder review:
+Unresolved executive titles:
 
-1. **Ratified constitutional role or organization**
-2. **Approved architecture role or organization**
-3. **Nonconstitutional research or design proposal**
-4. **Founder-confirmed prior concept pending exact source**
-5. **Current implemented Preview role**
-6. **Newly proposed role**
-7. **Superseded or conflicting role**
-8. **Unresolved**
+- COO
+- CFO
+- CMO
+- Chief Product Officer
+- separate CTO agent
 
-Source status does not itself create runtime authority.
+### 3.4 Departmental leadership layer
 
-## 4. Organizational taxonomy to be evaluated
+Ratified organizational ownership labels:
 
-The CAO should evaluate a full enterprise taxonomy containing these layers without assuming that every layer or role was previously adopted:
+- Product
+- Engineering
 
-### 4.1 Founder and human authority
+Candidate departments, not recovered as ratified AI departments:
 
-- Founder
-- human reviewers and decision owners
-- human engineering and repository operators
+- Sales
+- Marketing
+- Partnerships
+- Revenue Operations
+- Customer Acquisition
+- Operations
+- Customer Success
+- Customer Support
+- Onboarding
+- Vendor Management
+- Finance / FP&A
+- Business Intelligence
+- Research and Innovation
+- Knowledge and Documentation
+- Security / Reliability / Privacy / Compliance
 
-### 4.2 Board and independent oversight
+Each department requires a separate source status, charter, role ID decision, authority boundary and human owner.
 
-- AI Board of Directors or advisory board
-- independent strategy review
-- independent architecture review
-- constitutional and compliance assurance
-- risk, security, privacy, and audit functions
+### 3.5 Specialist workforce layer
 
-### 4.3 Executive advisory layer
+Candidate specialist families:
 
-- CEO
-- Chief of Staff
-- Chief Architecture Officer
-- additional previously discussed executive roles, subject to recovery
+- product analysis and requirements;
+- architecture and systems design;
+- software engineering;
+- design;
+- QA and evaluation;
+- security and privacy review;
+- DevOps and reliability analysis;
+- sales research and enablement;
+- marketing research and content drafting;
+- pricing and financial modeling;
+- scenario simulation;
+- customer-support drafting and knowledge retrieval;
+- research, corpus, memory and documentation maintenance;
+- constitutional assurance, compliance review and dissent.
 
-### 4.4 Departmental strategy and coordination
+These are normalized candidate families only. No exact prior specialist roster was recovered.
 
-Candidate departments for source recovery and analysis include:
+### 3.6 Operator layer
 
-- product;
-- engineering;
-- architecture;
-- sales;
-- marketing;
-- operations;
-- customer success and support;
-- finance and business intelligence;
-- research and innovation;
-- knowledge and documentation;
-- security, reliability, compliance, and assurance.
-
-### 4.5 Specialist agents
-
-Specialist roles may perform bounded research, analysis, drafting, testing, quality review, simulation, knowledge maintenance, or other narrowly chartered tasks.
-
-### 4.6 Operator roles
-
-Operator roles perform bounded state-changing work only under explicit authority. Proposed initial operator roles:
+Newly proposed, noncanonical roles:
 
 - `operator.repository_developer`
 - `operator.preview_deployment`
 
-Operator roles must remain separate from advisory executive roles.
+Required separation:
 
-### 4.7 Customer-facing roles
+- advisory roles analyze and recommend;
+- implementation operators may change approved repository state only within an exact packet;
+- deployment operators may deploy only an approved commit to an approved environment;
+- Production operations remain human-executed unless separately ratified and implemented.
 
-Any future customer-facing agent requires a separate authority and safety architecture. No customer-facing enterprise role is authorized by this draft.
+No current role may select its own task, broaden scope, merge, promote to Production, edit secrets, write databases, or initiate external communication.
 
-## 5. Current verified roles
+### 3.7 Customer-facing operation
 
-### 5.1 CEO Agent
+EA-100 ratifies `ECAP-001 AI Assistant` as an operational capability, not an enterprise workforce charter.
 
-Role ID: `executive.ceo`
+Any customer-facing sales, marketing, onboarding, support, negotiation, payment, legal, notice or jurisdiction role requires a separate customer-facing authority architecture. None is authorized here.
 
-Verified posture:
+### 3.8 Enterprise operating-system and orchestration concepts
 
-- strategic and cross-functional synthesis;
-- advisory and draft-only;
-- human-initiated;
-- no implementation, repository-write, deployment, database-write, external-communication, or Production authority.
+The following are architecture/program concepts, not roles:
 
-### 5.2 Chief of Staff Agent
+- OPOS
+- OPIL
+- Recommendation Object
+- Decision Graph
+- RQS
+- DIRP
+- EDIC
+- Decision Engineering Lab
+- Evaluation Lab
 
-Role ID: `executive.chief_of_staff`
+A future orchestration architecture must define human initiation, allowed handoffs, stop conditions, tool permissions, evidence, failure handling and audit. The current registry design prohibits autonomous dispatch and silent provider or authority substitution.
 
-Verified posture:
+## 4. Proposed normalized namespaces
 
-- coordination, dependency mapping, status normalization, follow-up and decision packets;
-- neutral recorder rather than adjudicator;
-- no binding assignment, autonomous dispatch, implementation, or Production authority.
+Only existing IDs are preserved as existing:
 
-### 5.3 Chief Architecture Officer Agent
+- `executive.ceo`
+- `executive.chief_of_staff`
+- `executive.chief_architecture_officer`
 
-Role ID: `executive.chief_architecture_officer`
+Proposed operator IDs remain proposals:
 
-Verified posture:
+- `operator.repository_developer`
+- `operator.preview_deployment`
 
-- architecture analysis, reconciliation, alternatives, dependencies, risk, security, reliability, and implementation-sequence proposals;
-- not an implementation agent, repository maintainer, release authority, deployment operator, or Production operator.
+Future namespace families for Founder consideration, with no role creation:
 
-## 6. Newly proposed roles
+- `governance.*`
+- `executive.*`
+- `department.*`
+- `specialist.*`
+- `assurance.*`
+- `operator.*`
+- `customer.*`
 
-### 6.1 Bounded Repository Developer Operator
+No placeholder under these families is a role until separately sourced, chartered, approved and registered.
 
-Role ID proposal: `operator.repository_developer`
+## 5. Authority classes proposed for later design
 
-Candidate authority boundary:
+- **A0 — reference only:** no run authority.
+- **A1 — advisory draft:** human initiated, no tools, draft output.
+- **A2 — read-only analyst:** approved reads and bounded evaluation.
+- **A3 — bounded implementation operator:** exact approved write packet; no merge/deploy.
+- **A4 — bounded Preview deployment operator:** approved commit and Preview only.
+- **A5 — human-controlled Production operation:** AI may prepare evidence; human executes.
+- **A6 — autonomous Production operation:** not supported or authorized; would require a new constitutional, security, legal and operational program.
 
-- receives an approved implementation packet;
-- works only on a specified branch, commit baseline, and file scope;
-- may edit approved files;
-- may run approved tests and verification;
-- may prepare a draft pull request;
-- must stop for human review.
+## 6. Conflict matrix
 
-Initial exclusions:
+| Issue | Earlier terminology | Later/current control | Reconciliation |
+|---|---|---|---|
+| Standing board | AI Board/advisory recollection | Exact source missing | Preserve as prior concept only |
+| Review board | Independent Review Board Challenge | Ratified pipeline stage | Process, not standing corporate board |
+| CTO | CTO/Chief Systems Architect posture | Registry has no CTO role ID | Do not create separate role by inference |
+| Release authority | Release Manager title | Current agents/operators lack merge/deploy authority | Human execution controls |
+| Departments | Product/Engineering owners | EA-100 capability metadata | Not AI department heads |
+| OPOS and related names | Operating System, routing, corpus and labs | Architecture/research status | Not workforce roles |
+| Autonomous company | Founder-confirmed broad vision | Current registry requires human initiation and deny-by-default tools | No autonomy until separately designed and ratified |
 
-- no self-selected task;
-- no scope expansion;
-- no merge;
-- no deployment;
-- no Production access;
-- no secrets or environment changes;
-- no database or schema change absent separate authorization;
-- no legal, notice, payment, attorney, jurisdiction, constitutional, or external-communication authority.
+## 7. Founder decisions required
 
-### 6.2 Restricted Preview Deployment Operator
+1. Board form: AI Board, advisory board, executive council, independent challenge panel, or none.
+2. Whether any board member is an AI role and whether it has vote, veto, dissent, or recommendation-only status.
+3. Final executive roster and disposition of COO/CFO/CMO/CPO/CTO.
+4. Whether Chief Configuration Manager, Constitutional Librarian and Release Manager remain one composite repository duty or become separate human/AI roles.
+5. Department roster and accountable human owner for each department.
+6. Specialist-role creation sequence.
+7. Whether the two proposed operator roles should proceed to charter design.
+8. Whether any AI may dispatch another AI without a new human request.
+9. Customer-facing eligibility and prohibited domains.
+10. Preview and Production authority ceiling.
+11. Whether a fourth source manifest is required after missing historical artifacts are found.
 
-Role ID proposal: `operator.preview_deployment`
+## 8. Recommendation
 
-Candidate authority boundary:
-
-- receives an approved commit and deployment instruction;
-- deploys only to isolated Preview;
-- verifies commit and environment identity;
-- runs bounded smoke tests;
-- reports evidence;
-- may execute an explicitly authorized Preview rollback.
-
-Initial exclusions:
-
-- no merge;
-- no commit selection;
-- no Production deployment or promotion;
-- no environment-variable editing;
-- no secret rotation;
-- no Supabase schema or RLS change;
-- no autonomous continuation after verification or failure.
-
-## 7. Required CAO deliverables
-
-The CAO should prepare, for human review:
-
-1. complete enterprise role taxonomy;
-2. board, executive, department, specialist, assurance, and operator distinctions;
-3. role-ID namespace proposal;
-4. authority classes and autonomy levels;
-5. tool-permission vocabulary;
-6. human approval and stop points;
-7. agent-to-agent handoff and orchestration rules;
-8. Preview and Production eligibility model;
-9. audit, evidence, persistence, and observability requirements;
-10. staged implementation sequence;
-11. conflict and duplication matrix against current role contracts;
-12. explicit list of unresolved Founder decisions.
-
-The CAO may recommend but may not implement or approve the structure.
-
-## 8. Required Chief of Staff deliverables
-
-The Chief of Staff should maintain:
-
-- source inventory;
-- missing-source register;
-- role status matrix;
-- decision log;
-- conflict register;
-- dependency map;
-- proposed Founder review sequence;
-- administrative closure record after Founder disposition.
-
-The Chief of Staff may coordinate the record but may not assign authority or treat silence as approval.
-
-## 9. Founder decisions required before implementation
-
-At minimum:
-
-- whether the enterprise uses an AI Board of Directors, advisory board, executive council, or another governance form;
-- which executive roles exist;
-- which departments and specialist roles exist;
-- which roles may become autonomous and at what stage;
-- whether any role may initiate another role without human mediation;
-- which roles may write to repositories, databases, infrastructure, or external systems;
-- which actions always require Founder or human approval;
-- whether and when any role becomes Production-eligible;
-- how constitutional, legal, notice, payment, jurisdiction, and customer-sensitive boundaries remain segregated.
-
-## 10. Disposition
-
-This document is a reconciliation draft only. It preserves the broader enterprise objective and provides a framework for exact source recovery and CAO design without creating a new organization, registry entry, charter, tool permission, runtime path, or deployment authority.
+PR #338 is materially improved and suitable for **Founder review as a source-recovery draft**, but not for Ready-for-review or merge yet. Founder review should first resolve the board form, executive roster, composite repository-steward titles, and operator-role disposition. Missing historical artifacts may still change the inventory.
