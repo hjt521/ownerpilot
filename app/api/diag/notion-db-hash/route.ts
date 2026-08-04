@@ -1,11 +1,10 @@
 // app/api/diag/notion-db-hash/route.ts
 // Lane 7 G-2 — Preview and Production diagnostic: confirms which Notion database
 // NOTION_AUTOMATION_DB_ID currently points at, without ever exposing the raw value.
-// The Founder computes SHA-256 locally over the expected Data Source ID and compares
+// The Founder computes SHA-256 locally over the expected database ID and compares
 // it against this route's response. Diagnostic-only: not part of any production write
 // path, not wired into mirrorToNotion, not logged, and performs no Notion call.
-// Remove after the Lane 1 attestation lands — see
-// docs/compliance/lane7_production_remediation_ruling_2026-08-04.md.
+// Remove after the Lane 1b attestation lands.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
