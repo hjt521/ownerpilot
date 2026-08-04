@@ -1,16 +1,17 @@
 // app/api/diag/notion-db-hash/route.ts
-// Lane 7 G-2 — Preview-only diagnostic: confirms which Notion database NOTION_AUTOMATION_DB_ID
-// currently points at, without ever exposing the raw value. The Founder computes SHA-256 locally
-// over the expected Data Source ID and compares it against this route's response. Diagnostic-only:
-// not part of any production write path, not wired into mirrorToNotion, not logged, no Notion call.
-// Slated for removal after the Lane 7 Cron Mirror sibling-DB reconciliation lands — see
-// docs/compliance/lane7_notion_cron_mirror_ruling_2026-07-27.md (attestation doc follows at §3.7).
+// Lane 7 G-2 — Preview and Production diagnostic: confirms which Notion database
+// NOTION_AUTOMATION_DB_ID currently points at, without ever exposing the raw value.
+// The Founder computes SHA-256 locally over the expected database ID and compares
+// it against this route's response. Diagnostic-only: not part of any production write
+// path, not wired into mirrorToNotion, not logged, and performs no Notion call.
+// Remove after the Lane 1b attestation lands.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 
 export async function GET(req: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview') {
+  const env = process.env.VERCEL_ENV;
+  if (env !== 'preview' && env !== 'production') {
     return new NextResponse(null, { status: 404 });
   }
 
@@ -23,7 +24,13 @@ export async function GET(req: NextRequest) {
   const hash = createHash('sha256').update(raw).digest('hex');
   const length = raw.length;
 
-  const body: { hash: string; length: number; prefix4?: string } = { hash, length };
+  const body: {
+    env: 'preview' | 'production';
+    hash: string;
+    length: number;
+    prefix4?: string;
+  } = { env, hash, length };
+
   if (length === 36) {
     body.prefix4 = raw.slice(0, 4);
   }
