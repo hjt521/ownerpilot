@@ -8,13 +8,16 @@
 
 ## 1. Start here
 
-1. `docs/agents/ownerpilot_enterprise_ai_workforce_source_recovery.md`
-2. `docs/agents/ownerpilot_enterprise_ai_role_reconciliation_draft.md`
-3. `docs/agents/runtime_model_assignment_registry_design.md`
-4. `docs/agents/runtime_model_registry_implementation_note.md`
-5. `docs/agents/charters/ceo_agent.md`
-6. `docs/agents/charters/chief_of_staff.md`
-7. `docs/agents/charters/chief_architecture_officer.md`
+1. `docs/agents/ownerpilot_ai_native_enterprise_workforce_founder_intent_consolidation.md`
+2. `docs/agents/ownerpilot_enterprise_ai_workforce_source_recovery.md`
+3. `docs/agents/ownerpilot_enterprise_ai_role_reconciliation_draft.md`
+4. `docs/agents/runtime_model_assignment_registry_design.md`
+5. `docs/agents/runtime_model_registry_implementation_note.md`
+6. `docs/agents/charters/ceo_agent.md`
+7. `docs/agents/charters/chief_of_staff.md`
+8. `docs/agents/charters/chief_architecture_officer.md`
+
+The Founder-intent consolidation is the current top-level noncanonical review document. It preserves recovered source distinctions, the proposed automation-first target operating model, the continuous Winning Strategy concept, the proposed autonomy ladder, Founder-reserved decisions, and the recommended architecture-reconciliation path. It does not create runtime, constitutional, implementation, Preview, or Production authority.
 
 ## 2. Current verified runtime-role vocabulary
 
@@ -83,6 +86,9 @@ Status: **PROPOSED NONCANONICAL — NOT IMPLEMENTED OR AUTHORIZED**.
 - EDIC
 - Decision Engineering Lab
 - Evaluation Lab
+- Winning Strategy Function
+
+The Winning Strategy Function is preserved as a new Founder target-state concept for Architect reconciliation. It is not yet a ratified doctrine, service, agent, executive function, or OPOS component.
 
 ## 8. Source map
 
@@ -124,6 +130,10 @@ Before proposing, chartering, implementing or activating a role:
 7. separately authorize tools, model, environment, persistence and autonomy;
 8. stop before repository write, deployment, Production, external communication or customer-facing action unless specifically authorized.
 
+Before any future CAO or implementation chat designs the AI-native enterprise, it must read the Founder-intent consolidation first and preserve the following operating principle:
+
+> Founder ratifies. Architect reconciles. AI executives coordinate. Specialist agents perform. Operators execute. Assurance agents challenge. The Founder leads by vision, not by daily task management.
+
 ## 10. Current review posture
 
-PR #338 must remain Draft. The recovered inventory is now detailed enough for Founder review, but unresolved board/executive decisions and missing historical source material prevent a recommendation to mark Ready or merge.
+PR #338 must remain Draft. The recovered inventory and Founder target operating model are now preserved for Founder and Architect review, but unresolved board, executive, autonomy, orchestration, Winning Strategy, customer-facing, and Production decisions prevent a recommendation to mark Ready or merge.
