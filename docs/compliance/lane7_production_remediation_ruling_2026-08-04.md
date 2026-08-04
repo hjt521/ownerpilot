@@ -1,6 +1,6 @@
 # Lane 7 Production Notion Mirror Remediation — Broker Ruling — 2026-08-04
 
-**Status:** Draft awaiting Founder ratification
+**Status:** Draft awaiting Founder countersign
 
 ## Prior acceptance
 
@@ -24,12 +24,27 @@ The following Production-relevant paragraph is quoted verbatim from `docs/compli
 
 This ruling ratifies, subject to Founder countersign:
 
-1. the existing Founder-created Production Notion sibling database **OwnerPilot Lane 7 Cron Mirror — Production** (`a32dcbb1-54f6-4532-8784-6fe9d74018db`) as the Production Lane 7 audit surface;
-2. the six existing Production `cron_9_geocode_audit` rows spanning 2026-07-29 through 2026-08-03 as the Lane 1 audit baseline;
-3. the schema-vocabulary reconciliation from 12 Cron options to the canonical 11 through a single-row remap and deletion of the noncanonical `Holiday Table Refresh` select option; and
-4. the forward remediation of the external-caller producer path (`/api/automation/log`, gated by `AUTOMATION_LOG_SECRET`) through Founder-executed Production environment writes, G-2 hash verification, and one external-caller smoke row.
+1. the existing Founder-created Production Notion sibling database **OwnerPilot Lane 7 Cron Mirror — Production** as the Production Lane 7 audit surface;
+2. the Production database entity ID `af32f514-d1ef-4742-9241-b082fc8c4573` as the identifier held by Production `NOTION_AUTOMATION_DB_ID` for the shipped `notion.pages.create({ parent: { database_id: ... } })` call;
+3. the Production data source ID `a32dcbb1-54f6-4532-8784-6fe9d74018db` as the query/schema identifier for the Production sibling;
+4. the existing Production `cron_9_geocode_audit` rows beginning 2026-07-29 as the direct-mirror audit baseline;
+5. the schema-vocabulary reconciliation from 12 Cron options to the canonical 11 through a single-row remap and deletion of the noncanonical `Holiday Table Refresh` option;
+6. the Founder-executed Production-only rotation or creation of `DIAG_ENV_SECRET` and `AUTOMATION_LOG_SECRET`, while preserving the working `NOTION_TOKEN` and `NOTION_AUTOMATION_DB_ID` values; and
+7. the successful G-2 diagnostic verification and one bounded external-caller smoke through `/api/automation/log`.
 
-This ruling does not authorize backfill of the small, estimated six-or-fewer-row external-caller producer gap during the pre-remediation window. Any such backfill requires a separate future pull request and authorization.
+This ruling does not authorize backfill of the small external-caller gap during the pre-remediation window. Any backfill requires a separate future pull request and authorization.
+
+## Identifier clarification
+
+The July 28 reconciliation finding remains correct: the child data source ID caused `object_not_found` when supplied to the shipped `parent.database_id` call, while the database entity ID succeeded.
+
+This session initially used the term “page ID” for `af32f514-d1ef-4742-9241-b082fc8c4573`. The connected Notion surface exposes that UUID as the Production database entity and also as the URL-addressable database page. For the shipped Notion SDK call, the controlling meaning is **database entity ID**.
+
+The identifiers are therefore:
+
+- Production database entity ID / `NOTION_AUTOMATION_DB_ID`: `af32f514-d1ef-4742-9241-b082fc8c4573`
+- Production data source ID: `a32dcbb1-54f6-4532-8784-6fe9d74018db`
+- OwnerPilot Operations parent page: `3aa60eb7-4df5-8127-b388-edc535cc7d82`
 
 ## Three-database posture
 
@@ -44,9 +59,11 @@ All three databases are siblings under **OwnerPilot Operations** (`3aa60eb7-4df5
 2. **OwnerPilot Lane 7 Cron Mirror** — Data Source ID `0ca120e3-068e-4c97-b7ed-89bfbf21f3d7`.
    - Preview-environment cron mirror.
    - Eight-field code-authoritative schema.
-   - Preview remains untouched in Lane 1.
+   - Preview remained untouched in Lane 1.
 
-3. **OwnerPilot Lane 7 Cron Mirror — Production** — Data Source ID `a32dcbb1-54f6-4532-8784-6fe9d74018db`; page ID `af32f514-d1ef-4742-9241-b082fc8c4573`.
+3. **OwnerPilot Lane 7 Cron Mirror — Production**.
+   - Database entity ID: `af32f514-d1ef-4742-9241-b082fc8c4573`.
+   - Data Source ID: `a32dcbb1-54f6-4532-8784-6fe9d74018db`.
    - Production-environment cron mirror.
    - Eight-field code-authoritative schema.
    - Adopted rather than recreated.
@@ -66,53 +83,81 @@ All three databases are siblings under **OwnerPilot Operations** (`3aa60eb7-4df5
 
 Ruling #5 remains controlling: schema and select vocabularies must exist before activation, and each select value must correspond to a shipped code path.
 
-## Cron select vocabulary reconciliation record
+## Reconciliation record
 
-The Production sibling originally had 12 Cron options. One value was noncanonical:
+The Production sibling originally had 12 Cron options. The sole row using `Holiday Table Refresh`, `cron_8_holiday_table_2026-07-28`, was remapped to `Judicial holiday table verification`. Every other property was preserved unchanged. The noncanonical select option was then removed.
 
-- Removed: `Holiday Table Refresh`
-- Canonical replacement: `Judicial holiday table verification`
+The final Production Cron vocabulary contains exactly the 11 names in `scripts/backfill-notion-cron-category.mjs`. The default view was reordered to:
 
-The sole row using the removed value was `cron_8_holiday_table_2026-07-28`, a Founder-controlled Production smoke row. Its `Cron` property was remapped to `Judicial holiday table verification`. Its Summary, Run Date, Status, Report Link, Changes Found, Run ID, and Cron Category were preserved unchanged.
+1. Run ID
+2. Cron
+3. Cron Category
+4. Status
+5. Run Date
+6. Changes Found
+7. Summary
+8. Report Link
 
-The final Production Cron vocabulary contains exactly the 11 names in `scripts/backfill-notion-cron-category.mjs`.
+The Production database header prose was also added under the Founder authorization.
 
 ## Producer-path posture
 
 ### Direct-mirror path
 
-`cron_9_geocode_audit → mirrorToNotion` has worked in Production since 2026-07-29. Six rows dated 2026-07-29 through 2026-08-03 are preserved and ratified as the Lane 1 baseline. No additional direct-mirror smoke is required in Lane 1.
+`cron_9_geocode_audit → mirrorToNotion` has written daily Production rows since 2026-07-29. Those rows demonstrate that the working Notion token, database entity ID, integration ACL, and direct producer path were already operational before the external-caller remediation.
 
 ### External-caller path
 
-`/api/automation/log`, gated by `AUTOMATION_LOG_SECRET`, is the remaining remediation target. It will be validated only after Founder-executed Production environment writes, Production redeployment, successful G-2 hash verification, and one bounded Production smoke using `cron_5_lahd_forms`.
+On 2026-08-04, the Founder called `/api/automation/log` with the Production-only `AUTOMATION_LOG_SECRET`, exact wire header `x-automation-secret`, and a bounded synthetic `cron_5_lahd_forms` payload. The route returned HTTP 200 with `{"ok":true}`. A corresponding row was verified in the Production sibling:
 
-## Founder-executed Production items
+- Run ID: `cron_5_lahd_forms_2026-08-04`
+- Cron: `LAHD forms refresh`
+- Cron Category: `external_source_watch`
+- Status: `clean`
+- Run Date: `2026-08-04T18:15:00.000Z`
+- Changes Found: `0`
+- Summary marker: `production_smoke_L1.7.1_2026-08-04T18:15:44Z SMOKE_TEST`
+- Report Link: `https://ownerpilot.ai/internal/reports/production_smoke_L1.7.1_2026-08-04`
 
-Only the Founder may perform the following Production actions:
+This validates the external-caller path end to end.
 
-1. confirm the Notion integration has write access to `a32dcbb1-54f6-4532-8784-6fe9d74018db`;
-2. verify or set Production `NOTION_TOKEN` to the approved integration token;
-3. verify or set Production `NOTION_AUTOMATION_DB_ID` to `a32dcbb1-54f6-4532-8784-6fe9d74018db`;
-4. create a fresh Production-only `AUTOMATION_LOG_SECRET`, distinct from Preview;
-5. create a fresh Production-only `DIAG_ENV_SECRET`, distinct from Preview;
-6. trigger a Production redeploy;
-7. call the Production diagnostic route with the new diagnostic secret and provide the bounded JSON response for G-2 verification.
+## Founder-executed Production actions
 
-G-2 verification compares the route-returned SHA-256 hash against the locally computed SHA-256 hash of `a32dcbb1-54f6-4532-8784-6fe9d74018db`. The response must also report `env: "production"`. The raw environment-variable value must never be returned.
+The Founder performed these actions:
+
+1. preserved the working Production `NOTION_TOKEN`;
+2. preserved the working Production `NOTION_AUTOMATION_DB_ID`;
+3. created or rotated a fresh Production-only `AUTOMATION_LOG_SECRET`;
+4. created or rotated a fresh Production-only `DIAG_ENV_SECRET`;
+5. redeployed Production after PR #336 merged;
+6. confirmed the unauthenticated diagnostic request returned bounded HTTP 401;
+7. performed the authenticated G-2 check; and
+8. performed the bounded external-caller smoke.
+
+No raw token or secret was committed or recorded in this ruling.
+
+## G-2 result
+
+The authenticated Production diagnostic returned:
+
+- `env`: `production`
+- `length`: `36`
+- `prefix4`: `af32`
+- candidate A matched: SHA-256 of `af32f514-d1ef-4742-9241-b082fc8c4573`
+
+The full returned hash is recorded in the separate G-2 evidence artifact. The raw environment-variable value was never returned.
 
 ## Forward-only posture
 
-The estimated six-or-fewer missing external-caller rows across `cron_1`, `cron_5`, `cron_6`, `cron_7`, and `cron_8` during 2026-07-28 through 2026-08-04 are not backfilled in this Lane. The broker accepts the documented gap for Lane 1 closure. Any later backfill requires its own bounded authorization and pull request.
+The pre-remediation external-caller gap is not backfilled in this Lane. The broker accepts the documented gap for Lane 1 closure. Any later backfill requires its own bounded authorization and pull request.
 
-## Preview open item
+## Open items
 
-The Preview sibling currently has 13 Cron options, including two noncanonical values:
-
-- `Holiday Table Refresh`
-- `Mirror Queue Depth Check`
-
-Preview reconciliation is expressly deferred to a future small pull request. Lane 1 performs no write to the Preview sibling.
+1. Preview retains 13 Cron options, including `Holiday Table Refresh` and `Mirror Queue Depth Check`; reconciliation is deferred.
+2. `/api/automation/log` uses ordinary string comparison rather than a timing-safe comparison.
+3. `/api/automation/log` casts the JSON body to `RunRecord` without runtime schema validation.
+4. The temporary diagnostic route must be removed after Lane 1b attestation and Founder countersign.
+5. The six-day `durability_gate_open=false` geocode-audit sequence remains an operational follow-up and is not silently treated as resolved by this Lane.
 
 ## Broker signature
 
