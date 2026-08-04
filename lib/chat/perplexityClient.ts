@@ -24,6 +24,22 @@ import { isE2EActive } from '../testing/e2eRunTag';
 
 export class PerplexityError extends Error {}
 
+function logPreviewAdapterSelection(
+  adapter: 'ai-sdk' | 'rest',
+  model: string,
+): void {
+  if (process.env.VERCEL_ENV !== 'preview') return;
+
+  console.info(
+    JSON.stringify({
+      evt: 'chat.adapter_selected',
+      adapter,
+      model,
+      environment: 'preview',
+    }),
+  );
+}
+
 /** Parse + Zod-validate the model's JSON content string into a ModelResponse. */
 export function parseModelResponse(content: string): ModelResponse {
   let obj: unknown;
@@ -69,23 +85,26 @@ export async function callPerplexity(
     return mockPerplexityResponse(messages);
   }
 
+  const selectedModel = opts.model ?? PERPLEXITY_MODEL;
+
   // Dark migration seam. Default OFF in every environment: the existing REST
   // implementation remains active until CHAT_AI_SDK_ENABLED is explicitly set.
   if (chatAiSdkEnabled()) {
+    logPreviewAdapterSelection('ai-sdk', `perplexity/${selectedModel}`);
+
     return callPerplexityWithAiSdk(messages, {
       model: opts.aiSdkModel,
-      gatewayModelId: `perplexity/${opts.model ?? PERPLEXITY_MODEL}`,
+      gatewayModelId: `perplexity/${selectedModel}`,
       retries: opts.retries,
     });
   }
 
+  logPreviewAdapterSelection('rest', selectedModel);
+
   const apiKey = opts.apiKey ?? process.env.PERPLEXITY_API_KEY;
   if (!apiKey) throw new PerplexityError('PERPLEXITY_API_KEY not set');
 
-  const body = buildPerplexityRequest(
-    messages,
-    opts.model ?? PERPLEXITY_MODEL,
-  );
+  const body = buildPerplexityRequest(messages, selectedModel);
   const retries = opts.retries ?? 2;
 
   let lastErr: unknown;
