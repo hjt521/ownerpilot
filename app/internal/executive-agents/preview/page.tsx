@@ -11,15 +11,15 @@ import {
 } from '@/lib/admin/isAdmin';
 
 import {
-  LivePreviewExecutiveAgentForm,
-} from './LivePreviewExecutiveAgentForm';
+  CaoPreviewWorkbenchForm,
+} from './CaoPreviewWorkbenchForm';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata:
 Metadata = {
   title:
-    'Executive Agent Preview | OwnerPilot',
+    'CAO Preview Workbench | OwnerPilot',
   robots: {
     index: false,
     follow: false,
@@ -48,7 +48,7 @@ export default async function ExecutiveAgentPreviewPage() {
 
   return (
     <main className="min-h-screen bg-ivory px-5 py-10 text-ink sm:py-16">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
         <header className="rounded-3xl border border-rule bg-white/80 p-6 shadow-sm sm:p-9">
           <div className="flex flex-wrap items-center gap-2">
             {[
@@ -73,24 +73,28 @@ export default async function ExecutiveAgentPreviewPage() {
           </p>
 
           <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight text-brand sm:text-5xl">
-            Chief Architecture Officer Preview
+            Chief Architecture Officer Workbench
           </h1>
 
-          <p className="mt-4 max-w-3xl text-base leading-7 text-muted sm:text-lg">
-            Initiate one bounded synthetic or approved nonsensitive CAO run.
-            The server invokes one pinned Gateway model, withholds substantive
-            content until complete validation succeeds, and retains all
-            disposition and implementation authority with the human reviewer.
+          <p className="mt-4 max-w-4xl text-base leading-7 text-muted sm:text-lg">
+            Initiate one bounded architecture assignment using a server-collected,
+            immutable, allowlisted repository evidence packet. The application
+            performs one pinned Gateway request, releases only validated final
+            output, and starts no follow-on action.
           </p>
 
-          <div className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
+          <div className="mt-6 grid gap-3 text-sm sm:grid-cols-4">
             <BoundaryCard
               title="Role"
               value="Chief Architecture Officer only"
             />
             <BoundaryCard
-              title="Model slot"
-              value="Pinned primary only"
+              title="Evidence"
+              value="Approved immutable scope"
+            />
+            <BoundaryCard
+              title="Model"
+              value="Registry-pinned primary"
             />
             <BoundaryCard
               title="Execution"
@@ -100,18 +104,18 @@ export default async function ExecutiveAgentPreviewPage() {
         </header>
 
         <section className="mt-8 rounded-3xl border border-rule bg-white p-6 shadow-sm sm:p-9">
-          <LivePreviewExecutiveAgentForm />
+          <CaoPreviewWorkbenchForm />
         </section>
 
         <aside className="mt-8 rounded-2xl border border-gold/40 bg-[#fffaf0] p-5 text-sm leading-6 text-ink">
           <strong className="text-brand">
-            Input boundary:
+            Authority boundary:
           </strong>{' '}
-          Do not enter customer, tenant, legal-case, property-address,
-          payment, notice, credential, authentication-header, health,
-          financial-account, personally identifying, confidential,
-          privileged, jurisdiction, Los Angeles-rule, Production, or other
-          sensitive information.
+          This surface cannot browse arbitrary repositories, read environment
+          files, use tools, write GitHub, persist reports server-side, deploy,
+          access Production data, activate roles, change models, continue
+          automatically, or perform legal, notice, payment, attorney,
+          jurisdiction, or Los Angeles actions.
         </aside>
       </div>
     </main>
