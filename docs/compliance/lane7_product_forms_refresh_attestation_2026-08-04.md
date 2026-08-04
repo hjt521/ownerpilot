@@ -83,18 +83,62 @@ The `schedule_cron list` action truncates the `task` field at approximately 1,84
 
 - Target: Production `/api/automation/log`
 - Payload artifact: `docs/compliance/lane7_automation_log_post_lane2_completion_2026-08-04.md`
-- Executor: Founder (pending)
-- Expected route response: `{"ok":true}` with HTTP `200`
-- Notion row ID: `[FOUNDER: paste after read-only post-write verification]`
-- Response code: `[FOUNDER: paste]`
+- Executor: Founder Jack Taglyan via `scripts/lane2/post_lane2_completion.sh` (macOS zsh terminal, local machine)
+- Execution timestamp: `2026-08-04T21:36:00.000Z` (14:36 PDT)
+- Route response: `{"ok":true}` — CONFIRMED
+- Response code: `200` — CONFIRMED
+- Notion row ID: `3b260eb7-4df5-8107-8f0f-ca537e27117f` (Production data source)
 
-The shipped route does not return a Notion row ID. The Founder must obtain the row ID through the required read-only Production Notion verification after the POST succeeds.
+The shipped route does not return a Notion row ID. The row ID above was obtained through a read-only Production Notion verification performed immediately after the POST succeeded, per Lane 1 attestation posture.
+
+#### Row property verification
+
+All eight `RunRecord` fields verified against Doc F §2 contract on the returned Production row:
+
+| Property | Expected | Actual | Match |
+|---|---|---|---|
+| Run ID | `cron_5_lahd_forms_<YYYY-MM-DD>` (route auto-suffixes) | `cron_5_lahd_forms_2026-08-04` | ✅ |
+| Cron | `LAHD forms refresh` | `LAHD forms refresh` | ✅ |
+| Cron Category | `external_source_watch` | `external_source_watch` | ✅ |
+| Status | `partial` | `partial` | ✅ |
+| Run Date | UTC ISO-8601 | `2026-08-04T21:36:00.000Z` | ✅ |
+| Changes Found | `17` | `17` | ✅ |
+| Report Link | PR #339 URL | `https://github.com/hjt521/ownerpilot/pull/339` | ✅ |
+| Summary | Begins `[LANE 2 EXECUTION]` | Begins `[LANE 2 EXECUTION]`; records 4→19 pin expansion, row #8 deduplication, row #12 broker-review flag, LA/SM cosmetic classification, scheduler session, Lane 3 deferrals | ✅ |
+
+#### Cross-database integrity check
+
+Row counts verified across the three-database Notion posture (Lane 1 established):
+
+| Database | Prior | Post-POST | Delta | Expected |
+|---|---|---|---|---|
+| Narrative (`d265399a-…`) | 4 | 4 | 0 | Unchanged — no writes authorized | ✅ |
+| Preview (`46b1af89-…`) | 3 | 3 | 0 | Unchanged — no writes authorized | ✅ |
+| Production (`af32f514-…`) | 9 | 10 | +1 | +1 authorized Lane 2 completion row | ✅ |
+
+Zero unintended writes to protected databases. Row landed cleanly on the Production data source.
 
 ### Cross-check against FINAL payload
 
 - FINAL payload branch HEAD at execution time: `77a5ec0c2366e6f36a590560925f6bb20ab3984b`
 - Reconciliation session: Perplexity Computer session `7b1eb766`, timestamp 2026-08-04 13:36 PDT
 - Zero drift between FINAL §4 task text and the text applied by `schedule_cron update`: **CONFIRMED**. Update-call echo returned the full 11,848-character task text; cross-check against branch HEAD `77a5ec0c…` §4 fenced block shows byte-for-byte identity across all 19 pins, discovery deduplication clause, workflow section, notification block, and Notion mirror clause.
+
+## Lane 2 close conditions — status summary
+
+| Condition | Status |
+|---|---|
+| Source Packet ratified | ✅ 2026-08-04 13:10 PDT |
+| FINAL cron payload committed to PR #339 | ✅ HEAD `77a5ec0c…` at 13:36 PDT |
+| `schedule_cron update` on `0abb46c4` executed by Founder in owning session `28e720f4` | ✅ ~14:00 PDT; zero drift confirmed |
+| Four scheduler verification checks | ✅ All pass (see §L2-EXEC Scheduler update) |
+| Founder-executable POST script + cheatsheet | ✅ HEAD `dbf1b8c…` |
+| `/api/automation/log` POST executed | ✅ HTTP 200, `{"ok":true}` at 21:36:00 UTC (14:36 PDT) |
+| Production Notion row created and verified | ✅ Row `3b260eb7-4df5-8107-8f0f-ca537e27117f`; 8 of 8 properties match |
+| Cross-database integrity | ✅ Narrative 4, Preview 3, Production 9→10 (+1 authorized only) |
+| CI on countersign HEAD | ✅ All checks green (23 SUCCESS + 1 SKIPPED) |
+| Founder countersign | Pending signature block below |
+| Squash-merge | Pending countersign |
 
 ## Founder / Broker countersign
 
