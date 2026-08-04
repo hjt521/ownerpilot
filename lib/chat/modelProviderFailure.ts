@@ -198,8 +198,10 @@ export function classifyModelProviderFailure(
     hasName(chain, new Set([
       'NoObjectGeneratedError',
       'AI_NoObjectGeneratedError',
+      'NoOutputGeneratedError',
+      'AI_NoOutputGeneratedError',
     ])) ||
-    /model response failed schema|structured output|schema validation/i.test(
+    /model response failed schema|structured output|schema validation|no output generated/i.test(
       joinedMessage,
     )
   ) {
