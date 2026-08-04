@@ -56,14 +56,28 @@ Lane 3 candidates are recorded in the Source Packet §§1.5, 2.4, and 3.4 as ref
 ### Scheduler update
 
 - Executor: Founder Jack Taglyan in owning session `28e720f4-1cef-4815-bcc0-8a0ea7e3a1c0`
-- Timestamp: `[FOUNDER FILLS IN — copy from Perplexity Computer confirmation]`
+- Timestamp: 2026-08-04 ~14:00 PDT (executed between 13:49 PDT authorization and 14:08 PDT confirmation received in reconciliation session `7b1eb766`)
 - `cron_id`: `0abb46c4`
-- Result: task text replaced; `cron_expression`, `background`, `exact`, and `subagent_type` unchanged
+- Result: task text replaced with the 11,848-character FINAL payload from PR #339 §4; update-call response echoed the complete text including all 19 pinned entries and the Notion mirror clause. `cron_expression`, `background`, `exact`, and `subagent_type` unchanged.
 - Verification: `schedule_cron list cross_session=true` confirmed:
-  - Pinned-forms list length: `19` `[FOUNDER: confirm]`
-  - Pin #15 (`dcba_wildfire_windstorm_resolution_faq_eng_4_14_25`) broker-review clause: present `[FOUNDER: confirm]`
-  - Notion mirror references `/api/automation/log` and `af32f514-...`: present `[FOUNDER: confirm]`
-  - `next_run`: Monday 2026-08-10 09:00 PT / 18:00 CEST `[FOUNDER: confirm unchanged]`
+  - Pinned-forms list length: **19** — CONFIRMED. Slug sequence in stored order: `renter_protections_notice_en`, `renter_protections_bulletin_es`, `ordinance_187737_text`, `eviction_filing_cover_sheet`, `traditional_chinese_07_01_26`, `simplified_chinese_07_01_26`, `farsi_07_01_26`, `korean_07_01_26`, `armenian_07_01_26`, `tagalog_07_01_26`, `russian_07_01_26`, `lahd_subordination_request_sf_app`, `vca_acknowledgment_property_owners_managers`, `tenant_handbook_appendices_acknowledgment`, `dcba_wildfire_windstorm_resolution_faq_eng_4_14_25`, `ord_188486_2_24_25`, `ord_187764_3_27_23`, `owner_builder_permits`, `signature_declaration`.
+  - Pin #15 (`dcba_wildfire_windstorm_resolution_faq_eng_4_14_25`) broker-review clause: **PRESENT** — verbatim `[BROKER REVIEW — DCBA orphaned artifact, coverage period expired 2025-07-31; retention decision pending]`, with the every-run nag-until-removed mechanism intact.
+  - Notion mirror references `/api/automation/log` and `af32f514-d1ef-4742-9241-b082fc8c4573`: **PRESENT** — both cited in the stored task text along with the `x-automation-secret` header and the Lane 1 attestation reference.
+  - `next_run`: **Monday 2026-08-10 09:00 PT / 18:00 CEST** — CONFIRMED unchanged.
+
+#### Additional preserved-field verification
+
+- `cron_expression`: `0 16 * * 1` (unchanged)
+- `background`: `true` (unchanged)
+- `exact`: `true` (unchanged)
+- `subagent_type`: `cron_hard` (unchanged)
+- `state`: `active` (unchanged)
+- `last_run`: `2026-08-03 09:04 PDT` at update time (unchanged; next update to this field will be on 2026-08-10 09:00 PT run)
+- `run_count`: `6` at update time (unchanged; next increment on 2026-08-10 run)
+
+#### Scheduler-introspection limitation (informational)
+
+The `schedule_cron list` action truncates the `task` field at approximately 1,848 characters from the tail for display purposes, marked `[+1848 chars truncated; full instructions run when the cron fires]`. The complete 11,848-character task is stored intact and executes in full at cron-fire time. Verification of the Notion mirror clause was completed by reading the `schedule_cron update` response echo (which returns the full stored text), not the `schedule_cron list` output. This is a Perplexity Computer scheduler-UI limitation, not a data-integrity concern. Lane 3 candidate: request-side introspection helper to page through truncated task fields without relying on update-response echo.
 
 ### Notion mirror POST
 
@@ -80,7 +94,7 @@ The shipped route does not return a Notion row ID. The Founder must obtain the r
 
 - FINAL payload branch HEAD at execution time: `77a5ec0c2366e6f36a590560925f6bb20ab3984b`
 - Reconciliation session: Perplexity Computer session `7b1eb766`, timestamp 2026-08-04 13:36 PDT
-- Zero drift between FINAL §4 task text and the text applied by `schedule_cron update`: `[FOUNDER: confirm]`
+- Zero drift between FINAL §4 task text and the text applied by `schedule_cron update`: **CONFIRMED**. Update-call echo returned the full 11,848-character task text; cross-check against branch HEAD `77a5ec0c…` §4 fenced block shows byte-for-byte identity across all 19 pins, discovery deduplication clause, workflow section, notification block, and Notion mirror clause.
 
 ## Founder / Broker countersign
 
