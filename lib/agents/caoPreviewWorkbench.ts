@@ -286,12 +286,8 @@ export function buildCaoPreviewEvidenceBundle(
   );
   const records = packet.files.map(file => [
     `FILE: ${file.path}`,
-    `REF: ${file.immutableReference}`,
-    `CLASS: ${file.classification}`,
-    `AVAIL: ${file.availability}`,
-    `HASH: ${file.sha256}`,
-    `BYTES: ${file.originalBytes}/${file.includedBytes}`,
-    `TRUNCATED: ${String(file.truncated)}`,
+    `HASH12: ${file.sha256?.slice(0, 12) ?? 'unavailable'}`,
+    `META: ${file.availability}|${file.originalBytes}/${file.includedBytes}|${file.truncated ? 'truncated' : 'complete'}`,
   ].join('\n'));
   const fixed = `${header}${records.join('\n---\n')}`;
   const contentSeparators = available.length > 0
