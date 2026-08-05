@@ -1,9 +1,9 @@
 # OwnerPilot CAO Preview Workbench — Founder Acceptance Packet
 
-**Status:** NONCANONICAL — ADVISORY — DRAFT-ONLY — HUMAN REVIEW REQUIRED  
-**Implementation authority:** None until PR review and merge authorization  
-**Production authority:** None  
-**Date:** 2026-08-04  
+**Status:** NONCANONICAL — ADVISORY — DRAFT-ONLY — HUMAN REVIEW REQUIRED
+**Implementation authority:** None until PR review and merge authorization
+**Production authority:** None
+**Date:** 2026-08-04
 **PR:** #340 — `feat(agents): complete restricted CAO Preview workbench`
 
 ## 1. Objective
@@ -169,9 +169,9 @@ Authorized assignment:
 
 Approved evidence scope: `enterprise_workforce_recovery` at immutable PR #338 commit `b4d183573352a3fed2c072dab9fffbfaf3c21eab`.
 
-**Founder-authenticated live execution:** PENDING.  
-**Validated report export:** PENDING.  
-**Observed provider latency and usage:** PENDING.  
+**Founder-authenticated live execution:** PENDING.
+**Validated report export:** PENDING.
+**Observed provider latency and usage:** PENDING.
 **Founder disposition:** PENDING.
 
 No acceptance result may be inferred from deployment readiness or deterministic tests alone.
