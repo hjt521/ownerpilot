@@ -89,7 +89,6 @@ function exactStringSetJsonSchema(
     type: 'array' as const,
     minItems: values.length,
     maxItems: values.length,
-    uniqueItems: true,
     items: {
       type: 'string' as const,
       enum: [...values],
