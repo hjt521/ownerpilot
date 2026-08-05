@@ -279,15 +279,6 @@ function inspectActualLimits(
     );
   }
 
-  if (
-    run.usage.latencyMs >
-    limits.targetP95LatencyMs
-  ) {
-    findings.push(
-      'actual_latency_target_exceeded',
-    );
-  }
-
   return {
     findings,
     actualDailyCostMicrosAfterRun,
