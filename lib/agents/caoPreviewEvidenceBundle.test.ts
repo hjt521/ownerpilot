@@ -13,21 +13,22 @@ import type {
 const sourceCommit =
   'b4d183573352a3fed2c072dab9fffbfaf3c21eab';
 
-const files = Array.from({ length: 11 }, (_, index) => ({
-  repository: 'hjt521/ownerpilot',
-  sourceCommit,
-  path: `docs/agents/evidence-${index + 1}.md`,
-  immutableReference:
-    `github:hjt521/ownerpilot@${sourceCommit}:docs/agents/evidence-${index + 1}.md`,
-  classification:
-    'approved_non_sensitive_repository_derived' as const,
-  availability: 'available' as const,
-  sha256: String(index + 1).repeat(64).slice(0, 64),
-  originalBytes: 2_000,
-  includedBytes: 2_000,
-  truncated: false,
-  content: `evidence-file-${index + 1}\n${'x'.repeat(1_980)}`,
-}));
+const files: CaoRepositoryEvidencePacket['files'] =
+  Array.from({ length: 11 }, (_, index) => ({
+    repository: 'hjt521/ownerpilot' as const,
+    sourceCommit,
+    path: `docs/agents/evidence-${index + 1}.md`,
+    immutableReference:
+      `github:hjt521/ownerpilot@${sourceCommit}:docs/agents/evidence-${index + 1}.md`,
+    classification:
+      'approved_non_sensitive_repository_derived' as const,
+    availability: 'available' as const,
+    sha256: String(index + 1).repeat(64).slice(0, 64),
+    originalBytes: 2_000,
+    includedBytes: 2_000,
+    truncated: false,
+    content: `evidence-file-${index + 1}\n${'x'.repeat(1_980)}`,
+  }));
 
 const packet: CaoRepositoryEvidencePacket = {
   version: 'cao-repository-evidence-v1',
