@@ -271,57 +271,57 @@ function architectureInstructions(
 export function buildCaoPreviewEvidenceBundle(
   packet: CaoRepositoryEvidencePacket,
 ): string {
-  const manifest = packet.files.map(file => ({
-    path: file.path,
-    immutableReference: file.immutableReference,
-    classification: file.classification,
-    availability: file.availability,
-    sha256: file.sha256,
-    originalBytes: file.originalBytes,
-    includedBytes: file.includedBytes,
-    truncated: file.truncated,
-  }));
-
-  const compactManifest = JSON.stringify({
-    repository: packet.repository,
-    sourceCommit: packet.sourceCommit,
-    scopeId: packet.scopeId,
-    truncated: packet.truncated,
-    unavailableEvidence: packet.unavailableEvidence,
-    files: manifest,
-  });
+  const header = [
+    'EVIDENCE MANIFEST',
+    `REPOSITORY: ${packet.repository}`,
+    `SOURCE COMMIT: ${packet.sourceCommit}`,
+    `SCOPE: ${packet.scopeId}`,
+    `TRUNCATED: ${String(packet.truncated)}`,
+    `UNAVAILABLE: ${String(packet.unavailableEvidence)}`,
+    '',
+  ].join('\n');
 
   const available = packet.files.filter(
     file => file.content !== null,
   );
-  const fixed = `EVIDENCE MANIFEST\n${compactManifest}\n\n`;
-  const separators = Math.max(0, available.length - 1) * 7;
+  const records = packet.files.map(file => [
+    `FILE: ${file.path}`,
+    `REF: ${file.immutableReference}`,
+    `CLASS: ${file.classification}`,
+    `AVAIL: ${file.availability}`,
+    `HASH: ${file.sha256}`,
+    `BYTES: ${file.originalBytes}/${file.includedBytes}`,
+    `TRUNCATED: ${String(file.truncated)}`,
+  ].join('\n'));
+  const fixed = `${header}${records.join('\n---\n')}`;
+  const contentSeparators = available.length > 0
+    ? available.length * 7
+    : 0;
   const availableCharacters = Math.max(
     0,
     CAO_PREVIEW_EVIDENCE_BUNDLE_MAXIMUM -
       fixed.length -
-      separators,
+      contentSeparators,
   );
   const excerptMaximum = available.length > 0
     ? Math.floor(availableCharacters / available.length)
     : 0;
+  const excerpts = available.map(file =>
+    file.content?.slice(0, excerptMaximum) ?? '',
+  );
+  const content = excerpts.length > 0
+    ? `\n---\n${excerpts.join('\n---\n')}`
+    : '';
+  const bundle = `${fixed}${content}`;
 
-  const excerpts = available.map(file => {
-    const prefix = [
-      `FILE: ${file.path}`,
-      `HASH: ${file.sha256}`,
-      `TRUNCATED: ${String(file.truncated)}`,
-      '',
-    ].join('\n');
-    const contentMaximum = Math.max(
-      0,
-      excerptMaximum - prefix.length,
+  if (
+    fixed.length > CAO_PREVIEW_EVIDENCE_BUNDLE_MAXIMUM ||
+    fixed.length > CAO_PREVIEW_EVIDENCE_ITEM_MAXIMUM
+  ) {
+    throw new Error(
+      'CAO preview evidence metadata exceeds the bounded item limit',
     );
-
-    return `${prefix}${file.content?.slice(0, contentMaximum) ?? ''}`;
-  });
-
-  const bundle = `${fixed}${excerpts.join('\n---\n')}`;
+  }
 
   return bundle.slice(
     0,
