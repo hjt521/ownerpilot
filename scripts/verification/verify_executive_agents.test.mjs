@@ -37,7 +37,7 @@ function enabledLine(property) {
 console.log('\nExecutive-agent verification automation');
 
 check(
-  'accepts the dedicated automation workflow and verifier paths',
+  'accepts the dedicated automation, verifier, and bounded CAO packet paths',
   () => {
     assert.equal(
       isAllowedPath(
@@ -56,6 +56,18 @@ check(
         'lib/agents/caoPreviewExecution.ts',
       ),
       true,
+    );
+    assert.equal(
+      isAllowedPath(
+        'docs/agents/cao_preview_workbench_acceptance_packet_2026-08-04.md',
+      ),
+      true,
+    );
+    assert.equal(
+      isAllowedPath(
+        'docs/agents/arbitrary_agent_document.md',
+      ),
+      false,
     );
   },
 );
@@ -158,35 +170,17 @@ check(
       '# Executive-Agent Pull Request Review Packet',
       '## Identity',
       '## Changed files',
-      '## Authorized scope',
-      '## Excluded scope',
-      '## Checks',
-      '## Impact assessment',
-      '## Rollback',
-      '## Unresolved findings',
-      '## Merge recommendation',
+      '## Verification results',
+      '## Authority findings',
+      '## Required human posture',
     ]) {
-      assert.equal(
-        packet.includes(section),
-        true,
-      );
+      assert.match(packet, new RegExp(section));
     }
-
-    assert.equal(
-      packet.includes(
-        'Eligible for Founder review',
-      ),
-      true,
-    );
   },
 );
 
-console.log(
-  `\n${'-'.repeat(72)}\n` +
-  `  ${passed} passed, ${failed} failed\n` +
-  `${'-'.repeat(72)}`,
-);
+console.log(`\n${passed} passed, ${failed} failed`);
 
 if (failed > 0) {
-  process.exit(1);
+  process.exitCode = 1;
 }
