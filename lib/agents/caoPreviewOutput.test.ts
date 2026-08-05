@@ -19,7 +19,8 @@ function validOutput() {
         path: 'docs/agents/ENTERPRISE_AI_WORKFORCE_INDEX.md',
         sourceCommit: commit,
         sha256: hash,
-        immutableReference: `https://github.com/hjt521/ownerpilot/blob/${commit}/docs/agents/ENTERPRISE_AI_WORKFORCE_INDEX.md`,
+        immutableReference:
+          `github:hjt521/ownerpilot@${commit}:docs/agents/ENTERPRISE_AI_WORKFORCE_INDEX.md`,
       },
     ],
     sourceCommit: commit,
@@ -45,7 +46,8 @@ function validOutput() {
     tradeoffs: ['Reliability versus implementation size.'],
     recommendedArchitecture: 'Use the server bundle.',
     recommendationConfidence: 'moderate',
-    confidenceRationale: 'Repository evidence is sufficient but Preview acceptance remains pending.',
+    confidenceRationale:
+      'Repository evidence is sufficient but Preview acceptance remains pending.',
     securityAndAuthorityBoundaries: ['No repository writes.'],
     dependencies: ['Existing CAO Preview route.'],
     fileLevelImplementationMap: [
@@ -82,10 +84,17 @@ function validOutput() {
 }
 
 {
-  const input = { ...validOutput(), autonomousContinuationProhibited: false };
+  const input = {
+    ...validOutput(),
+    autonomousContinuationProhibited: false,
+  };
   const result = validateCaoWorkbenchOutput(input);
   assert.equal(result.ok, false);
-  assert.ok(result.issues.includes('autonomousContinuationProhibited:must_be_true'));
+  assert.ok(
+    result.issues.includes(
+      'autonomousContinuationProhibited:must_be_true',
+    ),
+  );
 }
 
 {
@@ -100,11 +109,20 @@ function validOutput() {
   };
   const result = validateCaoWorkbenchOutput(input);
   assert.equal(result.ok, false);
-  assert.ok(result.issues.includes('evidenceReviewed:source_commit_mismatch'));
+  assert.ok(
+    result.issues.includes(
+      'evidenceReviewed:source_commit_mismatch',
+    ),
+  );
 }
 
 {
-  const input = { ...validOutput(), architectureOptions: [validOutput().architectureOptions[0]] };
+  const input = {
+    ...validOutput(),
+    architectureOptions: [
+      validOutput().architectureOptions[0],
+    ],
+  };
   const result = validateCaoWorkbenchOutput(input);
   assert.equal(result.ok, false);
   assert.ok(result.issues.includes('architectureOptions:invalid'));
