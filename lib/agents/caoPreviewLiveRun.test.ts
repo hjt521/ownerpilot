@@ -24,6 +24,8 @@ import {
 
 import {
   executeCaoPreviewLiveRun,
+  type CaoPreviewOutputRejectionClass,
+  type CaoPreviewOutputRejectionDiagnostic,
 } from './caoPreviewLiveRun';
 
 let passed = 0;
@@ -156,8 +158,9 @@ function report(
       'Synthetic noncanonical advisory draft.',
   };
 
-  const valid = mode === 'valid' ||
-    mode === 'limit';
+  const valid =
+    mode !== 'schema_failure' &&
+    mode !== 'timeout';
 
   return {
     executionVersion:
@@ -481,6 +484,398 @@ async function main(): Promise<void> {
           ok: false,
           error: 'limit_exceeded',
         },
+      );
+    },
+  );
+
+
+  await check(
+    'classifies each bounded rejection without exposing it publicly',
+    async () => {
+      interface MutableReport {
+        localExecution: {
+          modelRun: {
+            outcome: string;
+            schemaValid: boolean;
+            boundaryValid: boolean;
+            dissentPreserved: boolean;
+            noSilentSubstitution: boolean;
+            noAutomaticFallback: boolean;
+          };
+          finalAudit: {
+            humanDisposition: string;
+          };
+          actualLimitFindings: string[];
+          draftForHumanReview:
+            | null
+            | {
+                evidenceReferences: string[];
+                draftArtifact: string;
+              };
+          toolExecutionPerformed: boolean;
+          persistencePerformed: boolean;
+          fallbackPerformed: boolean;
+          substitutionPerformed: boolean;
+          productionEligible: boolean;
+        };
+        requestedTools: unknown[];
+        effectiveTools: unknown[];
+        toolCalls: unknown[];
+        automaticApproval: boolean;
+        automaticDispatch: boolean;
+        automaticContinuation: boolean;
+        fallbackPerformed: boolean;
+        substitutionPerformed: boolean;
+        persistencePerformed: boolean;
+        productionEligible: boolean;
+      }
+
+      const cases: readonly {
+        name: string;
+        rejectionClass:
+          CaoPreviewOutputRejectionClass;
+        expectedError:
+          'output_rejected' |
+          'limit_exceeded';
+        mutate:
+          (candidate: MutableReport) => void;
+      }[] = [
+        {
+          name: 'draft missing',
+          rejectionClass: 'draft_missing',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .draftForHumanReview = null;
+          },
+        },
+        {
+          name: 'run not completed',
+          rejectionClass:
+            'run_not_completed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.outcome =
+              'refused_as_required';
+          },
+        },
+        {
+          name: 'schema invalid',
+          rejectionClass:
+            'schema_invalid',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.schemaValid =
+              false;
+          },
+        },
+        {
+          name: 'boundary invalid',
+          rejectionClass:
+            'boundary_invalid',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.boundaryValid =
+              false;
+          },
+        },
+        {
+          name: 'dissent missing',
+          rejectionClass:
+            'dissent_not_preserved',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.dissentPreserved =
+              false;
+          },
+        },
+        {
+          name: 'silent substitution',
+          rejectionClass:
+            'silent_substitution_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.noSilentSubstitution =
+              false;
+          },
+        },
+        {
+          name: 'automatic fallback',
+          rejectionClass:
+            'automatic_fallback_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.noAutomaticFallback =
+              false;
+          },
+        },
+        {
+          name: 'human disposition',
+          rejectionClass:
+            'human_disposition_invalid',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .finalAudit.humanDisposition =
+              'accepted';
+          },
+        },
+        {
+          name: 'limit finding',
+          rejectionClass:
+            'limit_finding_present',
+          expectedError: 'limit_exceeded',
+          mutate: candidate => {
+            candidate.localExecution
+              .actualLimitFindings = [
+                'synthetic_limit',
+              ];
+          },
+        },
+        {
+          name: 'tool execution',
+          rejectionClass:
+            'tool_execution_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .toolExecutionPerformed =
+              true;
+          },
+        },
+        {
+          name: 'persistence',
+          rejectionClass:
+            'persistence_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .persistencePerformed =
+              true;
+          },
+        },
+        {
+          name: 'fallback',
+          rejectionClass:
+            'fallback_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .fallbackPerformed =
+              true;
+          },
+        },
+        {
+          name: 'substitution',
+          rejectionClass:
+            'substitution_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .substitutionPerformed =
+              true;
+          },
+        },
+        {
+          name: 'Production eligibility',
+          rejectionClass:
+            'production_eligibility_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .productionEligible =
+              true;
+          },
+        },
+        {
+          name: 'automatic approval',
+          rejectionClass:
+            'report_authority_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.automaticApproval =
+              true;
+          },
+        },
+        {
+          name: 'automatic dispatch',
+          rejectionClass:
+            'report_authority_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.automaticDispatch =
+              true;
+          },
+        },
+        {
+          name: 'automatic continuation',
+          rejectionClass:
+            'report_authority_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.automaticContinuation =
+              true;
+          },
+        },
+        {
+          name: 'report tool request',
+          rejectionClass:
+            'report_authority_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.requestedTools = [
+              'synthetic-tool',
+            ];
+          },
+        },
+        {
+          name: 'evidence reference missing',
+          rejectionClass:
+            'evidence_reference_missing',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            const draft =
+              candidate.localExecution
+                .draftForHumanReview;
+
+            assert.notEqual(draft, null);
+
+            if (draft !== null) {
+              draft.evidenceReferences =
+                [];
+            }
+          },
+        },
+      ];
+
+      for (const item of cases) {
+        const candidate =
+          JSON.parse(
+            JSON.stringify(report()),
+          ) as MutableReport;
+
+        item.mutate(candidate);
+
+        const diagnostics:
+          CaoPreviewOutputRejectionDiagnostic[] =
+            [];
+
+        const response =
+          await executeCaoPreviewLiveRun(
+            {
+              ...dependencies(),
+              createGatewayAdapter: () =>
+                adapter(),
+              executePreview: async () =>
+                candidate as unknown as
+                  CaoPreviewExecutionReport,
+              outputRejectionDiagnosticSink:
+                diagnostic => {
+                  diagnostics.push(
+                    diagnostic,
+                  );
+                },
+            },
+            {
+              contentType:
+                'application/json',
+              rawBody: validBody,
+            },
+          );
+
+        assert.deepEqual(
+          response.body,
+          {
+            ok: false,
+            error: item.expectedError,
+          },
+          item.name,
+        );
+        assert.equal(
+          'rejectionClass' in response.body,
+          false,
+          item.name,
+        );
+        assert.equal(
+          diagnostics.length,
+          1,
+          item.name,
+        );
+        assert.equal(
+          diagnostics[0]
+            ?.rejectionClass,
+          item.rejectionClass,
+          item.name,
+        );
+
+        const serialized =
+          JSON.stringify(
+            diagnostics[0],
+          );
+
+        assert.equal(
+          serialized.includes(
+            'Synthetic fact.',
+          ),
+          false,
+          item.name,
+        );
+        assert.equal(
+          serialized.includes(
+            'Synthetic noncanonical advisory draft.',
+          ),
+          false,
+          item.name,
+        );
+      }
+    },
+  );
+
+  await check(
+    'does not emit output-rejection diagnostics for provider failures',
+    async () => {
+      const diagnostics:
+        CaoPreviewOutputRejectionDiagnostic[] =
+          [];
+
+      const response =
+        await executeCaoPreviewLiveRun(
+          {
+            ...dependencies(),
+            createGatewayAdapter: () =>
+              adapter(),
+            executePreview: async () =>
+              report('timeout'),
+            outputRejectionDiagnosticSink:
+              diagnostic => {
+                diagnostics.push(
+                  diagnostic,
+                );
+              },
+          },
+          {
+            contentType:
+              'application/json',
+            rawBody: validBody,
+          },
+        );
+
+      assert.deepEqual(
+        response.body,
+        {
+          ok: false,
+          error: 'provider_timeout',
+        },
+      );
+      assert.equal(
+        diagnostics.length,
+        0,
       );
     },
   );

@@ -95,6 +95,41 @@ export const CAO_PREVIEW_LIVE_RUN_ERROR_CODES = [
 export type CaoPreviewLiveRunErrorCode =
   (typeof CAO_PREVIEW_LIVE_RUN_ERROR_CODES)[number];
 
+export type CaoPreviewOutputRejectionClass =
+  | 'draft_missing'
+  | 'run_not_completed'
+  | 'schema_invalid'
+  | 'boundary_invalid'
+  | 'dissent_not_preserved'
+  | 'silent_substitution_invariant_failed'
+  | 'automatic_fallback_invariant_failed'
+  | 'human_disposition_invalid'
+  | 'limit_finding_present'
+  | 'tool_execution_detected'
+  | 'persistence_detected'
+  | 'fallback_detected'
+  | 'substitution_detected'
+  | 'production_eligibility_detected'
+  | 'report_authority_invariant_failed'
+  | 'evidence_reference_missing';
+
+export interface CaoPreviewOutputRejectionDiagnostic {
+  diagnosticVersion:
+    'cao-preview-output-rejection-diagnostic-v1';
+  event: 'cao_preview.output_rejected';
+  rejectionClass:
+    CaoPreviewOutputRejectionClass;
+  runId: string;
+  roleId:
+    'executive.chief_architecture_officer';
+  taskClass:
+    | 'architecture_analysis'
+    | 'evaluation_only';
+  runOutcome: string;
+  requiredEvidenceReferenceCount: number;
+  availableEvidenceReferenceCount: number;
+}
+
 export interface CaoPreviewLiveRunDependencies {
   deploymentEnvironment: unknown;
   previewEnabledValue: unknown;
@@ -110,6 +145,10 @@ export interface CaoPreviewLiveRunDependencies {
     typeof createCaoPreviewGatewayAdapter;
   executePreview?:
     typeof executeCaoPreview;
+  outputRejectionDiagnosticSink?: (
+    diagnostic:
+      CaoPreviewOutputRejectionDiagnostic,
+  ) => void;
 }
 
 export interface CaoPreviewLiveRunInvocation {
@@ -481,52 +520,221 @@ function adapterMatches(
   );
 }
 
+type ValidatedDraftResult =
+  | {
+      ok: true;
+      draft: ExecutiveAgentDraftOutput;
+    }
+  | {
+      ok: false;
+      rejectionClass:
+        CaoPreviewOutputRejectionClass;
+    };
+
+function rejectedDraft(
+  rejectionClass:
+    CaoPreviewOutputRejectionClass,
+): ValidatedDraftResult {
+  return {
+    ok: false,
+    rejectionClass,
+  };
+}
+
 function validatedDraft(
   report: CaoPreviewExecutionReport,
   evidenceReferences: readonly string[],
-): ExecutiveAgentDraftOutput | null {
+): ValidatedDraftResult {
   const local = report.localExecution;
   const run = local.modelRun;
   const draft = local.draftForHumanReview;
 
+  if (local.actualLimitFindings.length > 0) {
+    return rejectedDraft(
+      'limit_finding_present',
+    );
+  }
+
+  if (run.schemaValid !== true) {
+    return rejectedDraft(
+      'schema_invalid',
+    );
+  }
+
+  if (run.boundaryValid !== true) {
+    return rejectedDraft(
+      'boundary_invalid',
+    );
+  }
+
+  if (run.dissentPreserved !== true) {
+    return rejectedDraft(
+      'dissent_not_preserved',
+    );
+  }
+
+  if (run.noSilentSubstitution !== true) {
+    return rejectedDraft(
+      'silent_substitution_invariant_failed',
+    );
+  }
+
+  if (run.noAutomaticFallback !== true) {
+    return rejectedDraft(
+      'automatic_fallback_invariant_failed',
+    );
+  }
+
+  if (run.outcome !== 'completed') {
+    return rejectedDraft(
+      'run_not_completed',
+    );
+  }
+
   if (
-    draft === null ||
-    run.outcome !== 'completed' ||
-    run.schemaValid !== true ||
-    run.boundaryValid !== true ||
-    run.dissentPreserved !== true ||
-    run.noSilentSubstitution !== true ||
-    run.noAutomaticFallback !== true ||
     local.finalAudit.humanDisposition !==
-      'pending' ||
-    local.actualLimitFindings.length > 0 ||
-    local.toolExecutionPerformed !== false ||
-    local.persistencePerformed !== false ||
-    local.fallbackPerformed !== false ||
-    local.substitutionPerformed !== false ||
-    local.productionEligible !== false ||
+      'pending'
+  ) {
+    return rejectedDraft(
+      'human_disposition_invalid',
+    );
+  }
+
+  if (
+    local.toolExecutionPerformed !== false
+  ) {
+    return rejectedDraft(
+      'tool_execution_detected',
+    );
+  }
+
+  if (
+    local.persistencePerformed !== false
+  ) {
+    return rejectedDraft(
+      'persistence_detected',
+    );
+  }
+
+  if (local.fallbackPerformed !== false) {
+    return rejectedDraft(
+      'fallback_detected',
+    );
+  }
+
+  if (
+    local.substitutionPerformed !== false
+  ) {
+    return rejectedDraft(
+      'substitution_detected',
+    );
+  }
+
+  if (
+    local.productionEligible !== false
+  ) {
+    return rejectedDraft(
+      'production_eligibility_detected',
+    );
+  }
+
+  if (
     report.requestedTools.length !== 0 ||
     report.effectiveTools.length !== 0 ||
     report.toolCalls.length !== 0 ||
     report.automaticApproval !== false ||
     report.automaticDispatch !== false ||
-    report.automaticContinuation !== false ||
-    report.fallbackPerformed !== false ||
-    report.substitutionPerformed !== false ||
-    report.persistencePerformed !== false ||
+    report.automaticContinuation !== false
+  ) {
+    return rejectedDraft(
+      'report_authority_invariant_failed',
+    );
+  }
+
+  if (report.fallbackPerformed !== false) {
+    return rejectedDraft(
+      'fallback_detected',
+    );
+  }
+
+  if (
+    report.substitutionPerformed !== false
+  ) {
+    return rejectedDraft(
+      'substitution_detected',
+    );
+  }
+
+  if (
+    report.persistencePerformed !== false
+  ) {
+    return rejectedDraft(
+      'persistence_detected',
+    );
+  }
+
+  if (
     report.productionEligible !== false
   ) {
-    return null;
+    return rejectedDraft(
+      'production_eligibility_detected',
+    );
+  }
+
+  if (draft === null) {
+    return rejectedDraft(
+      'draft_missing',
+    );
   }
 
   const available =
     new Set(draft.evidenceReferences);
 
-  return evidenceReferences.every(
-    reference => available.has(reference),
-  )
-    ? draft
-    : null;
+  if (
+    !evidenceReferences.every(
+      reference => available.has(reference),
+    )
+  ) {
+    return rejectedDraft(
+      'evidence_reference_missing',
+    );
+  }
+
+  return {
+    ok: true,
+    draft,
+  };
+}
+
+function defaultOutputRejectionDiagnosticSink(
+  diagnostic:
+    CaoPreviewOutputRejectionDiagnostic,
+): void {
+  console.info(
+    JSON.stringify(diagnostic),
+  );
+}
+
+function emitOutputRejectionDiagnostic(
+  dependencies:
+    CaoPreviewLiveRunDependencies,
+  diagnostic:
+    CaoPreviewOutputRejectionDiagnostic,
+): void {
+  try {
+    (
+      dependencies
+        .outputRejectionDiagnosticSink ??
+      defaultOutputRejectionDiagnosticSink
+    )(diagnostic);
+  } catch {
+    console.warn(
+      JSON.stringify({
+        event:
+          'cao_preview.output_rejection_diagnostic_failed',
+      }),
+    );
+  }
 }
 
 function executionFailure(
@@ -772,15 +980,57 @@ export async function executeCaoPreviewLiveRun(
     request.evidence.map(
       item => item.reference,
     );
-  const draft =
+  const validation =
     validatedDraft(
       report,
       evidenceReferences,
     );
 
-  if (draft === null) {
-    return executionFailure(report);
+  if (!validation.ok) {
+    const failure =
+      executionFailure(report);
+
+    if (
+      !failure.body.ok &&
+      (
+        failure.body.error ===
+          'output_rejected' ||
+        failure.body.error ===
+          'limit_exceeded'
+      )
+    ) {
+      emitOutputRejectionDiagnostic(
+        dependencies,
+        {
+          diagnosticVersion:
+            'cao-preview-output-rejection-diagnostic-v1',
+          event:
+            'cao_preview.output_rejected',
+          rejectionClass:
+            validation.rejectionClass,
+          runId: request.runId,
+          roleId:
+            'executive.chief_architecture_officer',
+          taskClass:
+            request.taskClass,
+          runOutcome:
+            report.localExecution
+              .modelRun.outcome,
+          requiredEvidenceReferenceCount:
+            evidenceReferences.length,
+          availableEvidenceReferenceCount:
+            report.localExecution
+              .draftForHumanReview
+              ?.evidenceReferences
+              .length ?? 0,
+        },
+      );
+    }
+
+    return failure;
   }
+
+  const draft = validation.draft;
 
   return result(
     200,
