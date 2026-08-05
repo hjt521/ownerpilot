@@ -149,9 +149,11 @@ const REQUIRED_OUTPUT_SECTIONS = [
 function isRecord(
   value: unknown,
 ): value is Record<string, unknown> {
-  return typeof value === 'object' &&
+  return (
+    typeof value === 'object' &&
     value !== null &&
-    !Array.isArray(value);
+    !Array.isArray(value)
+  );
 }
 
 function exactKeys(
@@ -160,25 +162,33 @@ function exactKeys(
   const actual = Object.keys(value).sort();
   const expected = [...REQUEST_KEYS].sort();
 
-  return actual.length === expected.length &&
-    actual.every((key, index) => key === expected[index]);
+  return (
+    actual.length === expected.length &&
+    actual.every(
+      (key, index) => key === expected[index],
+    )
+  );
 }
 
 function boundedString(
   value: unknown,
   maximum: number,
 ): value is string {
-  return typeof value === 'string' &&
+  return (
+    typeof value === 'string' &&
     value.trim().length > 0 &&
-    value.length <= maximum;
+    value.length <= maximum
+  );
 }
 
 function boundedStringList(
   value: unknown,
 ): value is readonly string[] {
-  return Array.isArray(value) &&
+  return (
+    Array.isArray(value) &&
     value.length <= 20 &&
-    value.every(item => boundedString(item, 1_000));
+    value.every(item => boundedString(item, 1_000))
+  );
 }
 
 function parseRequest(
@@ -294,8 +304,14 @@ function evidenceBundle(
   const excerpts: string[] = [];
 
   for (const item of available) {
-    if (remaining <= 0) break;
-    const excerpt = item.slice(0, Math.min(3_200, remaining));
+    if (remaining <= 0) {
+      break;
+    }
+
+    const excerpt = item.slice(
+      0,
+      Math.min(3_200, remaining),
+    );
     excerpts.push(excerpt);
     remaining -= excerpt.length;
   }
@@ -303,12 +319,32 @@ function evidenceBundle(
   return `${fixed}${excerpts.join('\n\n---\n\n')}`;
 }
 
+function withoutContent(
+  file: CaoRepositoryEvidencePacket['files'][number],
+): Omit<
+  CaoRepositoryEvidencePacket['files'][number],
+  'content'
+> {
+  return {
+    repository: file.repository,
+    sourceCommit: file.sourceCommit,
+    path: file.path,
+    immutableReference: file.immutableReference,
+    classification: file.classification,
+    availability: file.availability,
+    sha256: file.sha256,
+    originalBytes: file.originalBytes,
+    includedBytes: file.includedBytes,
+    truncated: file.truncated,
+  };
+}
+
 function publicEvidencePacket(
   packet: CaoRepositoryEvidencePacket,
 ): CaoPreviewWorkbenchSuccessBody['evidencePacket'] {
   return {
     ...packet,
-    files: packet.files.map(({ content: _content, ...file }) => file),
+    files: packet.files.map(withoutContent),
   };
 }
 
@@ -389,26 +425,24 @@ export async function executeCaoPreviewWorkbench(
     };
   }
 
-  const legacyBody = JSON.stringify({
-    requestVersion:
-      EXECUTIVE_AGENTS_PREVIEW_UI_REQUEST_VERSION,
-    taskClass: request.taskClass,
-    runId: request.runId,
-    instructions: architectureInstructions(request),
-    evidenceReference:
-      `repository-scope:${evidencePacket.scopeId}@${evidencePacket.sourceCommit}`,
-    evidenceClassification:
-      'approved_non_sensitive_repository_derived',
-    evidenceContent: evidenceBundle(evidencePacket),
-    explicitHumanInitiation: true,
-    sensitiveContentPresent: false,
-  });
-
   const liveRun = await executeCaoPreviewLiveRun(
     dependencies,
     {
       contentType: 'application/json',
-      rawBody: legacyBody,
+      rawBody: JSON.stringify({
+        requestVersion:
+          EXECUTIVE_AGENTS_PREVIEW_UI_REQUEST_VERSION,
+        taskClass: request.taskClass,
+        runId: request.runId,
+        instructions: architectureInstructions(request),
+        evidenceReference:
+          `repository-scope:${evidencePacket.scopeId}@${evidencePacket.sourceCommit}`,
+        evidenceClassification:
+          'approved_non_sensitive_repository_derived',
+        evidenceContent: evidenceBundle(evidencePacket),
+        explicitHumanInitiation: true,
+        sensitiveContentPresent: false,
+      }),
     },
   );
 
@@ -437,7 +471,8 @@ export async function executeCaoPreviewWorkbench(
         requestedOutputType:
           request.requestedOutputType,
       },
-      evidencePacket: publicEvidencePacket(evidencePacket),
+      evidencePacket:
+        publicEvidencePacket(evidencePacket),
       liveRun: liveRun.body,
       exportAvailable: true,
       persistencePerformed: false,
