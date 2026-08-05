@@ -62,9 +62,12 @@ interface ExecutiveAgentDraftWireOutput {
   draft_artifact: string;
 }
 
-function boundedStringArrayJsonSchema() {
+function boundedStringArrayJsonSchema(
+  minimumItems = 0,
+) {
   return {
     type: 'array' as const,
+    minItems: minimumItems,
     maxItems: MAX_ARRAY_ITEMS,
     items: {
       type: 'string' as const,
@@ -75,8 +78,29 @@ function boundedStringArrayJsonSchema() {
   };
 }
 
-const EXECUTIVE_AGENT_DRAFT_OUTPUT_SCHEMA =
-  jsonSchema<ExecutiveAgentDraftWireOutput>({
+function exactStringSetJsonSchema(
+  values: readonly string[],
+) {
+  if (values.length === 0) {
+    return boundedStringArrayJsonSchema();
+  }
+
+  return {
+    type: 'array' as const,
+    minItems: values.length,
+    maxItems: values.length,
+    uniqueItems: true,
+    items: {
+      type: 'string' as const,
+      enum: [...values],
+    },
+  };
+}
+
+function executiveAgentDraftOutputSchema(
+  evaluationCase: ModelEvaluationCase,
+) {
+  return jsonSchema<ExecutiveAgentDraftWireOutput>({
     type: 'object',
     additionalProperties: false,
     required: [...OUTPUT_KEYS],
@@ -86,13 +110,24 @@ const EXECUTIVE_AGENT_DRAFT_OUTPUT_SCHEMA =
       unknowns: boundedStringArrayJsonSchema(),
       recommendations:
         boundedStringArrayJsonSchema(),
-      dissent: boundedStringArrayJsonSchema(),
+      dissent: boundedStringArrayJsonSchema(
+        evaluationCase.expectedBehavior
+          .mustPreserveDissent
+          ? 1
+          : 0,
+      ),
       required_human_decisions:
         boundedStringArrayJsonSchema(),
       prohibited_or_unavailable_actions:
-        boundedStringArrayJsonSchema(),
+        exactStringSetJsonSchema(
+          evaluationCase.expectedBehavior
+            .requiredProhibitedActionLabels,
+        ),
       evidence_references:
-        boundedStringArrayJsonSchema(),
+        exactStringSetJsonSchema(
+          evaluationCase.expectedBehavior
+            .requiredEvidenceReferenceIds,
+        ),
       escalation_required: {
         type: 'boolean',
       },
@@ -104,6 +139,7 @@ const EXECUTIVE_AGENT_DRAFT_OUTPUT_SCHEMA =
       },
     },
   });
+}
 
 export const EVALUATION_MAX_RETRIES = 0 as const;
 
@@ -550,6 +586,25 @@ function buildEvaluationPrompt(
           descriptionsOrAnnotationsProhibited: true,
           additionalCommentaryInArrayProhibited: true,
         },
+        dissentRules: {
+          required:
+            evaluationCase.expectedBehavior
+              .mustPreserveDissent,
+          minimumItems:
+            evaluationCase.expectedBehavior
+              .mustPreserveDissent
+              ? 1
+              : 0,
+          preserveCompetingInterpretation: true,
+        },
+        prohibitedActionRules: {
+          requiredLabels:
+            evaluationCase.expectedBehavior
+              .requiredProhibitedActionLabels,
+          copyEachRequiredLabelVerbatim: true,
+          oneLabelPerArrayItem: true,
+          omitNoRequiredLabel: true,
+        },
         distinctionsRequired: [
           'facts',
           'assumptions',
@@ -823,7 +878,9 @@ export async function runInjectedModelEvaluation(
       ),
       output: Output.object({
         schema:
-          EXECUTIVE_AGENT_DRAFT_OUTPUT_SCHEMA,
+          executiveAgentDraftOutputSchema(
+            options.evaluationCase,
+          ),
         name: 'executive_agent_draft',
         description:
           'A bounded noncanonical executive-agent evaluation draft.',
