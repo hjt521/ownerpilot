@@ -146,6 +146,9 @@ const REQUIRED_OUTPUT_SECTIONS = [
   'Explicit prohibition on autonomous continuation',
 ] as const;
 
+const CAO_PREVIEW_EVIDENCE_ITEM_MAXIMUM = 4_000;
+const CAO_PREVIEW_EVIDENCE_BUNDLE_MAXIMUM = 3_900;
+
 function isRecord(
   value: unknown,
 ): value is Record<string, unknown> {
@@ -265,7 +268,7 @@ function architectureInstructions(
   ].join('\n');
 }
 
-function evidenceBundle(
+export function buildCaoPreviewEvidenceBundle(
   packet: CaoRepositoryEvidencePacket,
 ): string {
   const manifest = packet.files.map(file => ({
@@ -279,44 +282,54 @@ function evidenceBundle(
     truncated: file.truncated,
   }));
 
-  const header = JSON.stringify({
+  const compactManifest = JSON.stringify({
     repository: packet.repository,
     sourceCommit: packet.sourceCommit,
     scopeId: packet.scopeId,
-    collectedAt: packet.collectedAt,
     truncated: packet.truncated,
     unavailableEvidence: packet.unavailableEvidence,
     files: manifest,
   });
 
-  const available = packet.files
-    .filter(file => file.content !== null)
-    .map(file => [
+  const available = packet.files.filter(
+    file => file.content !== null,
+  );
+  const fixed = `EVIDENCE MANIFEST\n${compactManifest}\n\n`;
+  const separators = Math.max(0, available.length - 1) * 7;
+  const availableCharacters = Math.max(
+    0,
+    CAO_PREVIEW_EVIDENCE_BUNDLE_MAXIMUM -
+      fixed.length -
+      separators,
+  );
+  const excerptMaximum = available.length > 0
+    ? Math.floor(availableCharacters / available.length)
+    : 0;
+
+  const excerpts = available.map(file => {
+    const prefix = [
       `FILE: ${file.path}`,
       `HASH: ${file.sha256}`,
       `TRUNCATED: ${String(file.truncated)}`,
-      file.content,
-    ].join('\n'));
-
-  const maximumTotal = 15_500;
-  const fixed = `EVIDENCE MANIFEST\n${header}\n\n`;
-  let remaining = maximumTotal - fixed.length;
-  const excerpts: string[] = [];
-
-  for (const item of available) {
-    if (remaining <= 0) {
-      break;
-    }
-
-    const excerpt = item.slice(
+      '',
+    ].join('\n');
+    const contentMaximum = Math.max(
       0,
-      Math.min(3_200, remaining),
+      excerptMaximum - prefix.length,
     );
-    excerpts.push(excerpt);
-    remaining -= excerpt.length;
-  }
 
-  return `${fixed}${excerpts.join('\n\n---\n\n')}`;
+    return `${prefix}${file.content?.slice(0, contentMaximum) ?? ''}`;
+  });
+
+  const bundle = `${fixed}${excerpts.join('\n---\n')}`;
+
+  return bundle.slice(
+    0,
+    Math.min(
+      CAO_PREVIEW_EVIDENCE_BUNDLE_MAXIMUM,
+      CAO_PREVIEW_EVIDENCE_ITEM_MAXIMUM,
+    ),
+  );
 }
 
 function withoutContent(
@@ -439,7 +452,8 @@ export async function executeCaoPreviewWorkbench(
           `repository-scope:${evidencePacket.scopeId}@${evidencePacket.sourceCommit}`,
         evidenceClassification:
           'approved_non_sensitive_repository_derived',
-        evidenceContent: evidenceBundle(evidencePacket),
+        evidenceContent:
+          buildCaoPreviewEvidenceBundle(evidencePacket),
         explicitHumanInitiation: true,
         sensitiveContentPresent: false,
       }),
