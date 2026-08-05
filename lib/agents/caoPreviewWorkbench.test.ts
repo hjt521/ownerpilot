@@ -57,7 +57,7 @@ async function check(
 const sourceCommit =
   'b4d183573352a3fed2c072dab9fffbfaf3c21eab';
 
-const validBody = JSON.stringify({
+const validRequest = {
   requestVersion:
     CAO_PREVIEW_WORKBENCH_REQUEST_VERSION,
   taskClass: 'architecture_analysis',
@@ -67,12 +67,8 @@ const validBody = JSON.stringify({
   evidenceScopeId:
     'enterprise_workforce_recovery',
   sourceCommit,
-  constraints: [
-    'No role activation.',
-  ],
-  knownDecisions: [
-    'Founder authority remains controlling.',
-  ],
+  constraints: ['No role activation.'],
+  knownDecisions: ['Founder authority remains controlling.'],
   unresolvedQuestions: [
     'What is the smallest safe operator boundary?',
   ],
@@ -82,27 +78,20 @@ const validBody = JSON.stringify({
     'architecture_recommendation',
   explicitHumanInitiation: true,
   sensitiveContentPresent: false,
-});
+} as const;
 
 function dependencies() {
   return {
     deploymentEnvironment: 'preview',
     previewEnabledValue: 'true',
-    routeSecret:
-      'synthetic-route-secret-123',
-    sourceCommitSha:
-      'a'.repeat(40),
-    nowIso:
-      '2026-08-04T23:45:00.000Z',
+    routeSecret: 'synthetic-route-secret-123',
+    sourceCommitSha: 'a'.repeat(40),
+    nowIso: '2026-08-04T23:45:00.000Z',
     authenticatedAdmin: true,
-    authenticatedHumanIdentifier:
-      'admin@example.test',
-    gatewayApiKey:
-      'synthetic-gateway-key',
-    inputMicrosPerMillionTokens:
-      '1000000',
-    outputMicrosPerMillionTokens:
-      '2000000',
+    authenticatedHumanIdentifier: 'admin@example.test',
+    gatewayApiKey: 'synthetic-gateway-key',
+    inputMicrosPerMillionTokens: '1000000',
+    outputMicrosPerMillionTokens: '2000000',
   };
 }
 
@@ -111,12 +100,10 @@ function evidencePacket(
 ): CaoRepositoryEvidencePacket {
   return {
     version: 'cao-repository-evidence-v1',
-    scopeId:
-      'enterprise_workforce_recovery',
+    scopeId: 'enterprise_workforce_recovery',
     repository: 'hjt521/ownerpilot',
     sourceCommit,
-    collectedAt:
-      '2026-08-04T23:45:00.000Z',
+    collectedAt: '2026-08-04T23:45:00.000Z',
     fileCount: 2,
     totalIncludedBytes: 74,
     truncated: false,
@@ -125,27 +112,23 @@ function evidencePacket(
       {
         repository: 'hjt521/ownerpilot',
         sourceCommit,
-        path:
-          'docs/agents/ENTERPRISE_AI_WORKFORCE_INDEX.md',
+        path: 'docs/agents/ENTERPRISE_AI_WORKFORCE_INDEX.md',
         immutableReference:
-          `https://github.com/hjt521/ownerpilot/blob/${sourceCommit}/docs/agents/ENTERPRISE_AI_WORKFORCE_INDEX.md`,
-        classification:
-          'noncanonical_source_recovery',
+          `github:hjt521/ownerpilot@${sourceCommit}:docs/agents/ENTERPRISE_AI_WORKFORCE_INDEX.md`,
+        classification: 'noncanonical_source_recovery',
         availability: 'available',
         sha256: '1'.repeat(64),
         originalBytes: 37,
         includedBytes: 37,
         truncated: false,
-        content:
-          'Synthetic workforce index evidence.',
+        content: 'Synthetic workforce index evidence.',
       },
       {
         repository: 'hjt521/ownerpilot',
         sourceCommit,
-        path:
-          'lib/agents/caoPreviewRegistry.ts',
+        path: 'lib/agents/caoPreviewRegistry.ts',
         immutableReference:
-          `https://github.com/hjt521/ownerpilot/blob/${sourceCommit}/lib/agents/caoPreviewRegistry.ts`,
+          `github:hjt521/ownerpilot@${sourceCommit}:lib/agents/caoPreviewRegistry.ts`,
         classification:
           'approved_non_sensitive_repository_derived',
         availability:
@@ -174,17 +157,13 @@ function evidencePacket(
   };
 }
 
-function adapter():
-CaoPreviewGatewayAdapter {
+function adapter(): CaoPreviewGatewayAdapter {
   return {
     adapterVersion:
       CAO_PREVIEW_GATEWAY_ADAPTER_VERSION,
-    adapterId:
-      CAO_PREVIEW_ADAPTER_ID,
-    providerId:
-      CAO_PREVIEW_PRIMARY_PROVIDER_ID,
-    modelId:
-      CAO_PREVIEW_PRIMARY_MODEL_ID,
+    adapterId: CAO_PREVIEW_ADAPTER_ID,
+    providerId: CAO_PREVIEW_PRIMARY_PROVIDER_ID,
+    modelId: CAO_PREVIEW_PRIMARY_MODEL_ID,
     pinnedModelVersion:
       CAO_PREVIEW_PRIMARY_PINNED_MODEL_VERSION,
     modelSlot: 'primary',
@@ -207,21 +186,11 @@ function report(
   evidenceReference: string,
 ): CaoPreviewExecutionReport {
   const draft = {
-    facts: [
-      'Two approved repository files were reviewed.',
-    ],
-    assumptions: [
-      'The recovery package remains noncanonical.',
-    ],
-    unknowns: [
-      'Future operator authority is unresolved.',
-    ],
-    recommendations: [
-      'Retain human authorization boundaries.',
-    ],
-    dissent: [
-      'A narrower non-agent capability may be safer.',
-    ],
+    facts: ['Two approved repository files were reviewed.'],
+    assumptions: ['The recovery package remains noncanonical.'],
+    unknowns: ['Future operator authority is unresolved.'],
+    recommendations: ['Retain human authorization boundaries.'],
+    dissent: ['A narrower non-agent capability may be safer.'],
     requiredHumanDecisions: [
       'Founder must decide whether to charter an operator.',
     ],
@@ -234,32 +203,24 @@ function report(
       'automatic continuation is unavailable',
       'Production action is unavailable',
     ],
-    evidenceReferences: [
-      evidenceReference,
-    ],
+    evidenceReferences: [evidenceReference],
     escalationRequired: false,
     draftArtifact:
       '1. Status and authority labels\n2. Executive summary\n22. Explicit prohibition on autonomous continuation',
   };
 
   return {
-    executionVersion:
-      'cao-preview-execution-v1',
-    executionMode:
-      'preview_injected_cao_single_role',
+    executionVersion: 'cao-preview-execution-v1',
+    executionMode: 'preview_injected_cao_single_role',
     preflightValidated: true,
     routeRequestValidated: true,
     modelInvocationPerformed: true,
     providerLookupPerformed: false,
-    roleId:
-      'executive.chief_architecture_officer',
-    taskClass:
-      'architecture_analysis',
+    roleId: 'executive.chief_architecture_officer',
+    taskClass: 'architecture_analysis',
     modelSlot: 'primary',
-    providerId:
-      CAO_PREVIEW_PRIMARY_PROVIDER_ID,
-    modelId:
-      CAO_PREVIEW_PRIMARY_MODEL_ID,
+    providerId: CAO_PREVIEW_PRIMARY_PROVIDER_ID,
+    modelId: CAO_PREVIEW_PRIMARY_MODEL_ID,
     pinnedModelVersion:
       CAO_PREVIEW_PRIMARY_PINNED_MODEL_VERSION,
     labels: [
@@ -323,7 +284,7 @@ async function main(): Promise<void> {
         {
           contentType: 'application/json',
           rawBody: JSON.stringify({
-            ...JSON.parse(validBody),
+            ...validRequest,
             founderApprovalReference: 'stale',
           }),
         },
@@ -350,7 +311,7 @@ async function main(): Promise<void> {
         {
           contentType: 'application/json',
           rawBody: JSON.stringify({
-            ...JSON.parse(validBody),
+            ...validRequest,
             sourceCommit: 'f'.repeat(40),
           }),
         },
@@ -370,12 +331,11 @@ async function main(): Promise<void> {
       const result = await executeCaoPreviewWorkbench(
         {
           ...dependencies(),
-          collectEvidence: async () =>
-            evidencePacket(true),
+          collectEvidence: async () => evidencePacket(true),
         },
         {
           contentType: 'application/json',
-          rawBody: validBody,
+          rawBody: JSON.stringify(validRequest),
         },
       );
 
@@ -397,18 +357,14 @@ async function main(): Promise<void> {
       const result = await executeCaoPreviewWorkbench(
         {
           ...dependencies(),
-          collectEvidence: async () =>
-            evidencePacket(),
+          collectEvidence: async () => evidencePacket(),
           createGatewayAdapter: () => {
             adapterCalls += 1;
             return adapter();
           },
           executePreview: async options => {
             executionCalls += 1;
-            assert.equal(
-              options.routeRequest.evidence.length,
-              1,
-            );
+            assert.equal(options.routeRequest.evidence.length, 1);
             assert.equal(
               options.routeRequest.evidence[0].reference,
               reference,
@@ -426,7 +382,7 @@ async function main(): Promise<void> {
         },
         {
           contentType: 'application/json',
-          rawBody: validBody,
+          rawBody: JSON.stringify(validRequest),
         },
       );
 
@@ -459,8 +415,7 @@ async function main(): Promise<void> {
         {
           ...dependencies(),
           deploymentEnvironment: 'production',
-          collectEvidence: async () =>
-            evidencePacket(),
+          collectEvidence: async () => evidencePacket(),
           createGatewayAdapter: () => {
             adapterCalls += 1;
             return adapter();
@@ -468,7 +423,7 @@ async function main(): Promise<void> {
         },
         {
           contentType: 'application/json',
-          rawBody: validBody,
+          rawBody: JSON.stringify(validRequest),
         },
       );
 
