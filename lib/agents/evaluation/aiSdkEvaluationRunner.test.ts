@@ -290,6 +290,27 @@ async function main(): Promise<void> {
   );
 
   check(
+    'schema requires dissent and exact server-controlled boundary values',
+    serializedValidCall.includes(
+      '"dissent":{"type":"array","minItems":1',
+    ) &&
+      firstCase.expectedBehavior
+        .requiredEvidenceReferenceIds
+        .every(reference =>
+          serializedValidCall.includes(
+            JSON.stringify(reference),
+          ),
+        ) &&
+      firstCase.expectedBehavior
+        .requiredProhibitedActionLabels
+        .every(label =>
+          serializedValidCall.includes(
+            JSON.stringify(label),
+          ),
+        ),
+  );
+
+  check(
     'configures zero automatic retries',
     EVALUATION_MAX_RETRIES === 0,
   );
