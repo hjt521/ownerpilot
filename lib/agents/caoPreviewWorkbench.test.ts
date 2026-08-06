@@ -377,6 +377,22 @@ async function main(): Promise<void> {
               options.routeRequest.instructions,
               /File-level implementation map/,
             );
+            assert.match(
+              options.routeRequest.instructions,
+              /Return complete valid JSON before adding elaboration/,
+            );
+            assert.match(
+              options.routeRequest.instructions,
+              /existing 4000 output-token ceiling/,
+            );
+            assert.match(
+              options.routeRequest.instructions,
+              /draft_artifact at or below 8000 characters/,
+            );
+            assert.match(
+              options.routeRequest.instructions,
+              /Do not repeat evidence text/,
+            );
             return report(reference);
           },
         },

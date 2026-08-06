@@ -1,5 +1,6 @@
 import {
   CAO_PREVIEW_APPROVAL_REFERENCE,
+  CAO_PREVIEW_REGISTRY_ENTRY,
 } from './caoPreviewRegistry';
 
 import {
@@ -263,6 +264,15 @@ function architectureInstructions(
     '',
     'Produce a bounded architecture workbench report containing all of these sections:',
     sections,
+    '',
+    'Output-budget requirements:',
+    '- Return complete valid JSON before adding elaboration.',
+    `- Fit the entire response within the existing ${CAO_PREVIEW_REGISTRY_ENTRY.limits.maximumOutputTokens} output-token ceiling.`,
+    '- Keep draft_artifact at or below 8000 characters.',
+    '- Include every required section heading exactly once, using one concise paragraph or at most two concise bullets per section.',
+    '- Keep facts, assumptions, unknowns, recommendations, dissent, and required human decisions to no more than six concise items each.',
+    '- Do not repeat evidence text, the evidence manifest, or the same analysis across top-level fields and draft_artifact.',
+    '- Preserve the exact server-required prohibited-action labels and evidence-reference IDs.',
     '',
     'Keep recommendation quality separate from confidence. Do not calculate or use a composite numeric recommendation score. Do not average away critical failures. Preserve uncertainty, unavailable evidence, dissent, and competing interpretations. End with an explicit prohibition on autonomous continuation.',
   ].join('\n');
