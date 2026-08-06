@@ -56,6 +56,7 @@ import {
 import {
   EVALUATION_PROVIDER_FAILURE_CLASSES,
   EVALUATION_SCHEMA_FAILURE_CLASSES,
+  classifyEvaluationProviderFailure,
   type EvaluationPricing,
   type EvaluationProviderFailureClass,
   type EvaluationSchemaFailureClass,
@@ -136,12 +137,23 @@ export interface CaoPreviewOutputRejectionDiagnostic {
   availableEvidenceReferenceCount: number;
 }
 
+export type CaoPreviewCaughtExecutionFailureClass =
+  | 'typed_provider_failure'
+  | 'local_type_error'
+  | 'local_error'
+  | 'unknown_thrown_value';
+
 export interface CaoPreviewProviderFailureDiagnostic {
   diagnosticVersion:
-    'cao-preview-provider-failure-diagnostic-v1';
+    'cao-preview-provider-failure-diagnostic-v2';
   event: 'cao_preview.provider_failed';
+  failureBoundary:
+    | 'reported_model_run'
+    | 'thrown_before_execution_report';
   providerFailureClass:
     EvaluationProviderFailureClass | null;
+  caughtExecutionFailureClass:
+    CaoPreviewCaughtExecutionFailureClass | null;
   runId: string;
   roleId:
     'executive.chief_architecture_officer';
@@ -792,6 +804,29 @@ function emitOutputRejectionDiagnostic(
   }
 }
 
+function caughtExecutionFailureClass(
+  error: unknown,
+  providerFailureClass:
+    EvaluationProviderFailureClass,
+): CaoPreviewCaughtExecutionFailureClass {
+  if (
+    providerFailureClass !==
+      'provider_unknown'
+  ) {
+    return 'typed_provider_failure';
+  }
+
+  if (error instanceof TypeError) {
+    return 'local_type_error';
+  }
+
+  if (error instanceof Error) {
+    return 'local_error';
+  }
+
+  return 'unknown_thrown_value';
+}
+
 function defaultProviderFailureDiagnosticSink(
   diagnostic:
     CaoPreviewProviderFailureDiagnostic,
@@ -1054,7 +1089,37 @@ export async function executeCaoPreviewLiveRun(
         adapter.model,
       pricing,
     });
-  } catch {
+  } catch (error) {
+    const providerFailureClass =
+      classifyEvaluationProviderFailure(
+        error,
+      );
+
+    emitProviderFailureDiagnostic(
+      dependencies,
+      {
+        diagnosticVersion:
+          'cao-preview-provider-failure-diagnostic-v2',
+        event:
+          'cao_preview.provider_failed',
+        failureBoundary:
+          'thrown_before_execution_report',
+        providerFailureClass,
+        caughtExecutionFailureClass:
+          caughtExecutionFailureClass(
+            error,
+            providerFailureClass,
+          ),
+        runId: request.runId,
+        roleId:
+          'executive.chief_architecture_officer',
+        taskClass:
+          request.taskClass,
+        runOutcome:
+          'execution_threw_before_report',
+      },
+    );
+
     return errorResult(
       502,
       'provider_failed',
@@ -1136,15 +1201,19 @@ export async function executeCaoPreviewLiveRun(
         dependencies,
         {
           diagnosticVersion:
-            'cao-preview-provider-failure-diagnostic-v1',
+            'cao-preview-provider-failure-diagnostic-v2',
           event:
             'cao_preview.provider_failed',
+          failureBoundary:
+            'reported_model_run',
           providerFailureClass:
             boundedProviderFailureClass(
               report.localExecution
                 .modelRun
                 .providerErrorClass,
             ),
+          caughtExecutionFailureClass:
+            null,
           runId: request.runId,
           roleId:
             'executive.chief_architecture_officer',

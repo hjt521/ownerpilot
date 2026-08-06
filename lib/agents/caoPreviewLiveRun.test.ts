@@ -1028,6 +1028,18 @@ async function main(): Promise<void> {
           item.expectedClass,
           item.mode,
         );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.failureBoundary,
+          'reported_model_run',
+          item.mode,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.caughtExecutionFailureClass,
+          null,
+          item.mode,
+        );
 
         const serialized =
           JSON.stringify(
@@ -1047,6 +1059,132 @@ async function main(): Promise<void> {
           ),
           false,
           item.mode,
+        );
+      }
+    },
+  );
+
+
+  await check(
+    'classifies an execution failure thrown before a report is returned',
+    async () => {
+      const cases = [
+        {
+          label:
+            'typed provider request rejection',
+          createError: () => {
+            const error =
+              new Error(
+                'synthetic private provider detail',
+              );
+
+            error.name =
+              'AI_APICallError';
+
+            (
+              error as Error & {
+                statusCode?: number;
+              }
+            ).statusCode = 400;
+
+            return error;
+          },
+          expectedProviderClass:
+            'provider_request_rejected',
+          expectedCaughtClass:
+            'typed_provider_failure',
+        },
+        {
+          label:
+            'local type failure',
+          createError: () =>
+            new TypeError(
+              'synthetic private local detail',
+            ),
+          expectedProviderClass:
+            'provider_unknown',
+          expectedCaughtClass:
+            'local_type_error',
+        },
+      ] as const;
+
+      for (const item of cases) {
+        const providerDiagnostics:
+          CaoPreviewProviderFailureDiagnostic[] =
+            [];
+
+        const response =
+          await executeCaoPreviewLiveRun(
+            {
+              ...dependencies(),
+              createGatewayAdapter: () =>
+                adapter(),
+              executePreview: async () => {
+                throw item.createError();
+              },
+              providerFailureDiagnosticSink:
+                diagnostic => {
+                  providerDiagnostics.push(
+                    diagnostic,
+                  );
+                },
+            },
+            {
+              contentType:
+                'application/json',
+              rawBody: validBody,
+            },
+          );
+
+        assert.deepEqual(
+          response.body,
+          {
+            ok: false,
+            error: 'provider_failed',
+          },
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics.length,
+          1,
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.failureBoundary,
+          'thrown_before_execution_report',
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.providerFailureClass,
+          item.expectedProviderClass,
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.caughtExecutionFailureClass,
+          item.expectedCaughtClass,
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.runOutcome,
+          'execution_threw_before_report',
+          item.label,
+        );
+
+        const serialized =
+          JSON.stringify(
+            providerDiagnostics[0],
+          );
+
+        assert.equal(
+          serialized.includes(
+            'synthetic private',
+          ),
+          false,
+          item.label,
         );
       }
     },

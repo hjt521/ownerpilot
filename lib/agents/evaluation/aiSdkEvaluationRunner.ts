@@ -785,7 +785,7 @@ function providerStatusCode(
     : null;
 }
 
-function classifyProviderFailure(
+export function classifyEvaluationProviderFailure(
   error: unknown,
 ): EvaluationProviderFailureClass {
   const name = errorName(error);
@@ -894,7 +894,9 @@ function classifyFailure(
   }
 
   const providerErrorClass =
-    classifyProviderFailure(error);
+    classifyEvaluationProviderFailure(
+      error,
+    );
 
   return {
     outcome:
