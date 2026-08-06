@@ -149,6 +149,7 @@ const REQUIRED_OUTPUT_SECTIONS = [
 
 const CAO_PREVIEW_EVIDENCE_ITEM_MAXIMUM = 4_000;
 const CAO_PREVIEW_EVIDENCE_BUNDLE_MAXIMUM = 3_900;
+const CAO_PREVIEW_INSTRUCTIONS_MAXIMUM = 2_000;
 
 function isRecord(
   value: unknown,
@@ -257,24 +258,19 @@ function architectureInstructions(
 
   return [
     `Objective: ${request.objective}`,
-    `Requested output type: ${request.requestedOutputType}`,
+    `Requested output: ${request.requestedOutputType}`,
     `Constraints: ${request.constraints.join(' | ') || 'None stated'}`,
     `Known decisions: ${request.knownDecisions.join(' | ') || 'None stated'}`,
-    `Unresolved questions: ${request.unresolvedQuestions.join(' | ') || 'None stated'}`,
+    `Open questions: ${request.unresolvedQuestions.join(' | ') || 'None stated'}`,
     '',
-    'Produce a bounded architecture workbench report containing all of these sections:',
+    'Required sections:',
     sections,
     '',
-    'Output-budget requirements:',
-    '- Return complete valid JSON before adding elaboration.',
-    `- Fit the entire response within the existing ${CAO_PREVIEW_REGISTRY_ENTRY.limits.maximumOutputTokens} output-token ceiling.`,
-    '- Keep draft_artifact at or below 8000 characters.',
-    '- Include every required section heading exactly once, using one concise paragraph or at most two concise bullets per section.',
-    '- Keep facts, assumptions, unknowns, recommendations, dissent, and required human decisions to no more than six concise items each.',
-    '- Do not repeat evidence text, the evidence manifest, or the same analysis across top-level fields and draft_artifact.',
-    '- Preserve the exact server-required prohibited-action labels and evidence-reference IDs.',
-    '',
-    'Keep recommendation quality separate from confidence. Do not calculate or use a composite numeric recommendation score. Do not average away critical failures. Preserve uncertainty, unavailable evidence, dissent, and competing interpretations. End with an explicit prohibition on autonomous continuation.',
+    'Output rules:',
+    `- Return complete valid JSON first within ${CAO_PREVIEW_REGISTRY_ENTRY.limits.maximumOutputTokens} tokens; draft_artifact <=8000 characters.`,
+    '- Use each heading once; one paragraph or two bullets; top-level arrays <=6 items.',
+    '- Do not duplicate evidence or analysis; copy required labels and evidence IDs exactly.',
+    '- No composite score. Preserve unknowns, dissent, competing views, and human decisions. End by prohibiting autonomous continuation.',
   ].join('\n');
 }
 
@@ -406,6 +402,22 @@ export async function executeCaoPreviewWorkbench(
     };
   }
 
+  const instructions =
+    architectureInstructions(request);
+
+  if (
+    instructions.length >
+      CAO_PREVIEW_INSTRUCTIONS_MAXIMUM
+  ) {
+    return {
+      status: 400,
+      body: {
+        ok: false,
+        error: 'invalid_request',
+      },
+    };
+  }
+
   let evidencePacket: CaoRepositoryEvidencePacket;
 
   try {
@@ -453,7 +465,7 @@ export async function executeCaoPreviewWorkbench(
           EXECUTIVE_AGENTS_PREVIEW_UI_REQUEST_VERSION,
         taskClass: request.taskClass,
         runId: request.runId,
-        instructions: architectureInstructions(request),
+        instructions,
         evidenceReference:
           `repository-scope:${evidencePacket.scopeId}@${evidencePacket.sourceCommit}`,
         evidenceClassification:
