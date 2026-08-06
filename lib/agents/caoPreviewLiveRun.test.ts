@@ -26,6 +26,7 @@ import {
   executeCaoPreviewLiveRun,
   type CaoPreviewOutputRejectionClass,
   type CaoPreviewOutputRejectionDiagnostic,
+  type CaoPreviewProviderFailureDiagnostic,
 } from './caoPreviewLiveRun';
 
 let passed = 0;
@@ -126,6 +127,9 @@ function report(
     | 'schema_failure'
     | 'dissent_failure'
     | 'timeout'
+    | 'provider_failure'
+    | 'authentication'
+    | 'rate_limit'
     | 'limit' = 'valid',
 ): CaoPreviewExecutionReport {
   const draft = {
@@ -158,9 +162,15 @@ function report(
       'Synthetic noncanonical advisory draft.',
   };
 
+  const providerFailure =
+    mode === 'provider_failure' ||
+    mode === 'authentication' ||
+    mode === 'rate_limit';
+
   const valid =
     mode !== 'schema_failure' &&
-    mode !== 'timeout';
+    mode !== 'timeout' &&
+    !providerFailure;
 
   return {
     executionVersion:
@@ -195,9 +205,11 @@ function report(
         outcome:
           mode === 'timeout'
             ? 'failed_timeout'
-            : mode === 'schema_failure'
-              ? 'failed_schema'
-              : 'completed',
+            : providerFailure
+              ? 'failed_provider'
+              : mode === 'schema_failure'
+                ? 'failed_schema'
+                : 'completed',
         schemaValid: valid,
         boundaryValid: valid,
         dissentPreserved:
@@ -206,10 +218,16 @@ function report(
         noAutomaticFallback: true,
         providerErrorClass:
           mode === 'timeout'
-            ? 'timeout'
-            : mode === 'schema_failure'
-              ? 'local_output_validation'
-              : null,
+            ? 'provider_timeout'
+            : mode === 'authentication'
+              ? 'provider_authentication'
+              : mode === 'rate_limit'
+                ? 'provider_rate_limit'
+                : mode === 'provider_failure'
+                  ? 'provider_upstream_unavailable'
+                  : mode === 'schema_failure'
+                    ? 'local_output_validation'
+                    : null,
       },
       finalAudit: {
         humanDisposition: 'pending',
@@ -917,47 +935,123 @@ async function main(): Promise<void> {
   );
 
   await check(
-    'does not emit output-rejection diagnostics for provider failures',
+    'emits only bounded provider diagnostics while preserving sanitized public errors',
     async () => {
-      const diagnostics:
-        CaoPreviewOutputRejectionDiagnostic[] =
-          [];
+      const cases = [
+        {
+          mode: 'timeout',
+          expectedError:
+            'provider_timeout',
+          expectedClass:
+            'provider_timeout',
+        },
+        {
+          mode: 'authentication',
+          expectedError:
+            'provider_authentication_failed',
+          expectedClass:
+            'provider_authentication',
+        },
+        {
+          mode: 'rate_limit',
+          expectedError:
+            'provider_rate_limited',
+          expectedClass:
+            'provider_rate_limit',
+        },
+        {
+          mode: 'provider_failure',
+          expectedError:
+            'provider_failed',
+          expectedClass:
+            'provider_upstream_unavailable',
+        },
+      ] as const;
 
-      const response =
-        await executeCaoPreviewLiveRun(
+      for (const item of cases) {
+        const outputDiagnostics:
+          CaoPreviewOutputRejectionDiagnostic[] =
+            [];
+        const providerDiagnostics:
+          CaoPreviewProviderFailureDiagnostic[] =
+            [];
+
+        const response =
+          await executeCaoPreviewLiveRun(
+            {
+              ...dependencies(),
+              createGatewayAdapter: () =>
+                adapter(),
+              executePreview: async () =>
+                report(item.mode),
+              outputRejectionDiagnosticSink:
+                diagnostic => {
+                  outputDiagnostics.push(
+                    diagnostic,
+                  );
+                },
+              providerFailureDiagnosticSink:
+                diagnostic => {
+                  providerDiagnostics.push(
+                    diagnostic,
+                  );
+                },
+            },
+            {
+              contentType:
+                'application/json',
+              rawBody: validBody,
+            },
+          );
+
+        assert.deepEqual(
+          response.body,
           {
-            ...dependencies(),
-            createGatewayAdapter: () =>
-              adapter(),
-            executePreview: async () =>
-              report('timeout'),
-            outputRejectionDiagnosticSink:
-              diagnostic => {
-                diagnostics.push(
-                  diagnostic,
-                );
-              },
+            ok: false,
+            error: item.expectedError,
           },
-          {
-            contentType:
-              'application/json',
-            rawBody: validBody,
-          },
+          item.mode,
+        );
+        assert.equal(
+          outputDiagnostics.length,
+          0,
+          item.mode,
+        );
+        assert.equal(
+          providerDiagnostics.length,
+          1,
+          item.mode,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.providerFailureClass,
+          item.expectedClass,
+          item.mode,
         );
 
-      assert.deepEqual(
-        response.body,
-        {
-          ok: false,
-          error: 'provider_timeout',
-        },
-      );
-      assert.equal(
-        diagnostics.length,
-        0,
-      );
+        const serialized =
+          JSON.stringify(
+            providerDiagnostics[0],
+          );
+
+        assert.equal(
+          serialized.includes(
+            'Synthetic fact.',
+          ),
+          false,
+          item.mode,
+        );
+        assert.equal(
+          serialized.includes(
+            'Synthetic noncanonical advisory draft.',
+          ),
+          false,
+          item.mode,
+        );
+      }
     },
   );
+
 
   console.log(
     `\n${'-'.repeat(72)}\n` +

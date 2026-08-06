@@ -154,6 +154,22 @@ export const EVALUATION_SCHEMA_FAILURE_CLASSES = [
 export type EvaluationSchemaFailureClass =
   (typeof EVALUATION_SCHEMA_FAILURE_CLASSES)[number];
 
+export const EVALUATION_PROVIDER_FAILURE_CLASSES = [
+  'provider_timeout',
+  'provider_authentication',
+  'provider_rate_limit',
+  'provider_request_rejected',
+  'provider_model_unavailable',
+  'provider_upstream_unavailable',
+  'provider_transport_failure',
+  'provider_invalid_response',
+  'provider_configuration',
+  'provider_unknown',
+] as const;
+
+export type EvaluationProviderFailureClass =
+  (typeof EVALUATION_PROVIDER_FAILURE_CLASSES)[number];
+
 export interface EvaluationPricing {
   inputMicrosPerMillionTokens: number;
   outputMicrosPerMillionTokens: number;
@@ -750,6 +766,106 @@ function schemaFailureEvidence(
   };
 }
 
+function providerStatusCode(
+  value: unknown,
+): number | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const statusCode = value.statusCode;
+
+  return (
+    typeof statusCode === 'number' &&
+    Number.isInteger(statusCode) &&
+    statusCode >= 100 &&
+    statusCode <= 599
+  )
+    ? statusCode
+    : null;
+}
+
+function classifyProviderFailure(
+  error: unknown,
+): EvaluationProviderFailureClass {
+  const name = errorName(error);
+  const statusCode =
+    providerStatusCode(error);
+
+  if (
+    statusCode === 408 ||
+    statusCode === 504
+  ) {
+    return 'provider_timeout';
+  }
+
+  if (
+    statusCode === 401 ||
+    statusCode === 403
+  ) {
+    return 'provider_authentication';
+  }
+
+  if (statusCode === 429) {
+    return 'provider_rate_limit';
+  }
+
+  if (statusCode === 404) {
+    return 'provider_model_unavailable';
+  }
+
+  if (
+    statusCode === 400 ||
+    statusCode === 409 ||
+    statusCode === 422
+  ) {
+    return 'provider_request_rejected';
+  }
+
+  if (
+    statusCode !== null &&
+    statusCode >= 500
+  ) {
+    return 'provider_upstream_unavailable';
+  }
+
+  if (
+    name === 'AI_NoSuchModelError' ||
+    name === 'AI_NoSuchProviderError'
+  ) {
+    return 'provider_model_unavailable';
+  }
+
+  if (
+    name === 'AI_LoadAPIKeyError' ||
+    name === 'AI_LoadSettingError'
+  ) {
+    return 'provider_configuration';
+  }
+
+  if (
+    name === 'AI_InvalidResponseDataError' ||
+    name === 'AI_EmptyResponseBodyError' ||
+    name === 'AI_NoContentGeneratedError' ||
+    name === 'AI_NoOutputGeneratedError'
+  ) {
+    return 'provider_invalid_response';
+  }
+
+  if (
+    name === 'AI_APICallError' &&
+    statusCode === null
+  ) {
+    return 'provider_transport_failure';
+  }
+
+  if (name === 'AI_RetryError') {
+    return 'provider_upstream_unavailable';
+  }
+
+  return 'provider_unknown';
+}
+
 function classifyFailure(
   error: unknown,
   signal: AbortSignal,
@@ -757,32 +873,41 @@ function classifyFailure(
   outcome:
     | 'failed_provider'
     | 'failed_timeout';
-  providerErrorClass: string;
+  providerErrorClass:
+    EvaluationProviderFailureClass;
   sanitizedFailureDetail: string;
 } {
-  const errorName =
-    error instanceof Error
-      ? error.name
-      : 'UnknownError';
+  const name = errorName(error);
 
   if (
     signal.aborted ||
-    errorName === 'AbortError' ||
-    errorName === 'TimeoutError'
+    name === 'AbortError' ||
+    name === 'TimeoutError'
   ) {
     return {
       outcome: 'failed_timeout',
-      providerErrorClass: 'timeout',
+      providerErrorClass:
+        'provider_timeout',
       sanitizedFailureDetail:
         'The injected model evaluation exceeded its bounded timeout.',
     };
   }
 
+  const providerErrorClass =
+    classifyProviderFailure(error);
+
   return {
-    outcome: 'failed_provider',
-    providerErrorClass: errorName,
+    outcome:
+      providerErrorClass ===
+        'provider_timeout'
+        ? 'failed_timeout'
+        : 'failed_provider',
+    providerErrorClass,
     sanitizedFailureDetail:
-      'The injected model evaluation failed before producing a validated draft.',
+      providerErrorClass ===
+        'provider_timeout'
+        ? 'The injected model evaluation exceeded its bounded timeout.'
+        : 'The injected model evaluation failed before producing a validated draft.',
   };
 }
 

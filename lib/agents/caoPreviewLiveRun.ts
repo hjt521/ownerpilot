@@ -54,8 +54,10 @@ import {
 } from './executiveAgentsPreviewUiContract';
 
 import {
+  EVALUATION_PROVIDER_FAILURE_CLASSES,
   EVALUATION_SCHEMA_FAILURE_CLASSES,
   type EvaluationPricing,
+  type EvaluationProviderFailureClass,
   type EvaluationSchemaFailureClass,
 } from './evaluation/aiSdkEvaluationRunner';
 
@@ -134,6 +136,21 @@ export interface CaoPreviewOutputRejectionDiagnostic {
   availableEvidenceReferenceCount: number;
 }
 
+export interface CaoPreviewProviderFailureDiagnostic {
+  diagnosticVersion:
+    'cao-preview-provider-failure-diagnostic-v1';
+  event: 'cao_preview.provider_failed';
+  providerFailureClass:
+    EvaluationProviderFailureClass | null;
+  runId: string;
+  roleId:
+    'executive.chief_architecture_officer';
+  taskClass:
+    | 'architecture_analysis'
+    | 'evaluation_only';
+  runOutcome: string;
+}
+
 export interface CaoPreviewLiveRunDependencies {
   deploymentEnvironment: unknown;
   previewEnabledValue: unknown;
@@ -152,6 +169,10 @@ export interface CaoPreviewLiveRunDependencies {
   outputRejectionDiagnosticSink?: (
     diagnostic:
       CaoPreviewOutputRejectionDiagnostic,
+  ) => void;
+  providerFailureDiagnosticSink?: (
+    diagnostic:
+      CaoPreviewProviderFailureDiagnostic,
   ) => void;
 }
 
@@ -725,6 +746,21 @@ function boundedSchemaFailureClass(
     : null;
 }
 
+function boundedProviderFailureClass(
+  value: unknown,
+): EvaluationProviderFailureClass | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  return (
+    EVALUATION_PROVIDER_FAILURE_CLASSES as
+      readonly string[]
+  ).includes(value)
+    ? value as EvaluationProviderFailureClass
+    : null;
+}
+
 function defaultOutputRejectionDiagnosticSink(
   diagnostic:
     CaoPreviewOutputRejectionDiagnostic,
@@ -756,6 +792,37 @@ function emitOutputRejectionDiagnostic(
   }
 }
 
+function defaultProviderFailureDiagnosticSink(
+  diagnostic:
+    CaoPreviewProviderFailureDiagnostic,
+): void {
+  console.info(
+    JSON.stringify(diagnostic),
+  );
+}
+
+function emitProviderFailureDiagnostic(
+  dependencies:
+    CaoPreviewLiveRunDependencies,
+  diagnostic:
+    CaoPreviewProviderFailureDiagnostic,
+): void {
+  try {
+    (
+      dependencies
+        .providerFailureDiagnosticSink ??
+      defaultProviderFailureDiagnosticSink
+    )(diagnostic);
+  } catch {
+    console.warn(
+      JSON.stringify({
+        event:
+          'cao_preview.provider_failure_diagnostic_failed',
+      }),
+    );
+  }
+}
+
 function executionFailure(
   report: CaoPreviewExecutionReport,
 ): CaoPreviewLiveRunResult {
@@ -781,7 +848,7 @@ function executionFailure(
   if (run.outcome === 'failed_provider') {
     if (
       run.providerErrorClass ===
-      'authentication'
+      'provider_authentication'
     ) {
       return errorResult(
         502,
@@ -792,7 +859,7 @@ function executionFailure(
 
     if (
       run.providerErrorClass ===
-      'rate_limit'
+      'provider_rate_limit'
     ) {
       return errorResult(
         429,
@@ -1048,6 +1115,44 @@ export async function executeCaoPreviewLiveRun(
               .draftForHumanReview
               ?.evidenceReferences
               .length ?? 0,
+        },
+      );
+    }
+
+    if (
+      !failure.body.ok &&
+      (
+        failure.body.error ===
+          'provider_authentication_failed' ||
+        failure.body.error ===
+          'provider_rate_limited' ||
+        failure.body.error ===
+          'provider_timeout' ||
+        failure.body.error ===
+          'provider_failed'
+      )
+    ) {
+      emitProviderFailureDiagnostic(
+        dependencies,
+        {
+          diagnosticVersion:
+            'cao-preview-provider-failure-diagnostic-v1',
+          event:
+            'cao_preview.provider_failed',
+          providerFailureClass:
+            boundedProviderFailureClass(
+              report.localExecution
+                .modelRun
+                .providerErrorClass,
+            ),
+          runId: request.runId,
+          roleId:
+            'executive.chief_architecture_officer',
+          taskClass:
+            request.taskClass,
+          runOutcome:
+            report.localExecution
+              .modelRun.outcome,
         },
       );
     }

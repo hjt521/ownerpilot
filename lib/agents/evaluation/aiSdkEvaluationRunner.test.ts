@@ -747,7 +747,9 @@ async function main(): Promise<void> {
     'classifies injected model failure',
     providerFailureRun.outcome ===
       'failed_provider' &&
-      providerFailureRun.output === null,
+      providerFailureRun.output === null &&
+      providerFailureRun.providerErrorClass ===
+        'provider_unknown',
   );
 
   check(
@@ -764,6 +766,121 @@ async function main(): Promise<void> {
     providerFailureModel
       .doGenerateCalls.length === 1,
   );
+
+  const providerClassificationCases = [
+    {
+      label: 'provider authentication failure',
+      errorName: 'AI_APICallError',
+      statusCode: 401,
+      expected:
+        'provider_authentication',
+    },
+    {
+      label: 'provider rate limit',
+      errorName: 'AI_APICallError',
+      statusCode: 429,
+      expected:
+        'provider_rate_limit',
+    },
+    {
+      label: 'provider request rejection',
+      errorName: 'AI_APICallError',
+      statusCode: 400,
+      expected:
+        'provider_request_rejected',
+    },
+    {
+      label: 'provider model unavailable',
+      errorName: 'AI_APICallError',
+      statusCode: 404,
+      expected:
+        'provider_model_unavailable',
+    },
+    {
+      label: 'provider upstream unavailable',
+      errorName: 'AI_APICallError',
+      statusCode: 503,
+      expected:
+        'provider_upstream_unavailable',
+    },
+    {
+      label: 'provider transport failure',
+      errorName: 'AI_APICallError',
+      statusCode: null,
+      expected:
+        'provider_transport_failure',
+    },
+    {
+      label: 'provider invalid response',
+      errorName:
+        'AI_InvalidResponseDataError',
+      statusCode: null,
+      expected:
+        'provider_invalid_response',
+    },
+    {
+      label: 'provider configuration failure',
+      errorName: 'AI_LoadAPIKeyError',
+      statusCode: null,
+      expected:
+        'provider_configuration',
+    },
+  ] as const;
+
+  for (
+    const item of
+    providerClassificationCases
+  ) {
+    const providerError =
+      new Error(
+        'synthetic private provider detail',
+      );
+
+    providerError.name =
+      item.errorName;
+
+    if (item.statusCode !== null) {
+      (
+        providerError as Error & {
+          statusCode?: number;
+        }
+      ).statusCode =
+        item.statusCode;
+    }
+
+    const classifiedModel =
+      new MockLanguageModelV3({
+        doGenerate: async () => {
+          throw providerError;
+        },
+      });
+
+    const classifiedRun =
+      await runInjectedModelEvaluation(
+        optionsFor(
+          firstCase,
+          classifiedModel,
+        ),
+      );
+
+    check(
+      `classifies ${item.label}`,
+      classifiedRun.outcome ===
+        'failed_provider' &&
+        classifiedRun.providerErrorClass ===
+          item.expected &&
+        classifiedRun.output === null &&
+        classifiedModel
+          .doGenerateCalls.length === 1 &&
+        classifiedRun
+          .sanitizedFailureDetail !== null &&
+        !classifiedRun
+          .sanitizedFailureDetail
+          .includes(
+            'synthetic private provider detail',
+          ),
+    );
+  }
 
   const timeoutModel =
     new MockLanguageModelV3({
@@ -788,7 +905,7 @@ async function main(): Promise<void> {
     timeoutRun.outcome ===
       'failed_timeout' &&
       timeoutRun.providerErrorClass ===
-        'timeout' &&
+        'provider_timeout' &&
       timeoutRun.noAutomaticFallback,
   );
 
