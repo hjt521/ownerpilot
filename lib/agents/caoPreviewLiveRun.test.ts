@@ -24,6 +24,9 @@ import {
 
 import {
   executeCaoPreviewLiveRun,
+  type CaoPreviewOutputRejectionClass,
+  type CaoPreviewOutputRejectionDiagnostic,
+  type CaoPreviewProviderFailureDiagnostic,
 } from './caoPreviewLiveRun';
 
 let passed = 0;
@@ -124,6 +127,9 @@ function report(
     | 'schema_failure'
     | 'dissent_failure'
     | 'timeout'
+    | 'provider_failure'
+    | 'authentication'
+    | 'rate_limit'
     | 'limit' = 'valid',
 ): CaoPreviewExecutionReport {
   const draft = {
@@ -156,8 +162,15 @@ function report(
       'Synthetic noncanonical advisory draft.',
   };
 
-  const valid = mode === 'valid' ||
-    mode === 'limit';
+  const providerFailure =
+    mode === 'provider_failure' ||
+    mode === 'authentication' ||
+    mode === 'rate_limit';
+
+  const valid =
+    mode !== 'schema_failure' &&
+    mode !== 'timeout' &&
+    !providerFailure;
 
   return {
     executionVersion:
@@ -192,9 +205,11 @@ function report(
         outcome:
           mode === 'timeout'
             ? 'failed_timeout'
-            : mode === 'schema_failure'
-              ? 'failed_schema'
-              : 'completed',
+            : providerFailure
+              ? 'failed_provider'
+              : mode === 'schema_failure'
+                ? 'failed_schema'
+                : 'completed',
         schemaValid: valid,
         boundaryValid: valid,
         dissentPreserved:
@@ -203,8 +218,16 @@ function report(
         noAutomaticFallback: true,
         providerErrorClass:
           mode === 'timeout'
-            ? 'timeout'
-            : null,
+            ? 'provider_timeout'
+            : mode === 'authentication'
+              ? 'provider_authentication'
+              : mode === 'rate_limit'
+                ? 'provider_rate_limit'
+                : mode === 'provider_failure'
+                  ? 'provider_upstream_unavailable'
+                  : mode === 'schema_failure'
+                    ? 'local_output_validation'
+                    : null,
       },
       finalAudit: {
         humanDisposition: 'pending',
@@ -484,6 +507,689 @@ async function main(): Promise<void> {
       );
     },
   );
+
+
+  await check(
+    'classifies each bounded rejection without exposing it publicly',
+    async () => {
+      interface MutableReport {
+        localExecution: {
+          modelRun: {
+            outcome: string;
+            schemaValid: boolean;
+            boundaryValid: boolean;
+            dissentPreserved: boolean;
+            noSilentSubstitution: boolean;
+            noAutomaticFallback: boolean;
+            providerErrorClass:
+              string | null;
+          };
+          finalAudit: {
+            humanDisposition: string;
+          };
+          actualLimitFindings: string[];
+          draftForHumanReview:
+            | null
+            | {
+                evidenceReferences: string[];
+                draftArtifact: string;
+              };
+          toolExecutionPerformed: boolean;
+          persistencePerformed: boolean;
+          fallbackPerformed: boolean;
+          substitutionPerformed: boolean;
+          productionEligible: boolean;
+        };
+        requestedTools: unknown[];
+        effectiveTools: unknown[];
+        toolCalls: unknown[];
+        automaticApproval: boolean;
+        automaticDispatch: boolean;
+        automaticContinuation: boolean;
+        fallbackPerformed: boolean;
+        substitutionPerformed: boolean;
+        persistencePerformed: boolean;
+        productionEligible: boolean;
+      }
+
+      const cases: readonly {
+        name: string;
+        rejectionClass:
+          CaoPreviewOutputRejectionClass;
+        expectedError:
+          'output_rejected' |
+          'limit_exceeded';
+        mutate:
+          (candidate: MutableReport) => void;
+      }[] = [
+        {
+          name: 'draft missing',
+          rejectionClass: 'draft_missing',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .draftForHumanReview = null;
+          },
+        },
+        {
+          name: 'run not completed',
+          rejectionClass:
+            'run_not_completed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.outcome =
+              'refused_as_required';
+          },
+        },
+        {
+          name: 'schema invalid',
+          rejectionClass:
+            'schema_invalid',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.schemaValid =
+              false;
+            candidate.localExecution
+              .modelRun.providerErrorClass =
+              'local_output_validation';
+          },
+        },
+        {
+          name: 'boundary invalid',
+          rejectionClass:
+            'boundary_invalid',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.boundaryValid =
+              false;
+          },
+        },
+        {
+          name: 'dissent missing',
+          rejectionClass:
+            'dissent_not_preserved',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.dissentPreserved =
+              false;
+          },
+        },
+        {
+          name: 'silent substitution',
+          rejectionClass:
+            'silent_substitution_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.noSilentSubstitution =
+              false;
+          },
+        },
+        {
+          name: 'automatic fallback',
+          rejectionClass:
+            'automatic_fallback_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .modelRun.noAutomaticFallback =
+              false;
+          },
+        },
+        {
+          name: 'human disposition',
+          rejectionClass:
+            'human_disposition_invalid',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .finalAudit.humanDisposition =
+              'accepted';
+          },
+        },
+        {
+          name: 'limit finding',
+          rejectionClass:
+            'limit_finding_present',
+          expectedError: 'limit_exceeded',
+          mutate: candidate => {
+            candidate.localExecution
+              .actualLimitFindings = [
+                'synthetic_limit',
+              ];
+          },
+        },
+        {
+          name: 'tool execution',
+          rejectionClass:
+            'tool_execution_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .toolExecutionPerformed =
+              true;
+          },
+        },
+        {
+          name: 'persistence',
+          rejectionClass:
+            'persistence_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .persistencePerformed =
+              true;
+          },
+        },
+        {
+          name: 'fallback',
+          rejectionClass:
+            'fallback_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .fallbackPerformed =
+              true;
+          },
+        },
+        {
+          name: 'substitution',
+          rejectionClass:
+            'substitution_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .substitutionPerformed =
+              true;
+          },
+        },
+        {
+          name: 'Production eligibility',
+          rejectionClass:
+            'production_eligibility_detected',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.localExecution
+              .productionEligible =
+              true;
+          },
+        },
+        {
+          name: 'automatic approval',
+          rejectionClass:
+            'report_authority_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.automaticApproval =
+              true;
+          },
+        },
+        {
+          name: 'automatic dispatch',
+          rejectionClass:
+            'report_authority_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.automaticDispatch =
+              true;
+          },
+        },
+        {
+          name: 'automatic continuation',
+          rejectionClass:
+            'report_authority_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.automaticContinuation =
+              true;
+          },
+        },
+        {
+          name: 'report tool request',
+          rejectionClass:
+            'report_authority_invariant_failed',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            candidate.requestedTools = [
+              'synthetic-tool',
+            ];
+          },
+        },
+        {
+          name: 'evidence reference missing',
+          rejectionClass:
+            'evidence_reference_missing',
+          expectedError: 'output_rejected',
+          mutate: candidate => {
+            const draft =
+              candidate.localExecution
+                .draftForHumanReview;
+
+            assert.notEqual(draft, null);
+
+            if (draft !== null) {
+              draft.evidenceReferences =
+                [];
+            }
+          },
+        },
+      ];
+
+      for (const item of cases) {
+        const candidate =
+          JSON.parse(
+            JSON.stringify(report()),
+          ) as MutableReport;
+
+        item.mutate(candidate);
+
+        const diagnostics:
+          CaoPreviewOutputRejectionDiagnostic[] =
+            [];
+
+        const response =
+          await executeCaoPreviewLiveRun(
+            {
+              ...dependencies(),
+              createGatewayAdapter: () =>
+                adapter(),
+              executePreview: async () =>
+                candidate as unknown as
+                  CaoPreviewExecutionReport,
+              outputRejectionDiagnosticSink:
+                diagnostic => {
+                  diagnostics.push(
+                    diagnostic,
+                  );
+                },
+            },
+            {
+              contentType:
+                'application/json',
+              rawBody: validBody,
+            },
+          );
+
+        assert.deepEqual(
+          response.body,
+          {
+            ok: false,
+            error: item.expectedError,
+          },
+          item.name,
+        );
+        assert.equal(
+          'rejectionClass' in response.body,
+          false,
+          item.name,
+        );
+        assert.equal(
+          diagnostics.length,
+          1,
+          item.name,
+        );
+        assert.equal(
+          diagnostics[0]
+            ?.rejectionClass,
+          item.rejectionClass,
+          item.name,
+        );
+        assert.equal(
+          diagnostics[0]
+            ?.schemaFailureClass,
+          item.rejectionClass ===
+            'schema_invalid'
+            ? 'local_output_validation'
+            : null,
+          item.name,
+        );
+
+        const serialized =
+          JSON.stringify(
+            diagnostics[0],
+          );
+
+        assert.equal(
+          serialized.includes(
+            'Synthetic fact.',
+          ),
+          false,
+          item.name,
+        );
+        assert.equal(
+          serialized.includes(
+            'Synthetic noncanonical advisory draft.',
+          ),
+          false,
+          item.name,
+        );
+      }
+
+      const unboundedCandidate =
+        JSON.parse(
+          JSON.stringify(
+            report('schema_failure'),
+          ),
+        ) as MutableReport;
+
+      unboundedCandidate.localExecution
+        .modelRun.providerErrorClass =
+        'synthetic-secret-like-raw-detail';
+
+      const boundedDiagnostics:
+        CaoPreviewOutputRejectionDiagnostic[] =
+          [];
+
+      const boundedResponse =
+        await executeCaoPreviewLiveRun(
+          {
+            ...dependencies(),
+            createGatewayAdapter: () =>
+              adapter(),
+            executePreview: async () =>
+              unboundedCandidate as unknown as
+                CaoPreviewExecutionReport,
+            outputRejectionDiagnosticSink:
+              diagnostic => {
+                boundedDiagnostics.push(
+                  diagnostic,
+                );
+              },
+          },
+          {
+            contentType:
+              'application/json',
+            rawBody: validBody,
+          },
+        );
+
+      assert.deepEqual(
+        boundedResponse.body,
+        {
+          ok: false,
+          error: 'output_rejected',
+        },
+      );
+      assert.equal(
+        boundedDiagnostics.length,
+        1,
+      );
+      assert.equal(
+        boundedDiagnostics[0]
+          ?.schemaFailureClass,
+        null,
+      );
+      assert.equal(
+        JSON.stringify(
+          boundedDiagnostics[0],
+        ).includes(
+          'synthetic-secret-like-raw-detail',
+        ),
+        false,
+      );
+    },
+  );
+
+  await check(
+    'emits only bounded provider diagnostics while preserving sanitized public errors',
+    async () => {
+      const cases = [
+        {
+          mode: 'timeout',
+          expectedError:
+            'provider_timeout',
+          expectedClass:
+            'provider_timeout',
+        },
+        {
+          mode: 'authentication',
+          expectedError:
+            'provider_authentication_failed',
+          expectedClass:
+            'provider_authentication',
+        },
+        {
+          mode: 'rate_limit',
+          expectedError:
+            'provider_rate_limited',
+          expectedClass:
+            'provider_rate_limit',
+        },
+        {
+          mode: 'provider_failure',
+          expectedError:
+            'provider_failed',
+          expectedClass:
+            'provider_upstream_unavailable',
+        },
+      ] as const;
+
+      for (const item of cases) {
+        const outputDiagnostics:
+          CaoPreviewOutputRejectionDiagnostic[] =
+            [];
+        const providerDiagnostics:
+          CaoPreviewProviderFailureDiagnostic[] =
+            [];
+
+        const response =
+          await executeCaoPreviewLiveRun(
+            {
+              ...dependencies(),
+              createGatewayAdapter: () =>
+                adapter(),
+              executePreview: async () =>
+                report(item.mode),
+              outputRejectionDiagnosticSink:
+                diagnostic => {
+                  outputDiagnostics.push(
+                    diagnostic,
+                  );
+                },
+              providerFailureDiagnosticSink:
+                diagnostic => {
+                  providerDiagnostics.push(
+                    diagnostic,
+                  );
+                },
+            },
+            {
+              contentType:
+                'application/json',
+              rawBody: validBody,
+            },
+          );
+
+        assert.deepEqual(
+          response.body,
+          {
+            ok: false,
+            error: item.expectedError,
+          },
+          item.mode,
+        );
+        assert.equal(
+          outputDiagnostics.length,
+          0,
+          item.mode,
+        );
+        assert.equal(
+          providerDiagnostics.length,
+          1,
+          item.mode,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.providerFailureClass,
+          item.expectedClass,
+          item.mode,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.failureBoundary,
+          'reported_model_run',
+          item.mode,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.caughtExecutionFailureClass,
+          null,
+          item.mode,
+        );
+
+        const serialized =
+          JSON.stringify(
+            providerDiagnostics[0],
+          );
+
+        assert.equal(
+          serialized.includes(
+            'Synthetic fact.',
+          ),
+          false,
+          item.mode,
+        );
+        assert.equal(
+          serialized.includes(
+            'Synthetic noncanonical advisory draft.',
+          ),
+          false,
+          item.mode,
+        );
+      }
+    },
+  );
+
+
+  await check(
+    'classifies an execution failure thrown before a report is returned',
+    async () => {
+      const cases = [
+        {
+          label:
+            'typed provider request rejection',
+          createError: () => {
+            const error =
+              new Error(
+                'synthetic private provider detail',
+              );
+
+            error.name =
+              'AI_APICallError';
+
+            (
+              error as Error & {
+                statusCode?: number;
+              }
+            ).statusCode = 400;
+
+            return error;
+          },
+          expectedProviderClass:
+            'provider_request_rejected',
+          expectedCaughtClass:
+            'typed_provider_failure',
+        },
+        {
+          label:
+            'local type failure',
+          createError: () =>
+            new TypeError(
+              'synthetic private local detail',
+            ),
+          expectedProviderClass:
+            'provider_unknown',
+          expectedCaughtClass:
+            'local_type_error',
+        },
+      ] as const;
+
+      for (const item of cases) {
+        const providerDiagnostics:
+          CaoPreviewProviderFailureDiagnostic[] =
+            [];
+
+        const response =
+          await executeCaoPreviewLiveRun(
+            {
+              ...dependencies(),
+              createGatewayAdapter: () =>
+                adapter(),
+              executePreview: async () => {
+                throw item.createError();
+              },
+              providerFailureDiagnosticSink:
+                diagnostic => {
+                  providerDiagnostics.push(
+                    diagnostic,
+                  );
+                },
+            },
+            {
+              contentType:
+                'application/json',
+              rawBody: validBody,
+            },
+          );
+
+        assert.deepEqual(
+          response.body,
+          {
+            ok: false,
+            error: 'provider_failed',
+          },
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics.length,
+          1,
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.failureBoundary,
+          'thrown_before_execution_report',
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.providerFailureClass,
+          item.expectedProviderClass,
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.caughtExecutionFailureClass,
+          item.expectedCaughtClass,
+          item.label,
+        );
+        assert.equal(
+          providerDiagnostics[0]
+            ?.runOutcome,
+          'execution_threw_before_report',
+          item.label,
+        );
+
+        const serialized =
+          JSON.stringify(
+            providerDiagnostics[0],
+          );
+
+        assert.equal(
+          serialized.includes(
+            'synthetic private',
+          ),
+          false,
+          item.label,
+        );
+      }
+    },
+  );
+
 
   console.log(
     `\n${'-'.repeat(72)}\n` +

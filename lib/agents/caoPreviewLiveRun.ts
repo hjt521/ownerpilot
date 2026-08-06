@@ -53,8 +53,13 @@ import {
   type ExecutiveAgentsPreviewUiRequest,
 } from './executiveAgentsPreviewUiContract';
 
-import type {
-  EvaluationPricing,
+import {
+  EVALUATION_PROVIDER_FAILURE_CLASSES,
+  EVALUATION_SCHEMA_FAILURE_CLASSES,
+  classifyEvaluationProviderFailure,
+  type EvaluationPricing,
+  type EvaluationProviderFailureClass,
+  type EvaluationSchemaFailureClass,
 } from './evaluation/aiSdkEvaluationRunner';
 
 import type {
@@ -95,6 +100,69 @@ export const CAO_PREVIEW_LIVE_RUN_ERROR_CODES = [
 export type CaoPreviewLiveRunErrorCode =
   (typeof CAO_PREVIEW_LIVE_RUN_ERROR_CODES)[number];
 
+export type CaoPreviewOutputRejectionClass =
+  | 'draft_missing'
+  | 'run_not_completed'
+  | 'schema_invalid'
+  | 'boundary_invalid'
+  | 'dissent_not_preserved'
+  | 'silent_substitution_invariant_failed'
+  | 'automatic_fallback_invariant_failed'
+  | 'human_disposition_invalid'
+  | 'limit_finding_present'
+  | 'tool_execution_detected'
+  | 'persistence_detected'
+  | 'fallback_detected'
+  | 'substitution_detected'
+  | 'production_eligibility_detected'
+  | 'report_authority_invariant_failed'
+  | 'evidence_reference_missing';
+
+export interface CaoPreviewOutputRejectionDiagnostic {
+  diagnosticVersion:
+    'cao-preview-output-rejection-diagnostic-v2';
+  event: 'cao_preview.output_rejected';
+  rejectionClass:
+    CaoPreviewOutputRejectionClass;
+  runId: string;
+  roleId:
+    'executive.chief_architecture_officer';
+  taskClass:
+    | 'architecture_analysis'
+    | 'evaluation_only';
+  runOutcome: string;
+  schemaFailureClass:
+    EvaluationSchemaFailureClass | null;
+  requiredEvidenceReferenceCount: number;
+  availableEvidenceReferenceCount: number;
+}
+
+export type CaoPreviewCaughtExecutionFailureClass =
+  | 'typed_provider_failure'
+  | 'local_type_error'
+  | 'local_error'
+  | 'unknown_thrown_value';
+
+export interface CaoPreviewProviderFailureDiagnostic {
+  diagnosticVersion:
+    'cao-preview-provider-failure-diagnostic-v2';
+  event: 'cao_preview.provider_failed';
+  failureBoundary:
+    | 'reported_model_run'
+    | 'thrown_before_execution_report';
+  providerFailureClass:
+    EvaluationProviderFailureClass | null;
+  caughtExecutionFailureClass:
+    CaoPreviewCaughtExecutionFailureClass | null;
+  runId: string;
+  roleId:
+    'executive.chief_architecture_officer';
+  taskClass:
+    | 'architecture_analysis'
+    | 'evaluation_only';
+  runOutcome: string;
+}
+
 export interface CaoPreviewLiveRunDependencies {
   deploymentEnvironment: unknown;
   previewEnabledValue: unknown;
@@ -110,6 +178,14 @@ export interface CaoPreviewLiveRunDependencies {
     typeof createCaoPreviewGatewayAdapter;
   executePreview?:
     typeof executeCaoPreview;
+  outputRejectionDiagnosticSink?: (
+    diagnostic:
+      CaoPreviewOutputRejectionDiagnostic,
+  ) => void;
+  providerFailureDiagnosticSink?: (
+    diagnostic:
+      CaoPreviewProviderFailureDiagnostic,
+  ) => void;
 }
 
 export interface CaoPreviewLiveRunInvocation {
@@ -481,52 +557,305 @@ function adapterMatches(
   );
 }
 
+type ValidatedDraftResult =
+  | {
+      ok: true;
+      draft: ExecutiveAgentDraftOutput;
+    }
+  | {
+      ok: false;
+      rejectionClass:
+        CaoPreviewOutputRejectionClass;
+    };
+
+function rejectedDraft(
+  rejectionClass:
+    CaoPreviewOutputRejectionClass,
+): ValidatedDraftResult {
+  return {
+    ok: false,
+    rejectionClass,
+  };
+}
+
 function validatedDraft(
   report: CaoPreviewExecutionReport,
   evidenceReferences: readonly string[],
-): ExecutiveAgentDraftOutput | null {
+): ValidatedDraftResult {
   const local = report.localExecution;
   const run = local.modelRun;
   const draft = local.draftForHumanReview;
 
+  if (local.actualLimitFindings.length > 0) {
+    return rejectedDraft(
+      'limit_finding_present',
+    );
+  }
+
+  if (run.schemaValid !== true) {
+    return rejectedDraft(
+      'schema_invalid',
+    );
+  }
+
+  if (run.boundaryValid !== true) {
+    return rejectedDraft(
+      'boundary_invalid',
+    );
+  }
+
+  if (run.dissentPreserved !== true) {
+    return rejectedDraft(
+      'dissent_not_preserved',
+    );
+  }
+
+  if (run.noSilentSubstitution !== true) {
+    return rejectedDraft(
+      'silent_substitution_invariant_failed',
+    );
+  }
+
+  if (run.noAutomaticFallback !== true) {
+    return rejectedDraft(
+      'automatic_fallback_invariant_failed',
+    );
+  }
+
+  if (run.outcome !== 'completed') {
+    return rejectedDraft(
+      'run_not_completed',
+    );
+  }
+
   if (
-    draft === null ||
-    run.outcome !== 'completed' ||
-    run.schemaValid !== true ||
-    run.boundaryValid !== true ||
-    run.dissentPreserved !== true ||
-    run.noSilentSubstitution !== true ||
-    run.noAutomaticFallback !== true ||
     local.finalAudit.humanDisposition !==
-      'pending' ||
-    local.actualLimitFindings.length > 0 ||
-    local.toolExecutionPerformed !== false ||
-    local.persistencePerformed !== false ||
-    local.fallbackPerformed !== false ||
-    local.substitutionPerformed !== false ||
-    local.productionEligible !== false ||
+      'pending'
+  ) {
+    return rejectedDraft(
+      'human_disposition_invalid',
+    );
+  }
+
+  if (
+    local.toolExecutionPerformed !== false
+  ) {
+    return rejectedDraft(
+      'tool_execution_detected',
+    );
+  }
+
+  if (
+    local.persistencePerformed !== false
+  ) {
+    return rejectedDraft(
+      'persistence_detected',
+    );
+  }
+
+  if (local.fallbackPerformed !== false) {
+    return rejectedDraft(
+      'fallback_detected',
+    );
+  }
+
+  if (
+    local.substitutionPerformed !== false
+  ) {
+    return rejectedDraft(
+      'substitution_detected',
+    );
+  }
+
+  if (
+    local.productionEligible !== false
+  ) {
+    return rejectedDraft(
+      'production_eligibility_detected',
+    );
+  }
+
+  if (
     report.requestedTools.length !== 0 ||
     report.effectiveTools.length !== 0 ||
     report.toolCalls.length !== 0 ||
     report.automaticApproval !== false ||
     report.automaticDispatch !== false ||
-    report.automaticContinuation !== false ||
-    report.fallbackPerformed !== false ||
-    report.substitutionPerformed !== false ||
-    report.persistencePerformed !== false ||
+    report.automaticContinuation !== false
+  ) {
+    return rejectedDraft(
+      'report_authority_invariant_failed',
+    );
+  }
+
+  if (report.fallbackPerformed !== false) {
+    return rejectedDraft(
+      'fallback_detected',
+    );
+  }
+
+  if (
+    report.substitutionPerformed !== false
+  ) {
+    return rejectedDraft(
+      'substitution_detected',
+    );
+  }
+
+  if (
+    report.persistencePerformed !== false
+  ) {
+    return rejectedDraft(
+      'persistence_detected',
+    );
+  }
+
+  if (
     report.productionEligible !== false
   ) {
-    return null;
+    return rejectedDraft(
+      'production_eligibility_detected',
+    );
+  }
+
+  if (draft === null) {
+    return rejectedDraft(
+      'draft_missing',
+    );
   }
 
   const available =
     new Set(draft.evidenceReferences);
 
-  return evidenceReferences.every(
-    reference => available.has(reference),
-  )
-    ? draft
+  if (
+    !evidenceReferences.every(
+      reference => available.has(reference),
+    )
+  ) {
+    return rejectedDraft(
+      'evidence_reference_missing',
+    );
+  }
+
+  return {
+    ok: true,
+    draft,
+  };
+}
+
+function boundedSchemaFailureClass(
+  value: unknown,
+): EvaluationSchemaFailureClass | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  return (
+    EVALUATION_SCHEMA_FAILURE_CLASSES as
+      readonly string[]
+  ).includes(value)
+    ? value as EvaluationSchemaFailureClass
     : null;
+}
+
+function boundedProviderFailureClass(
+  value: unknown,
+): EvaluationProviderFailureClass | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  return (
+    EVALUATION_PROVIDER_FAILURE_CLASSES as
+      readonly string[]
+  ).includes(value)
+    ? value as EvaluationProviderFailureClass
+    : null;
+}
+
+function defaultOutputRejectionDiagnosticSink(
+  diagnostic:
+    CaoPreviewOutputRejectionDiagnostic,
+): void {
+  console.info(
+    JSON.stringify(diagnostic),
+  );
+}
+
+function emitOutputRejectionDiagnostic(
+  dependencies:
+    CaoPreviewLiveRunDependencies,
+  diagnostic:
+    CaoPreviewOutputRejectionDiagnostic,
+): void {
+  try {
+    (
+      dependencies
+        .outputRejectionDiagnosticSink ??
+      defaultOutputRejectionDiagnosticSink
+    )(diagnostic);
+  } catch {
+    console.warn(
+      JSON.stringify({
+        event:
+          'cao_preview.output_rejection_diagnostic_failed',
+      }),
+    );
+  }
+}
+
+function caughtExecutionFailureClass(
+  error: unknown,
+  providerFailureClass:
+    EvaluationProviderFailureClass,
+): CaoPreviewCaughtExecutionFailureClass {
+  if (
+    providerFailureClass !==
+      'provider_unknown'
+  ) {
+    return 'typed_provider_failure';
+  }
+
+  if (error instanceof TypeError) {
+    return 'local_type_error';
+  }
+
+  if (error instanceof Error) {
+    return 'local_error';
+  }
+
+  return 'unknown_thrown_value';
+}
+
+function defaultProviderFailureDiagnosticSink(
+  diagnostic:
+    CaoPreviewProviderFailureDiagnostic,
+): void {
+  console.info(
+    JSON.stringify(diagnostic),
+  );
+}
+
+function emitProviderFailureDiagnostic(
+  dependencies:
+    CaoPreviewLiveRunDependencies,
+  diagnostic:
+    CaoPreviewProviderFailureDiagnostic,
+): void {
+  try {
+    (
+      dependencies
+        .providerFailureDiagnosticSink ??
+      defaultProviderFailureDiagnosticSink
+    )(diagnostic);
+  } catch {
+    console.warn(
+      JSON.stringify({
+        event:
+          'cao_preview.provider_failure_diagnostic_failed',
+      }),
+    );
+  }
 }
 
 function executionFailure(
@@ -554,7 +883,7 @@ function executionFailure(
   if (run.outcome === 'failed_provider') {
     if (
       run.providerErrorClass ===
-      'authentication'
+      'provider_authentication'
     ) {
       return errorResult(
         502,
@@ -565,7 +894,7 @@ function executionFailure(
 
     if (
       run.providerErrorClass ===
-      'rate_limit'
+      'provider_rate_limit'
     ) {
       return errorResult(
         429,
@@ -760,7 +1089,37 @@ export async function executeCaoPreviewLiveRun(
         adapter.model,
       pricing,
     });
-  } catch {
+  } catch (error) {
+    const providerFailureClass =
+      classifyEvaluationProviderFailure(
+        error,
+      );
+
+    emitProviderFailureDiagnostic(
+      dependencies,
+      {
+        diagnosticVersion:
+          'cao-preview-provider-failure-diagnostic-v2',
+        event:
+          'cao_preview.provider_failed',
+        failureBoundary:
+          'thrown_before_execution_report',
+        providerFailureClass,
+        caughtExecutionFailureClass:
+          caughtExecutionFailureClass(
+            error,
+            providerFailureClass,
+          ),
+        runId: request.runId,
+        roleId:
+          'executive.chief_architecture_officer',
+        taskClass:
+          request.taskClass,
+        runOutcome:
+          'execution_threw_before_report',
+      },
+    );
+
     return errorResult(
       502,
       'provider_failed',
@@ -772,15 +1131,105 @@ export async function executeCaoPreviewLiveRun(
     request.evidence.map(
       item => item.reference,
     );
-  const draft =
+  const validation =
     validatedDraft(
       report,
       evidenceReferences,
     );
 
-  if (draft === null) {
-    return executionFailure(report);
+  if (!validation.ok) {
+    const failure =
+      executionFailure(report);
+
+    if (
+      !failure.body.ok &&
+      (
+        failure.body.error ===
+          'output_rejected' ||
+        failure.body.error ===
+          'limit_exceeded'
+      )
+    ) {
+      emitOutputRejectionDiagnostic(
+        dependencies,
+        {
+          diagnosticVersion:
+            'cao-preview-output-rejection-diagnostic-v2',
+          event:
+            'cao_preview.output_rejected',
+          rejectionClass:
+            validation.rejectionClass,
+          runId: request.runId,
+          roleId:
+            'executive.chief_architecture_officer',
+          taskClass:
+            request.taskClass,
+          runOutcome:
+            report.localExecution
+              .modelRun.outcome,
+          schemaFailureClass:
+            boundedSchemaFailureClass(
+              report.localExecution
+                .modelRun
+                .providerErrorClass,
+            ),
+          requiredEvidenceReferenceCount:
+            evidenceReferences.length,
+          availableEvidenceReferenceCount:
+            report.localExecution
+              .draftForHumanReview
+              ?.evidenceReferences
+              .length ?? 0,
+        },
+      );
+    }
+
+    if (
+      !failure.body.ok &&
+      (
+        failure.body.error ===
+          'provider_authentication_failed' ||
+        failure.body.error ===
+          'provider_rate_limited' ||
+        failure.body.error ===
+          'provider_timeout' ||
+        failure.body.error ===
+          'provider_failed'
+      )
+    ) {
+      emitProviderFailureDiagnostic(
+        dependencies,
+        {
+          diagnosticVersion:
+            'cao-preview-provider-failure-diagnostic-v2',
+          event:
+            'cao_preview.provider_failed',
+          failureBoundary:
+            'reported_model_run',
+          providerFailureClass:
+            boundedProviderFailureClass(
+              report.localExecution
+                .modelRun
+                .providerErrorClass,
+            ),
+          caughtExecutionFailureClass:
+            null,
+          runId: request.runId,
+          roleId:
+            'executive.chief_architecture_officer',
+          taskClass:
+            request.taskClass,
+          runOutcome:
+            report.localExecution
+              .modelRun.outcome,
+        },
+      );
+    }
+
+    return failure;
   }
+
+  const draft = validation.draft;
 
   return result(
     200,

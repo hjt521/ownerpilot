@@ -44,6 +44,9 @@ function mockGeneration(
   text: string,
   inputTokens = 100,
   outputTokens = 200,
+  finishReason:
+    | 'stop'
+    | 'length' = 'stop',
 ) {
   return {
     content: [
@@ -53,7 +56,7 @@ function mockGeneration(
       },
     ],
     finishReason: {
-      unified: 'stop' as const,
+      unified: finishReason,
       raw: undefined,
     },
     usage: {
@@ -628,6 +631,12 @@ async function main(): Promise<void> {
   );
 
   check(
+    'classifies local schema validation',
+    invalidSchemaRun.providerErrorClass ===
+      'local_output_validation',
+  );
+
+  check(
     'preserves usage on native schema failure',
     invalidSchemaRun.usage.inputTokens === 100 &&
       invalidSchemaRun.usage.outputTokens === 200 &&
@@ -671,6 +680,52 @@ async function main(): Promise<void> {
         1,
   );
 
+  check(
+    'classifies native JSON parsing without exposing generated text',
+    fencedOutputRun.providerErrorClass ===
+      'native_json_parse' &&
+      fencedOutputRun
+        .sanitizedFailureDetail !== null &&
+      !fencedOutputRun
+        .sanitizedFailureDetail
+        .includes('```json'),
+  );
+
+  const truncatedOutputModel =
+    new MockLanguageModelV3({
+      doGenerate: async () =>
+        mockGeneration(
+          '{',
+          100,
+          200,
+          'length',
+        ),
+    });
+
+  const truncatedOutputRun =
+    await runInjectedModelEvaluation(
+      optionsFor(
+        firstCase,
+        truncatedOutputModel,
+      ),
+    );
+
+  check(
+    'classifies local output truncation without exposing generated text',
+    truncatedOutputRun.outcome ===
+      'failed_schema' &&
+      truncatedOutputRun.providerErrorClass ===
+        'local_output_truncated' &&
+      truncatedOutputRun.output === null &&
+      truncatedOutputRun
+        .sanitizedFailureDetail !== null &&
+      !truncatedOutputRun
+        .sanitizedFailureDetail
+        .includes('{') &&
+      truncatedOutputModel.doGenerateCalls.length ===
+        1,
+  );
+
   const providerFailureModel =
     new MockLanguageModelV3({
       doGenerate: async () => {
@@ -692,7 +747,9 @@ async function main(): Promise<void> {
     'classifies injected model failure',
     providerFailureRun.outcome ===
       'failed_provider' &&
-      providerFailureRun.output === null,
+      providerFailureRun.output === null &&
+      providerFailureRun.providerErrorClass ===
+        'provider_unknown',
   );
 
   check(
@@ -709,6 +766,121 @@ async function main(): Promise<void> {
     providerFailureModel
       .doGenerateCalls.length === 1,
   );
+
+  const providerClassificationCases = [
+    {
+      label: 'provider authentication failure',
+      errorName: 'AI_APICallError',
+      statusCode: 401,
+      expected:
+        'provider_authentication',
+    },
+    {
+      label: 'provider rate limit',
+      errorName: 'AI_APICallError',
+      statusCode: 429,
+      expected:
+        'provider_rate_limit',
+    },
+    {
+      label: 'provider request rejection',
+      errorName: 'AI_APICallError',
+      statusCode: 400,
+      expected:
+        'provider_request_rejected',
+    },
+    {
+      label: 'provider model unavailable',
+      errorName: 'AI_APICallError',
+      statusCode: 404,
+      expected:
+        'provider_model_unavailable',
+    },
+    {
+      label: 'provider upstream unavailable',
+      errorName: 'AI_APICallError',
+      statusCode: 503,
+      expected:
+        'provider_upstream_unavailable',
+    },
+    {
+      label: 'provider transport failure',
+      errorName: 'AI_APICallError',
+      statusCode: null,
+      expected:
+        'provider_transport_failure',
+    },
+    {
+      label: 'provider invalid response',
+      errorName:
+        'AI_InvalidResponseDataError',
+      statusCode: null,
+      expected:
+        'provider_invalid_response',
+    },
+    {
+      label: 'provider configuration failure',
+      errorName: 'AI_LoadAPIKeyError',
+      statusCode: null,
+      expected:
+        'provider_configuration',
+    },
+  ] as const;
+
+  for (
+    const item of
+    providerClassificationCases
+  ) {
+    const providerError =
+      new Error(
+        'synthetic private provider detail',
+      );
+
+    providerError.name =
+      item.errorName;
+
+    if (item.statusCode !== null) {
+      (
+        providerError as Error & {
+          statusCode?: number;
+        }
+      ).statusCode =
+        item.statusCode;
+    }
+
+    const classifiedModel =
+      new MockLanguageModelV3({
+        doGenerate: async () => {
+          throw providerError;
+        },
+      });
+
+    const classifiedRun =
+      await runInjectedModelEvaluation(
+        optionsFor(
+          firstCase,
+          classifiedModel,
+        ),
+      );
+
+    check(
+      `classifies ${item.label}`,
+      classifiedRun.outcome ===
+        'failed_provider' &&
+        classifiedRun.providerErrorClass ===
+          item.expected &&
+        classifiedRun.output === null &&
+        classifiedModel
+          .doGenerateCalls.length === 1 &&
+        classifiedRun
+          .sanitizedFailureDetail !== null &&
+        !classifiedRun
+          .sanitizedFailureDetail
+          .includes(
+            'synthetic private provider detail',
+          ),
+    );
+  }
 
   const timeoutModel =
     new MockLanguageModelV3({
@@ -733,7 +905,7 @@ async function main(): Promise<void> {
     timeoutRun.outcome ===
       'failed_timeout' &&
       timeoutRun.providerErrorClass ===
-        'timeout' &&
+        'provider_timeout' &&
       timeoutRun.noAutomaticFallback,
   );
 

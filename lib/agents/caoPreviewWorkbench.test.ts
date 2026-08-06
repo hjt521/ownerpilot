@@ -63,14 +63,25 @@ const validRequest = {
   taskClass: 'architecture_analysis',
   runId: 'cao-workbench-test-001',
   objective:
-    'Analyze the bounded enterprise workforce architecture evidence.',
+    'Analyze the OwnerPilot Enterprise AI Workforce recovery package and Founder intent. Produce an architecture recommendation for completing the CAO, designing the future Repository Developer Operator, and sequencing the enterprise-agent program without activating any new role.',
   evidenceScopeId:
     'enterprise_workforce_recovery',
   sourceCommit,
-  constraints: ['No role activation.'],
-  knownDecisions: ['Founder authority remains controlling.'],
+  constraints: [
+    'Keep PR #338 Draft',
+    'No role activation',
+    'No repository or deployment authority',
+    'No Production access',
+    'No autonomous continuation',
+  ],
+  knownDecisions: [
+    'Founder sovereign authority remains controlling',
+    'CAO remains advisory and Preview-only',
+    'Repository Developer Operator is not authorized',
+  ],
   unresolvedQuestions: [
-    'What is the smallest safe operator boundary?',
+    'What is the smallest safe Repository Developer Operator boundary?',
+    'What sequence should govern future enterprise-agent roles?',
   ],
   founderApprovalReference:
     CAO_PREVIEW_APPROVAL_REFERENCE,
@@ -296,6 +307,56 @@ async function main(): Promise<void> {
   );
 
   await check(
+    'rejects an oversized derived instruction packet before evidence collection',
+    async () => {
+      let collectionCalls = 0;
+      let adapterCalls = 0;
+      let executionCalls = 0;
+
+      const result =
+        await executeCaoPreviewWorkbench(
+          {
+            ...dependencies(),
+            collectEvidence: async () => {
+              collectionCalls += 1;
+              return evidencePacket();
+            },
+            createGatewayAdapter: () => {
+              adapterCalls += 1;
+              return adapter();
+            },
+            executePreview: async () => {
+              executionCalls += 1;
+              throw new Error(
+                'execution must remain unreachable',
+              );
+            },
+          },
+          {
+            contentType:
+              'application/json',
+            rawBody: JSON.stringify({
+              ...validRequest,
+              objective: 'x'.repeat(4_000),
+            }),
+          },
+        );
+
+      assert.deepEqual(
+        result.body,
+        {
+          ok: false,
+          error: 'invalid_request',
+        },
+      );
+      assert.equal(collectionCalls, 0);
+      assert.equal(adapterCalls, 0);
+      assert.equal(executionCalls, 0);
+    },
+  );
+
+
+  await check(
     'surfaces source-commit mismatch from the approved collector',
     async () => {
       const result = await executeCaoPreviewWorkbench(
@@ -376,6 +437,26 @@ async function main(): Promise<void> {
             assert.match(
               options.routeRequest.instructions,
               /File-level implementation map/,
+            );
+            assert.ok(
+              options.routeRequest.instructions.length <=
+                2_000,
+            );
+            assert.match(
+              options.routeRequest.instructions,
+              /Return complete valid JSON first within 4000 tokens/,
+            );
+            assert.match(
+              options.routeRequest.instructions,
+              /draft_artifact <=8000 characters/,
+            );
+            assert.match(
+              options.routeRequest.instructions,
+              /Do not duplicate evidence or analysis/,
+            );
+            assert.match(
+              options.routeRequest.instructions,
+              /No composite score/,
             );
             return report(reference);
           },
