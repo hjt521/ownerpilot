@@ -44,6 +44,9 @@ function mockGeneration(
   text: string,
   inputTokens = 100,
   outputTokens = 200,
+  finishReason:
+    | 'stop'
+    | 'length' = 'stop',
 ) {
   return {
     content: [
@@ -53,7 +56,7 @@ function mockGeneration(
       },
     ],
     finishReason: {
-      unified: 'stop' as const,
+      unified: finishReason,
       raw: undefined,
     },
     usage: {
@@ -628,6 +631,12 @@ async function main(): Promise<void> {
   );
 
   check(
+    'classifies local schema validation',
+    invalidSchemaRun.providerErrorClass ===
+      'local_output_validation',
+  );
+
+  check(
     'preserves usage on native schema failure',
     invalidSchemaRun.usage.inputTokens === 100 &&
       invalidSchemaRun.usage.outputTokens === 200 &&
@@ -668,6 +677,52 @@ async function main(): Promise<void> {
       'failed_schema' &&
       fencedOutputRun.output === null &&
       fencedOutputModel.doGenerateCalls.length ===
+        1,
+  );
+
+  check(
+    'classifies native JSON parsing without exposing generated text',
+    fencedOutputRun.providerErrorClass ===
+      'native_json_parse' &&
+      fencedOutputRun
+        .sanitizedFailureDetail !== null &&
+      !fencedOutputRun
+        .sanitizedFailureDetail
+        .includes('```json'),
+  );
+
+  const truncatedOutputModel =
+    new MockLanguageModelV3({
+      doGenerate: async () =>
+        mockGeneration(
+          '{',
+          100,
+          200,
+          'length',
+        ),
+    });
+
+  const truncatedOutputRun =
+    await runInjectedModelEvaluation(
+      optionsFor(
+        firstCase,
+        truncatedOutputModel,
+      ),
+    );
+
+  check(
+    'classifies local output truncation without exposing generated text',
+    truncatedOutputRun.outcome ===
+      'failed_schema' &&
+      truncatedOutputRun.providerErrorClass ===
+        'local_output_truncated' &&
+      truncatedOutputRun.output === null &&
+      truncatedOutputRun
+        .sanitizedFailureDetail !== null &&
+      !truncatedOutputRun
+        .sanitizedFailureDetail
+        .includes('{') &&
+      truncatedOutputModel.doGenerateCalls.length ===
         1,
   );
 

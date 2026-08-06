@@ -207,7 +207,9 @@ function report(
         providerErrorClass:
           mode === 'timeout'
             ? 'timeout'
-            : null,
+            : mode === 'schema_failure'
+              ? 'local_output_validation'
+              : null,
       },
       finalAudit: {
         humanDisposition: 'pending',
@@ -501,6 +503,8 @@ async function main(): Promise<void> {
             dissentPreserved: boolean;
             noSilentSubstitution: boolean;
             noAutomaticFallback: boolean;
+            providerErrorClass:
+              string | null;
           };
           finalAudit: {
             humanDisposition: string;
@@ -569,6 +573,9 @@ async function main(): Promise<void> {
             candidate.localExecution
               .modelRun.schemaValid =
               false;
+            candidate.localExecution
+              .modelRun.providerErrorClass =
+              'local_output_validation';
           },
         },
         {
@@ -813,6 +820,15 @@ async function main(): Promise<void> {
           item.rejectionClass,
           item.name,
         );
+        assert.equal(
+          diagnostics[0]
+            ?.schemaFailureClass,
+          item.rejectionClass ===
+            'schema_invalid'
+            ? 'local_output_validation'
+            : null,
+          item.name,
+        );
 
         const serialized =
           JSON.stringify(
@@ -834,6 +850,69 @@ async function main(): Promise<void> {
           item.name,
         );
       }
+
+      const unboundedCandidate =
+        JSON.parse(
+          JSON.stringify(
+            report('schema_failure'),
+          ),
+        ) as MutableReport;
+
+      unboundedCandidate.localExecution
+        .modelRun.providerErrorClass =
+        'synthetic-secret-like-raw-detail';
+
+      const boundedDiagnostics:
+        CaoPreviewOutputRejectionDiagnostic[] =
+          [];
+
+      const boundedResponse =
+        await executeCaoPreviewLiveRun(
+          {
+            ...dependencies(),
+            createGatewayAdapter: () =>
+              adapter(),
+            executePreview: async () =>
+              unboundedCandidate as unknown as
+                CaoPreviewExecutionReport,
+            outputRejectionDiagnosticSink:
+              diagnostic => {
+                boundedDiagnostics.push(
+                  diagnostic,
+                );
+              },
+          },
+          {
+            contentType:
+              'application/json',
+            rawBody: validBody,
+          },
+        );
+
+      assert.deepEqual(
+        boundedResponse.body,
+        {
+          ok: false,
+          error: 'output_rejected',
+        },
+      );
+      assert.equal(
+        boundedDiagnostics.length,
+        1,
+      );
+      assert.equal(
+        boundedDiagnostics[0]
+          ?.schemaFailureClass,
+        null,
+      );
+      assert.equal(
+        JSON.stringify(
+          boundedDiagnostics[0],
+        ).includes(
+          'synthetic-secret-like-raw-detail',
+        ),
+        false,
+      );
     },
   );
 

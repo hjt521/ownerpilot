@@ -53,8 +53,10 @@ import {
   type ExecutiveAgentsPreviewUiRequest,
 } from './executiveAgentsPreviewUiContract';
 
-import type {
-  EvaluationPricing,
+import {
+  EVALUATION_SCHEMA_FAILURE_CLASSES,
+  type EvaluationPricing,
+  type EvaluationSchemaFailureClass,
 } from './evaluation/aiSdkEvaluationRunner';
 
 import type {
@@ -115,7 +117,7 @@ export type CaoPreviewOutputRejectionClass =
 
 export interface CaoPreviewOutputRejectionDiagnostic {
   diagnosticVersion:
-    'cao-preview-output-rejection-diagnostic-v1';
+    'cao-preview-output-rejection-diagnostic-v2';
   event: 'cao_preview.output_rejected';
   rejectionClass:
     CaoPreviewOutputRejectionClass;
@@ -126,6 +128,8 @@ export interface CaoPreviewOutputRejectionDiagnostic {
     | 'architecture_analysis'
     | 'evaluation_only';
   runOutcome: string;
+  schemaFailureClass:
+    EvaluationSchemaFailureClass | null;
   requiredEvidenceReferenceCount: number;
   availableEvidenceReferenceCount: number;
 }
@@ -706,6 +710,21 @@ function validatedDraft(
   };
 }
 
+function boundedSchemaFailureClass(
+  value: unknown,
+): EvaluationSchemaFailureClass | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  return (
+    EVALUATION_SCHEMA_FAILURE_CLASSES as
+      readonly string[]
+  ).includes(value)
+    ? value as EvaluationSchemaFailureClass
+    : null;
+}
+
 function defaultOutputRejectionDiagnosticSink(
   diagnostic:
     CaoPreviewOutputRejectionDiagnostic,
@@ -1003,7 +1022,7 @@ export async function executeCaoPreviewLiveRun(
         dependencies,
         {
           diagnosticVersion:
-            'cao-preview-output-rejection-diagnostic-v1',
+            'cao-preview-output-rejection-diagnostic-v2',
           event:
             'cao_preview.output_rejected',
           rejectionClass:
@@ -1016,6 +1035,12 @@ export async function executeCaoPreviewLiveRun(
           runOutcome:
             report.localExecution
               .modelRun.outcome,
+          schemaFailureClass:
+            boundedSchemaFailureClass(
+              report.localExecution
+                .modelRun
+                .providerErrorClass,
+            ),
           requiredEvidenceReferenceCount:
             evidenceReferences.length,
           availableEvidenceReferenceCount:
