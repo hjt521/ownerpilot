@@ -21,6 +21,13 @@
 This document proposes nonexecuting boundaries through which OwnerPilot may
 later receive a version-pinned AEOS executive package.
 
+AEOS is the Founder-designated external source of reusable business-neutral
+executive applications. AEOS package authority, certification, or canonical
+status within AEOS does not create constitutional, implementation, runtime,
+Preview, Production, or activation authority within OwnerPilot. An external
+AEOS package is not OwnerPilot-canonical unless separately adopted through
+OwnerPilot governance.
+
 It does not select a serialization format, create a schema, define executable
 interfaces, install a dependency, or authorize a runtime consumer.
 
@@ -329,6 +336,33 @@ This is not a schema and cannot be loaded or executed.
 
 The Architect should determine the minimum necessary layers.
 
+### 7.6 Recommendation-architecture reference set
+
+A Recommendation Synthesizer role manifest must bind and classify at least:
+
+- `constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md`
+  §3.7/§3.7.1 — Ratified v1.1; OCM-001 controls qualitative comparison within
+  BTRM-001, while its separate component CRID remains reserved-planned;
+- `constitution/enterprise/RPT-014_RQS_OCM-001_reconciliation_memorandum.md`
+  — Operational reconciliation record supporting Founder ratification through
+  ADR-015;
+- `constitution/adr/adr_log.md#ADR-015` — Accepted and not superseded;
+- `constitution/adr/adr_log.md#ADR-017` — Accepted and not superseded; later
+  controlling reinforcement of ADR-015 and anti-corruption constraints;
+- `constitution/adr/adr_log.md#ADR-019` — Accepted and not superseded; RCO-001
+  and DECG-001 are reserved identifiers only;
+- `constitution/implementation-specs/recommendation_object_spec_v0.1.md` —
+  nonconstitutional drafting input and migration reference only; and
+- `constitution/implementation-specs/decision_graph_spec_v0.1.md` —
+  nonconstitutional drafting input and migration reference only.
+
+The manifest must preserve that recommendation quality and confidence are
+distinct, critical failures may not be mathematically averaged away, and no
+universal composite recommendation-quality score may independently rank,
+approve, reject, select, or execute a material recommendation. Any later ADR
+must be verified for exact status, scope, and supersession; uncertainty remains
+unresolved.
+
 ## 8. Governing reference record
 
 ```yaml
@@ -417,6 +451,8 @@ This is not executable.
 
 `unknown` and `disputed` fail closed for consequence-bearing use.
 
+Artifact class is one input, not a complete precedence rule.
+
 ## 10. Source identity and freshness
 
 Every consequence-bearing reference binds:
@@ -438,10 +474,21 @@ Implementation records cannot create constitutional authority.
 
 ## 11. Conflict handling
 
-### 11.1 OwnerPilot source conflict
+### 11.1 Nonmechanical precedence rule
+
+Precedence is not determined solely by artifact class. Scope, applicability,
+jurisdiction, effective date, supersession, express Founder direction, and the
+specific question under review must all be established. If those factors cannot
+be determined reliably, the conflict remains unresolved and
+consequence-bearing use must stop.
+
+No automatic precedence algorithm is authorized or defined by this document.
+
+### 11.2 OwnerPilot source conflict
 
 Apply an established hierarchy only when status, class, scope, applicability,
-effective date, supersession, and jurisdiction are determinable.
+effective date, supersession, jurisdiction, express Founder direction, and the
+specific question are determinable.
 
 Otherwise:
 
@@ -449,35 +496,52 @@ Otherwise:
 2. stop consequence-bearing use;
 3. route human review;
 4. preserve both sources;
-5. do not infer resolution from recency or specificity.
+5. do not infer resolution from recency, specificity, or artifact class alone.
 
-### 11.2 AEOS versus OwnerPilot
+### 11.3 AEOS versus OwnerPilot
 
 - If OwnerPilot is stricter, its overlay narrows.
 - If AEOS is stricter, OwnerPilot cannot broaden.
 - If narrowing cannot resolve the conflict, reject the package/specialization.
 - Do not patch or fork AEOS.
+- AEOS canonical status within AEOS does not create OwnerPilot canonical or
+  runtime authority.
 
-### 11.3 Canonical versus noncanonical
+### 11.4 Canonical versus noncanonical
 
 A noncanonical source cannot override a canonical source. Preserve it as
 history/proposal. If canonical applicability is uncertain, do not substitute
 the noncanonical source.
 
-### 11.4 Missing evidence
+### 11.5 Missing evidence
 
 Apply declared `reject`, `escalate`, or `reject_or_escalate`. Never fabricate
 or silently substitute.
 
-### 11.5 Unresolved authority
+### 11.6 Unresolved authority and certification
 
 - unresolved legal authority blocks legal consequence;
 - unresolved implementation authority blocks runtime change;
 - unresolved environment authority blocks activation;
-- unresolved certification blocks Stage B absent express exception;
+- unresolved certification blocks Stage B absent an express, bounded Founder
+  exception to the certification prerequisite;
+- such an exception does not authorize Preview deployment, live execution,
+  implementation, environment eligibility, or activation unless separately
+  stated; and
 - unresolved Founder disposition blocks acceptance.
 
-## 12. Version-pinning record
+## 12. Authority-intersection limitation
+
+The authority-intersection model is a governance metaphor and validation rule,
+not a complete authorization algorithm. A technically nonempty intersection
+does not establish authority unless every underlying grant is authentic,
+effective, applicable, unsuperseded, and enforced through the authorized
+OwnerPilot control path.
+
+A manifest may record the inputs to that review. It may not calculate or grant
+authority mechanically.
+
+## 13. Version-pinning record
 
 ```text
 AEOS package ID
@@ -500,7 +564,7 @@ AEOS package ID
 
 Any changed component creates a new binding.
 
-## 13. Upgrade compatibility classes
+## 14. Upgrade compatibility classes
 
 Possible future classes:
 
@@ -518,7 +582,7 @@ Until approved policy exists, every change defaults to conservative
 revalidation. No patch is automatically exempt and no automatic update is
 allowed.
 
-## 14. Upgrade sequence
+## 15. Upgrade sequence
 
 1. Retrieve exact package.
 2. Verify version, digest, provenance, certification.
@@ -534,7 +598,7 @@ allowed.
 12. Separately validate Preview.
 13. Separately decide Production.
 
-## 15. Defect containment and upstream correction
+## 16. Defect containment and upstream correction
 
 ```text
 Detect and contain
@@ -564,7 +628,7 @@ A temporary shim requires written exception, exact defect reference, isolation,
 no authority expansion, tests, owner, expiry/removal trigger, removal plan, and
 revalidation.
 
-## 16. Revocation
+## 17. Revocation
 
 If certification is withdrawn, suspended, expired, or disputed:
 
@@ -585,7 +649,7 @@ If an OwnerPilot source is superseded, expired, or disputed:
 
 Revocation is not deletion.
 
-## 17. Platform enforcement
+## 18. Platform enforcement
 
 ```text
 AEOS executive contract

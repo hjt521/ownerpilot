@@ -28,6 +28,13 @@ A future Governing Reference Manifest must resolve exact identity, status,
 version, applicability, jurisdiction, effective status, conflicts, and
 limitations before consequence-bearing use.
 
+Precedence is not determined solely by artifact class. Scope, applicability,
+jurisdiction, effective date, supersession, express Founder direction, and the
+specific question under review must all be established. If those factors cannot
+be determined reliably, the conflict remains unresolved and
+consequence-bearing use must stop. This inventory does not define an automatic
+precedence algorithm.
+
 ## 2. Audit method
 
 The read-only audit used:
@@ -50,26 +57,36 @@ implementation authority.
 
 | Class | Meaning | Default OPEP treatment |
 |---|---|---|
-| Founder decision | Explicit Founder direction with scope | Controlling within scope unless superseded |
-| Ratified constitutional artifact | Founder-ratified normative artifact | Governing within declared scope |
-| Accepted ADR | Recorded architecture decision | Governing within exact decision scope |
-| Approved doctrine or standard | Normative principle or requirement | Governing within exact scope |
+| Founder decision | Explicit Founder direction with scope | Controlling within scope unless superseded and only after applicability is established |
+| Ratified constitutional artifact | Founder-ratified normative artifact | Governing within declared and applicable scope |
+| Accepted ADR | Recorded architecture decision | Governing within exact decision scope, subject, and supersession state |
+| Approved doctrine or standard | Normative principle or requirement | Governing within exact applicable scope |
 | Proposed or Architecture Draft | Unratified design | Analysis input only |
 | Verified implementation record | Evidence of what exists or was tested | Descriptive; no constitutional authority |
 | Operational record | Current system/process state | Descriptive unless separately authorized |
 | Noncanonical reviewed handoff | Structured reviewed input | No authority through compilation |
 | Source recovery | Preserved historical text | Never canonical by status alone |
-| External AEOS package record | Exact package/certification evidence | Technical input; no OwnerPilot authority |
+| External AEOS package record | Exact package/certification evidence | External technical input; no OwnerPilot authority or canonical status through import |
 | Unknown or disputed | Status/applicability unresolved | Fail closed |
+
+Artifact class alone never resolves precedence.
 
 ## 4. Governance baseline
 
 ### 4.1 Founder direction
 
-- AEOS is the future source of reusable business-neutral executives.
+- AEOS is the Founder-designated external source of reusable business-neutral
+  executives.
+- AEOS package authority, certification, or canonical status within AEOS does
+  not create OwnerPilot constitutional, implementation, runtime, Preview,
+  Production, or activation authority.
+- An external AEOS package is not OwnerPilot-canonical unless separately
+  adopted through OwnerPilot governance.
 - OwnerPilot must not maintain a competing generic executive.
 - OwnerPilot owns specialization and enforcement.
 - the current OwnerPilot CAO remains untouched;
+- the merged Generic CAO's long-term disposition remains reserved for Founder
+  decision;
 - certification-eligible packages enter Stage A only;
 - Founder acceptance is required;
 - Generic CLO is the first serious trial; and
@@ -107,7 +124,7 @@ Rule:
 > use requires validation of generation time, coverage, and agreement with the
 > referenced artifact.
 
-## 5. Enterprise and intelligence architecture
+## 5. Enterprise, intelligence, and recommendation architecture
 
 | Source | Audited status | Candidate use |
 |---|---|---|
@@ -115,10 +132,33 @@ Rule:
 | `constitution/architecture/EA-101_ownerpilot_cognitive_architecture.md` | Ratified v0.2 | Recommendation-producing roles |
 | `constitution/architecture/EA-102_closed_loop_learning_architecture.md` | Ratified v0.2; bounded implementation authority | Learning/evaluation relationships |
 | `constitution/architecture/EA-012_constitutional_intelligence_layer.md` | Proposed | Design input only until later ratification |
-| `constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md` | Ratified | Evidence, trust, options, comparison, communication |
-| `constitution/implementation-specs/recommendation_object_spec_v0.1.md` | Drafting input | Not canonical; future RCO-001 review only |
-| `constitution/implementation-specs/decision_graph_spec_v0.1.md` | Drafting input | Not canonical; future DECG-001 review only |
+| `constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md` | Ratified v1.1 | Evidence, trust, options, OCM-001 comparison, RQS §3.7.1, communication |
+| `constitution/enterprise/RPT-014_RQS_OCM-001_reconciliation_memorandum.md` | Operational reconciliation record | Records Founder reconciliation through ADR-015; does not replace governing artifacts |
+| `constitution/adr/adr_log.md#ADR-015` | Accepted; not superseded | OCM-001 controls; RQS qualitative-first; quality/confidence separate; no averaging away critical failures |
+| `constitution/adr/adr_log.md#ADR-017` | Accepted; not superseded | Reaffirms ADR-015 and prohibits composite readiness/recommendation-quality scoring; anti-corruption boundary pending recommendation contracts |
+| `constitution/adr/adr_log.md#ADR-019` | Accepted; not superseded | Reserves RCO-001 and DECG-001 identifiers; does not create or ratify their content |
+| `constitution/implementation-specs/recommendation_object_spec_v0.1.md` | Drafting input and migration reference | Nonconstitutional; not ratified RCO-001 |
+| `constitution/implementation-specs/decision_graph_spec_v0.1.md` | Drafting input and migration reference | Nonconstitutional; not ratified DECG-001 |
 | `constitution/architecture/REG-CAP-001_capability_registry.md` | Ratified in current ADR/STATUS record | Capability registration; no parallel registry |
+
+### 5.1 Recommendation controls that remain mandatory
+
+- BTRM-001 §3.7 treats OCM-001 as the controlling qualitative outcome-comparison
+  doctrine within ratified BTRM-001; the separate OCM-001 component CRID remains
+  reserved-planned pending individual ratification.
+- RPT-014 is an Operational reconciliation record; its ratification authority
+  is ADR-015.
+- Recommendation quality and confidence remain distinct and may not be merged.
+- Critical failures may not be mathematically averaged away.
+- No universal composite recommendation-quality score may independently rank,
+  approve, reject, select, execute, or represent the correctness of a material
+  recommendation.
+- RCO-001 and DECG-001 are reserved identifiers under ADR-019, not ratified
+  content. Their current implementation specs remain noncanonical drafting
+  inputs and migration references only.
+- Any later ADR affecting recommendation architecture must be located, its
+  status and supersession established, and its scope reconciled before use. An
+  uncertain later status is `unresolved`, not silently inferred.
 
 ## 6. Enterprise capabilities
 
@@ -145,14 +185,20 @@ An ECAP identity or maturity does not authorize an executive to use it.
 
 | Source | Current OPEP treatment |
 |---|---|
-| `lib/agents/genericCaoContract.ts` | Temporary compatibility/historical generic contract |
+| `lib/agents/genericCaoContract.ts` | Current compatibility and historical-reference generic contract |
 | `lib/agents/genericCaoBusinessAdapter.ts` | Reference-only compatibility adapter |
 | `lib/agents/ownerPilotCaoSpecialization.ts` | Nonexecuting current-state mapping |
 | `docs/architecture/executive-agents/generic_cao_boundary_pr_b_review_packet_2026-08-06.md` | Noncanonical review evidence |
 | associated tests | Deterministic boundary evidence |
 
-These may support comparison against a future AEOS Generic CAO. They do not
-authorize migration.
+The merged Generic CAO boundary is a current OwnerPilot compatibility and
+historical-reference model. Its long-term disposition—including preservation,
+coexistence, contribution upstream, differential portability testing, or
+migration—remains reserved for Founder decision.
+
+These sources may support comparison and other separately approved analysis.
+They do not select or authorize preservation, coexistence, contribution,
+migration, replacement, or another long-term disposition.
 
 ### 7.2 Current CAO Preview sources
 
@@ -165,19 +211,24 @@ authorize migration.
 | Preview route, gate, runner, model, and UI sources | Existing runtime; outside OPEP modification scope |
 
 A future CAO manifest must distinguish the current runtime, the compatibility
-boundary, and a future AEOS package.
+boundary, and any future AEOS package without presuming migration.
 
-## 8. PR #348 and OPMA sources
+## 8. PR #348 and possible future OPMA sources
 
 | Source | Status | OPEP treatment |
 |---|---|---|
-| PR #348 supporting draft | Draft, noncanonical | Historical context and valid nonauthority rules; future AEOS direction requires conforming revision |
-| PR #348 review packet | Draft, noncanonical | Review record; same reconciliation requirement |
-| future OPMA-000 | Not created/adopted by this package | Proposed parent map |
-| OPEP-000 | Current noncanonical package | Proposed subordinate portability architecture |
+| PR #348 supporting draft | Draft, noncanonical | Historical context and valid nonauthority rules; no merge or conforming work authorized |
+| PR #348 review packet | Draft, noncanonical | Review record; no mutation authorized |
+| possible future OPMA-000 | Not created or adopted by this package | Potential future map only |
+| OPEP-000 | Current noncanonical package | Proposed for possible future placement beneath OPMA-000 |
 
-A future PR #348 revision should preserve dated text and add an explicit later
-Founder-direction section.
+No formal OPEP–OPMA parent-child relationship exists unless OPMA-000 is
+created, reviewed, and separately approved.
+
+PR #348 remains Draft. No merge is authorized. No conforming addendum is
+authorized in this revision round. Exact conforming language must follow a
+separate Founder disposition after OPEP review, and historical text must not be
+silently rewritten.
 
 ## 9. Legal and compliance source families
 
@@ -215,7 +266,7 @@ Candidate CLO inputs include:
 Every file must be classified individually. A filename containing `attorney`,
 `ruling`, `ratification`, `signoff`, or `approved` is not self-authenticating.
 
-### 9.4 CLO invariants
+### 9.4 CLO invariants and legal-review separation
 
 A future CLO manifest must preserve:
 
@@ -229,6 +280,11 @@ A future CLO manifest must preserve:
 - no legal source elevation through drafting;
 - no silent resolution of unresolved issues; and
 - independent OwnerPilot enforcement.
+
+Portability validation does not establish legal correctness, legal sufficiency,
+permissible product behavior, or authority to provide jurisdiction-specific
+guidance. Those determinations require separately authorized OwnerPilot legal
+and product-control review.
 
 This inventory does not determine legal sufficiency.
 
@@ -271,7 +327,7 @@ manifest.
 **Fail closed on**
 
 - current CAO alteration;
-- uncertain migration authority;
+- uncertain long-term Generic CAO disposition;
 - missing package/certification digest;
 - unresolved current-versus-AEOS difference;
 - Production inferred from Preview;
@@ -307,6 +363,9 @@ manifest.
 - product/legal conflict;
 - unsupported entity path;
 - AEOS package supplying local law.
+
+Portability validation does not establish legal correctness, legal sufficiency,
+permissible product behavior, or jurisdiction-specific guidance authority.
 
 ### 11.3 OwnerPilot CSO
 
@@ -394,19 +453,44 @@ manifest.
 
 ### 11.7 Recommendation Synthesizer
 
-**Candidates**
+**Exact candidates and status treatment**
 
-- EA-101;
-- EA-102;
-- BTRM-001;
-- ADR-015;
-- RCO-001/DECG-001 only when ratified;
-- provenance and confidence-quality separation;
-- dissent/critical-failure preservation;
-- human review.
+- `constitution/architecture/EA-101_ownerpilot_cognitive_architecture.md` —
+  Ratified v0.2;
+- `constitution/architecture/EA-102_closed_loop_learning_architecture.md` —
+  Ratified v0.2 with bounded implementation authority;
+- `constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md`
+  §3.7/§3.7.1 — Ratified v1.1; OCM-001 controls qualitative comparison within
+  BTRM-001; separate OCM-001 CRID remains reserved-planned;
+- `constitution/enterprise/RPT-014_RQS_OCM-001_reconciliation_memorandum.md`
+  — Operational reconciliation record supporting ADR-015;
+- `constitution/adr/adr_log.md#ADR-015` — Accepted and not superseded;
+- `constitution/adr/adr_log.md#ADR-017` — Accepted and not superseded; later
+  controlling reinforcement of ADR-015 and anti-corruption constraints;
+- `constitution/adr/adr_log.md#ADR-019` — Accepted and not superseded; RCO-001
+  and DECG-001 reserved only;
+- `constitution/implementation-specs/recommendation_object_spec_v0.1.md` —
+  nonconstitutional drafting input and migration reference only;
+- `constitution/implementation-specs/decision_graph_spec_v0.1.md` —
+  nonconstitutional drafting input and migration reference only; and
+- any later applicable ADR only after exact status, scope, and supersession are
+  verified.
+
+**Controlling rules**
+
+- recommendation quality and confidence remain distinct;
+- critical failures may not be mathematically averaged away;
+- no universal composite recommendation-quality score may control a decision;
+- numeric telemetry may not independently rank, approve, reject, select, or
+  execute a material recommendation;
+- RCO-001/DECG-001 content remains unresolved until separately drafted,
+  reviewed, and ratified; and
+- provenance, dissent, human review, and no inferred implementation authority
+  remain required.
 
 **Fail closed on**
 
+- uncertain or conflicting source status;
 - universal composite score;
 - numeric telemetry independently ranking/approving/rejecting/executing;
 - averaging away a critical deficiency;
@@ -438,20 +522,28 @@ Before Stage B, every required reference needs:
 A wildcard directory, broad topic label, or unversioned `latest` reference is
 insufficient.
 
+Precedence cannot be calculated from the authority class alone. The complete
+nonmechanical rule in §1 applies to every manifest reference.
+
 ## 13. Audit findings requiring future resolution
 
 1. Generated constitutional indexes are not demonstrably complete for the
    audited commit.
-2. PR #348's AEOS direction is outdated.
-3. The Generic CAO needs future comparison/migration disposition; no migration
-   is authorized.
+2. PR #348's AEOS direction is outdated, but PR #348 remains Draft and no
+   conforming amendment or merge is authorized.
+3. The Generic CAO's long-term disposition remains reserved among preservation,
+   coexistence, upstream contribution, differential portability testing,
+   migration, or another Founder-selected option.
 4. Legal file authority cannot be inferred from names.
 5. EA-012 is Proposed while later artifacts reference it; preserve actual
    status.
 6. RCO-001, DECG-001, OPOS-001, and FIE-001 are reserved/future, not current
-   ratified authority unless later established.
+   ratified content unless later established.
 7. No AEOS package, digest, certification, or RA-001 record was present in the
    OwnerPilot audit.
-8. AEOS certification cannot be represented as OwnerPilot acceptance.
+8. AEOS certification cannot be represented as OwnerPilot acceptance or
+   OwnerPilot canonical status.
+9. OPEP is only proposed for possible future placement beneath OPMA-000; no
+   formal relationship currently exists.
 
 No finding authorizes remediation in this branch.

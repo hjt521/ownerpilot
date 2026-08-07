@@ -23,6 +23,11 @@ exact AEOS executive package can be specialized for OwnerPilot without
 duplicating generic code, contaminating AEOS with OwnerPilot rules, or expanding
 authority.
 
+AEOS is the Founder-designated external source of reusable business-neutral
+executive applications. AEOS package authority, certification, or canonical
+status within AEOS creates no OwnerPilot constitutional, implementation,
+runtime, Preview, Production, or activation authority.
+
 It does not authorize package execution, integration, Preview, Production, or
 an OwnerPilot CLO.
 
@@ -31,8 +36,13 @@ an OwnerPilot CLO.
 | Stage | Package status | Permitted | Not permitted |
 |---|---|---|---|
 | Stage A | Certification-eligible or certified | Documentation, package analysis, neutral synthetic vectors, contract compatibility, manifest drafting, nonruntime adapter prototyping, differential planning | OwnerPilot reliance, Stage B validation, integration, Preview |
-| Stage B | Formally certified, unless Founder grants bounded Preview exception | OwnerPilot specialization validation using approved adapter/manifests/evidence/authority overlays | Acceptance, Production, automatic activation |
+| Stage B | Formally certified, unless Founder grants an express bounded exception to the certification prerequisite | OwnerPilot specialization validation using approved adapter/manifests/evidence/authority overlays | Preview deployment, live execution, implementation, environment eligibility, acceptance, Production, automatic activation |
 | Stage C | Formally certified | Differential behavioral/authority review and acceptance consideration | Acceptance without Founder, implementation or activation by implication |
+
+Stage B requires formal certification unless the Founder grants an express,
+bounded exception to the certification prerequisite. Such an exception does
+not authorize Preview deployment, live execution, implementation, environment
+eligibility, or activation unless separately stated.
 
 Certification-eligible packages may enter Stage A only.
 
@@ -135,7 +145,10 @@ Preview-eligible, or authorized.
 
 ### 4.1 Preconditions
 
-- formal certification or express Founder exception;
+- formal certification or an express, bounded Founder exception to the
+  certification prerequisite;
+- acknowledgment that such an exception alone authorizes no Preview deployment,
+  live execution, implementation, environment eligibility, or activation;
 - exact package/certification bindings;
 - approved draft adapter and manifests;
 - completed role inventory;
@@ -168,7 +181,7 @@ The generic package remains byte-for-byte consistent with its digest.
 - mission/objectives cite sources;
 - no broader enterprise authority inferred.
 
-#### Governing references
+#### Governing references and nonmechanical precedence
 
 - every reference resolves;
 - exact version/digest;
@@ -176,7 +189,15 @@ The generic package remains byte-for-byte consistent with its digest.
 - source-recovery/drafts remain noncanonical;
 - index freshness validated;
 - conflicts visible;
-- supersession honored.
+- supersession honored;
+- precedence is not determined solely by artifact class; and
+- scope, applicability, jurisdiction, effective date, supersession, express
+  Founder direction, and the specific question are all established before
+  consequence-bearing use.
+
+If those factors cannot be determined reliably, the conflict remains
+unresolved and the test must stop. No automatic precedence algorithm is part of
+Stage B.
 
 #### Evidence
 
@@ -200,6 +221,12 @@ The generic package remains byte-for-byte consistent with its digest.
 - prohibitions/human review not weakened;
 - eligibility not activation;
 - no authority from certification.
+
+The authority-intersection model is a governance metaphor and validation rule,
+not a complete authorization algorithm. A technically nonempty intersection
+does not establish authority unless every underlying grant is authentic,
+effective, applicable, unsuperseded, and enforced through the authorized
+OwnerPilot control path.
 
 #### Adapter separation
 
@@ -299,7 +326,32 @@ Founder dispositions:
 
 Acceptance does not authorize implementation or environment activation.
 
-## 6. Defect model
+## 6. Recommendation-architecture test baseline
+
+A Recommendation Synthesizer portability test must bind and classify:
+
+- `constitution/enterprise/BTRM-001_behavioral_trust_and_resolution_model.md`
+  §3.7/§3.7.1 — Ratified v1.1; OCM-001 controls qualitative comparison within
+  BTRM-001, while its separate component CRID remains reserved-planned;
+- `constitution/enterprise/RPT-014_RQS_OCM-001_reconciliation_memorandum.md`
+  — Operational reconciliation record supporting ADR-015;
+- `constitution/adr/adr_log.md#ADR-015` — Accepted and not superseded;
+- `constitution/adr/adr_log.md#ADR-017` — Accepted and not superseded; later
+  controlling reinforcement of ADR-015 and anti-corruption constraints;
+- `constitution/adr/adr_log.md#ADR-019` — Accepted and not superseded; RCO-001
+  and DECG-001 reserved only;
+- `constitution/implementation-specs/recommendation_object_spec_v0.1.md` —
+  nonconstitutional drafting input and migration reference only; and
+- `constitution/implementation-specs/decision_graph_spec_v0.1.md` —
+  nonconstitutional drafting input and migration reference only.
+
+Tests must preserve that recommendation quality and confidence are distinct,
+critical failures may not be mathematically averaged away, and no universal
+composite recommendation-quality score may independently rank, approve, reject,
+select, execute, or represent the correctness of a material recommendation.
+Uncertain status remains unresolved and blocks consequence-bearing use.
+
+## 7. Defect model
 
 | Class | Definition | Response |
 |---|---|---|
@@ -317,7 +369,7 @@ Acceptance does not authorize implementation or environment activation.
 
 Do not reclassify a defect to avoid escalation.
 
-## 7. Severity
+## 8. Severity
 
 - `critical`: authority expansion, security compromise, legal/jurisdictional
   overreach, tampering, hidden execution, Production exposure;
@@ -330,9 +382,9 @@ Do not reclassify a defect to avoid escalation.
 Critical/high defects cannot be averaged away or accepted through an aggregate
 score.
 
-## 8. First serious trial — Generic CLO
+## 9. First serious trial — Generic CLO
 
-### 8.1 Purpose
+### 9.1 Purpose
 
 Test whether a business-neutral Generic CLO can receive OwnerPilot
 specialization without:
@@ -344,7 +396,12 @@ specialization without:
 - attorney routing;
 - weakening fail-closed controls.
 
-### 8.2 CLO Stage A scenarios
+Portability validation does not establish legal correctness, legal sufficiency,
+permissible product behavior, or authority to provide jurisdiction-specific
+guidance. Those determinations require separately authorized OwnerPilot legal
+and product-control review.
+
+### 9.2 CLO Stage A scenarios
 
 - generic legal risk with no jurisdiction;
 - conflicting generic authority;
@@ -365,7 +422,7 @@ Expected:
 - no attorney service;
 - no self-activation.
 
-### 8.3 CLO Stage B scenarios
+### 9.3 CLO Stage B scenarios
 
 - California versus Los Angeles uncertainty;
 - canonical source versus source recovery;
@@ -388,16 +445,20 @@ Required:
 - suggest independent outside counsel only where approved;
 - no attorney-routing service;
 - no notice/payment/filing/service/settlement consequence;
+- no claim that portability establishes legal or product approval;
 - human review;
 - complete audit.
 
-### 8.4 CLO Stage C
+### 9.4 CLO Stage C
 
 Classify every difference as expected specialization/narrowing/restriction,
 adapter/manifest defect, generic CLO defect, or unexplained. CLO remains
 nonimplemented after a pass.
 
-## 9. Lower-risk mechanics trial
+A CLO Stage C pass does not establish legal correctness, legal sufficiency,
+permissible product behavior, or jurisdiction-specific guidance authority.
+
+## 10. Lower-risk mechanics trial
 
 A CSO or CPO synthetic trial may test package/digest binding, neutral harness,
 manifest layering, nonruntime adapter behavior, evidence envelopes,
@@ -405,7 +466,7 @@ differential reporting, and revocation.
 
 It does not establish legal portability or replace CLO.
 
-## 10. Upgrade validation
+## 11. Upgrade validation
 
 Until a certified compatibility policy exists:
 
@@ -416,7 +477,7 @@ Until a certified compatibility policy exists:
 
 Record which stages ran and why any were reduced.
 
-## 11. Revocation tests
+## 12. Revocation tests
 
 Test:
 
@@ -436,7 +497,7 @@ Default:
 - mark material outputs for review;
 - require human disposition.
 
-## 12. Acceptance authority
+## 13. Acceptance authority
 
 Technical reviewers produce findings. The Founder makes final OwnerPilot
 acceptance, limitation, rejection, or remand.
@@ -445,7 +506,7 @@ No certification, test suite, adapter, executive, or reviewer substitutes for
 Founder acceptance. No acceptance substitutes for implementation or
 environment authority.
 
-## 13. Evidence retention
+## 14. Evidence retention
 
 Preserve:
 
