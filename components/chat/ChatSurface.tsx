@@ -1,6 +1,6 @@
 // components/chat/ChatSurface.tsx
 // AI-first /chat — the conversational surface. Always-on §2.2 disclaimer above the input; typing indicator;
-// refusal widget + route-to-counsel handoff; redirect to /chat/review when the engine signals routeToReview.
+// refusal display; redirect to /chat/review when the engine signals routeToReview.
 // Talks only to POST /api/chat (the engine sets the httpOnly anon-token cookie).
 
 'use client';
@@ -8,7 +8,7 @@ import { useState, useRef, useEffect } from 'react';
 import { lockedProse } from '@/lib/compliance/lockedProse';
 import { ff3ResumeCardContinueOnly } from '@/lib/intake/ff3ResumeCard';
 import { LockedText } from '@/components/chat/LockedText';
-import { showsCounselHandoff, appendsChatDisclaimer, type ChatMessageVM, type ChatTurnResponse } from '@/lib/chat/clientTypes';
+import { appendsChatDisclaimer, type ChatMessageVM, type ChatTurnResponse } from '@/lib/chat/clientTypes';
 
 // LockedKey: CHAT_LANDING_DISCLAIMER
 const CHAT_DISCLAIMER = lockedProse('CHAT_LANDING_DISCLAIMER');
@@ -119,11 +119,6 @@ export function ChatSurface() {
             </div>
             {m.role === 'assistant' && appendsChatDisclaimer(m.refusal) && (
               <p className="mt-1 text-xs italic text-neutral-500">{CHAT_DISCLAIMER}</p>
-            )}
-            {m.role === 'assistant' && showsCounselHandoff(m.refusal) && (
-              <a href="/route-to-counsel" className="mt-2 inline-block min-h-[44px] text-sm underline">
-                Find a California landlord-tenant attorney →
-              </a>
             )}
           </div>
         ))}

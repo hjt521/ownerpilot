@@ -95,7 +95,6 @@ export function ReviewScreen() {
       });
       if (r.status === 409) {
         const j = await r.json().catch(() => ({}));
-        if (j.error === 'routed_to_counsel' && typeof j.href === 'string') { window.location.href = j.href; return; }
         // PR-B Surface 1: the face drifted since the prior produce — warn + require an explicit acknowledgment.
         if (j.error === 'stale_notice' && j.staleness?.warning) {
           setProduce({ phase: 'stale', stale: { warning: j.staleness.warning, reason: j.staleness.reason, changedFields: j.staleness.changedFields ?? [], priorRiskpathId: j.priorRiskpathId } });
