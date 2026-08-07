@@ -2,7 +2,7 @@
 // Lane 5 Decision 2 — owner-facing status page. Fetches /status server-side, renders one of 6 states
 // using the Option-A locked-prose bodies (decision2 §2.E–§2.H). UNBLOCKED by the copy-conflict ruling.
 
-import { brokerReviewStatusCopy, BROKER_REVIEW_COUNSEL_CTA, BROKER_CONFIRM_CANCEL_CONFIRM } from '@/lib/decision2/brokerConfirmCopy';
+import { brokerReviewStatusCopy, BROKER_CONFIRM_CANCEL_CONFIRM } from '@/lib/decision2/brokerConfirmCopy';
 
 type Status = 'pending' | 'confirmed_la' | 'not_la' | 'inconclusive' | 'cancelled' | 'expired';
 interface StatusResponse {
@@ -38,7 +38,6 @@ export default async function BrokerReviewStatusPage({ params }: { params: Promi
   }
 
   const body = brokerReviewStatusCopy(data.status);
-  const routesToCounsel = data.status === 'not_la' || data.status === 'inconclusive' || data.status === 'expired';
   const canCancel = data.status === 'pending';
   const canContinue = data.status === 'confirmed_la';
 
@@ -50,12 +49,6 @@ export default async function BrokerReviewStatusPage({ params }: { params: Promi
       {canContinue && (
         <a href="/chat" className="mt-8 inline-block min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white">
           Continue to notice
-        </a>
-      )}
-
-      {routesToCounsel && (
-        <a href="/route-to-counsel" className="mt-8 inline-block min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white">
-          {BROKER_REVIEW_COUNSEL_CTA} →
         </a>
       )}
 
