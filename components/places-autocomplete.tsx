@@ -10,6 +10,8 @@ import {
 } from 'react';
 import {
   classifyCaliforniaEligibility,
+  clearCaliforniaEligibilityEvidence,
+  rememberCaliforniaEligibilityEvidence,
   type CaliforniaEligibility,
   type StructuredStateComponent,
 } from '@/lib/jurisdiction/californiaEligibility';
@@ -60,7 +62,7 @@ function newSessionToken(): string {
   }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    const v = c === 'x' ? (r & 0x3) | 0x8 : r;
     return v.toString(16);
   });
 }
@@ -139,6 +141,8 @@ export function PropertyAddressAutocomplete({
 
   function handleInput(e: ChangeEvent<HTMLInputElement>) {
     const v = e.target.value;
+    // P0-A: any hand edit invalidates a previous structured state selection.
+    if (id === 'propertyAddress') clearCaliforniaEligibilityEvidence();
     onChange(v); // always write raw text (fallback-friendly)
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -165,15 +169,18 @@ export function PropertyAddressAutocomplete({
       if (res.ok) {
         const json = (await res.json()) as PlaceDetails;
         const resolvedAddress = json.formattedAddress || s.text;
+        const status = classifyCaliforniaEligibility(json.addressComponents);
+        if (id === 'propertyAddress') {
+          rememberCaliforniaEligibilityEvidence(resolvedAddress, status);
+        }
         onChange(resolvedAddress);
-        onCaliforniaEligibility?.({
-          address: resolvedAddress,
-          status: classifyCaliforniaEligibility(json.addressComponents),
-        });
+        onCaliforniaEligibility?.({ address: resolvedAddress, status });
       } else {
+        if (id === 'propertyAddress') clearCaliforniaEligibilityEvidence();
         onChange(s.text);
       }
     } catch {
+      if (id === 'propertyAddress') clearCaliforniaEligibilityEvidence();
       onChange(s.text);
     }
     sessionRef.current = ''; // end the billing session
