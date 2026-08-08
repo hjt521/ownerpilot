@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     freshnessOk: true,
   });
   if (!gate.allowed) {
-    if (gate.reason === 'counsel_route') return NextResponse.json({ error: 'routed_to_counsel', href: '/route-to-counsel' }, { status: 409 });
+    if (gate.reason === 'counsel_route') return NextResponse.json({ error: 'routed_to_counsel' }, { status: 409 });
     return NextResponse.json({ error: gate.reason }, { status: 409 });
   }
 
