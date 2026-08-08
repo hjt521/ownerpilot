@@ -1,0 +1,7 @@
+-- Historical migration compatibility marker.
+-- Version: 20260701130401
+-- Historical name: 035_staleness_guard
+-- Production migration history retains this version but its statements column is NULL; no exact historical SQL is recoverable from the ledger.
+-- Canonical application state is supplied by numeric migration 035_staleness_guard.sql.
+-- Purpose: represent the retained Production migration-version identity after canonical numeric state exists.
+-- No schema-changing SQL is intentionally present in this file.

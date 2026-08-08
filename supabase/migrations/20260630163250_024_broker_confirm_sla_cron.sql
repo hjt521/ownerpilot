@@ -1,0 +1,7 @@
+-- Historical migration compatibility marker.
+-- Version: 20260630163250
+-- Historical name: 024_broker_confirm_sla_cron
+-- Historical SQL is archived outside active migration discovery under supabase/migration-history/application/.
+-- Canonical application state is supplied by numeric migration 024_broker_confirm_sla_cron.sql.
+-- Purpose: represent the retained Production migration-version identity after canonical numeric state exists.
+-- No schema-changing SQL is intentionally present in this file.
