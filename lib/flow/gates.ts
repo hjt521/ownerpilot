@@ -20,6 +20,7 @@ import {
 import { validatePaymentMethods } from '../payments/validatePaymentMethods';
 import { buildMethodsInput } from './paymentMethodsAdapter';
 import { detectJurisdiction } from '../jurisdiction/detectJurisdiction';
+import { readCaliforniaEligibilityEvidence } from '../jurisdiction/californiaEligibility';
 import { supersedeNeedsConfirmation } from './jurisdictionSupersession';
 import { normalizeAddressKey } from './jurisdictionVerdict';
 import { getVerifiedHolidaySet } from '../dates/holidays';
@@ -259,11 +260,13 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
     blockers.push({ code: 'PROPERTY_ADDRESS_MISSING', message: 'A property address is required.' });
   } else {
     const normalizedAddress = normalizeAddressKey(data.propertyAddress);
-    const cachedCalifornia = data.cachedCaliforniaEligibility;
-    const californiaStatus =
-      cachedCalifornia && cachedCalifornia.addressKey === normalizedAddress
-        ? cachedCalifornia.status
-        : 'UNKNOWN';
+    const carriedCalifornia =
+      data.cachedCaliforniaEligibility?.addressKey === normalizedAddress
+        ? data.cachedCaliforniaEligibility
+        : undefined;
+    const cachedCalifornia =
+      carriedCalifornia ?? readCaliforniaEligibilityEvidence(data.propertyAddress);
+    const californiaStatus = cachedCalifornia?.status ?? 'UNKNOWN';
 
     if (californiaStatus === 'NON_CALIFORNIA') {
       blockers.push({
