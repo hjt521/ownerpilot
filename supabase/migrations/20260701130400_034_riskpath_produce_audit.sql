@@ -2,6 +2,7 @@
 -- Version: 20260701130400
 -- Historical name: 034_riskpath_produce_audit
 -- Production migration history retains this version but its statements column is NULL; no exact historical SQL is recoverable from the ledger.
+-- Historical SQL provenance archive: supabase/migration-history/application/UNRECOVERABLE_LEDGER_STATEMENTS.md records this unrecoverable ledger gap; it does not infer missing SQL.
 -- Canonical application state is supplied by numeric migration 034_riskpath_produce_audit.sql.
 -- Purpose: represent the retained Production migration-version identity after canonical numeric state exists.
 -- No schema-changing SQL is intentionally present in this file.
