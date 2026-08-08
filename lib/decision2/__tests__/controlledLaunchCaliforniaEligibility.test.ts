@@ -1,10 +1,37 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import * as ts from 'typescript';
 
 const root = process.cwd();
 const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8');
 
 const eligibility = read('lib/jurisdiction/californiaEligibility.ts');
+
+const eligibilityAst = ts.createSourceFile(
+  'californiaEligibility.ts',
+  eligibility,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
+
+let eligibilityHasOverlayCoupling = false;
+
+const inspectEligibilityNode = (node: ts.Node): void => {
+  if (
+    (ts.isIdentifier(node) &&
+      (node.text === 'detectJurisdiction' || node.text === 'NO_KNOWN_OVERLAY')) ||
+    (ts.isStringLiteral(node) &&
+      (node.text === 'NO_KNOWN_OVERLAY' || node.text.includes('detectJurisdiction')))
+  ) {
+    eligibilityHasOverlayCoupling = true;
+  }
+
+  ts.forEachChild(node, inspectEligibilityNode);
+};
+
+inspectEligibilityNode(eligibilityAst);
+
 const gates = read('lib/flow/gates.ts');
 const places = read('components/places-autocomplete.tsx');
 const serveTrack = read('components/serve-track.tsx');
@@ -32,7 +59,7 @@ check(
 );
 check(
   'eligibility module is independent of overlay classifier',
-  !eligibility.includes('detectJurisdiction') && !eligibility.includes('NO_KNOWN_OVERLAY'),
+  !eligibilityHasOverlayCoupling,
 );
 check(
   'freeform address text is not a California authorization input',
