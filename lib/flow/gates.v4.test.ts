@@ -1,5 +1,6 @@
 import { evaluateCanProduceV4 } from './gates';
 import type { NoticeFlowData } from './noticeFlowState';
+import { normalizeAddressKey } from './jurisdictionVerdict';
 import { individualLandlord, entityLandlord } from './landlord.fixture';
 
 let passed = 0;
@@ -13,6 +14,18 @@ function codes(r: ReturnType<typeof evaluateCanProduceV4>): string[] {
 }
 function has(r: ReturnType<typeof evaluateCanProduceV4>, code: string): boolean {
   return codes(r).includes(code);
+}
+function setCaliforniaStatus(
+  d: NoticeFlowData,
+  status: 'CONFIRMED_CALIFORNIA' | 'NON_CALIFORNIA' | 'UNKNOWN',
+): NoticeFlowData {
+  d.cachedCaliforniaEligibility = {
+    status,
+    addressKey: normalizeAddressKey(d.propertyAddress),
+    resolvedAt: '2026-08-07T00:00:00.000Z',
+    source: 'google_places',
+  };
+  return d;
 }
 // The blockers this slice is responsible for. We assert on these directly
 // rather than on the total count, so the test is robust to the real
@@ -29,7 +42,7 @@ function noManagedBlockers(r: ReturnType<typeof evaluateCanProduceV4>): boolean 
 /** A fully valid v4 configuration. (Wording sign-off is now LIVE, so this
  *  produces; it no longer hangs on the sign-off gate.) */
 function validV4(): NoticeFlowData {
-  return {
+  const d: NoticeFlowData = {
     dispute: { tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' },
     propertyAddress: '442 Fresno St, Fresno, CA 93701',
     propertyCounty: 'Fresno',
@@ -44,14 +57,15 @@ function validV4(): NoticeFlowData {
     serviceDate: '2026-06-02',
     serviceMethod: 'personal',
   };
+  return setCaliforniaStatus(d, 'CONFIRMED_CALIFORNIA');
 }
 
 console.log('\n=== v4 produce gate ===\n');
 
-console.log('1. Fully valid config PRODUCES (wording sign-off is live)');
+console.log('1. Fully valid Fresno CA config PRODUCES (wording sign-off is live)');
 {
   const r = evaluateCanProduceV4(validV4());
-  check('can produce', r.canProduce === true, `blockers: ${codes(r).join(', ')}`);
+  check('Fresno CA can produce', r.canProduce === true, `blockers: ${codes(r).join(', ')}`);
   check('no TEMPLATE_NOT_SIGNED_OFF (wording signed off)', !has(r, 'TEMPLATE_NOT_SIGNED_OFF'));
   check('no v4-managed blockers on a valid config', noManagedBlockers(r), `got: ${codes(r).join(', ')}`);
   check('reports template version', r.templateVersion.startsWith('v4-'));
@@ -152,6 +166,7 @@ console.log('10. SAFETY: LA overlay address blocks production (jurisdiction conf
   const d = validV4();
   d.propertyAddress = '456 Spring St, Los Angeles, CA 90013';
   d.propertyCity = 'Los Angeles';
+  setCaliforniaStatus(d, 'CONFIRMED_CALIFORNIA');
   const r = evaluateCanProduceV4(d);
   check('LA address blocks', !r.canProduce);
   check('JURISDICTION_NEEDS_CONFIRMATION fires', has(r, 'JURISDICTION_NEEDS_CONFIRMATION'));
@@ -162,6 +177,7 @@ console.log('11. SAFETY: hard-block overlay city blocks production');
   const d = validV4();
   d.propertyAddress = '1 Market St, San Francisco, CA 94105';
   d.propertyCity = 'San Francisco';
+  setCaliforniaStatus(d, 'CONFIRMED_CALIFORNIA');
   const r = evaluateCanProduceV4(d);
   check('SF blocks', !r.canProduce && has(r, 'JURISDICTION_BLOCK_OVERLAY_CITY'));
 }
@@ -194,6 +210,72 @@ console.log('14. Multiple missing conditions all surface together');
   delete d.signerName;
   const r = evaluateCanProduceV4(d);
   check('3+ blockers', r.blockers.length >= 3, `got ${r.blockers.length}: ${codes(r).join(', ')}`);
+}
+
+console.log('15. P0-A: NO_KNOWN_OVERLAY alone never authorizes production');
+{
+  const d = validV4();
+  delete d.cachedCaliforniaEligibility;
+  const r = evaluateCanProduceV4(d);
+  check('Fresno without structured state is blocked', !r.canProduce);
+  check('unconfirmed California blocker fires', has(r, 'JURISDICTION_CALIFORNIA_UNCONFIRMED'), codes(r).join(', '));
+}
+
+console.log('16. P0-A: confirmed California + NO_KNOWN_OVERLAY preserves statewide path');
+{
+  const d = validV4();
+  const r = evaluateCanProduceV4(d);
+  check('confirmed Fresno still produces', r.canProduce === true, codes(r).join(', '));
+  check('no California eligibility blocker', !has(r, 'JURISDICTION_CALIFORNIA_UNCONFIRMED') && !has(r, 'JURISDICTION_NON_CALIFORNIA'));
+}
+
+console.log('17. P0-A: non-California states fail closed');
+{
+  for (const [address, city] of [
+    ['123 Main St, Las Vegas, NV 89101', 'Las Vegas'],
+    ['123 Main St, Phoenix, AZ 85001', 'Phoenix'],
+    ['123 Main St, Portland, OR 97201', 'Portland'],
+  ] as const) {
+    const d = validV4();
+    d.propertyAddress = address;
+    d.propertyCity = city;
+    setCaliforniaStatus(d, 'NON_CALIFORNIA');
+    const r = evaluateCanProduceV4(d);
+    check(`${city} blocks`, !r.canProduce && has(r, 'JURISDICTION_NON_CALIFORNIA'), codes(r).join(', '));
+  }
+}
+
+console.log('18. P0-A: UNKNOWN state and stale/conflicting address evidence fail closed');
+{
+  const unknown = validV4();
+  setCaliforniaStatus(unknown, 'UNKNOWN');
+  check('unknown structured state blocks', has(evaluateCanProduceV4(unknown), 'JURISDICTION_CALIFORNIA_UNCONFIRMED'));
+
+  const stale = validV4();
+  stale.cachedCaliforniaEligibility = {
+    status: 'CONFIRMED_CALIFORNIA',
+    addressKey: normalizeAddressKey('999 Different St, Fresno, CA 93701'),
+    resolvedAt: '2026-08-07T00:00:00.000Z',
+    source: 'google_places',
+  };
+  check('state/address conflict blocks', has(evaluateCanProduceV4(stale), 'JURISDICTION_CALIFORNIA_UNCONFIRMED'));
+}
+
+console.log('19. P0-A: LA manual-review disposition remains a hard block after California confirmation');
+{
+  const d = validV4();
+  d.propertyAddress = '456 Spring St, Los Angeles, CA 90013';
+  d.propertyCity = 'Los Angeles';
+  setCaliforniaStatus(d, 'CONFIRMED_CALIFORNIA');
+  d.cachedResolverVerdict = {
+    verdict: 'manual_review',
+    addressKey: normalizeAddressKey(d.propertyAddress),
+    resolvedAt: '2026-08-07T00:00:00.000Z',
+    reviewReason: 'parcel_lookup_inconclusive',
+    source: 'live_resolver',
+  };
+  const r = evaluateCanProduceV4(d);
+  check('manual review still blocks', !r.canProduce && has(r, 'JURISDICTION_MANUAL_REVIEW_REQUIRED'), codes(r).join(', '));
 }
 
 console.log(`\n${'-'.repeat(40)}`);

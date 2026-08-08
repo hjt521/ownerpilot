@@ -17,6 +17,7 @@
  */
 
 import type { ServiceMethod } from '../dates/computeCompliancePeriod';
+import type { CaliforniaEligibility } from '../jurisdiction/californiaEligibility';
 import type { CachedResolverVerdict } from './jurisdictionVerdict';
 import type { LaProduceAuditFields } from '../produce/laProduceClient';
 
@@ -357,6 +358,16 @@ export interface NoticeFlowData {
   // verdict yet (the stub's NEEDS_CONFIRMATION stands per "supersedes once
   // present"). See lib/flow/jurisdictionVerdict.ts.
   cachedResolverVerdict?: CachedResolverVerdict;
+  // P0-A: positive California eligibility is a separate prerequisite from
+  // local-overlay classification. It is populated only from structured Google
+  // Places administrative_area_level_1 evidence for the current normalized
+  // property address. Missing/stale/UNKNOWN evidence fails closed in gates.ts.
+  cachedCaliforniaEligibility?: {
+    status: CaliforniaEligibility;
+    addressKey: string;
+    resolvedAt: string;
+    source: 'google_places';
+  };
   /** LA produce-overlay audit fields, written on the owner's LAHD acknowledgment
    *  at produce (Phase 2D). Optional; absent for non-LA / pre-Phase-2D notices. */
   laProduceAudit?: LaProduceAuditFields;

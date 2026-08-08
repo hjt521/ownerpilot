@@ -8,6 +8,13 @@ import {
   type ChangeEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import {
+  classifyCaliforniaEligibility,
+  clearCaliforniaEligibilityEvidence,
+  rememberCaliforniaEligibilityEvidence,
+  type CaliforniaEligibility,
+  type StructuredStateComponent,
+} from '@/lib/jurisdiction/californiaEligibility';
 
 /**
  * Property-address type-ahead backed by the Places API (New) REST endpoints.
@@ -22,17 +29,29 @@ import {
  *   billing; it is reset after a selection.
  * - GRACEFUL FALLBACK: if the key is missing or any request fails, this behaves
  *   as a plain controlled text input. The field is always usable by hand.
+ * - P0-A: callers that need operative property-production eligibility may opt
+ *   into structured state evidence from addressComponents. Manual/fallback text
+ *   remains usable, but cannot itself confirm California.
  */
 
 type Props = {
   id?: string;
   value: string;
   onChange: (value: string) => void;
+  onCaliforniaEligibility?: (result: {
+    address: string;
+    status: CaliforniaEligibility;
+  }) => void;
   placeholder?: string;
   className?: string;
 };
 
 type Suggestion = { placeId: string; text: string };
+
+type PlaceDetails = {
+  formattedAddress?: string;
+  addressComponents?: StructuredStateComponent[];
+};
 
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const AUTOCOMPLETE_URL = 'https://places.googleapis.com/v1/places:autocomplete';
@@ -52,6 +71,7 @@ export function PropertyAddressAutocomplete({
   id,
   value,
   onChange,
+  onCaliforniaEligibility,
   placeholder,
   className,
 }: Props) {
@@ -121,6 +141,8 @@ export function PropertyAddressAutocomplete({
 
   function handleInput(e: ChangeEvent<HTMLInputElement>) {
     const v = e.target.value;
+    // P0-A: any hand edit invalidates a previous structured state selection.
+    if (id === 'propertyAddress') clearCaliforniaEligibilityEvidence();
     onChange(v); // always write raw text (fallback-friendly)
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -140,17 +162,25 @@ export function PropertyAddressAutocomplete({
         {
           headers: {
             'X-Goog-Api-Key': KEY as string,
-            'X-Goog-FieldMask': 'formattedAddress',
+            'X-Goog-FieldMask': 'formattedAddress,addressComponents',
           },
         },
       );
       if (res.ok) {
-        const json = await res.json();
-        onChange(json.formattedAddress || s.text);
+        const json = (await res.json()) as PlaceDetails;
+        const resolvedAddress = json.formattedAddress || s.text;
+        const status = classifyCaliforniaEligibility(json.addressComponents);
+        if (id === 'propertyAddress') {
+          rememberCaliforniaEligibilityEvidence(resolvedAddress, status);
+        }
+        onChange(resolvedAddress);
+        onCaliforniaEligibility?.({ address: resolvedAddress, status });
       } else {
+        if (id === 'propertyAddress') clearCaliforniaEligibilityEvidence();
         onChange(s.text);
       }
     } catch {
+      if (id === 'propertyAddress') clearCaliforniaEligibilityEvidence();
       onChange(s.text);
     }
     sessionRef.current = ''; // end the billing session
