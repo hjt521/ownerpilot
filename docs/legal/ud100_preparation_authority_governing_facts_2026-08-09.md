@@ -1,44 +1,48 @@
-# OwnerPilot — UD-100 Preparation Authority Governing Facts
+# OwnerPilot — Phase C UD-100 Governing Legal / Product-Control Baseline
 
 **Date:** 2026-08-09  
 **Founder:** Jack Taglyan  
-**Repository baseline:** `00f53b6f02f88289341eb976d9f5bd449226cfa6`  
-**Scope:** California UD-100 complaint-packet preparation only. This document does not govern 3-Day Notice preparation, LAHD filing, post-judgment writs, or broader litigation strategy.  
-**Status:** FOUNDER-ADOPTED GOVERNING FACTUAL / PRODUCT-CONTROL BASELINE — MODIFIED OPTION C SELECTED AS TARGET ENTITY-TRACK RULE — SUBJECT TO THE EXPRESS COUNSEL GATES BELOW  
+**Repository baseline at workstream start:** `00f53b6f02f88289341eb976d9f5bd449226cfa6`  
+**Scope:** California Phase C UD-100 complaint-packet preparation and customer-controlled submission only. This document does not govern 3-Day Notice preparation, LAHD filing, post-judgment writs, or broader litigation representation.  
+**Status:** FOUNDER-ADOPTED / ATTORNEY-VALIDATED PHASE C LEGAL-CONTROL BASELINE — SUBJECT TO THE EXPRESS HELD ITEMS BELOW  
 **Implementation authority:** None.  
 **Production authority:** None.  
-**Attorney validation:** Not supplied by this document.  
+**Paid activation authority:** None until applicable UDA/LDA compliance is complete.  
+**Autonomous filing authority:** None.  
 
-## 1. Purpose and authority
+## 1. Purpose and authority hierarchy
 
-This document preserves the governing factual and product-control baseline derived from the August 9, 2026 independent UD-100 authority research, including the later v3 update adopting Modified Option C as the Founder-selected target entity-track product rule.
+This document reconciles three August 9, 2026 sources into one durable OwnerPilot repository baseline:
 
-It is intentionally narrower than the research memoranda. The source materials mix:
+1. the independent UD-100 authority research and v3 analysis;
+2. the Founder-selected Modified Option C product direction and ratified broker-ruling consolidation; and
+3. Janna's completed targeted California legal review, `OwnerPilot — Phase C UD-100 Legal Control Handoff — Modified Option C — Ratified Legal Review Package`.
 
-- primary-law findings;
-- legal interpretations;
-- Founder operational experience;
-- product recommendations;
-- customer-copy proposals;
-- unresolved counsel questions.
+Where the research memorandum or broker-ruling consolidation conflicts with Janna's legal-control handoff, Janna's validated legal control governs unless a later Founder disposition or controlling legal authority supersedes it.
 
-Only propositions appropriate to a durable OwnerPilot baseline are adopted here. Open or contestable legal conclusions remain expressly counsel-gated.
+Where any of those materials conflict with an explicit Founder product/governance rule, the Founder rule governs product authority unless it would require conduct prohibited by controlling law.
 
-This document is an input to Architect reconciliation and later engineering directives. It does **not** independently authorize code changes, product activation, Production deployment, court filing, registration, compensation, or any other operative action.
+The following hierarchy therefore applies:
 
-## 2. Controlling distinctions
+**controlling law → Founder authority boundary → Janna-validated Phase C legal control → this reconciliation baseline → independent research / broker-ruling analysis → Architect specification → Engineer implementation.**
 
-OwnerPilot must preserve the following distinctions in all UD-100 architecture, copy, workflows, and implementation:
+This document authorizes Architect reconciliation and specification drafting only. It does not authorize code modification, canonical Production activation, court filing, autonomous filing, Supabase/Vercel Production changes, or paid launch.
 
-1. **Document preparation is not legal representation.**
-2. **Ministerial completion is not individualized legal advice.**
-3. **Clerk filing / tender is analytically distinct from appearing or litigating in court.**
-4. **A landlord's capacity to be a party is distinct from the rules governing who may represent that landlord in a court of record.**
-5. **A threshold filing defect that may be curable is not the same thing as affirmative authority for a nonattorney to represent an entity.**
-6. **A broker license does not itself create authority to practice law or eliminate Legal Document Assistant / Unlawful Detainer Assistant requirements.**
-7. **Registration, where required, does not authorize legal advice.**
-8. **OwnerPilot may preserve facts and prepare approved documents only within the legal and product authority actually established for the applicable track.**
-9. **Customer capability, OwnerPilot assistance authority, and court-representation authority must be resolved separately.**
+## 2. Controlling Phase C doctrine
+
+OwnerPilot must preserve three separate functions:
+
+1. **Preparation of the unlawful-detainer filing packet**
+2. **Ministerial/customer-controlled submission of that packet**
+3. **Representation of the plaintiff in Superior Court**
+
+These functions must never be conflated.
+
+The controlling architecture is:
+
+> **Decision intelligence may recommend what the owner might want to do. The UD filing engine may only build what the owner has chosen to file.**
+
+OwnerPilot may help a landlord reason about the business problem before the filing handoff. Once the landlord confirms a decision to file and confirms the legally consequential elections, OwnerPilot enters a ministerial filing mode that may populate, validate, organize, preview, and export the customer's chosen filing packet, but may not make a new legal election or strategy decision for the customer.
 
 ## 3. Verified California statutory baseline
 
@@ -46,314 +50,520 @@ OwnerPilot must preserve the following distinctions in all UD-100 architecture, 
 
 California Business and Professions Code §6400(d) defines "self-help service" to include:
 
-- completing legal documents in a ministerial manner when the documents are selected by a self-represented person and completed at that person's specific direction;
-- providing general published factual legal information written or approved by an attorney;
+- ministerial completion of legal documents selected by a person representing themself and completed at that person's specific direction;
+- qualifying general published factual information;
 - making published legal documents available; and
-- filing or serving legal forms and documents at the specific direction of a self-represented person.
+- filing and serving legal forms and documents at the specific direction of a person representing themself.
 
-**Correction to the August 9 source memoranda:** §6400(d), not §6400(g), is the subsection that defines self-help service.
+**Citation correction preserved:** §6400(d), not §6400(g), is the subsection defining self-help service.
 
 ### 3.2 Advice prohibition
 
-Business and Professions Code §6400(g) prohibits a legal document assistant from giving a consumer advice, explanation, opinion, or recommendation about possible legal rights, remedies, defenses, options, selection of forms, or strategies.
+Business and Professions Code §6400(g) prohibits a legal document assistant from giving advice, explanation, opinion, or recommendation about possible legal rights, remedies, defenses, options, selection of forms, or strategies.
 
-For OwnerPilot this creates a hard architectural boundary: a ministerial document-preparation path cannot quietly become an AI strategy-selection or legal-advice path merely because the interface is software-driven.
+For Phase C this creates a hard implementation boundary. The ministerial filing engine must not:
+
+- choose a cause of action;
+- choose a notice theory;
+- choose a remedy;
+- optimize allegations;
+- recommend which checkbox creates a stronger case;
+- predict that a court will accept a legal theory;
+- reintroduce business/legal-strategy recommendations after ministerial mode begins.
 
 ### 3.3 Compensation and registration
 
-Business and Professions Code §6400 treats compensation broadly as money, property, or anything else of value. A nonexempt legal document assistant may not provide compensated self-help service without registration under the statutory scheme.
+A compensated OwnerPilot workflow that prepares California unlawful-detainer papers falls within the applicable California UDA/LDA regulatory framework unless a specific exemption applies.
 
-Business and Professions Code §6402 requires legal document assistants and unlawful detainer assistants to be registered with the applicable county clerk and satisfy the bonding requirement of §6405. Section 6408 requires specified registration information on solicitations, advertisements, websites, printed/electronic documents, and pleadings used by a registrant. Section 6410 imposes a written-contract regime and requires prominent disclosure that the assistant is not permitted to practice law or advise about legal rights, remedies, defenses, options, form selection, or strategies.
+Registration does not expand substantive authority and does not permit legal advice.
 
-The precise classification of OwnerPilot's compensated UD-100 preparation service as LDA, UDA, both where legally applicable, or another permitted/exempt posture remains a counsel question where the statutory categories overlap or the service architecture changes.
+**Paid Phase C activation is a hard gate:** no paid UD filing workflow may launch until the applicable registration/classification, bonding, written-customer-agreement, disclosure, preparer-identification, advertising, continuing-education, and prohibited-acts controls are complete.
 
 ### 3.4 Broker exemption is narrow
 
-Business and Professions Code §6401(d) exempts a licensed real estate broker or salesperson from Chapter 5.5 only when the licensee acts pursuant to §10131(b) on an unlawful-detainer claim **and is a party to the unlawful-detainer action**.
+Business and Professions Code §6401(d) is party-specific. OwnerPilot may not rely on ordinary broker supervision or property-management agency as a universal exemption for third-party landlord customers.
 
-Accordingly, OwnerPilot must not assume that a broker's ordinary agency or property-management relationship with a third-party landlord automatically supplies this exemption.
+No power of attorney, management agreement, or generic agency relationship may be used as an automatic substitute for a valid Chapter 5.5 registration/exemption or for attorney representation where representation is required.
 
-No product architecture may rely on a power of attorney, management agreement, or generic agency status as a substitute for an independently valid registration/exemption or attorney-representation posture.
+## 4. Eviction-specific practice-of-law boundary
 
-## 4. Verified eviction-specific practice-of-law boundary
+`People v. Landlords Professional Services` remains the key California eviction-services authority for the ministerial/advice distinction.
 
-**People v. Landlords Professional Services (1989) 215 Cal.App.3d 1599** is a controlling California eviction-services authority for OwnerPilot's Phase C design.
+The Phase C product consequence is structural:
 
-The decision supports a distinction between clerical/self-help conduct and unauthorized practice of law. Ministerial conduct includes making forms available, filling forms at the client's specific direction, and filing/serving at the client's direction. Personalized advice, explanations of legal effect, advice about what is required to commence or maintain the proceeding, and individualized form/strategy guidance cross the line identified by the court.
+- OwnerPilot may gather customer facts;
+- OwnerPilot may provide qualifying neutral/general process information;
+- OwnerPilot may populate approved documents from customer-confirmed facts and selections;
+- OwnerPilot may perform factual/completeness checks;
+- OwnerPilot may organize and export the packet;
+- OwnerPilot may provide neutral filing/submission logistics;
+- OwnerPilot may not use the filing engine to advise the customer which legal claim, remedy, form election, allegation, or litigation strategy to select.
 
-### Governing product consequence
+A professional interface, broker credential, AI model, or high model confidence does not alter this boundary.
 
-The UD-100 workflow must therefore remain structurally ministerial unless a separately authorized attorney-led architecture is adopted. In particular, the system must not:
+## 5. Modified Option C — ratified target architecture
 
-- choose a cause of action for the user;
-- recommend whether the user should file an unlawful detainer;
-- select among legally consequential forms based on individualized legal judgment;
-- explain what a pleading choice means for the user's specific legal rights;
-- recommend litigation tactics or legal strategy;
-- present AI-generated legal conclusions as a substitute for independent legal judgment.
+**Modified Option C is APPROVED as the target Phase C UD-100 architecture.**
 
-A professional interface, broker credential, or high-confidence model output does not alter this boundary.
+Natural-person, corporation, and LLC customers may use a materially common ministerial packet-preparation workflow, with plaintiff-type-specific verification, authority, disclosure, and downstream representation controls.
 
-## 5. The ministerial line — target product behavior
+### 5.1 Natural-person track
 
-The v3 research update correctly sharpens an important product principle: OwnerPilot should remove the administrative burden of the UD packet while leaving legally consequential elections and signatures with the customer.
+A natural-person landlord may proceed self-represented subject to ordinary court procedure.
 
-Subject to the applicable registration/exemption and entity-representation gates, the target ministerial workflow may support the customer in:
+OwnerPilot's natural-person Phase C track may:
 
-- supplying facts about the landlord/entity, property, tenancy, notice, alleged breach, service, and requested relief;
-- reviewing neutral descriptions of available Judicial Council fields/forms without OwnerPilot recommending a legal choice;
-- making the customer's own substantive elections;
-- reviewing the completed packet;
-- signing the verification or other signature block that is legally appropriate for that customer and validated for the product track;
-- deciding whether and how to submit the packet;
-- directing permitted filing/service assistance where the applicable Chapter 5.5 posture has been satisfied;
-- preserving proof-of-filing/service facts and downstream matter state.
+- capture and confirm customer facts;
+- capture customer-chosen legal elections;
+- populate approved current forms;
+- perform factual/completeness checks;
+- generate the packet for review/signature;
+- provide neutral customer-controlled submission information;
+- preserve the audit trail.
 
-OwnerPilot's target role is ministerial packet preparation and workflow support. OwnerPilot does not:
+OwnerPilot does not impose an attorney requirement merely because a natural-person case becomes contested.
 
-- make the customer's legal elections;
-- sign court papers for the customer;
-- appear or argue in court for the customer;
-- respond to court orders or opposing papers for the customer;
-- determine settlement, dismissal, or litigation strategy;
-- guarantee that a court clerk will accept a packet;
-- represent that clerk acceptance proves legal sufficiency or representation authority.
+### 5.2 Corporation / LLC entity track
 
-The v3 statement that all customer types may simply e-file or tender entity pleadings without counsel is **not adopted as a universal legal fact**. The exact entity submission/e-filing posture remains a counsel gate because California authority distinguishes a curable threshold representation defect from affirmative authorization to practice or represent an entity.
+For Phase C product-control purposes:
 
-## 6. Natural-person landlord track
+> **LLC = corporation for the entity-track architecture.**
 
-A natural person may represent themself in California Superior Court, subject to the ordinary procedural rules applicable to the matter.
+This is a conservative product rule for LLCs; the corporation rule rests on published appellate authority, while the precise LLC/UD formulation remains a monitoring item because no squarely controlling published appellate UD decision was identified.
 
-For OwnerPilot, a natural-person UD-100 track is therefore potentially viable as a strictly bounded ministerial self-help / document-preparation workflow if all applicable registration, disclosure, compensation, and other legal requirements are satisfied.
+Entity ownership alone is **not** a filing hard stop under the ratified Phase C legal-control package.
 
-The governing product design for this track is:
+The entity track may:
 
-- user supplies and confirms the material facts;
-- user makes legally consequential elections;
-- OwnerPilot populates only approved locked or deterministically generated document content within the validated scope;
-- no individualized legal advice or strategy selection;
-- no OwnerPilot signature, representation, or autonomous commencement of litigation;
-- any filing/service assistance must stay within the validated ministerial and registration posture;
-- required registration/disclosure posture must be resolved before compensated launch.
+- identify the exact plaintiff entity;
+- identify the person acting for the entity;
+- capture signer title/category and asserted authority;
+- capture a short factual basis for signing authority;
+- request supporting authority documentation when warranted;
+- collect customer-supplied facts and customer-selected filing elections;
+- populate the approved UD filing packet;
+- route to the validated entity verification architecture;
+- perform factual/completeness checks;
+- require customer confirmation;
+- generate the packet for customer review/signature;
+- allow the customer to decide whether and how to submit it;
+- provide neutral ministerial submission information;
+- preserve the complete authority and packet audit trail.
 
-The prior assumption that ordinary third-party-landlord UD-100 preparation could rely on the broker exemption without further registration analysis is **not controlling**.
+OwnerPilot may not:
 
-## 7. Corporation and LLC representation baseline
+- represent the corporation or LLC in court;
+- appear at hearings;
+- argue for the entity;
+- sign for the plaintiff;
+- provide litigation strategy inside the filing engine;
+- promise that a court will accept the filing;
+- promise that any representation defect will always be curable;
+- provide, arrange, match, or assign attorneys.
 
-### 7.1 Corporation
+### 5.3 Filing versus representation
 
-California's longstanding rule is that a corporation may be a party to litigation but cannot represent itself in a court of record through a nonattorney officer, director, or employee. See **Merco Construction Engineers, Inc. v. Municipal Court (1978) 21 Cal.3d 724**.
+The legal-control package adopts the distinction between initial packet preparation/submission and court representation.
 
-**CLD Construction, Inc. v. City of San Ramon (2004) 120 Cal.App.4th 1141** adds an important threshold-filing nuance: a corporate complaint filed without proper attorney representation is not necessarily an incurable jurisdictional nullity. The defect may be curable, and the court may permit the corporation to obtain counsel and correct the pleading defect.
+`CLD Construction` supports treating absence of counsel at threshold corporate filing as a potentially curable representation defect rather than an automatic jurisdictional nullity. That does **not** authorize OwnerPilot to promise cure, acceptance, deadline preservation, or a right for a nonattorney to litigate for an entity.
 
-CLD does **not** establish that a corporation has a general right to litigate through a nonattorney or that licensed counsel is legally unnecessary until the opposing party contests the case.
+The entity workflow must therefore preserve separate states for:
 
-The durable rule is:
+**packet preparation → customer review/signature → customer-controlled submission → post-filing status → contested-case detection / representation boundary.**
 
-> A corporation cannot conduct its Superior Court case through a nonattorney representative. Threshold filing mechanics and curability are distinct from representation authority.
+If an entity matter becomes contested, OwnerPilot must surface the validated counsel-requirement notice and must not purport to represent or litigate for the entity.
 
-### 7.2 LLC
+## 6. Entity signer authority — attestation first, documentary diligence by exception
 
-The August 9 research identified trial-court authorities applying the attorney-representation rule to LLCs and no published California appellate unlawful-detainer decision squarely resolving the precise LLC/UD formulation.
+Universal operating-agreement/corporate-resolution upload is **rejected as a default requirement**.
 
-Accordingly, OwnerPilot adopts the following **conservative product policy**, not a claim that the appellate question is uniquely settled by this document:
+Ordinary entity intake must capture:
 
-> For product-design and risk-control purposes, treat an LLC landlord like a corporation with respect to representation in California Superior Court unless and until California counsel approves a different rule.
+1. exact legal plaintiff entity name;
+2. signer full name;
+3. signer title or relationship;
+4. signer category (managing member, manager, officer, partner, or other authorized person);
+5. affirmative statement that the signer is authorized to verify for the entity;
+6. short factual basis for authority; and
+7. confirmation under the applicable verification.
 
-### 7.3 Founder operational evidence
+Supporting authority documentation should be requested only when a validated factual trigger exists, including:
 
-The Founder reported direct operational experience tendering an LLC unlawful-detainer packet to the Los Angeles Superior Court clerk and obtaining a filed/conformed matter without counsel at the intake stage.
+- public entity records conflict with entered entity identity or role;
+- prior OwnerPilot records show a conflicting signer;
+- the entity appears suspended, forfeited, or otherwise presents an unresolved capacity issue;
+- multi-manager governance creates uncertainty;
+- an "other authorized person" role lacks a sufficient factual basis; or
+- authority is disputed, inconsistent, or unclear.
 
-That experience is preserved as **Founder operational evidence**, not as a universal legal rule that every clerk must accept every entity filing or that acceptance validates representation capacity.
+Unresolved signer-authority conflict is a hard stop.
 
-The source memoranda's broader statements that Los Angeles clerks "routinely" accept such filings, that most nonpayment UDs default, or that the representation doctrine becomes legally operative **only** upon contest are **not adopted as governing legal facts** absent stronger authority.
+## 7. Secretary of State / entity-status handling
 
-## 8. Founder-selected target entity architecture — Modified Option C
+OwnerPilot may perform a factual California Secretary of State lookup and record observations such as entity name, public status, and listed information.
 
-The Founder selects **Modified Option C — Ministerial Entity Packet Preparation with Authority Record and Disclosed Representation Boundary** as OwnerPilot's target-state corporation/LLC architecture.
+Observation is not legal conclusion.
 
-This selection is a **product-control direction**, not legal validation or implementation authority.
+The system may not silently convert a public status observation into a conclusion about capacity to sue unless a validated legal-control rule authorizes that consequence.
 
-### 8.1 Target workflow
+Suspended, forfeited, canceled, dissolved, foreign-unqualified, or otherwise unclear entity-capacity states remain a separate held legal-control work item.
 
-Natural-person, corporation, and LLC customers should, to the greatest extent legally validated, use a materially common locked-prose / customer-directed packet-preparation experience.
+## 8. Verification architecture
 
-For a corporation or LLC, the entity track adds a narrow entity-specific layer capturing:
+### 8.1 Natural person
 
-- exact legal entity name;
-- entity type;
-- authorized signer identity;
-- signer role/capacity;
-- asserted basis of authority;
-- the applicable verification/signature path once legally validated;
-- timestamped customer acknowledgment of the entity-representation boundary;
-- packet/source/control versions and audit evidence.
+Use the current UD-100 natural-person verification architecture where applicable.
 
-No operating-agreement or corporate-resolution upload is required merely because the customer is an entity unless Janna/counsel determines that such evidence is legally necessary or materially useful for the validated verification/control design. The v3 recommendation against automatic operating-agreement upload is adopted as the **default low-friction product posture**, subject to counsel override.
+### 8.2 Corporation / LLC / partnership
 
-The customer supplies facts and makes substantive elections. OwnerPilot prepares the packet ministerially within the validated rules. The customer reviews and signs. The customer decides whether and how to submit the packet.
+Janna approved with conditions an entity-appropriate declaration architecture, with **MC-030 — Declaration** as the current default candidate and OwnerPilot-generated entity-specific verification language.
 
-OwnerPilot may assist with ministerial filing/submission only after the separate Chapter 5.5 registration/exemption and entity-submission posture is validated and activated.
+Before activation, the Architect/Engineer must reverify against current official sources:
 
-### 8.2 Representation boundary
+- the July 1, 2026 UD-100 verification wording;
+- current MC-030 structure;
+- the current Judicial Council forms library;
+- applicable Los Angeles Superior Court local requirements; and
+- whether a newer dedicated entity-verification form exists.
 
-OwnerPilot must clearly tell entity customers that preparing or submitting a packet is not the same thing as OwnerPilot or a nonattorney representative being authorized to represent the entity in court.
+If a dedicated current Judicial Council entity-verification form exists, it supersedes MC-030 as the default.
 
-OwnerPilot must not promise that counsel is unnecessary through any particular stage unless Janna/counsel validates that exact statement. The practical event of a tenant answer, demurrer, motion, hearing, or other contested proceeding is a mandatory representation-review trigger, but it must not be described as the only possible point at which counsel can be required.
+Automatic attachment based solely on the customer's confirmed plaintiff type is treated as ministerial routing, not legal-strategy selection, provided the form rule has been validated and activated.
 
-### 8.3 No attorney marketplace or on-platform routing
+## 9. Business-intelligence / filing-engine separation
 
-Modified Option C does not create an attorney marketplace, attorney matching, attorney referral fees, or an OwnerPilot-provided attorney service.
+This is a central Phase C architectural rule.
 
-The v3 proposal to point customers to a State Bar lawyer-referral service is **not automatically adopted**, because OwnerPilot's existing controlling product baseline prohibits on-platform attorney routing/connection. The Architect and Janna may separately determine whether a neutral public-government resource link, shown only when the customer asks for outside legal-help information, is consistent with that baseline. Until separately approved, the existing rule controls: OwnerPilot may calmly suggest consulting an independent attorney outside the platform but does not select, connect, assign, or route the user to an attorney.
+### 9.1 Decision Intelligence state
 
-## 9. Customer-facing entity disclosure — concept adopted, exact prose counsel-gated
+Before filing-mode handoff, OwnerPilot may, within the separately approved owner-user business-decision framework:
 
-The v3 research correctly recommends a short, repeated, plain-English disclosure at the entity intake summary and pre-submission review, with timestamped acknowledgment.
+- compare eviction economics with settlement economics;
+- calculate cost of delay;
+- analyze continued nonpayment;
+- suggest payment-plan structures;
+- analyze negotiation leverage;
+- recommend communication strategies;
+- compare settlement/business outcomes; and
+- help the owner decide whether filing is the preferred business action.
 
-That **disclosure architecture is adopted**.
+These functions must remain distinct from legal form selection or individualized litigation-strategy advice.
 
-The v3 proposed sentence — "You can complete and file this paperwork now without an attorney; you would only need to hire one if the tenant contests the case" — is **not adopted as final customer-facing legal copy** because it states the counsel boundary more categorically than the verified appellate authority supports.
+### 9.2 Decision Confirmation state
 
-The target disclosure must communicate, in calm plain English, at least these facts:
+A visible, auditable transition is required before Phase C enters the ministerial filing engine.
 
-- the landlord is an LLC/corporation;
-- OwnerPilot is preparing the packet from customer-supplied facts and selections;
-- OwnerPilot is not representing the entity and does not determine legal sufficiency;
-- California generally requires licensed counsel to represent a corporation in court and OwnerPilot conservatively applies that rule to LLCs;
-- filing/tender and representation are distinct, but clerk acceptance does not establish a right to litigate through a nonattorney;
-- if a response, motion, hearing, court order, or other event creates a counsel requirement, the entity must obtain independent licensed counsel;
-- OwnerPilot does not provide or arrange attorneys.
+The customer must affirmatively confirm, in substance:
 
-Janna/counsel must approve the exact customer-facing wording before implementation or activation.
+- the customer has decided to file an unlawful-detainer case;
+- the customer has selected the filing path / legally consequential elections required by the validated workflow; and
+- the facts and selections are accurate.
 
-## 10. UDA/LDA posture — registration-first product gate
+Required audit event:
 
-The August 9 research materially weakens the prior assumption that OwnerPilot can launch a compensated third-party-landlord UD-100 preparation workflow under a generic broker exemption and decide later whether registration is needed.
+`decision_to_file_confirmed`
 
-The Founder-selected product posture is now:
+At minimum preserve timestamp, actor, selected filing path/elections, and the governing decision-object/version reference.
 
-> **No compensated UD-100 preparation launch unless and until OwnerPilot's exact Chapter 5.5 registration/exemption posture has been resolved and every registration, bond, contract, disclosure, county, website, advertising, and pleading requirement determined to apply has been satisfied.**
+### 9.3 Ministerial Filing Engine state
 
-For planning purposes, OwnerPilot should proceed on a **registration-first / exemption-not-assumed** basis for the ordinary third-party-landlord scenario.
+Once ministerial filing mode begins, OwnerPilot may populate, attach, calculate, validate factual completeness, identify missing facts, reconcile factual inconsistencies, generate, organize, preview, and export.
 
-This is a conservative product-control rule. It does not convert every unresolved classification question into a legal conclusion. Janna/counsel must determine the exact UDA/LDA registration architecture for the actual operating entity and service.
+It may not recommend a new legal election, change legal strategy, optimize the case, substitute a legal claim, or suggest a stronger legal theory.
 
-This gate does not require immediate registration merely to preserve, research, prototype, or test a non-Production/noncompensated architecture within existing authority.
+If the user wants to reconsider strategy, the user must expressly leave ministerial filing mode and return to the separately governed decision-review state.
 
-## 11. Supersession and reconciliation consequences
+## 10. Customer review, signature, and submission
 
-The following prior positions are no longer safe to rely on without reconciliation:
+The customer:
 
-1. A blanket "Path A — no UDA/LDA registration required" assumption for the typical compensated third-party-landlord UD-100 scenario.
-2. Any prior wording implying that an LLC or corporation's "authorized signer" status alone means the entity may litigate its UD in propria persona.
-3. Any architecture that uses the broker license, power of attorney, or property-management agency as an automatic substitute for a valid Chapter 5.5 exemption/registration or attorney representation.
-4. Any AI flow that converts ministerial packet preparation into individualized legal form selection, advice, explanation, or strategy.
-5. Any entity copy that guarantees clerk acceptance, states that an entity has an unrestricted right to file/e-file through a nonattorney, or says counsel is legally required **only** if the tenant contests.
+- reviews the packet;
+- confirms the facts;
+- signs the applicable verification/filing documents; and
+- decides whether, when, and how to submit.
 
-The v3 research update is incorporated with the following explicit reconciliations:
+OwnerPilot does not sign for the customer.
 
-- **Modified Option C:** adopted as the Founder-selected target entity architecture.
-- **Same-footing packet preparation:** adopted as the desired product experience, subject to entity-specific verification/disclosure controls and legal validation.
-- **No automatic operating-agreement upload:** adopted as the default product posture, subject to counsel override.
-- **Registration-first:** adopted as the compensated-launch product gate.
-- **Plain-English entity disclosure:** architecture adopted; exact v3 wording not adopted pending counsel.
-- **§6400 citation:** corrected — subdivision (d) defines self-help service; subdivision (g) contains the advice/form-selection/strategy prohibition.
-- **Corporation/LLC counsel timing:** v3's practical "if contested" trigger is preserved as a mandatory review trigger, not as a universal rule that counsel cannot be required earlier.
-- **Clerk acceptance/default-rate assertions:** preserved only as research/Founder operational context, not governing legal facts.
-- **State Bar referral-service link:** not adopted pending reconciliation with the controlling no-attorney-routing product rule.
+The currently approved Phase C posture is **customer-controlled filing**. Separate Founder/legal approval is required before OwnerPilot may autonomously transmit through an e-filing provider, click-submit without a final customer action, pay fees automatically, or choose filing options in a filing portal.
 
-The Architect must reconcile this document against:
+## 11. Ratified customer disclosures
+
+### 11.1 Entity customer disclosure
+
+Janna approved the following Phase C entity-track copy:
+
+> **OwnerPilot prepared this filing packet from the facts and selections you provided. You review, sign, and decide whether to file it.**
+>
+> **If the landlord is a corporation or LLC, you may file the case without an attorney. If the tenant contests the case, the entity will generally need a licensed attorney to continue in court.**
+>
+> **OwnerPilot does not provide or arrange attorneys.**
+
+This is a Janna-ratified product disclosure. It must not be expanded into a guarantee that every clerk must accept the packet, every representation defect will be cured, every deadline will be preserved, or the customer may personally litigate for an entity.
+
+### 11.2 Natural-person disclosure
+
+Janna approved:
+
+> **OwnerPilot prepared this filing packet from the facts and selections you provided. You review, sign, and decide whether to file it.**
+>
+> **You may proceed with your case without an attorney. If your case becomes complicated or you want legal advice, you can consult a licensed attorney.**
+>
+> **OwnerPilot does not provide or arrange attorneys.**
+
+### 11.3 Attorney-routing boundary remains controlling
+
+The Perplexity broker-ruling consolidation proposed pointing customers to the California State Bar lawyer-referral service on request.
+
+That proposal is **not adopted by this reconciliation** because the controlling Founder product rule is that OwnerPilot does not provide, host, connect, assign, match, or route users to attorneys through the platform.
+
+OwnerPilot may use the Janna-approved neutral language that a user can consult an independent California-licensed attorney outside OwnerPilot. It may not implement an attorney directory, matching service, referral fee, request-attorney-review flow, or a representation that attorney review is available through OwnerPilot.
+
+Any future decision to provide a neutral external public-resource link must be separately reconciled against that Founder rule before implementation.
+
+## 12. Free limited beta
+
+The Phase C legal-control package approves a **FREE LIMITED BETA WITH DEFINED ELIGIBILITY GATES**, subject to the existing OwnerPilot beta governance and the following additional Phase C requirements.
+
+Before registration, the UD filing workflow must be genuinely uncompensated.
+
+OwnerPilot must not receive direct or indirect economic consideration tied to the UD filing assistance, including:
+
+- filing-workflow fee;
+- premium/advanced filing fee;
+- subscription-gated UD filing access;
+- paid case upgrades;
+- marked-up court/process-service fees;
+- referral or affiliate compensation;
+- expedited-processing fees; or
+- sale/monetization of UD-flow data as consideration for the service.
+
+Legitimate beta use of data for product validation, support, debugging, safety, and product improvement remains subject to applicable privacy controls.
+
+Free status does **not** relax the ministerial/UPL boundary.
+
+## 13. Paid-launch compliance gate
+
+Before any compensated Phase C workflow activates, complete and document the applicable:
+
+1. UDA/LDA classification;
+2. county registration footprint;
+3. surety bond;
+4. written customer agreement;
+5. statutory disclosure requirements;
+6. registration-number/expiration disclosures;
+7. UD preparer disclosure;
+8. advertising requirements;
+9. continuing-education obligations;
+10. prohibited-acts controls;
+11. current form verification; and
+12. current local filing-rule verification.
+
+**Paid Phase C activation remains prohibited until complete.**
+
+## 14. Required state architecture
+
+The Architect should reconcile Phase C into the following conceptual states:
+
+1. **Decision Intelligence**
+2. **Decision Confirmation**
+3. **Ministerial Filing Engine**
+4. **Customer Review and Signature**
+5. **Customer-Controlled Filing**
+6. **Post-Filing Classification**
+
+For natural persons, self-represented continuation remains available subject to the approved workflow.
+
+For corporations/LLCs, contested-case detection must trigger the validated entity representation warning and must never become OwnerPilot representation.
+
+## 15. Eligibility / hard-stop controls
+
+Packet generation may proceed only when applicable validated controls are satisfied, including:
+
+- customer identity confirmed;
+- plaintiff type confirmed;
+- customer authority confirmed;
+- required verification available;
+- required filing facts complete;
+- filing decision and customer elections confirmed before ministerial mode;
+- no unresolved factual conflict;
+- current form versions available;
+- applicable local packet rules current; and
+- if paid, required UDA/LDA compliance active.
+
+Hard-stop conditions include:
+
+- unresolved plaintiff identity;
+- entity-name conflict not resolved;
+- disputed or unclear signer authority after required follow-up;
+- unresolved entity capacity issue under a validated control;
+- customer has not made the filing decision;
+- filing engine would have to select a legal claim/remedy/strategy;
+- required form version is stale;
+- required verification architecture is unavailable; or
+- paid workflow lacks required compliance.
+
+## 16. Audit requirements
+
+At minimum preserve versioned events equivalent to:
+
+- `plaintiff_type_confirmed`
+- `entity_name_confirmed`
+- `entity_status_checked`
+- `signer_identity_confirmed`
+- `signer_authority_attested`
+- `authority_document_requested`
+- `authority_document_received`
+- `filing_decision_confirmed`
+- `ministerial_mode_entered`
+- `filing_elections_confirmed`
+- `packet_generated`
+- `packet_reviewed`
+- `verification_signed`
+- `filing_authorized_by_customer`
+- `packet_exported`
+- `filing_submitted`
+- `tenant_contest_detected`
+- `entity_counsel_notice_displayed`
+- `natural_person_pro_se_status`
+- `form_version_recorded`
+- `local_rule_version_recorded`
+
+Each audit event should preserve actor, timestamp, relevant source data/reference, affected artifact version, previous state, and resulting state.
+
+## 17. Items closed by Janna's targeted legal review
+
+The following are no longer merely open research questions for Phase C architecture:
+
+- Modified Option C target architecture — **APPROVED**
+- entity initial packet preparation — **APPROVED**
+- entity ministerial/customer-controlled filing architecture — **APPROVED**
+- filing vs representation separation — **APPROVED**
+- CLD curable-defect posture — **APPROVED**, without guarantee of cure
+- corporation/LLC unified product track — **APPROVED** as conservative product policy
+- attestation-first entity signer authority — **APPROVED**
+- exception-based authority-document requests — **APPROVED**
+- universal operating-agreement upload — **REJECTED as default**
+- business-intelligence / ministerial-engine separation — **APPROVED**
+- visible decision-to-file handoff — **REQUIRED**
+- paid UDA/LDA compliance gate — **APPROVED / HARD GATE**
+- narrow broker-exemption interpretation — **APPROVED**
+- entity disclosure — **APPROVED**
+- natural-person disclosure — **APPROVED**
+- free pre-registration beta — **APPROVED WITH CONDITIONS**
+
+## 18. Held / implementation-verification items
+
+The following remain unresolved or require current-source confirmation before activation:
+
+1. whether the final paid registration configuration is UDA only, LDA only, or both;
+2. precise county-registration footprint;
+3. current bond thresholds and entity/assistant-count treatment;
+4. exact implementation-time UD-100 / entity-verification architecture, including whether MC-030 remains the correct default;
+5. Los Angeles Superior Court local packet requirements;
+6. suspended/forfeited/canceled/dissolved/foreign-unqualified entity capacity rules;
+7. electronic verification/signature mechanics;
+8. e-filing automation/direct transmission;
+9. continued monitoring for published appellate LLC representation authority;
+10. CalDRE identity reconciliation (`B9445457` versus `01871659`) before external-facing broker attestation/copy that depends on the canonical license identifier.
+
+These held items may not be silently inferred by Engineering.
+
+## 19. Supersession / reconciliation consequences
+
+The following prior positions may no longer be relied on as controlling without conforming reconciliation:
+
+1. a blanket "Path A — no UDA/LDA registration required" assumption for compensated ordinary third-party-landlord UD preparation;
+2. any statement implying an LLC/corporation authorized signer may litigate the entity's UD in propria persona;
+3. any architecture using broker supervision, POA, or property-management agency as a universal substitute for Chapter 5.5 compliance or required representation;
+4. any filing flow that itself selects or recommends legal claims, remedies, forms, or litigation strategy;
+5. any entity hard stop based solely on the absence of counsel at initial packet preparation/submission;
+6. any universal operating-agreement/corporate-resolution upload requirement for ordinary entity cases.
+
+The Architect must reconcile this baseline against:
 
 - `docs/legal/california_nonpayment_product_control_specification_draft_2026-07-31.md`;
 - `docs/legal/california_nonpayment_product_control_specification_revision_1_2026-07-31.md`;
-- prior Phase C UD complaint-packet rulings and corrections;
-- any existing product copy or implementation that assumes broader entity self-representation or broker authority.
+- `docs/legal/group1_legal_review_handoff_2026-07-31.md`;
+- `docs/legal/group1_pcs_revision1_reconciliation_2026-07-31.md`;
+- prior Phase C complaint-packet/broker rulings and corrections;
+- existing public/product copy;
+- current RiskPath / matter-state architecture; and
+- any code that assumes broader or narrower entity filing authority.
 
-No historical document should be silently deleted. Conflicts should be explicitly marked superseded, narrowed, clarified, or unresolved.
+Historical artifacts should not be deleted. Conflicts should be explicitly marked confirmed, narrowed, superseded, or held.
 
-## 12. Counsel gates still open
+## 20. Architect next action
 
-The following remain counsel questions and are **not converted into legal conclusions by Founder adoption of this factual/product-control baseline**:
+The OwnerPilot Architect is authorized to draft the **Phase C UD-100 Product Control Specification** and reconciliation package.
 
-1. OwnerPilot's exact classification and registration obligations under Chapter 5.5 for the intended compensated UD-100 service.
-2. Whether the operating entity should register as an LDA, UDA, both where legally appropriate, or use another counsel-approved structure.
-3. Exact application of the §6401(d) broker-party exemption to broker-owned, broker-affiliated, assigned, or special-purpose ownership structures.
-4. The precise permissible entity-track workflow for corporations and LLCs, including threshold filing, physical tender, e-filing, verification/signature mechanics, and the point(s) at which counsel must be required.
-5. Whether an LLC managing member or corporate officer may sign each intended verification form in the exact OwnerPilot workflow and what factual authority record should be captured.
-6. Whether operating-agreement, corporate-resolution, or similar authority-document capture is required, beneficial, or unnecessary.
-7. Exact county-specific registration or operational requirements beyond the statewide statutory baseline.
-8. Exact required consumer contract, website, advertising, pleading, UDA/LDA-assistance disclosure, and registration language if OwnerPilot operates as a registrant.
-9. Exact customer-facing entity disclosure language.
-10. Whether a neutral link to a State Bar or court legal-help resource, provided only on request, is consistent with OwnerPilot's no-attorney-routing rule.
-11. Whether any additional State Bar, DRE, court, or appellate authority changes the conclusions above.
-12. Long-term consequences of the current January 1, 2030 sunset of Chapter 5.5.
-13. Effective-dated compliance with the January 1, 2027 version of CCP §1166 and associated Judicial Council form changes.
+At minimum it should define:
 
-A written California counsel opinion on the as-built natural-person and Modified Option C entity workflows is preferred before compensated UD-100 launch.
+- plaintiff-type state model;
+- entity authority schema;
+- factual SOS lookup/observation logic;
+- entity-status gates;
+- verification-form router;
+- natural-person/entity packet architecture;
+- Decision Intelligence state;
+- decision-to-file transition;
+- Ministerial Filing Engine state;
+- one-way filing-session gate;
+- customer review/signature state;
+- customer-controlled submission state;
+- contested-case detection;
+- entity representation warning;
+- natural-person self-represented continuation;
+- UDA/LDA paid-compliance gate;
+- free-beta compensation controls;
+- approved customer copy;
+- audit/lineage requirements;
+- current-form source registry;
+- feature flags for unresolved controls; and
+- test/acceptance matrix.
 
-## 13. Current form/version control
+The Architect should then author the bounded Integration/Engineer directive. The legal handoff itself does not give the Engineer implementation authority.
 
-The Judicial Council's current UD-100, Complaint—Unlawful Detainer, is effective July 1, 2026.
+## 21. Non-authorizations
 
-Any UD-100 generator must bind to an effective-dated form/source registry and fail closed if the required form version or governing procedural source is stale, unavailable, or not validated for the applicable workflow.
+This baseline does **not** authorize:
 
-CCP §1166 has a later operative version beginning January 1, 2027 that adds service-detail requirements to the complaint. That future-effective change must be treated as an effective-dated source/control update rather than silently applied to pre-effective matters.
+- implementation or activation of Phase C;
+- Production court filing or submission;
+- autonomous filing or e-filing;
+- automatic fee payment;
+- OwnerPilot signature for a customer;
+- OwnerPilot court representation;
+- autonomous legal strategy or form-selection advice;
+- provision, arrangement, matching, assignment, or referral of attorneys through OwnerPilot;
+- paid Phase C activation before applicable UDA/LDA compliance;
+- any Production Supabase/Vercel/legal-control change;
+- modification of the 3-Day Notice, LAHD, or BTRM posture merely by virtue of this document.
 
-Future statutory or Judicial Council changes do not silently update existing matters. They require source/version review and, where legally consequential, renewed legal/product validation.
+## 22. Provenance and verification notes
 
-## 14. Architect and implementation consequence
+### Attorney-validated legal source
 
-The Architect must now reconcile Modified Option C into the California Nonpayment Product Control Specification and all prior Phase C rulings, then obtain targeted Janna/counsel disposition on the open gates before authoring any implementation-authorizing Engineer directive.
+- `OwnerPilot — Phase C UD-100 Legal Control Handoff — Modified Option C — Ratified Legal Review Package`, Janna, California-licensed attorney, August 9, 2026.
+- Targeted Phase C legal interview: COMPLETE.
+- Modified Option C: APPROVED.
+- Architecture specification: AUTHORIZED FOR DRAFTING.
+- Free limited beta legal posture: APPROVED WITH CONDITIONS.
+- Paid activation: NOT AUTHORIZED UNTIL UDA/LDA COMPLIANCE.
+- Autonomous filing or representation: NOT AUTHORIZED.
 
-The Architect's reconciliation must produce, at minimum:
+### Founder-ratified product/governance consolidation
 
-- natural-person UD-100 track contract;
-- corporation/LLC Modified Option C track contract;
-- entity signer/authority fact model;
-- ministerial-preparation boundary;
-- business-intelligence versus legal-document-engine separation;
-- Chapter 5.5 registration/disclosure gate;
-- entity representation-review triggers;
-- customer disclosure contract;
-- effective-dated form/source controls;
-- explicit supersession map for prior Phase C rulings;
-- implementation stop conditions.
+- `OwnerPilot Phase C UD-100 — Ratified Broker Rulings`, August 9, 2026.
+- Used as a Founder/product-governance consolidation, not as attorney validation.
+- Where it conflicts with Janna or a controlling Founder product boundary, it does not independently override them.
 
-Engineering may prepare nonoperative prototypes only under separate authority. No Engineer may infer implementation authority from this governing-facts document.
+### Primary authority re-checks performed during repository reconciliation
 
-## 15. Non-authorizations
+The repository reconciliation independently rechecked, among other things:
 
-This governing-facts document does **not** authorize:
+- Cal. Bus. & Prof. Code §6400: §6400(d) defines self-help service; §6400(g) prohibits advice/form-selection/strategy recommendations;
+- the current Judicial Council UD-100 metadata: effective July 1, 2026;
+- current Judicial Council MC-030 metadata;
+- `CLD Construction, Inc. v. City of San Ramon` on the curable-defect treatment of an uncounseled corporate complaint.
 
-- implementation or activation of a UD-100 generator;
-- Production filing or court submission;
-- autonomous filing or service;
-- OwnerPilot legal representation;
-- attorney-routing or an on-platform attorney service;
-- compensated UD-100 preparation before the registration/exemption posture is resolved and applicable requirements are satisfied;
-- entity-track activation;
-- legal-strategy recommendations;
-- form-selection advice;
-- change to existing Production legal controls;
-- modification of the 3-Day Notice, LAHD, BTRM, Supabase, or Vercel Production posture.
-
-## 16. Provenance
-
-Primary research inputs:
-
-- `ownerpilot_broker_ud100_authority_writeup_2026-08-09.pdf`, revised August 9, 2026 (v2);
-- `OwnerPilot — Broker UD-100 Preparation Authority Analysis`, revised August 9, 2026 (v3), incorporating Modified Option C, proposed ministerial-line foundation, and proposed customer-facing entity disclosure.
-
-Primary authorities independently checked before repository incorporation include:
-
-- Cal. Bus. & Prof. Code §§6400, 6401, 6402, 6405, 6408, 6410;
-- Cal. Bus. & Prof. Code §10131;
-- Cal. Code Civ. Proc. §1166, including the later January 1, 2027 operative version;
-- People v. Landlords Professional Services (1989) 215 Cal.App.3d 1599;
-- Merco Construction Engineers, Inc. v. Municipal Court (1978) 21 Cal.3d 724;
-- CLD Construction, Inc. v. City of San Ramon (2004) 120 Cal.App.4th 1141;
-- current Judicial Council UD-100 form metadata, effective July 1, 2026.
-
-The source research remains provenance and is not itself canonical legal authority. Where this governing-facts document differs from the research memoranda, this document controls for OwnerPilot repository reconciliation unless later superseded by Founder disposition or validated legal authority.
+The legal-control package, not the independent research memorandum alone, is the controlling Phase C legal input for Architect reconciliation unless later superseded.
