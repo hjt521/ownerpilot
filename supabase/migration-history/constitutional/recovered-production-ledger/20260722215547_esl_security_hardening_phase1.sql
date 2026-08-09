@@ -1,0 +1,16 @@
+REVOKE EXECUTE ON FUNCTION constitution.generate_scenario_set(uuid,bigint) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION constitution.score_strategy_candidate(uuid,uuid,jsonb,jsonb,integer,numeric) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION constitution.select_strategy_champion(uuid) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION constitution.build_decision_recommendation(uuid,text,text) FROM anon, authenticated;
+ALTER TABLE constitution.scenario_generation_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.scenario_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.scenario_generation_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.generated_scenarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.scenario_variables ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.scenario_quality_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.decision_intelligence_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.decision_recommendations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.decision_option_assessments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.decision_explanation_factors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.decision_sensitivity_findings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE constitution.decision_explainability_audit ENABLE ROW LEVEL SECURITY;

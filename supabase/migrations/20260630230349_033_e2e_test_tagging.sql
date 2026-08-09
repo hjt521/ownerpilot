@@ -1,0 +1,7 @@
+-- Historical migration compatibility marker.
+-- Version: 20260630230349
+-- Historical name: 033_e2e_test_tagging
+-- Historical SQL is archived outside active migration discovery under supabase/migration-history/application/.
+-- Canonical application state is supplied by numeric migration 033_e2e_test_tagging.sql.
+-- Purpose: represent the retained Production migration-version identity after canonical numeric state exists.
+-- No schema-changing SQL is intentionally present in this file.

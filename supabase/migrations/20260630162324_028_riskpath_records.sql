@@ -1,0 +1,7 @@
+-- Historical migration compatibility marker.
+-- Version: 20260630162324
+-- Historical name: 028_riskpath_records
+-- Historical SQL is archived outside active migration discovery under supabase/migration-history/application/.
+-- Canonical application state is supplied by numeric migration 028_riskpath_records.sql.
+-- Purpose: represent the retained Production migration-version identity after canonical numeric state exists.
+-- No schema-changing SQL is intentionally present in this file.
