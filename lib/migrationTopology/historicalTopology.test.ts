@@ -48,12 +48,17 @@ const noOpCompatibility = [
   ['20260701130402_036_lahd_filing_records.sql', '20260701130402', '036_lahd_filing_records'],
 ] as const;
 
-const supplemental = new Map<string, string>([
+const exactSupplemental = new Map<string, string>([
   ['20260630170022_025a_broker_confirm_attestation_view_grant_correction.sql', '27ec901eefe687faa9c8ceadb2ee0c398a1b477c'],
   ['20260630171954_025b_manual_review_queue_aging_view_grant_correction.sql', '6c5221891db6b02407e456800429befd9f36030d'],
   ['20260630174034_025c_broker_confirm_fn_exec_lockdown.sql', '1a335c677d7095bae951d918278aa8ee69b1351a'],
-  ['20260630175137_032a_privacy_requests_grant_lockdown.sql', '52ec336e27e06b3856f09f076ba66a3af4ebf564'],
 ]);
+
+const canonicalized032a = {
+  file: '20260630175137_032a_privacy_requests_grant_lockdown.sql',
+  blob: '65e6f2b0364e75c3838337255c087a8e9ef24f0d',
+  archive: 'supabase/migration-history/application/recovered-production-ledger/20260630175137_032a_privacy_requests_grant_lockdown.sql',
+};
 
 const recoveredApp = new Map<string, string>([
   ['20260627194653_city_zip_refresh_state.sql', '7b297690bda0227bef60e6c55f3c3e216684ae94'],
@@ -115,10 +120,22 @@ for (const [file, version, historicalName] of noOpCompatibility) {
   check(`${file} points to the historical SQL archive`, text.includes('supabase/migration-history/application/'));
 }
 
-for (const [file, expected] of supplemental) {
+for (const [file, expected] of exactSupplemental) {
   const path = join(activeRoot, file);
   check(`${file} is active under authoritative timestamp`, existsSync(path));
   if (existsSync(path)) check(`${file} matches Production-ledger SQL`, gitBlobSha(path) === expected, `expected ${expected}, got ${gitBlobSha(path)}`);
+}
+
+const canonical032aPath = join(activeRoot, canonicalized032a.file);
+check(`${canonicalized032a.file} is active under authoritative timestamp`, existsSync(canonical032aPath));
+if (existsSync(canonical032aPath)) {
+  const text = readFileSync(canonical032aPath, 'utf8');
+  check(`${canonicalized032a.file} canonical representation is byte-locked`, gitBlobSha(canonical032aPath) === canonicalized032a.blob, `expected ${canonicalized032a.blob}, got ${gitBlobSha(canonical032aPath)}`);
+  check(`${canonicalized032a.file} points to exact recovered SQL archive`, text.includes(canonicalized032a.archive));
+  check(`${canonicalized032a.file} materializes service_role prerequisite`, text.includes('GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'));
+  check(`${canonicalized032a.file} preserves privacy_requests lockdown`, text.includes('REVOKE ALL ON public.privacy_requests FROM authenticated;'));
+  check(`${canonicalized032a.file} preserves analytics lockdown`, text.includes('REVOKE ALL ON public.analytics_suppression_list FROM authenticated;'));
+  check(`${canonicalized032a.file} preserves fail-closed service_role assertion`, text.includes('service_role lost a required privilege after REVOKE'));
 }
 
 const activeNames = new Set(readdirSync(activeRoot));
