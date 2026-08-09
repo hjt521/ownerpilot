@@ -1,0 +1,7 @@
+-- Historical migration compatibility marker.
+-- Version: 20260630163231
+-- Historical name: 023_broker_confirm_requests
+-- Historical SQL is archived outside active migration discovery under supabase/migration-history/application/.
+-- Canonical application state is supplied by numeric migration 023_broker_confirm_requests.sql.
+-- Purpose: represent the retained Production migration-version identity after canonical numeric state exists.
+-- No schema-changing SQL is intentionally present in this file.

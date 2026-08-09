@@ -1,0 +1,7 @@
+-- Historical migration compatibility marker.
+-- Version: 20260630162340
+-- Historical name: 029_courtesy_reminders
+-- Historical SQL is archived outside active migration discovery under supabase/migration-history/application/.
+-- Canonical application state is supplied by numeric migration 029_courtesy_reminders.sql.
+-- Purpose: represent the retained Production migration-version identity after canonical numeric state exists.
+-- No schema-changing SQL is intentionally present in this file.
