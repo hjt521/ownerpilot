@@ -2,8 +2,8 @@
 
 **Status:** NONCANONICAL DRAFT — ARCHITECT / ARB RECONCILIATION — NO IMPLEMENTATION OR PRODUCTION AUTHORITY  
 **Date:** 2026-08-09  
-**Repository baseline:** `00f53b6f02f88289341eb976d9f5bd449226cfa6`  
-**Related proposed governing-facts PR:** #357 — open, Draft, unmerged; exact head `5b98b7b9f471701284b80b9e41dc9ae92db73fd1`
+**Integrated governing baseline:** `main` at `b1cb7772df78598b4d8826842815afbf96e347e1`  
+**Governing-facts PR:** #357 — squash-merged from exact reviewed head `5b98b7b9f471701284b80b9e41dc9ae92db73fd1`; resulting `main` commit `b1cb7772df78598b4d8826842815afbf96e347e1`
 
 ## 1. Executive disposition
 
@@ -173,6 +173,6 @@ The following are not architecture-choice blockers but must be resolved at their
 
 ## 7. Current canonical-status boundary
 
-PR #357 remains Draft and unmerged. Its governing-facts document is proposed evidence/control input and must not be represented as already canonical on `main`.
+PR #357 is now integrated into `main` as the governing legal/product-control baseline at `b1cb7772df78598b4d8826842815afbf96e347e1`, from exact reviewed head `5b98b7b9f471701284b80b9e41dc9ae92db73fd1`.
 
-This reconciliation likewise remains a Draft Architect artifact until Founder disposition and repository merge authority are separately granted.
+This reconciliation memorandum remains a Draft Architect artifact in PR #358 until separate Founder disposition. It does not acquire implementation or Production authority from PR #357's merge.
