@@ -7,6 +7,7 @@ import { join } from 'node:path';
 const root = process.cwd();
 const activeRoot = join(root, 'supabase', 'migrations');
 const appArchiveRoot = join(root, 'supabase', 'migration-history', 'application');
+const constitutionalArchiveRoot = join(root, 'supabase', 'migration-history', 'constitutional', 'recovered-production-ledger');
 const stagedRoot = join(root, 'supabase', 'staged-migrations');
 
 function gitBlobSha(path: string): string {
@@ -96,8 +97,27 @@ const constitutional = new Map<string, string>([
   ['20260722175815_esl_006_explainability_tables.sql', '36bf0ff61725bb32db51f3827e66fd0168dbadad'],
   ['20260722175849_esl_006_capability.sql', '4c4abd17f87782bc4aaa5429bd113c6749585c9f'],
   ['20260722175934_esl_006_recommendation_function.sql', '4c06c33192a6dd7ec6ab65a52b47c5a6cb8c68a9'],
-  ['20260722215547_esl_security_hardening_phase1.sql', 'a68bf5aac3d8c6e4ecac4540da171b0b60246fe6'],
 ]);
+
+const canonicalizedConstitutionalClosure = {
+  file: '20260722215547_esl_security_hardening_phase1.sql',
+  blob: 'ffc8e78caf640a4d22b328f67e4f910c0ed47278',
+  recoveredBlob: 'a68bf5aac3d8c6e4ecac4540da171b0b60246fe6',
+  archive: 'supabase/migration-history/constitutional/recovered-production-ledger/20260722215547_esl_security_hardening_phase1.sql',
+};
+
+const constitutionalTriggerClosure = [
+  ['trg_twin_discovery_rules_updated_at', 'twin_discovery_rules', 'touch_updated_at'],
+  ['intelligence_model_registry_set_updated_at', 'intelligence_model_registry', 'set_updated_at'],
+  ['behavioral_profiles_set_updated_at', 'behavioral_profiles', 'set_updated_at'],
+  ['negotiation_cases_set_updated_at', 'negotiation_cases', 'set_updated_at'],
+  ['intelligence_evaluation_suites_set_updated_at', 'intelligence_evaluation_suites', 'set_updated_at'],
+  ['scenario_generation_requests_set_updated_at', 'scenario_generation_requests', 'set_updated_at'],
+  ['scenario_templates_set_updated_at', 'scenario_templates', 'set_updated_at'],
+  ['simulation_actors_set_updated_at', 'simulation_actors', 'set_updated_at'],
+  ['strategy_evolution_experiments_set_updated_at', 'strategy_evolution_experiments', 'set_updated_at'],
+  ['decision_intelligence_requests_set_updated_at', 'decision_intelligence_requests', 'set_updated_at'],
+] as const;
 
 const legacyLettered = new Map<string, string>([
   ['025a_broker_confirm_attestation_view_grant_correction.sql', 'eac473cc3740f5557aa87366d80522c31af3d5e5'],
@@ -160,6 +180,60 @@ for (const [file, expected] of constitutional) {
   if (existsSync(path)) check(`${file} is byte-identical to Production-ledger SQL`, gitBlobSha(path) === expected, `expected ${expected}, got ${gitBlobSha(path)}`);
 }
 
+const constitutionalClosurePath = join(activeRoot, canonicalizedConstitutionalClosure.file);
+const constitutionalClosureArchivePath = join(constitutionalArchiveRoot, canonicalizedConstitutionalClosure.file);
+check(`${canonicalizedConstitutionalClosure.file} canonical constitutional closure exists`, existsSync(constitutionalClosurePath));
+check(`${canonicalizedConstitutionalClosure.file} recovered source is archived`, existsSync(constitutionalClosureArchivePath));
+if (existsSync(constitutionalClosureArchivePath)) {
+  check(
+    `${canonicalizedConstitutionalClosure.file} recovered source remains byte-identical`,
+    gitBlobSha(constitutionalClosureArchivePath) === canonicalizedConstitutionalClosure.recoveredBlob,
+    `expected ${canonicalizedConstitutionalClosure.recoveredBlob}, got ${gitBlobSha(constitutionalClosureArchivePath)}`,
+  );
+}
+if (existsSync(constitutionalClosurePath)) {
+  const text = readFileSync(constitutionalClosurePath, 'utf8');
+  check(
+    `${canonicalizedConstitutionalClosure.file} canonical representation is byte-locked`,
+    gitBlobSha(constitutionalClosurePath) === canonicalizedConstitutionalClosure.blob,
+    `expected ${canonicalizedConstitutionalClosure.blob}, got ${gitBlobSha(constitutionalClosurePath)}`,
+  );
+  check(`${canonicalizedConstitutionalClosure.file} points to immutable recovered archive`, text.includes(canonicalizedConstitutionalClosure.archive));
+  check(`${canonicalizedConstitutionalClosure.file} separates recovered historical SQL`, text.includes('-- Recovered historical SQL'));
+  check(`${canonicalizedConstitutionalClosure.file} labels canonical end-state closure`, text.includes('-- Canonical Production-observed end-state closure'));
+  check(
+    `${canonicalizedConstitutionalClosure.file} preserves provenance disclaimer`,
+    text.includes('The trigger source migration and original creation timing are unrecoverable from current evidence.') &&
+      text.includes('It is not represented as recovered historical SQL attributable to this timestamp.'),
+  );
+
+  const marker = '-- Canonical Production-observed end-state closure';
+  const markerIndex = text.indexOf(marker);
+  const closureText = markerIndex >= 0 ? text.slice(markerIndex) : '';
+  const createdTriggers = [...closureText.matchAll(/CREATE TRIGGER\s+([a-zA-Z0-9_]+)/g)].map((match) => match[1]);
+  const expectedTriggers = constitutionalTriggerClosure.map(([trigger]) => trigger);
+  check(
+    `${canonicalizedConstitutionalClosure.file} creates exactly the 10 authorized closure triggers`,
+    createdTriggers.length === expectedTriggers.length &&
+      createdTriggers.every((trigger) => expectedTriggers.includes(trigger as (typeof expectedTriggers)[number])) &&
+      expectedTriggers.every((trigger) => createdTriggers.includes(trigger)),
+    `expected ${expectedTriggers.join(', ')}, got ${createdTriggers.join(', ')}`,
+  );
+
+  for (const [trigger, relation, fn] of constitutionalTriggerClosure) {
+    const exactCreate =
+      `CREATE TRIGGER ${trigger}\n` +
+      `BEFORE UPDATE ON constitution.${relation}\n` +
+      `FOR EACH ROW EXECUTE FUNCTION constitution.${fn}();`;
+    check(`${trigger} closure target/function is exact`, closureText.includes(exactCreate));
+  }
+}
+
+const activeMigrationFiles = [...activeNames].filter((file) => file.endsWith('.sql'));
+check('active migration count remains exactly 90', activeMigrationFiles.length === 90, `got ${activeMigrationFiles.length}`);
+const constitutionalTimestampFiles = activeMigrationFiles.filter((file) => /^20260722\d{6}_.*\.sql$/.test(file));
+check('constitutional lineage remains exactly 16 timestamp versions', constitutionalTimestampFiles.length === 16, `got ${constitutionalTimestampFiles.length}`);
+
 const stagedControls = new Map<string, string>([
   ['056_owner_tables_grant_tidy.sql', '2071f466ef91ab24415a680d5b0a405c26b022ea'],
   ['057_btrm_enr_evidence_schema.sql', '2de55447a541720cf27f9dd4d7e1bc789f73ac4f'],
@@ -169,6 +243,8 @@ for (const [file, expected] of stagedControls) {
   check(`${file} remains staged`, existsSync(path));
   if (existsSync(path)) check(`${file} remains byte-identical`, gitBlobSha(path) === expected);
   check(`${file} remains absent from active migrations`, !activeNames.has(file));
+  const activeBlobMatches = activeMigrationFiles.filter((activeFile) => gitBlobSha(join(activeRoot, activeFile)) === expected);
+  check(`${file} staged blob has no hidden active duplicate`, activeBlobMatches.length === 0, activeBlobMatches.join(', '));
 }
 
 const draftPath = join(stagedRoot, 'constitutional-drafts', 'esl005_phase5a_monte_carlo_persistence.sql');
