@@ -3,8 +3,8 @@
 **Status:** STANDALONE ARCHITECT / ARB DIRECTIVE — EXECUTION STOPS AT FOUNDER IMPLEMENTATION GATE  
 **Date:** 2026-08-09  
 **Repository:** `hjt521/ownerpilot`  
-**Verified architecture baseline:** `main` at `00f53b6f02f88289341eb976d9f5bd449226cfa6`  
-**Related proposed governing-facts PR:** #357, Draft/unmerged, head `5b98b7b9f471701284b80b9e41dc9ae92db73fd1`
+**Verified governing baseline:** `main` at `b1cb7772df78598b4d8826842815afbf96e347e1`  
+**Integrated governing-facts PR:** #357 — squash-merged from exact reviewed head `5b98b7b9f471701284b80b9e41dc9ae92db73fd1`; resulting `main` commit `b1cb7772df78598b4d8826842815afbf96e347e1`
 
 ## 1. Role
 
@@ -51,9 +51,7 @@ Recommended branch naming pattern:
 
 `feat/phase-c-ud100-<bounded-slice>`
 
-Do not build on PR #357's documentation branch.
-
-Do not merge or retarget PR #357 as an implementation PR.
+Do not build on PR #357's documentation branch. PR #357 is integrated governance history and must not be reused or retargeted as an implementation branch.
 
 Before branch creation, record:
 
