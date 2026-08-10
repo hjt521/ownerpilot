@@ -87,6 +87,34 @@ export function evaluateParcelHealthGate(
     : { open: false, closures };
 }
 
+/**
+ * Path-specific variant of the same health/currentness rule. It evaluates ONLY the
+ * source the resolver is about to consume; the other parcel source cannot close this
+ * check merely because it is not required on the current branch. Missing rows,
+ * not_live, null last_probe_at, and >75-minute staleness retain the exact fail-closed
+ * semantics of evaluateParcelHealthGate.
+ */
+export function evaluateParcelSourceHealth(
+  rows: ParcelHealthStatusRow[],
+  endpoint: ParcelHealthEndpoint,
+  now: Date,
+  windowMs: number = PARCEL_HEALTH_FRESHNESS_WINDOW_MS,
+): ParcelHealthGateResult {
+  const row = rows.find((candidate) => candidate.endpoint === endpoint);
+  let closure: GateClosure | null = null;
+  if (!row || row.lastProbeAt == null) {
+    closure = { endpoint, condition: 'missing' };
+  } else if (row.currentStatus !== 'live') {
+    closure = { endpoint, condition: 'not_live' };
+  } else {
+    const age = now.getTime() - Date.parse(row.lastProbeAt);
+    if (age > windowMs) closure = { endpoint, condition: 'stale' };
+  }
+  return closure === null
+    ? { open: true, closures: [] }
+    : { open: false, closures: [closure] };
+}
+
 /** Reads the rolled-up parcel_health_status rows (injected; prod adapter below). */
 export interface ParcelHealthReader {
   read(): Promise<ParcelHealthStatusRow[]>;
@@ -107,6 +135,51 @@ export interface LaProductionLiveOptions {
 function defaultLog(event: string, fields: Record<string, unknown>): void {
   // eslint-disable-next-line no-console
   console.warn(JSON.stringify({ level: 'warn', event, ...fields }));
+}
+
+/** Source-specific dynamic gate options used by the resolver immediately before a
+ * County or ZIMAS lookup. The static six-predicate gate remains a prerequisite. */
+export interface LaParcelSourceLiveOptions {
+  deps?: LaProductionDependencies;
+  endpoint: ParcelHealthEndpoint;
+  reader: ParcelHealthReader;
+  now?: () => Date;
+  windowMs?: number;
+  logClosure?: (info: { reason: 'health_read'; closures: GateClosure[] }) => void;
+  logReadError?: (info: {
+    reason: 'health_read_error';
+    endpoint: ParcelHealthEndpoint;
+    error: string;
+  }) => void;
+}
+
+/**
+ * Read fresh rolled-up health and fail closed for exactly one required source.
+ * No caching, retry, timeout, freshness, or writer-threshold semantics are changed.
+ */
+export async function isLaParcelSourceLive(opts: LaParcelSourceLiveOptions): Promise<boolean> {
+  const deps = opts.deps ?? LA_PRODUCTION_DEPENDENCIES;
+  if (!isLaProductionUnblocked(deps)) return false;
+
+  const now = (opts.now ?? (() => new Date()))();
+  let rows: ParcelHealthStatusRow[];
+  try {
+    rows = await opts.reader.read();
+  } catch (e) {
+    (opts.logReadError ?? ((i) => defaultLog(i.reason, { endpoint: i.endpoint, error: i.error })))(
+      { reason: 'health_read_error', endpoint: opts.endpoint, error: String(e) },
+    );
+    return false;
+  }
+
+  const result = evaluateParcelSourceHealth(rows, opts.endpoint, now, opts.windowMs);
+  if (!result.open) {
+    (opts.logClosure ?? ((i) => defaultLog(i.reason, { closures: i.closures })))(
+      { reason: 'health_read', closures: result.closures },
+    );
+    return false;
+  }
+  return true;
 }
 
 /**

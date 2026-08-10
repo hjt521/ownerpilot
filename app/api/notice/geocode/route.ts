@@ -259,11 +259,10 @@ function buildResolverDeps(
   const apiKey = readGeocodeApiKey();
   const county: CountySpatialLookupDeps = { fetcher: defaultCountySpatialFetcher };
   const zimas: ZimasLookupDeps = { fetcher: defaultZimasFetcher };
-  // Predicate-6 dynamic gate reader: narrow-read of parcel_health_status under the
+  // Predicate-6 source-health reader: narrow-read of parcel_health_status under the
   // parcel_health_reader JWT (no Supabase client; static Bearer over the global fetch,
-  // mirroring readBlockState §3.1). While parcelEndpointHealthCheckLive is false,
-  // isLaProductionLive short-circuits closed BEFORE this reader is ever called, so this
-  // wiring is behavior-neutral until the flag flips (predicate-6 ruling, Slice 1).
+  // mirroring readBlockState §3.1). The resolver uses this same reader to assert County
+  // health before County evidence and ZIMAS health only when the fallback branch needs it.
   const parcelHealthReader = createParcelHealthStatusReader(
     {
       baseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -277,9 +276,9 @@ function buildResolverDeps(
     county,
     zimas,
     parcelHealthReader,
-    // gateIsOpen omitted → resolver uses the dynamic parcel-health gate (isLaProductionLive),
-    // which short-circuits closed while the predicate flag is false (same gate-closed behavior
-    // as before this wiring). The PAGE-SIDE gate check (4d) still governs invocation.
+    // gateIsOpen omitted → resolver preserves the static gate at entry, then performs
+    // fresh path-specific source-health assertions before County/ZIMAS consumption. The
+    // PAGE-SIDE static gate check (4d) still governs normal invocation.
     recordAudit,
   };
 }
