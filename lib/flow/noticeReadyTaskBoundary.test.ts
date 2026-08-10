@@ -180,10 +180,10 @@ ok(
 );
 
 const base = createFlowState().data;
-const planned = {
+const planned: typeof base = {
   ...base,
   serviceDate: '2026-08-12',
-  paymentMethods: ['by_mail'] as const,
+  paymentMethods: ['by_mail'],
 };
 const approved = {
   ...planned,

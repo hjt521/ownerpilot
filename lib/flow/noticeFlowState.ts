@@ -198,6 +198,8 @@ export interface NoticeFlowData {
   produceAttestationConfirmed?: boolean;
   /** ISO timestamp when the produce attestation was accepted (audit). */
   produceAttestationAcceptedAt?: string;
+  /** UX2: exact deterministic create-state generation that the C6 approval covers. */
+  reviewApprovalGeneration?: string;
 
   // Step 4 — payment. C7a multi-select: the offered-method SELECTION (Option A;
   // per-method data lives in the flat fields below). The v4 paymentBranch model
@@ -341,6 +343,8 @@ export interface NoticeFlowData {
    * intentionally excluded — re-serving on a new date is the normal path.
    */
   productionSnapshot?: ProductionSnapshot;
+  /** UX2: exact create generation that completed the deliberate Create Notice action. */
+  preparedNoticeGeneration?: string;
   /**
    * Verdict (attorney B1): null/undefined = the produced notice is still valid;
    * a non-null reason means the notice's face has drifted and a NEW notice must

@@ -19,7 +19,7 @@ import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import { renderNotice, NoticeRenderError } from '@/lib/produce/renderNotice';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
-import { captureProductionSnapshot } from '@/lib/flow/escalation';
+import { isPreparedNoticeGenerationCurrent } from '@/lib/flow/reviewApproval';
 import { ServiceStep } from './notice-flow';
 import { NoticeSummaryPanel } from './notice-summary-panel';
 import { PacketPrintOptions } from './packet-print-options';
@@ -60,7 +60,11 @@ export function ServeTrack() {
 
   const result = data ? evaluateCanProduceV4(data) : null;
   const ready =
-    data !== null && result !== null && result.canProduce && !!data.productionSnapshot;
+    data !== null &&
+    result !== null &&
+    result.canProduce &&
+    !!data.productionSnapshot &&
+    isPreparedNoticeGenerationCurrent(data);
 
   // Build the notice model the same way ReviewStep does, so the service-log
   // print has what it needs. Fails closed like Review.
@@ -84,10 +88,6 @@ export function ServeTrack() {
       }
     }
   }
-
-  const onProduced = () => {
-    if (data) update({ productionSnapshot: captureProductionSnapshot(data) });
-  };
 
   return (
     <main className="min-h-screen bg-ivory">
@@ -115,8 +115,6 @@ export function ServeTrack() {
                   <PacketPrintOptions
                     model={renderedModel}
                     data={data}
-                    noticeDocHtml={docHtml}
-                    onProduced={onProduced}
                     disabledKeys={['tenant', 'owner', 'full']}
                   />
                 </section>

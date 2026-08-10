@@ -45,7 +45,6 @@ function downloadBase64Pdf(filename: string, base64: string) {
 export function LaProducePanel({
   model,
   data,
-  noticeDocHtml,
   baseName,
   verdictSource,
   noticePrepared,
@@ -55,19 +54,26 @@ export function LaProducePanel({
 }: {
   model: NoticeModel;
   data: NoticeFlowData;
-  noticeDocHtml: string;
   baseName: string;
   /** cachedResolverVerdict.source ('live_resolver' | 'broker_confirm'). */
   verdictSource: string;
-  /** True only when this exact prepared generation has completed Create. */
-  noticePrepared: boolean;
-  /** Current final C6 + deterministic gate eligibility for the current generation. */
-  canCreate: boolean;
-  onCreateNotice: () => void;
+  /** True only when this exact prepared generation has completed Create (wizard UX2). */
+  noticePrepared?: boolean;
+  /** Current final C6 + deterministic gate eligibility for the current generation (wizard UX2). */
+  canCreate?: boolean;
+  onCreateNotice?: () => void;
+  /** Legacy chat-mount compatibility only; wizard UX2 does not use print as Create authority. */
+  noticeDocHtml?: string;
+  /** Legacy chat-mount compatibility only; existing chat caller's state is observational. */
+  onProduced?: () => void;
   onAudit: (fields: LaProduceAuditFields) => void;
 }) {
   const [state, setState] = useState<LaProduceSequenceResult | { kind: 'loading' }>({ kind: 'loading' });
   const [acked, setAcked] = useState(false);
+  const ux2CreateMode =
+    typeof noticePrepared === 'boolean' &&
+    typeof canCreate === 'boolean' &&
+    typeof onCreateNotice === 'function';
 
   useEffect(() => {
     let active = true;
@@ -160,7 +166,13 @@ export function LaProducePanel({
             </div>
           </section>
 
-          {!noticePrepared ? (
+          {!ux2CreateMode ? (
+            <PacketPrintOptions
+              model={model}
+              data={data}
+              disabledKeys={['serviceLog']}
+            />
+          ) : !noticePrepared ? (
             <section className="rounded-lg border border-rule bg-white px-5 py-4">
               <h3 className="font-semibold text-gray-900">Create Notice</h3>
               <p className="mt-1 text-sm text-gray-600 leading-relaxed">
@@ -170,7 +182,7 @@ export function LaProducePanel({
               <button
                 type="button"
                 data-testid="create-notice-button"
-                onClick={onCreateNotice}
+                onClick={() => onCreateNotice?.()}
                 disabled={!canCreate}
                 className="mt-4 inline-flex min-h-[48px] items-center rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-bar disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -186,7 +198,6 @@ export function LaProducePanel({
             <PacketPrintOptions
               model={model}
               data={data}
-              noticeDocHtml={noticeDocHtml}
               disabledKeys={['serviceLog']}
             />
           )}

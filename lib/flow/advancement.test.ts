@@ -26,7 +26,6 @@ function fullData(): NoticeFlowData {
     propertyCity: 'Fresno',
     tenantNames: ['Jane Tenant'],
     rentPeriods: [{ periodStartDate: '2026-04-01', periodEndDate: '2026-04-30', amount: 2000 }],
-    baseRentOnlyConfirmed: true,
     paymentMethods: [], // legacy field still required by the type; unused by the v4 step
     // v4 payment (§ 1161(2) payee trio + branch) — the PaymentInstructions step
     // reads these, not the legacy paymentMethods array.
@@ -80,13 +79,16 @@ console.log('\n5. Tenants: at least one non-blank');
   check('one name ok', validateStep(FlowStep.Tenants, fullData()).canAdvance === true);
 }
 
-console.log('\n6. Amount: period shape + base-rent confirm');
+console.log('\n6. Amount: period shape; duplicate base-rent testimony retired');
 {
   const ok = validateStep(FlowStep.AmountOwed, fullData());
   check('valid period ok', ok.canAdvance === true, JSON.stringify(ok.issues));
 
   const d1 = fullData(); d1.baseRentOnlyConfirmed = false;
-  check('Step 3 blocks without base-rent confirmation (gate re-added, redesign 2026-06-16)', validateStep(FlowStep.AmountOwed, d1).canAdvance === false);
+  check('legacy baseRentOnlyConfirmed=false no longer blocks Step 3', validateStep(FlowStep.AmountOwed, d1).canAdvance === true);
+
+  const d1b = fullData(); delete d1b.baseRentOnlyConfirmed;
+  check('legacy baseRentOnlyConfirmed absent no longer blocks Step 3', validateStep(FlowStep.AmountOwed, d1b).canAdvance === true);
 
   const d2 = fullData(); d2.rentPeriods = [{ periodStartDate: '2026-04-30', periodEndDate: '2026-04-01', amount: 2000 }];
   check('end-before-start fails', validateStep(FlowStep.AmountOwed, d2).canAdvance === false);
