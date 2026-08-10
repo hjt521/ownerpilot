@@ -21,8 +21,10 @@ jobs:
           node-version: '22'
       - name: Apply bounded UX2 implementation
         run: python scripts/ux2_one_review_confirm_workbench.py
+      - name: Rebind material-mutation gate tests
+        run: python scripts/ux2_one_review_confirm_test_rebind.py
       - name: Remove temporary workbench files
-        run: rm scripts/ux2_one_review_confirm_workbench.py .github/workflows/ux2-one-review-confirm-workbench.yml
+        run: rm scripts/ux2_one_review_confirm_workbench.py scripts/ux2_one_review_confirm_test_rebind.py .github/workflows/ux2-one-review-confirm-workbench.yml
       - name: Install dependencies
         run: npm install
       - name: Focused UX2 approval binding
