@@ -21,14 +21,25 @@ jobs:
           node-version: '22'
       - name: Apply bounded contract separation correction
         run: python scripts/ux2_contract_separation_fix.py
-      - name: Normalize trailing whitespace in touched notice flow
+      - name: Normalize formatting in correction-touched files
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('components/notice-flow.tsx')
-          lines = p.read_text().splitlines()
-          p.write_text('\n'.join(line.rstrip() for line in lines) + '\n')
+
+          paths = [
+              Path('lib/flow/reviewApproval.ts'),
+              Path('lib/flow/noticeFlowState.ts'),
+              Path('components/notice-flow.tsx'),
+              Path('components/serve-track.tsx'),
+              Path('lib/flow/reviewApproval.test.ts'),
+              Path('lib/flow/noticeReadyTaskBoundary.test.ts'),
+              Path('components/packet-print-options.tsx'),
+          ]
+
+          for p in paths:
+              lines = p.read_text().splitlines()
+              p.write_text('\n'.join(line.rstrip() for line in lines) + '\n')
           PY
       - name: Remove temporary workbench files
         run: rm scripts/ux2_contract_separation_fix.py .github/workflows/ux2-contract-separation-workbench.yml
