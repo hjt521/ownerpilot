@@ -59,7 +59,8 @@ export function ServeTrack() {
   };
 
   const result = data ? evaluateCanProduceV4(data) : null;
-  const ready = data !== null && result !== null && result.canProduce;
+  const ready =
+    data !== null && result !== null && result.canProduce && !!data.productionSnapshot;
 
   // Build the notice model the same way ReviewStep does, so the service-log
   // print has what it needs. Fails closed like Review.
@@ -127,9 +128,9 @@ export function ServeTrack() {
                 No notice ready to serve
               </h3>
               <p className="text-sm text-gray-700 leading-relaxed mb-3">
-                Finish your notice in the 3-Day Notice flow first. Once it is
-                ready to produce, come back here to record service attempts and
-                complete the proof of service.
+                Finish and create your notice in the 3-Day Notice flow first. Once
+                the notice is prepared, come back here to record the actual service
+                attempt or event and complete the proof of service.
               </p>
               <a
                 href="/notice/3-day"

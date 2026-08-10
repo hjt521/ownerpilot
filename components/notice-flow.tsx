@@ -2595,29 +2595,29 @@ function DeadlinePreview({ data }: { data: NoticeFlowData }) {
   }
   return (
     <div className="mt-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-sm text-sm space-y-1.5">
-      <p className="font-semibold text-gray-900">Deadline preview</p>
+      <p className="font-semibold text-gray-900">Planned-date preview</p>
       <div className="flex justify-between gap-4">
-        <span className="text-gray-500">3-day period begins</span>
+        <span className="text-gray-500">If served as planned, 3-day period begins</span>
         <span className="font-medium text-gray-900">
           {formatNoticeDate(period.commencementDate)}
         </span>
       </div>
       <div className="flex justify-between gap-4">
-        <span className="text-gray-500">Pay or vacate by end of</span>
+        <span className="text-gray-500">If served as planned, pay or vacate by end of</span>
         <span className="font-medium text-gray-900">
           {formatNoticeDate(period.expirationDate)}
         </span>
       </div>
       <div className="flex justify-between gap-4">
-        <span className="text-gray-500">Days counted</span>
+        <span className="text-gray-500">Days counted in preview</span>
         <span className="font-medium text-gray-900 text-right">
           {period.countedDays.map((d) => formatNoticeDate(d)).join(', ')}
         </span>
       </div>
       <p className="text-xs text-gray-500 leading-relaxed pt-1">
-        The count skips the day of service, Saturdays, Sundays, and California judicial
-        holidays &mdash; so the deadline can land more than three calendar days after
-        service. These are the same dates that will print on the notice.
+        This preview uses your planned service date and the existing date engine. It does
+        not record service. If the plan changes before service, update the planned service
+        date here. After service occurs, record the actual service event in Serve &amp; Track.
       </p>
     </div>
   );
@@ -2639,12 +2639,12 @@ function LandlordStep({
   return (
     <div className="space-y-6">
       <StepIntro>
-        Who is signing and serving the notice, and when?
+        Who is signing the notice, and when do you plan to serve it?
       </StepIntro>
       <p className="text-sm text-gray-600 leading-relaxed -mt-2">
-        This is the last step before producing the notice. Tell us who will sign
-        it, and how and when you plan to serve it. You&apos;ll get
-        method-specific service instructions on the next screen.
+        This is the last step before producing the notice. Tell us who will sign it
+        and the date you currently plan to serve it. Producing the notice does not
+        record service.
       </p>
 
       {/* Signer name — shown once the landlord type is chosen */}
@@ -2756,8 +2756,8 @@ function LandlordStep({
         <FieldLabel htmlFor="signingDate">Date you sign the notice<Req /></FieldLabel>
         <p className="text-sm text-gray-600 leading-relaxed mb-2">
           This is the &ldquo;Dated:&rdquo; line on the notice itself &mdash; the day you
-          execute it. It can be the same day you serve, or a few days before, but it
-          cannot be after the service date.
+          execute it. It can be the same day as your planned service date, or a few
+          days before, but it cannot be after the planned service date.
         </p>
         <DateField
           id="signingDate"
@@ -2773,7 +2773,11 @@ function LandlordStep({
       </div>
 
       <div>
-        <FieldLabel htmlFor="serviceDate">Intended service date<Req /></FieldLabel>
+        <FieldLabel htmlFor="serviceDate">Planned service date<Req /></FieldLabel>
+        <p className="text-sm text-gray-600 leading-relaxed mb-2">
+          This date is used to finalize the notice and calculate the dates shown on it.
+          It does not record service.
+        </p>
         <DateField
           id="serviceDate"
           value={data.serviceDate ?? ''}
@@ -2781,8 +2785,8 @@ function LandlordStep({
         />
         <DeadlinePreview data={data} />
         <p className="mt-2 text-xs text-gray-500 leading-relaxed">
-          You&apos;ll pick your service method on the Serve &amp; Track page, after the
-          notice is produced.
+          After the notice is actually served, record what happened on the separate
+          Serve &amp; Track task.
         </p>
       </div>
 
@@ -2880,9 +2884,9 @@ function ReviewSummaryCards({
     ? signerName + (signerTitle ? `, ${signerTitle}` : '')
     : NOT_SET;
   const signed = data.signingDate ? formatNoticeDate(data.signingDate) : '';
-  const served = data.serviceDate ? formatNoticeDate(data.serviceDate) : '';
+  const plannedService = data.serviceDate ? formatNoticeDate(data.serviceDate) : '';
   const datesLine =
-    [signed && `Signed ${signed}`, served && `Served ${served}`].filter(Boolean).join(' \u00b7 ') ||
+    [signed && `Signed ${signed}`, plannedService && `Planned service ${plannedService}`].filter(Boolean).join(' \u00b7 ') ||
     'Dates not set';
   const deadline = result.computedDates
     ? formatNoticeDate(result.computedDates.expirationDate)
@@ -2916,7 +2920,7 @@ function ReviewSummaryCards({
     {
       title: 'Signer & dates',
       page: 4,
-      lines: [signerLine, datesLine, deadline ? `Deadline: ${deadline}` : ''].filter(Boolean),
+      lines: [signerLine, datesLine, deadline ? `If served as planned, pay or vacate by ${deadline}` : ''].filter(Boolean),
     },
   ];
 
@@ -2960,6 +2964,42 @@ function ReviewSummaryCards({
   );
 }
 
+function NoticeReadyState() {
+  return (
+    <section
+      data-testid="notice-ready-state"
+      className="rounded-xl border border-green-300 bg-green-50 px-6 py-6 shadow-sm space-y-4"
+    >
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-green-800 mb-2">
+          Notice preparation complete
+        </p>
+        <h2 className="font-serif text-2xl md:text-3xl font-bold text-brand">
+          Your 3-Day Notice is ready
+        </h2>
+      </div>
+      <p>
+        <span className="inline-flex rounded-full border border-green-300 bg-white px-3 py-1 text-xs font-bold tracking-wide text-green-900">
+          PREPARED · NOT SERVED
+        </span>
+      </p>
+      <div className="space-y-2 text-sm text-gray-700 leading-relaxed">
+        <p>Your notice has been prepared. Service has not been recorded.</p>
+        <p>
+          You can leave now. When the notice is actually served, return to record what
+          happened as a separate task.
+        </p>
+      </div>
+      <a
+        href="/"
+        className="inline-flex text-sm font-semibold text-brand underline"
+      >
+        Leave for now
+      </a>
+    </section>
+  );
+}
+
 function ReviewStep({
   data,
   update,
@@ -2976,6 +3016,7 @@ function ReviewStep({
   onRetryJurisdiction?: () => void;
 }) {
   const result = evaluateCanProduceV4(data);
+  const noticePrepared = !!data.productionSnapshot && !evaluateStaleness(data).reason;
 
   // When the gate says ready, render the notice from the build-locked template
   // and build the styled document. The renderer fails closed; wrap it so any
@@ -3038,6 +3079,10 @@ function ReviewStep({
   // "Produce Notice Packet" action stays below as the deliberate final step.
   return (
     <div className="space-y-6">
+      {noticePrepared ? (
+        <NoticeReadyState />
+      ) : (
+        <>
       {jurisdictionResolving && (
         <div
           role="status"
@@ -3078,14 +3123,16 @@ function ReviewStep({
             </li>
             <li className="flex items-start gap-2">
               <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
-              <span>Signer and service date complete</span>
+              <span>Signer and planned service date complete</span>
             </li>
           </ul>
           {result.computedDates && (
             <p className="mt-3 text-sm text-green-900 leading-relaxed">
-              The tenant will have until{' '}
-              <strong>{formatNoticeDate(result.computedDates.expirationDate)}</strong> to pay or
-              vacate (period begins {formatNoticeDate(result.computedDates.commencementDate)}).
+              Using your planned service date, the notice shows{' '}
+              <strong>{formatNoticeDate(result.computedDates.expirationDate)}</strong> as the
+              pay-or-vacate deadline (period begins{' '}
+              {formatNoticeDate(result.computedDates.commencementDate)}). Service has not been
+              recorded.
             </p>
           )}
           {!result.canProduce && (
@@ -3182,9 +3229,21 @@ function ReviewStep({
           </div>
         )}
 
+        </>
+      )}
+
       {renderError && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
           {renderError}
+        </div>
+      )}
+
+      {noticePrepared && docHtml && renderedModel && (
+        <div className="rounded-lg border border-rule bg-white px-5 py-4">
+          <h3 className="font-semibold text-gray-900">Download / Print Notice</h3>
+          <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+            Use the existing notice documents below whenever you need another copy.
+          </p>
         </div>
       )}
 
@@ -3230,21 +3289,27 @@ function ReviewStep({
         </div>
       )}
 
-      {/* R2b: service tracking lives on its own page. Whole card is clickable. */}
-      {result.canProduce && (
-        <a
-          href="/notice/3-day/serve"
-          className="block rounded-lg border border-rule bg-white px-5 py-4 shadow-sm transition-colors hover:border-brand hover:bg-tint"
+      {/* R2b: actual service remains a separate later customer-reported task. */}
+      {noticePrepared && (
+        <section
+          data-testid="record-service-later-task"
+          className="rounded-xl border border-rule bg-white px-5 py-5 shadow-sm"
         >
-          <h3 className="font-semibold text-gray-900 mb-1">Next: serve &amp; track</h3>
-          <p className="text-sm text-gray-700 leading-relaxed mb-3">
-            Once you print and serve the notice, record your service attempts and
-            complete the proof of service on the Serve &amp; Track page.
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 mb-2">
+            Later task
           </p>
-          <span className="text-sm font-semibold text-brand">
-            Go to Serve &amp; Track &rarr;
-          </span>
-        </a>
+          <h3 className="font-semibold text-gray-900 mb-1">Record service later</h3>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3">
+            Service has not been recorded. After someone actually serves the notice,
+            open the separate Serve &amp; Track task and record what happened.
+          </p>
+          <a
+            href="/notice/3-day/serve"
+            className="inline-flex text-sm font-semibold text-brand underline"
+          >
+            Record service later &rarr;
+          </a>
+        </section>
       )}
     </div>
   );
@@ -3681,11 +3746,15 @@ export function ServiceStep({
       {/* Echo of choices already captured (the user's own data). */}
       <div className="rounded-lg border border-gray-200 px-5 py-4 space-y-2 text-sm">
         <div className="flex justify-between gap-4">
-          <span className="text-gray-500">Intended service date</span>
+          <span className="text-gray-500">Planned service date</span>
           <span className="font-medium text-gray-900">
             {serviceDateDisplay ?? 'Not set'}
           </span>
         </div>
+        <p className="text-xs text-gray-500 leading-relaxed">
+          This is the date you planned before producing the notice. Record the actual
+          service attempt or event below.
+        </p>
       </div>
 
       {/* Re-serve / attempt recording (slice 2). Sits between the summary and

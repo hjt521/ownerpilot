@@ -92,8 +92,8 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
             k="Payment Phone"
             v={data.landlordContact?.phone ? formatUsPhone(data.landlordContact.phone) : ''}
           />
-          <Row k="Intended Service Date" v={serviceDateText} />
-          <Row k="Pay or Vacate By" v={deadlineText} />
+          <Row k="Planned Service Date" v={serviceDateText} />
+          <Row k="If served as planned, pay or vacate by" v={deadlineText} />
           <Row k="Service Attempts" v={attemptsText} />
         </dl>
         <div className="mt-4 rounded-md bg-tint px-3 py-2.5">
@@ -107,12 +107,12 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
 
       <section className="rounded-lg border border-rule bg-white p-5">
         <h2 className="font-serif text-base font-bold text-brand">
-          Next: Serve &amp; Track
+          Later: Record Service
         </h2>
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          After generating your notice, you can use OwnerPilot AI to track
-          service attempts and create a Proof of Service. Service logs and
-          proof of service are separate follow-up tools.
+          After the notice is actually served, return to Serve &amp; Track to record
+          what happened and create a Proof of Service. Service logs and proof of
+          service are separate follow-up tools.
         </p>
       </section>
     </div>
