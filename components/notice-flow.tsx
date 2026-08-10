@@ -2616,8 +2616,8 @@ function DeadlinePreview({ data }: { data: NoticeFlowData }) {
       </div>
       <p className="text-xs text-gray-500 leading-relaxed pt-1">
         This preview uses your planned service date and the existing date engine. It does
-        not record service. If the notice is served on a different date, return and
-        regenerate it before recording what actually happened in Serve &amp; Track.
+        not record service. If the plan changes before service, update the planned service
+        date here. After service occurs, record the actual service event in Serve &amp; Track.
       </p>
     </div>
   );

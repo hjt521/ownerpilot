@@ -28,6 +28,22 @@ ok(
   'planned-date helper explicitly says it does not record service',
 );
 ok(
+  noticeFlow.includes('If the plan changes before service, update the planned service'),
+  'planned-date preview only instructs pre-service plan updates',
+);
+ok(
+  noticeFlow.includes('After service occurs, record the actual service event in Serve &amp; Track.'),
+  'planned-date preview sends later actual service to Serve & Track without mismatch adjudication',
+);
+ok(
+  !noticeFlow.includes('If the notice is served on a different date'),
+  'planned-date preview does not decide a post-service date mismatch',
+);
+ok(
+  !noticeFlow.includes('regenerate it before recording what actually happened'),
+  'unauthorized regenerate-before-recording instruction is absent',
+);
+ok(
   noticeSummary.includes('k="Planned Service Date"'),
   'notice summary labels the same pre-production value as planned service',
 );
