@@ -21,6 +21,20 @@ jobs:
           node-version: '22'
       - name: Apply bounded contract separation correction
         run: python scripts/ux2_contract_separation_fix.py
+      - name: Fix exact trailing-space defect
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('components/notice-flow.tsx')
+          text = p.read_text()
+          old = '  const noticePrepared = !!data.productionSnapshot && !evaluateStaleness(data).reason; \n'
+          new = '  const noticePrepared = !!data.productionSnapshot && !evaluateStaleness(data).reason;\n'
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'expected exactly one targeted trailing-space marker, found {count}')
+          p.write_text(text.replace(old, new, 1))
+          PY
       - name: Remove temporary workbench files
         run: rm scripts/ux2_contract_separation_fix.py .github/workflows/ux2-contract-separation-workbench.yml
       - name: Install dependencies
