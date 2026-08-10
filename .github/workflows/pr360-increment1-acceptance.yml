@@ -1,5 +1,6 @@
 name: PR360 Increment-1 acceptance revision
 
+# Existing-workflow trigger for bounded verification; remove before ARB handoff.
 on:
   push:
     branches:
