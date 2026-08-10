@@ -39,10 +39,13 @@ jobs:
 
           for p in paths:
               lines = p.read_text().splitlines()
-              p.write_text('\n'.join(line.rstrip() for line in lines) + '\n')
+              normalized = '\n'.join(line.rstrip() for line in lines).rstrip() + '\n'
+              p.write_text(normalized)
           PY
       - name: Remove temporary workbench files
         run: rm scripts/ux2_contract_separation_fix.py .github/workflows/ux2-contract-separation-workbench.yml
+      - name: Pre-test diff whitespace
+        run: git diff --check
       - name: Install dependencies
         run: npm install
       - name: Review approval binding
