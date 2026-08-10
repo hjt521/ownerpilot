@@ -3,13 +3,14 @@
  * LA produce panel (Phase 2D client wiring §3). Renders for a confirmed_la notice
  * when the produce-overlay is wired. Runs the server-gated sequence
  * (verify-la → la-packet), then:
- *   - blocked / error → the locked block copy (produce NOT offered);
- *   - ready → the LAHD filing prompt + acknowledgment; only after the owner
- *     acknowledges does it expose the notice print (PacketPrintOptions) + the two
- *     RTC PDF downloads, and write the produce audit fields.
+ *   - blocked / error → the locked block copy (Create is NOT offered);
+ *   - ready → the LAHD filing prompt + acknowledgment;
+ *   - acknowledged + current C6 → Create Notice;
+ *   - prepared → existing notice print + RTC PDF downloads.
  *
- * The notice can never be printed without the RTC attachment: PacketPrintOptions
- * is mounted only inside the acknowledged-ready branch.
+ * UX2 preserves the LA acknowledgment as a separate conditional testimony.
+ * Download/print is artifact use after Create and no longer establishes
+ * production authority.
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
@@ -47,7 +48,9 @@ export function LaProducePanel({
   noticeDocHtml,
   baseName,
   verdictSource,
-  onProduced,
+  noticePrepared,
+  canCreate,
+  onCreateNotice,
   onAudit,
 }: {
   model: NoticeModel;
@@ -56,7 +59,11 @@ export function LaProducePanel({
   baseName: string;
   /** cachedResolverVerdict.source ('live_resolver' | 'broker_confirm'). */
   verdictSource: string;
-  onProduced: () => void;
+  /** True only when this exact prepared generation has completed Create. */
+  noticePrepared: boolean;
+  /** Current final C6 + deterministic gate eligibility for the current generation. */
+  canCreate: boolean;
+  onCreateNotice: () => void;
   onAudit: (fields: LaProduceAuditFields) => void;
 }) {
   const [state, setState] = useState<LaProduceSequenceResult | { kind: 'loading' }>({ kind: 'loading' });
@@ -153,13 +160,36 @@ export function LaProducePanel({
             </div>
           </section>
 
-          <PacketPrintOptions
-            model={model}
-            data={data}
-            noticeDocHtml={noticeDocHtml}
-            onProduced={onProduced}
-            disabledKeys={['serviceLog']}
-          />
+          {!noticePrepared ? (
+            <section className="rounded-lg border border-rule bg-white px-5 py-4">
+              <h3 className="font-semibold text-gray-900">Create Notice</h3>
+              <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+                Create the notice after the final confirmation above is current. Download and
+                print remain available after creation.
+              </p>
+              <button
+                type="button"
+                data-testid="create-notice-button"
+                onClick={onCreateNotice}
+                disabled={!canCreate}
+                className="mt-4 inline-flex min-h-[48px] items-center rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-bar disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Create Notice
+              </button>
+              {!canCreate && (
+                <p className="mt-2 text-xs text-gray-500">
+                  Complete the final Review &amp; Confirm step before creating.
+                </p>
+              )}
+            </section>
+          ) : (
+            <PacketPrintOptions
+              model={model}
+              data={data}
+              noticeDocHtml={noticeDocHtml}
+              disabledKeys={['serviceLog']}
+            />
+          )}
         </>
       )}
     </div>
