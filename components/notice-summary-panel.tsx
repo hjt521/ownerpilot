@@ -92,7 +92,7 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
             k="Payment Phone"
             v={data.landlordContact?.phone ? formatUsPhone(data.landlordContact.phone) : ''}
           />
-          <Row k="Intended Service Date" v={serviceDateText} />
+          <Row k="Planned Service Date" v={serviceDateText} />
           <Row k="Pay or Vacate By" v={deadlineText} />
           <Row k="Service Attempts" v={attemptsText} />
         </dl>
