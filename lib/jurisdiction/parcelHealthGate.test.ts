@@ -4,7 +4,9 @@
  */
 import {
   evaluateParcelHealthGate,
+  evaluateParcelSourceHealth,
   isLaProductionLive,
+  isLaParcelSourceLive,
   PARCEL_HEALTH_FRESHNESS_WINDOW_MS,
   type ParcelHealthStatusRow,
   type ParcelHealthReader,
@@ -113,6 +115,52 @@ async function main() {
       reader: reader([row('county','not_live',fresh), row('zimas','live',fresh)]),
     });
     check('all true but one not_live → gate CLOSED', open === false);
+  }
+
+  console.log('\n=== path-specific source health (same freshness semantics) ===');
+  {
+    const r = evaluateParcelSourceHealth(
+      [row('county','live',fresh), row('zimas','not_live',fresh)], 'county', NOW,
+    );
+    check('county live/fresh stays OPEN when zimas is not_live', r.open === true);
+  }
+  {
+    const r = evaluateParcelSourceHealth([row('county','live',fresh)], 'zimas', NOW);
+    check('required zimas row missing → CLOSED', r.open === false);
+    check('  source closure identifies zimas missing',
+      !r.open && r.closures.length === 1 && r.closures[0].endpoint === 'zimas' && r.closures[0].condition === 'missing');
+  }
+  {
+    const r = evaluateParcelSourceHealth(
+      [row('zimas','live',ago(75*MIN + 1000))], 'zimas', NOW,
+    );
+    check('required zimas >75m stale → CLOSED', r.open === false && r.closures[0]?.condition === 'stale');
+  }
+  {
+    const r = evaluateParcelSourceHealth(
+      [row('county','live',ago(75*MIN))], 'county', NOW,
+    );
+    check('path-specific age exactly 75:00 remains FRESH', r.open === true);
+  }
+  {
+    let readerCalled = false;
+    const spy: ParcelHealthReader = { read: async () => { readerCalled = true; return []; } };
+    const open = await isLaParcelSourceLive({
+      deps: FLAG_FALSE, endpoint: 'county', reader: spy, now: () => NOW,
+    });
+    check('source health preserves static-false short-circuit', open === false && readerCalled === false);
+  }
+  {
+    let errorEndpoint = '';
+    const open = await isLaParcelSourceLive({
+      deps: ALL_TRUE,
+      endpoint: 'zimas',
+      reader: throwingReader,
+      now: () => NOW,
+      logReadError: (i) => { errorEndpoint = i.endpoint; },
+    });
+    check('required-source read error → fail CLOSED', open === false);
+    check('  read-error observability identifies zimas', errorEndpoint === 'zimas');
   }
 
   console.log('\n----------------------------------------');
