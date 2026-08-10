@@ -1,0 +1,94 @@
+name: PR360 Increment-1 acceptance revision
+
+on:
+  push:
+    branches:
+      - fix/nonpayment-notice-ready-task-boundary
+
+permissions:
+  contents: write
+
+jobs:
+  revise-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/nonpayment-notice-ready-task-boundary
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Apply bounded Increment-1 acceptance revision
+        shell: python
+        run: |
+          from pathlib import Path
+
+          flow_path = Path('components/notice-flow.tsx')
+          flow = flow_path.read_text()
+          old_deadline = "deadline ? `Deadline: ${deadline}` : ''"
+          new_deadline = "deadline ? `If served as planned, pay or vacate by ${deadline}` : ''"
+          assert flow.count(old_deadline) == 1, 'expected review Deadline surface exactly once'
+          flow = flow.replace(old_deadline, new_deadline)
+          flow_path.write_text(flow)
+
+          summary_path = Path('components/notice-summary-panel.tsx')
+          summary = summary_path.read_text()
+          old_row = '<Row k="Pay or Vacate By" v={deadlineText} />'
+          new_row = '<Row k="If served as planned, pay or vacate by" v={deadlineText} />'
+          assert summary.count(old_row) == 1, 'expected sticky summary deadline label exactly once'
+          summary = summary.replace(old_row, new_row)
+
+          old_heading = """        <h2 className=\"font-serif text-base font-bold text-brand\">\n          Next: Serve &amp; Track\n        </h2>\n"""
+          new_heading = """        <h2 className=\"font-serif text-base font-bold text-brand\">\n          Later: Record Service\n        </h2>\n"""
+          assert summary.count(old_heading) == 1, 'expected sticky Next heading exactly once'
+          summary = summary.replace(old_heading, new_heading)
+
+          old_task_copy = """        <p className=\"mt-2 text-xs leading-relaxed text-muted\">\n          After generating your notice, you can use OwnerPilot AI to track\n          service attempts and create a Proof of Service. Service logs and\n          proof of service are separate follow-up tools.\n        </p>\n"""
+          new_task_copy = """        <p className=\"mt-2 text-xs leading-relaxed text-muted\">\n          After the notice is actually served, return to Serve &amp; Track to record\n          what happened and create a Proof of Service. Service logs and proof of\n          service are separate follow-up tools.\n        </p>\n"""
+          assert summary.count(old_task_copy) == 1, 'expected sticky task copy exactly once'
+          summary = summary.replace(old_task_copy, new_task_copy)
+          summary_path.write_text(summary)
+
+          test_path = Path('lib/flow/noticeReadyTaskBoundary.test.ts')
+          test = test_path.read_text()
+          anchor = """ok(\n  noticeFlow.includes('Planned service ${plannedService}'),\n  'review summary labels the pre-production date as planned service',\n);\n"""
+          addition = anchor + """ok(\n  noticeFlow.includes('If served as planned, pay or vacate by ${deadline}'),\n  'review deadline derived from the planned date is explicitly conditional',\n);\nok(\n  !noticeFlow.includes('deadline ? `Deadline: ${deadline}` :'),\n  'review no longer presents a planned-date calculation as an unconditional Deadline',\n);\nok(\n  noticeSummary.includes('k=\"If served as planned, pay or vacate by\"'),\n  'sticky summary labels the planned-date deadline as conditional',\n);\nok(\n  !noticeSummary.includes('k=\"Pay or Vacate By\"'),\n  'sticky summary no longer presents the planned-date deadline as unconditional',\n);\nok(\n  noticeSummary.includes('Later: Record Service'),\n  'notice-complete sticky hierarchy presents service as a later task',\n);\nok(\n  !noticeSummary.includes('Next: Serve &amp; Track'),\n  'notice-complete sticky hierarchy does not call service the next task',\n);\nok(\n  noticeSummary.includes('After the notice is actually served, return to Serve &amp; Track to record'),\n  'sticky task copy tells the landlord to return after actual service',\n);\n"""
+          assert test.count(anchor) == 1, 'expected focused-test anchor exactly once'
+          test = test.replace(anchor, addition)
+          test_path.write_text(test)
+
+          assert old_deadline not in flow
+          assert new_deadline in flow
+          assert 'k="Pay or Vacate By"' not in summary
+          assert 'k="If served as planned, pay or vacate by"' in summary
+          assert 'Next: Serve &amp; Track' not in summary
+          assert 'Later: Record Service' in summary
+
+      - name: Verify bounded diff
+        run: |
+          git diff --check
+          test "$(git diff --name-only | sort | tr '\n' ' ')" = "components/notice-flow.tsx components/notice-summary-panel.tsx lib/flow/noticeReadyTaskBoundary.test.ts "
+      - name: Focused Notice Ready test
+        run: npx tsx lib/flow/noticeReadyTaskBoundary.test.ts
+      - name: Full repository tests
+        run: npm test
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Edge typecheck
+        run: npm run ci:typecheck-edge
+      - name: Locked prose
+        run: npm run ci:verify-locked-prose
+      - name: Banned terms
+        run: npm run ci:verify-banned-terms
+      - name: Commit bounded revision
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/notice-flow.tsx components/notice-summary-panel.tsx lib/flow/noticeReadyTaskBoundary.test.ts
+          git commit -m "fix(nonpayment): make planned deadlines conditional"
+          git push origin HEAD:fix/nonpayment-notice-ready-task-boundary
