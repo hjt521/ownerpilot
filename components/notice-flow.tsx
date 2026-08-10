@@ -2920,7 +2920,7 @@ function ReviewSummaryCards({
     {
       title: 'Signer & dates',
       page: 4,
-      lines: [signerLine, datesLine, deadline ? `Deadline: ${deadline}` : ''].filter(Boolean),
+      lines: [signerLine, datesLine, deadline ? `If served as planned, pay or vacate by ${deadline}` : ''].filter(Boolean),
     },
   ];
 

@@ -81,6 +81,34 @@ ok(
   'review summary labels the pre-production date as planned service',
 );
 ok(
+  noticeFlow.includes('If served as planned, pay or vacate by ${deadline}'),
+  'review deadline derived from the planned date is explicitly conditional',
+);
+ok(
+  !noticeFlow.includes('deadline ? `Deadline: ${deadline}` :'),
+  'review no longer presents a planned-date calculation as an unconditional Deadline',
+);
+ok(
+  noticeSummary.includes('k="If served as planned, pay or vacate by"'),
+  'sticky summary labels the planned-date deadline as conditional',
+);
+ok(
+  !noticeSummary.includes('k="Pay or Vacate By"'),
+  'sticky summary no longer presents the planned-date deadline as unconditional',
+);
+ok(
+  noticeSummary.includes('Later: Record Service'),
+  'notice-complete sticky hierarchy presents service as a later task',
+);
+ok(
+  !noticeSummary.includes('Next: Serve &amp; Track'),
+  'notice-complete sticky hierarchy does not call service the next task',
+);
+ok(
+  noticeSummary.includes('After the notice is actually served, return to Serve &amp; Track to record'),
+  'sticky task copy tells the landlord to return after actual service',
+);
+ok(
   serveTrack.includes('result.canProduce && !!data.productionSnapshot'),
   'separate service task requires an actually prepared notice',
 );
