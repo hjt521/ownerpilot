@@ -20,13 +20,18 @@
  * Steps 1–3 are PURE (`classifyPreParcel`), no network. Steps 4–6 run in the
  * async orchestrator with injected County/ZIMAS adapters. Fail-closed throughout.
  *
- * GATE: the orchestrator asserts the LA production gate at entry. A test hook may inject
- * `gateIsOpen` (sync); otherwise the dynamic parcel-health gate (isLaProductionLive) reads
- * parcel_health_status with the 75-min freshness guard once the static predicate flag is true,
- * and short-circuits closed while it is false. No reader + no override → fail closed. Flips no
- * flag; makes no live call while the gate is closed.
+ * GATE: the orchestrator asserts the existing static LA production predicate at entry. Dynamic
+ * parcel-source health is then enforced path-specifically immediately before the resolver relies
+ * on County or ZIMAS. County can therefore complete an existing decisive disposition without an
+ * unused ZIMAS outage blocking it; ZIMAS health is required only when the existing County branch
+ * actually falls through to ZIMAS. No reader + no test override → fail closed before source use.
  */
-import { isLaProductionLive, type ParcelHealthReader } from '../parcelHealthGate';
+import {
+  isLaProductionLive,
+  type ParcelHealthEndpoint,
+  type ParcelHealthReader,
+} from '../parcelHealthGate';
+import { isLaProductionUnblocked } from '../laRtcRules';
 import type {
   GeocodeDisposition,
   ManualReviewReason,
@@ -215,7 +220,7 @@ export function isCorrectedInput(c: CorrectionFlags): boolean {
   return c.hasReplacedComponents === true || c.possibleNextAction === 'FIX';
 }
 
-/** Orchestrator deps: the geocode fetchers + both parcel adapters + gate hook. */
+/** Orchestrator deps: the geocode fetchers + both parcel adapters + gate hooks. */
 export interface ResolverV2Deps {
   /** Returns the pre-parcel signals from Google (AV + reverse geocode). */
   fetchGeocodeSignals: (inputAddress: string) => Promise<{
@@ -229,9 +234,14 @@ export interface ResolverV2Deps {
   }>;
   county: CountySpatialLookupDeps;
   zimas: ZimasLookupDeps;
+  /** Test-only/static gate override. Production omits this and uses isLaProductionUnblocked(). */
   gateIsOpen?: () => boolean;
-  /** Dynamic parcel-health gate reader (predicate-6). Injected in production by
-   *  buildResolverDeps; absent in unit tests, which inject `gateIsOpen` instead. */
+  /**
+   * Test-only path-specific source-health override. When absent, production reads
+   * parcel_health_status fresh through parcelHealthReader immediately before source use.
+   */
+  sourceIsHealthy?: (endpoint: ParcelHealthEndpoint) => boolean | Promise<boolean>;
+  /** Dynamic parcel-health reader (predicate-6). Injected in production by buildResolverDeps. */
   parcelHealthReader?: ParcelHealthReader;
   /** Optional sink for the audit record (A.6). Defaults to no-op. */
   recordAudit?: (record: GeocodeAuditRecord) => Promise<void> | void;
@@ -245,15 +255,26 @@ export async function resolveLaAddressV2(
   inputAddress: string,
   deps: ResolverV2Deps,
 ): Promise<GeocodeResultV2> {
-  // Gate: a test/override sync predicate if injected; otherwise the dynamic parcel-health gate
-  // (isLaProductionLive — static short-circuit when the predicate flag is false, else reads
-  // parcel_health_status with the 75-min freshness guard). No reader + no override → fail closed.
+  // Preserve the existing six-predicate LA production gate as the resolver-entry backstop.
+  // Dynamic County/ZIMAS health is intentionally NOT rolled up here: it is checked only at
+  // the point the resolver is about to rely on that source.
   const gateOpen: () => boolean | Promise<boolean> =
-    deps.gateIsOpen ??
-    (() => (deps.parcelHealthReader ? isLaProductionLive({ reader: deps.parcelHealthReader }) : false));
+    deps.gateIsOpen ?? (() => isLaProductionUnblocked());
   if (!(await gateOpen())) {
     throw new Error('la-prod-gate-closed: geocode resolver must not run while the LA production gate is closed');
   }
+
+  // Existing tests historically inject gateIsOpen as a complete gate override. Preserve that
+  // test surface unless a source-specific override is explicitly supplied. Production omits both
+  // overrides and therefore always performs a fresh path-specific parcel-health read.
+  const sourceIsHealthy: (endpoint: ParcelHealthEndpoint) => boolean | Promise<boolean> =
+    deps.sourceIsHealthy ??
+    (deps.gateIsOpen
+      ? (() => true)
+      : ((endpoint) =>
+          deps.parcelHealthReader
+            ? isLaProductionLive({ reader: deps.parcelHealthReader, endpoint })
+            : false));
 
   // Fetch Google signals; on error, fail-closed to api_error manual review.
   let signals: Awaited<ReturnType<ResolverV2Deps['fetchGeocodeSignals']>>;
@@ -320,6 +341,13 @@ export async function resolveLaAddressV2(
     return { disposition: 'manual_review', reviewReason: 'parcel_lookup_inconclusive', audit };
   }
 
+  // LA Path-Specific Source Health Gate v1: County health is mandatory immediately before
+  // any County adapter/cache evidence may be consulted. An unhealthy/unreadable County source
+  // fails closed regardless of ZIMAS state.
+  if (!(await sourceIsHealthy('county'))) {
+    throw new Error('la-prod-gate-closed: county parcel source is not healthy/current');
+  }
+
   const county = await lookupCountyParcelSpatial(lat, lng, deps.county);
   audit.county = { ...county.audit, verdict: county.verdict };
   // §3.5 audit fields: zero-features + ZIP-in-LA-set, logged whenever County ran.
@@ -373,6 +401,13 @@ export async function resolveLaAddressV2(
 
   // STEP 5 (ZIMAS) — County inconclusive (and not a non-LA situs gap). The
   // coordinate was already validated above (both parcel sources share it).
+  // ZIMAS health is evaluated only here, because this is the first point the existing resolver
+  // actually needs the fallback. Missing/stale/not_live/unreadable ZIMAS fails closed before
+  // any ZIMAS adapter/cache evidence can be consulted.
+  if (!(await sourceIsHealthy('zimas'))) {
+    throw new Error('la-prod-gate-closed: zimas parcel source is not healthy/current');
+  }
+
   const zimas = await lookupZimasParcel(lat, lng, deps.zimas);
   audit.zimas = { ...zimas.audit, verdict: zimas.verdict };
 
