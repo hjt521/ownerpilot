@@ -75,6 +75,29 @@ ok(
   'Create Notice action is customer-visible',
 );
 
+const reviewStepStart = noticeFlow.indexOf('function ReviewStep({');
+const reviewStepEnd = noticeFlow.indexOf('// --- Step 7:', reviewStepStart);
+ok(reviewStepStart >= 0 && reviewStepEnd > reviewStepStart, 'ReviewStep source is inspectable');
+const reviewStepSource = noticeFlow.slice(reviewStepStart, reviewStepEnd);
+const reviewSummaryIndex = reviewStepSource.indexOf('<ReviewSummaryCards data={data} result={result} goToPage={goToPage} />');
+const noticePreviewIndex = reviewStepSource.indexOf('<h2 className="text-lg font-semibold text-gray-900">Notice preview</h2>');
+const c6LabelIndex = reviewStepSource.indexOf('<p className="text-sm font-semibold text-green-900">Review &amp; Confirm</p>');
+const createNoticeIndex = reviewStepSource.indexOf('data-testid="create-notice-button"');
+ok(reviewSummaryIndex >= 0, 'Review Summary remains in the main Review flow');
+ok(noticePreviewIndex > reviewSummaryIndex, 'Notice Preview appears after Review Summary');
+ok(c6LabelIndex > noticePreviewIndex, 'C6 appears only after Review Summary and Notice Preview');
+ok(createNoticeIndex > c6LabelIndex, 'Create Notice appears after the final C6 control');
+equal(
+  (reviewStepSource.match(/checked=\{approvalCurrent\}/g) ?? []).length,
+  1,
+  'exactly one consequential C6 checkbox remains',
+);
+equal(
+  (reviewStepSource.match(/By producing this notice, I confirm: the amounts entered are base rent only/g) ?? []).length,
+  1,
+  'C6 substantive testimony is present exactly once',
+);
+
 ok(
   noticeFlow.includes('Your 3-Day Notice is ready'),
   'successful Create has a standalone Notice Ready heading',

@@ -3170,6 +3170,18 @@ function ReviewStep({
             confirmation, then create your notice.
           </StepIntro>
 
+          <ReviewSummaryCards data={data} result={result} goToPage={goToPage} />
+
+          {docHtml && !artifactReady && (
+            <section className="space-y-4 rounded-lg border border-rule bg-white px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Notice preview</h2>
+                <p className="mt-1 text-xs text-gray-500 leading-relaxed">This is a broker-prepared draft for your review. Sign it in ink before serving, and serve it on the date shown. The proof of service is completed after you serve — not before.</p>
+              </div>
+              <NoticePreview html={docHtml} />
+            </section>
+          )}
+
           {visibleBlockers.length === 0 ? (
             <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4">
               <p className="font-semibold text-green-900 mb-3">Everything&apos;s ready.</p>
@@ -3189,32 +3201,6 @@ function ReviewStep({
                   recorded.
                 </p>
               )}
-              <div className="mt-4 space-y-3 border-t border-green-200 pt-4">
-                <p className="text-sm font-semibold text-green-900">Review &amp; Confirm</p>
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={approvalCurrent}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      update(
-                        e.target.checked
-                          ? bindReviewApproval(data, new Date().toISOString())
-                          : clearReviewApproval(),
-                      )
-                    }
-                    className="mt-1"
-                  />
-                  <span className="text-sm text-green-900 leading-relaxed">
-                    By producing this notice, I confirm: the amounts entered are base rent only (no late fees, utilities, or other charges); the tenants and landlord(s) named are correct; and the signer is authorized.
-                  </span>
-                </label>
-                {!approvalCurrent && (
-                  <p className="text-xs text-green-800">
-                    This confirmation applies only to the exact notice details shown now. If a
-                    material detail changes, you&apos;ll confirm the updated notice again.
-                  </p>
-                )}
-              </div>
             </div>
           ) : otherStepBlockers.length > 0 ? (
             <div className="rounded-lg border border-rule bg-tint px-5 py-4">
@@ -3247,8 +3233,6 @@ function ReviewStep({
             </div>
           ) : null}
 
-          <ReviewSummaryCards data={data} result={result} goToPage={goToPage} />
-
           {!result.canProduce &&
             (data.paymentMethods ?? []).includes('bank_deposit') &&
             (data.bankDepositPaperInstrumentConfirmed !== true || data.bankBranchWithinFiveMilesAttested !== true) && (
@@ -3258,6 +3242,35 @@ function ReviewStep({
                 <BankDepositAttestations data={data} update={update} />
               </div>
             )}
+
+          {visibleBlockers.length === 0 && (
+            <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4">
+              <p className="text-sm font-semibold text-green-900">Review &amp; Confirm</p>
+              <label className="mt-3 flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={approvalCurrent}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    update(
+                      e.target.checked
+                        ? bindReviewApproval(data, new Date().toISOString())
+                        : clearReviewApproval(),
+                    )
+                  }
+                  className="mt-1"
+                />
+                <span className="text-sm text-green-900 leading-relaxed">
+                  By producing this notice, I confirm: the amounts entered are base rent only (no late fees, utilities, or other charges); the tenants and landlord(s) named are correct; and the signer is authorized.
+                </span>
+              </label>
+              {!approvalCurrent && (
+                <p className="mt-3 text-xs text-green-800">
+                  This confirmation applies only to the exact notice details shown now. If a
+                  material detail changes, you&apos;ll confirm the updated notice again.
+                </p>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -3273,16 +3286,6 @@ function ReviewStep({
       )}
       {renderError && (<div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">{renderError}</div>)}
       {createError && (<div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">{createError}</div>)}
-
-      {docHtml && !artifactReady && (
-        <section className="space-y-4 rounded-lg border border-rule bg-white px-5 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Notice preview</h2>
-            <p className="mt-1 text-xs text-gray-500 leading-relaxed">This is a broker-prepared draft for your review. Sign it in ink before serving, and serve it on the date shown. The proof of service is completed after you serve — not before.</p>
-          </div>
-          <NoticePreview html={docHtml} />
-        </section>
-      )}
 
       {laProduceRequired && displayModel ? (
         <LaProducePanel
