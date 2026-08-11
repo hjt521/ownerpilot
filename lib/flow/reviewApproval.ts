@@ -9,6 +9,9 @@ import type { NoticeFlowData } from './noticeFlowState';
  * classified below as approval metadata, UI-only state, post-create state, or
  * current backward-compatibility residue that cannot affect the gate/renderer.
  *
+ * This identity authorizes Create only. Post-production readiness and staleness
+ * remain exclusively governed by ProductionSnapshot + evaluateStaleness.
+ *
  * No wall-clock value participates in the generation.
  */
 
