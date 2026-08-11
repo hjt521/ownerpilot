@@ -19,7 +19,6 @@ import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import { renderNotice, NoticeRenderError } from '@/lib/produce/renderNotice';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
-import { isPreparedNoticeGenerationCurrent } from '@/lib/flow/reviewApproval';
 import { ServiceStep } from './notice-flow';
 import { NoticeSummaryPanel } from './notice-summary-panel';
 import { PacketPrintOptions } from './packet-print-options';
@@ -60,11 +59,7 @@ export function ServeTrack() {
 
   const result = data ? evaluateCanProduceV4(data) : null;
   const ready =
-    data !== null &&
-    result !== null &&
-    result.canProduce &&
-    !!data.productionSnapshot &&
-    isPreparedNoticeGenerationCurrent(data);
+    data !== null && result !== null && result.canProduce && !!data.productionSnapshot;
 
   // Build the notice model the same way ReviewStep does, so the service-log
   // print has what it needs. Fails closed like Review.

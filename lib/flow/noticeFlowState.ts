@@ -343,8 +343,6 @@ export interface NoticeFlowData {
    * intentionally excluded — re-serving on a new date is the normal path.
    */
   productionSnapshot?: ProductionSnapshot;
-  /** UX2: exact create generation that completed the deliberate Create Notice action. */
-  preparedNoticeGeneration?: string;
   /**
    * Verdict (attorney B1): null/undefined = the produced notice is still valid;
    * a non-null reason means the notice's face has drifted and a NEW notice must

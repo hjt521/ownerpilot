@@ -11,8 +11,6 @@ import {
   clearReviewApproval,
   freezeReviewCreateInput,
   hasCurrentReviewApproval,
-  isPreparedNoticeGenerationCurrent,
-  preparedNoticeGeneration,
   reviewApprovalGeneration,
 } from './reviewApproval';
 
@@ -199,12 +197,7 @@ for (const [name, mutate] of [
   ok(gate.canProduce, `fresh bound C6 allows ordinary gate evaluation: ${gate.blockers.map((b) => b.code).join(', ')}`);
 
   const snapshot = captureProductionSnapshot(frozen);
-  const produced = {
-    ...frozen,
-    productionSnapshot: snapshot,
-    preparedNoticeGeneration: preparedNoticeGeneration(frozen),
-  };
-  ok(isPreparedNoticeGenerationCurrent(produced), 'prepared generation is current for the same frozen create state');
+  const produced = { ...frozen, productionSnapshot: snapshot };
   equal(
     reviewApprovalGeneration(produced),
     reviewApprovalGeneration(frozen),

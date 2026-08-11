@@ -22,11 +22,10 @@ import { buildNoticePdfFilename } from '@/lib/produce/noticePdfFilename';
 
 /**
  * PacketPrintOptions — RiskPath(TM) Connected Forms Phase 1 print screen.
- * Renders on Review once the produce gate passes: the notice preview (moved
- * verbatim from the previous Download PDF block) plus the four packet print
- * cards and the Full Packet confirmation modal (copy from packetCopy, spec
- * verbatim). Printing any document fires onProduced (the B1 stale-guard
- * snapshot in the parent).
+ * Artifact-use surface after a successful Create Notice action. The four packet
+ * cards and Full Packet confirmation modal retain their existing builders/copy.
+ * Printing never establishes production authority; Create captures the existing
+ * ProductionSnapshot before this component becomes available.
  */
 export function PacketPrintOptions({
   model,

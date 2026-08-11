@@ -48,8 +48,6 @@ import {
   clearReviewApproval,
   freezeReviewCreateInput,
   hasCurrentReviewApproval,
-  isPreparedNoticeGenerationCurrent,
-  preparedNoticeGeneration,
   reviewApprovalGeneration,
 } from '@/lib/flow/reviewApproval';
 import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName, formatPropertyLine } from '@/lib/produce/renderNotice';
@@ -3025,10 +3023,7 @@ function ReviewStep({
 
   const result = evaluateCanProduceV4(data);
   const approvalCurrent = hasCurrentReviewApproval(data);
-  const noticePrepared =
-    !!data.productionSnapshot &&
-    !evaluateStaleness(data).reason &&
-    isPreparedNoticeGenerationCurrent(data);
+  const noticePrepared = !!data.productionSnapshot && !evaluateStaleness(data).reason;
   const laProduceRequired =
     data.cachedResolverVerdict?.verdict === 'confirmed_la' &&
     data.cachedResolverVerdict.addressKey === normalizeAddressKey(data.propertyAddress) &&
@@ -3097,21 +3092,14 @@ function ReviewStep({
         },
       });
       const finalizedHtml = buildNoticeDocumentHtml(rendered.model);
-      const createdGeneration = preparedNoticeGeneration(frozen);
-      if (createdGeneration !== generation) {
-        throw new Error('The notice generation changed during creation. Please confirm again.');
-      }
 
       setCreatedArtifact({
-        generation: createdGeneration,
+        generation,
         data: frozen,
         model: rendered.model,
         html: finalizedHtml,
       });
-      update({
-        productionSnapshot: captureProductionSnapshot(frozen),
-        preparedNoticeGeneration: preparedNoticeGeneration(frozen),
-      });
+      update({ productionSnapshot: captureProductionSnapshot(frozen) });
     } catch (e) {
       setCreateError(
         e instanceof Error
@@ -3126,7 +3114,7 @@ function ReviewStep({
   const artifact =
     noticePrepared &&
     createdArtifact &&
-    createdArtifact.generation === data.preparedNoticeGeneration
+    createdArtifact.generation === data.reviewApprovalGeneration
       ? createdArtifact
       : null;
   const artifactModel = artifact?.model ?? (noticePrepared ? renderedModel : null);

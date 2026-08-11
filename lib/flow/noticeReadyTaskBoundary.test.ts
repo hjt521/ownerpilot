@@ -6,11 +6,7 @@ import {
   evaluateStaleness,
   getSuccessfulAttempt,
 } from './escalation';
-import {
-  bindReviewApproval,
-  isPreparedNoticeGenerationCurrent,
-  preparedNoticeGeneration,
-} from './reviewApproval';
+import { bindReviewApproval } from './reviewApproval';
 
 let passed = 0;
 function ok(condition: unknown, message: string) {
@@ -97,10 +93,6 @@ ok(
   'later service task uses the existing service route',
 );
 ok(
-  noticeFlow.includes('isPreparedNoticeGenerationCurrent(data)'),
-  'Notice Ready is bound to the exact successfully created generation',
-);
-ok(
   !noticeFlow.includes('served && `Served ${served}`'),
   'planned service date is not rendered as completed service in review',
 );
@@ -137,8 +129,8 @@ ok(
   'sticky task copy tells the landlord to return after actual service',
 );
 ok(
-  serveTrack.includes('isPreparedNoticeGenerationCurrent(data)'),
-  'separate service task requires the currently prepared create generation',
+  serveTrack.includes('result.canProduce && !!data.productionSnapshot'),
+  'separate service task retains the existing ProductionSnapshot readiness contract',
 );
 ok(
   serveTrack.includes('record the actual service'),
@@ -158,7 +150,7 @@ ok(createBody.includes('hasCurrentReviewApproval(frozen)'), 'Create requires cur
 ok(createBody.includes('evaluateCanProduceV4(frozen)'), 'Create performs a fresh final gate on frozen input');
 ok(createBody.includes('data: frozen'), 'renderer receives the exact frozen create input');
 ok(createBody.includes('captureProductionSnapshot(frozen)'), 'ProductionSnapshot is captured from the same frozen input');
-ok(createBody.includes('preparedNoticeGeneration: preparedNoticeGeneration(frozen)'), 'Create records the exact prepared generation');
+ok(!createBody.includes('preparedNoticeGeneration'), 'Create does not redefine approval identity as a staleness/prepared contract');
 ok(!createBody.includes('serviceAttempts'), 'Create does not create a service attempt');
 ok(!createBody.includes('successfulServiceAttemptId'), 'Create does not set successful service state');
 
@@ -192,13 +184,11 @@ const approved = {
 const produced = {
   ...approved,
   productionSnapshot: captureProductionSnapshot(approved),
-  preparedNoticeGeneration: preparedNoticeGeneration(approved),
 };
 equal((produced.serviceAttempts ?? []).length, 0, 'planned date plus Create adds no service attempts');
 equal(produced.successfulServiceAttemptId, undefined, 'Create adds no successful service id');
 equal(getSuccessfulAttempt(produced), undefined, 'planned date alone is never successful service');
 equal(evaluateStaleness(produced).reason, null, 'freshly produced unchanged notice is not stale');
-ok(isPreparedNoticeGenerationCurrent(produced), 'freshly created generation is current');
 
 const failedAttempt: ServiceAttempt = {
   id: 'failed-1',
@@ -214,9 +204,10 @@ equal(
   undefined,
   'failed service attempt does not set successful service state',
 );
-ok(
-  isPreparedNoticeGenerationCurrent(failedOnly),
-  'later failed service activity does not revoke the earlier prepared notice generation',
+equal(
+  evaluateStaleness(failedOnly).reason,
+  null,
+  'later failed service activity preserves existing staleness semantics',
 );
 
 const successfulAttempt: ServiceAttempt = {
@@ -237,16 +228,20 @@ const served = {
   successfulServiceAttemptId: successfulAttempt.id,
 };
 equal(getSuccessfulAttempt(served)?.id, 'success-1', 'actual successful event drives served state');
-ok(
-  isPreparedNoticeGenerationCurrent(served),
-  'actual service state remains a later task and does not rewrite Create identity',
+equal(
+  evaluateStaleness(served).reason,
+  null,
+  'actual service state remains a later task and preserves existing staleness semantics',
+);
+
+const changedServiceDate = { ...produced, serviceDate: '2026-08-14' };
+equal(
+  evaluateStaleness(changedServiceDate).reason,
+  null,
+  'serviceDate change remains excluded from the existing ProductionSnapshot staleness contract',
 );
 
 const changed = { ...produced, propertyAddress: '200 Changed Ave, Los Angeles, CA 90001' };
-ok(!!evaluateStaleness(changed).reason, 'changed notice fact preserves existing staleness invalidation');
-ok(
-  !isPreparedNoticeGenerationCurrent(changed),
-  'material create-state edit invalidates the prior prepared generation',
-);
+ok(!!evaluateStaleness(changed).reason, 'changed snapshotted notice fact preserves existing staleness invalidation');
 
 console.log(`${passed} Notice Ready / Create-boundary assertions passed`);

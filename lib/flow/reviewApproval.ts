@@ -20,7 +20,6 @@ const NON_CREATE_TOP_LEVEL = new Set<string>([
   'produceAttestationConfirmed',
   'produceAttestationAcceptedAt',
   'reviewApprovalGeneration',
-  'preparedNoticeGeneration',
 
   // UI/profile behavior that is not read by evaluateCanProduceV4/renderNotice.
   'bankInterstitialDismissed',
@@ -170,19 +169,4 @@ export function clearReviewApproval(): Pick<
 /** Clone + freeze the exact React-state input consumed by final Create. */
 export function freezeReviewCreateInput(data: NoticeFlowData): NoticeFlowData {
   return deepFreeze(clonePlain(data));
-}
-
-/**
- * Prepared-notice identity ignores post-create service activity by construction
- * because those facts belong to the later Serve & Track task, not Create.
- */
-export function preparedNoticeGeneration(data: NoticeFlowData): string {
-  return reviewApprovalGeneration(data);
-}
-
-export function isPreparedNoticeGenerationCurrent(data: NoticeFlowData): boolean {
-  return (
-    typeof data.preparedNoticeGeneration === 'string' &&
-    data.preparedNoticeGeneration === preparedNoticeGeneration(data)
-  );
 }
