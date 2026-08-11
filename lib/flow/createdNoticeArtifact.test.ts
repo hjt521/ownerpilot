@@ -179,6 +179,11 @@ equal(
 
 const noticeFlow = readFileSync('components/notice-flow.tsx', 'utf8');
 ok(noticeFlow.includes('restoreCreatedNoticeArtifact(data)'), 'UI restores artifact identity from persisted envelope');
+ok(
+  noticeFlow.includes("displayData.cachedResolverVerdict?.verdict === 'confirmed_la'") &&
+    noticeFlow.includes('normalizeAddressKey(displayData.propertyAddress)'),
+  'LAHD/RTC artifact-use routing is selected from exact artifact data, not mutable current data',
+);
 ok(noticeFlow.includes('data-testid="created-artifact-unavailable"'), 'UI has explicit fail-closed remount state');
 ok(
   noticeFlow.includes("<PacketPrintOptions model={artifactModel} data={artifactData} disabledKeys={['serviceLog']} />"),

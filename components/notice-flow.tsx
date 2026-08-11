@@ -3022,11 +3022,6 @@ function ReviewStep({
   const result = evaluateCanProduceV4(data);
   const approvalCurrent = hasCurrentReviewApproval(data);
   const noticePrepared = !!data.productionSnapshot && !evaluateStaleness(data).reason;
-  const laProduceRequired =
-    data.cachedResolverVerdict?.verdict === 'confirmed_la' &&
-    data.cachedResolverVerdict.addressKey === normalizeAddressKey(data.propertyAddress) &&
-    isLaProducePhase2dWired() &&
-    isLaProductionUnblocked();
 
   // Informational preview may render before C6. Final Create never trusts this
   // earlier render; it freezes, re-gates, and re-renders independently below.
@@ -3139,6 +3134,13 @@ function ReviewStep({
   // checks appear as product status; only C6 remains the final general testimony.
   const displayModel = artifactReady ? artifactModel : renderedModel;
   const displayData = artifactReady && artifactData ? artifactData : data;
+  // Artifact-use routing is part of artifact identity too: after Create, LAHD/RTC
+  // selection must come from exact artifact A, never later mutable draft B.
+  const laProduceRequired =
+    displayData.cachedResolverVerdict?.verdict === 'confirmed_la' &&
+    displayData.cachedResolverVerdict.addressKey === normalizeAddressKey(displayData.propertyAddress) &&
+    isLaProducePhase2dWired() &&
+    isLaProductionUnblocked();
 
   return (
     <div className="space-y-6">
