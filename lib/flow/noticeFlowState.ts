@@ -350,6 +350,14 @@ export interface NoticeFlowData {
    * prior failed attempts). Derived from evaluateStaleness.
    */
   stalenessReason?: StalenessReason | null;
+  /**
+   * UX2 artifact-use identity. Written only after a successful Create Notice.
+   * Browser-local draft persistence round-trips this envelope automatically;
+   * Download/Print must consume createData + dates from this envelope rather
+   * than rebuilding from later mutable draft state. This is NOT approval or
+   * post-production staleness authority.
+   */
+  createdNoticeArtifact?: CreatedNoticeArtifactEnvelope;
 // --- Jurisdiction resolver verdict (Slice 4d) -----------------------------
   // FORK B caches the resolveLaAddressV2 verdict here at ReviewStep entry,
   // keyed on the normalized propertyAddress. The produce gate reads this
@@ -373,6 +381,23 @@ export interface NoticeFlowData {
   /** LA produce-overlay audit fields, written on the owner's LAHD acknowledgment
    *  at produce (Phase 2D). Optional; absent for non-LA / pre-Phase-2D notices. */
   laProduceAudit?: LaProduceAuditFields;
+}
+
+/**
+ * Exact successful-Create artifact identity for browser-local reuse.
+ * `createData` is the frozen Create input with any prior artifact envelope
+ * removed to prevent recursive persistence. The exact compliance dates are
+ * stored so remount reconstruction never re-runs the gate against mutable or
+ * time-shifted state.
+ */
+export interface CreatedNoticeArtifactEnvelope {
+  generation: string;
+  createdAtISO: string;
+  createData: NoticeFlowData;
+  dates: {
+    compliancePeriodStartDate: string;
+    compliancePeriodEndDate: string;
+  };
 }
 
 /** Outcome of a single service attempt (attorney B1 enum). */

@@ -50,6 +50,10 @@ import {
   hasCurrentReviewApproval,
   reviewApprovalGeneration,
 } from '@/lib/flow/reviewApproval';
+import {
+  captureCreatedNoticeArtifact,
+  restoreCreatedNoticeArtifact,
+} from '@/lib/flow/createdNoticeArtifact';
 import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName, formatPropertyLine } from '@/lib/produce/renderNotice';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
@@ -3014,12 +3018,6 @@ function ReviewStep({
   onRetryJurisdiction?: () => void;
 }) {
   const [createError, setCreateError] = useState<string | null>(null);
-  const [createdArtifact, setCreatedArtifact] = useState<{
-    generation: string;
-    data: NoticeFlowData;
-    model: NoticeModel;
-    html: string;
-  } | null>(null);
 
   const result = evaluateCanProduceV4(data);
   const approvalCurrent = hasCurrentReviewApproval(data);
@@ -3065,6 +3063,29 @@ function ReviewStep({
     }
   }
 
+  // Artifact use is a third, separate UX2 identity contract. If a successful
+  // Create envelope survived the browser-local draft remount, reconstruct only
+  // from its exact frozen Create input + exact Create-time compliance dates.
+  // Never fall back to current mutable data merely because ProductionSnapshot
+  // says a notice was prepared.
+  const restoredArtifact = noticePrepared ? restoreCreatedNoticeArtifact(data) : null;
+  let artifactModel: NoticeModel | null = null;
+  let artifactData: NoticeFlowData | null = null;
+  if (restoredArtifact) {
+    try {
+      artifactModel = renderNotice({
+        data: restoredArtifact.createData,
+        dates: restoredArtifact.dates,
+      }).model;
+      artifactData = restoredArtifact.createData;
+    } catch {
+      // Fail closed below: no exact reconstructable artifact => no Download/Print.
+      artifactModel = null;
+      artifactData = null;
+    }
+  }
+  const artifactReady = noticePrepared && artifactModel !== null && artifactData !== null;
+
   // UX2 consequential boundary: approved input = gate input = render input =
   // create input. The frozen object is the only input consumed after selection.
   const createNotice = () => {
@@ -3091,15 +3112,20 @@ function ReviewStep({
           compliancePeriodEndDate: finalResult.computedDates.expirationDate,
         },
       });
-      const finalizedHtml = buildNoticeDocumentHtml(rendered.model);
-
-      setCreatedArtifact({
-        generation,
-        data: frozen,
-        model: rendered.model,
-        html: finalizedHtml,
-      });
-      update({ productionSnapshot: captureProductionSnapshot(frozen) });
+      // HTML construction remains part of successful Create validation, but
+      // HTML itself is not persisted; the exact model is deterministically
+      // reconstructed later from the frozen Create input + these exact dates.
+      buildNoticeDocumentHtml(rendered.model);
+      const productionSnapshot = captureProductionSnapshot(frozen);
+      const createdNoticeArtifact = captureCreatedNoticeArtifact(
+        frozen,
+        productionSnapshot.producedAtISO,
+        {
+          compliancePeriodStartDate: finalResult.computedDates.commencementDate,
+          compliancePeriodEndDate: finalResult.computedDates.expirationDate,
+        },
+      );
+      update({ productionSnapshot, createdNoticeArtifact });
     } catch (e) {
       setCreateError(
         e instanceof Error
@@ -3111,18 +3137,12 @@ function ReviewStep({
 
   // Slice E: always-visible calm readiness/status presentation. Deterministic
   // checks appear as product status; only C6 remains the final general testimony.
-  const artifact =
-    noticePrepared &&
-    createdArtifact &&
-    createdArtifact.generation === data.reviewApprovalGeneration
-      ? createdArtifact
-      : null;
-  const artifactModel = artifact?.model ?? (noticePrepared ? renderedModel : null);
-  const artifactData = artifact?.data ?? data;
+  const displayModel = artifactReady ? artifactModel : renderedModel;
+  const displayData = artifactReady && artifactData ? artifactData : data;
 
   return (
     <div className="space-y-6">
-      {noticePrepared ? (
+      {artifactReady ? (
         <NoticeReadyState />
       ) : (
         <>
@@ -3239,10 +3259,20 @@ function ReviewStep({
         </>
       )}
 
+      {noticePrepared && !artifactReady && (
+        <div
+          data-testid="created-artifact-unavailable"
+          role="alert"
+          className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900"
+        >
+          The exact notice created earlier is not available in this browser draft. Review &amp;
+          Confirm and Create Notice again before downloading or printing.
+        </div>
+      )}
       {renderError && (<div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">{renderError}</div>)}
       {createError && (<div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">{createError}</div>)}
 
-      {docHtml && !noticePrepared && (
+      {docHtml && !artifactReady && (
         <section className="space-y-4 rounded-lg border border-rule bg-white px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Notice preview</h2>
@@ -3252,41 +3282,39 @@ function ReviewStep({
         </section>
       )}
 
-      {renderedModel && docHtml && laProduceRequired ? (
+      {laProduceRequired && displayModel ? (
         <LaProducePanel
-          model={artifactModel ?? renderedModel}
-          data={artifactData}
-          baseName={buildNoticePdfFilename({ tenantNames: artifactData.tenantNames, streetAddress: artifactData.propertyAddress, unit: artifactData.propertyUnit })}
-          verdictSource={artifactData.cachedResolverVerdict?.source ?? 'live_resolver'}
-          noticePrepared={noticePrepared}
+          model={displayModel}
+          data={displayData}
+          baseName={buildNoticePdfFilename({ tenantNames: displayData.tenantNames, streetAddress: displayData.propertyAddress, unit: displayData.propertyUnit })}
+          verdictSource={displayData.cachedResolverVerdict?.source ?? 'live_resolver'}
+          noticePrepared={artifactReady}
           canCreate={approvalCurrent && result.canProduce}
           onCreateNotice={createNotice}
           onAudit={(f) => update({ laProduceAudit: f })}
         />
-      ) : renderedModel && docHtml && !laProduceRequired ? (
-        noticePrepared && artifactModel ? (
-          <>
-            <div className="rounded-lg border border-rule bg-white px-5 py-4">
-              <h3 className="font-semibold text-gray-900">Download / Print Notice</h3>
-              <p className="mt-1 text-sm text-gray-600 leading-relaxed">Use the existing notice documents below whenever you need another copy.</p>
-            </div>
-            <PacketPrintOptions model={artifactModel} data={artifactData} disabledKeys={['serviceLog']} />
-          </>
-        ) : (
-          <section className="rounded-lg border border-rule bg-white px-5 py-4">
-            <h3 className="font-semibold text-gray-900">Create Notice</h3>
-            <p className="mt-1 text-sm text-gray-600 leading-relaxed">Create the notice after the final confirmation is current. Download and print become available after creation.</p>
-            <button
-              type="button"
-              data-testid="create-notice-button"
-              onClick={createNotice}
-              disabled={!approvalCurrent || !result.canProduce}
-              className="mt-4 inline-flex min-h-[48px] items-center rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-bar disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Create Notice
-            </button>
-          </section>
-        )
+      ) : !laProduceRequired && artifactReady && artifactModel && artifactData ? (
+        <>
+          <div className="rounded-lg border border-rule bg-white px-5 py-4">
+            <h3 className="font-semibold text-gray-900">Download / Print Notice</h3>
+            <p className="mt-1 text-sm text-gray-600 leading-relaxed">Use the existing notice documents below whenever you need another copy.</p>
+          </div>
+          <PacketPrintOptions model={artifactModel} data={artifactData} disabledKeys={['serviceLog']} />
+        </>
+      ) : !laProduceRequired && renderedModel && docHtml ? (
+        <section className="rounded-lg border border-rule bg-white px-5 py-4">
+          <h3 className="font-semibold text-gray-900">Create Notice</h3>
+          <p className="mt-1 text-sm text-gray-600 leading-relaxed">Create the notice after the final confirmation is current. Download and print become available after creation.</p>
+          <button
+            type="button"
+            data-testid="create-notice-button"
+            onClick={createNotice}
+            disabled={!approvalCurrent || !result.canProduce}
+            className="mt-4 inline-flex min-h-[48px] items-center rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-bar disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Create Notice
+          </button>
+        </section>
       ) : null}
 
       {/* C6: posture line (locked) on the produce screen. */}

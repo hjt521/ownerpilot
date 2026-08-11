@@ -41,6 +41,7 @@ const NON_CREATE_TOP_LEVEL = new Set<string>([
   'successfulServiceAttemptId',
   'productionSnapshot',
   'stalenessReason',
+  'createdNoticeArtifact',
 
   // Separate audit/conditional acknowledgment contracts, not C6 create facts.
   'safetyCheckAnswers',
