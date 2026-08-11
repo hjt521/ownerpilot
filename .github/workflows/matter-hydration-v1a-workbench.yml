@@ -24,7 +24,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Disambiguate shared toast class in temporary patcher
+      - name: Align temporary patcher with exact current identifiers
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -39,6 +39,8 @@ jobs:
           if s.count(target) != 2:
               raise SystemExit(f'expected two shared-class calls, found {s.count(target)}')
           s = s.replace(target, target.replace('replace_once(', 'replace_first('))
+          s = s.replace('signerAuthorityEvidenceOnFile', 'authorityEvidenceOnFile')
+          s = s.replace('eftPreviouslyEstablishedAttested', 'eftPreviouslyEstablishedConfirmed')
           p.write_text(s)
           PY
 
