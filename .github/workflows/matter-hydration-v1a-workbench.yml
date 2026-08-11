@@ -1,0 +1,84 @@
+name: Matter Hydration v1A Workbench
+
+on:
+  push:
+    branches:
+      - fix/nonpayment-matter-hydration-v1a
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/nonpayment-matter-hydration-v1a
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Apply bounded v1A correction
+        run: python3 scripts/matter_hydration_v1a_fix.py
+
+      - name: Remove temporary workbench artifacts
+        run: |
+          rm .github/workflows/matter-hydration-v1a-workbench.yml
+          rm scripts/matter_hydration_v1a_fix.py
+
+      - name: Pre-test diff check
+        run: git diff --check
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Focused hydration and persistence
+        run: |
+          npx tsx lib/flow/matterHydration.test.ts
+          npx tsx lib/flow/persistence.test.ts
+          npx tsx lib/flow/reviewApproval.test.ts
+          npx tsx lib/flow/createdNoticeArtifact.test.ts
+          npx tsx lib/flow/noticeReadyTaskBoundary.test.ts
+          npx tsx lib/chat/reviewProduce.test.ts
+          npx tsx lib/flow/gates.v4.test.ts
+          npx tsx lib/jurisdiction/geocode/pathSpecificSourceHealth.test.ts
+
+      - name: Full repository tests
+        run: npm test
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: Edge typecheck
+        run: npm run ci:typecheck-edge
+
+      - name: Control guards
+        run: |
+          npm run ci:verify-locked-prose
+          npm run ci:verify-banned-terms
+          npm run ci:check-attorney-attribution
+          npm run ci:verify-classifier-lock
+          npm run ci:verify-geocode-failure-event
+          npm run ci:verify-fetch-binding
+          npm run ci:verify-parcel-health-core-sync
+          npm run ci:verify-edge-core-sync
+
+      - name: Post-test diff check
+        run: git diff --check
+
+      - name: Verify bounded scope and commit
+        run: |
+          git status --short
+          git diff --name-only 00125d02f1833c6d2dfa3954e5a488363e0437bc...HEAD || true
+          git add components/notice-flow.tsx lib/flow/matterHydration.ts lib/flow/matterHydration.test.ts .github/workflows/matter-hydration-v1a-workbench.yml scripts/matter_hydration_v1a_fix.py
+          git diff --cached --check
+          git config user.name 'ownerpilot-workbench'
+          git config user.email 'actions@users.noreply.github.com'
+          git commit -m 'fix(nonpayment): clarify browser-local fact reuse'
+          git push origin HEAD:fix/nonpayment-matter-hydration-v1a
