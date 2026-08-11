@@ -28,7 +28,8 @@ import {
 } from '@/lib/flow/llcCopy';
 import { validateStep } from '@/lib/flow/advancement';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/flow/persistence';
-import { saveProfile, loadProfile, clearProfile, applyProfile } from '@/lib/flow/profile';
+import { saveProfile, loadProfile, clearProfile } from '@/lib/flow/profile';
+import { resolveBrowserNoticeStart } from '@/lib/flow/matterHydration';
 import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import { runJurisdictionResolution } from '@/lib/flow/jurisdictionBridge';
 import { boundFetch } from '@/lib/http/boundFetch';
@@ -199,6 +200,7 @@ export function NoticeFlow() {
   const [retryNonce, setRetryNonce] = useState(0);
   const [draftRestored, setDraftRestored] = useState(false);
   const [profilePrefilled, setProfilePrefilled] = useState(false);
+  const [profilePrefillSections, setProfilePrefillSections] = useState({ landlordPayment: false, signerName: false });
   // C5 soft mode: the safety-override confirmation modal.
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   // Hard mode: lets the user escape the attorney handoff to edit Step 1.
@@ -209,18 +211,14 @@ export function NoticeFlow() {
   const hydratedRef = useRef(false);
   useEffect(() => {
     const draft = loadDraft();
-    if (draft) {
-      setState((s) => ({ ...s, data: draft.data }));
-      setPageIndex(Math.max(0, Math.min(draft.pageIndex, PAGES.length - 1)));
-      setDraftRestored(true);
-    } else {
-      // No in-progress draft: prefill from a saved owner profile if one exists.
-      const profile = loadProfile();
-      if (profile) {
-        setState((s) => ({ ...s, data: applyProfile(s.data, profile) }));
-        setProfilePrefilled(true);
-      }
-    }
+    const profile = draft ? null : loadProfile();
+    const fresh = createFlowState();
+    const start = resolveBrowserNoticeStart(fresh.data, draft, profile);
+    setState((s) => ({ ...s, data: start.data }));
+    setPageIndex(Math.max(0, Math.min(start.pageIndex, PAGES.length - 1)));
+    setDraftRestored(start.source === 'draft');
+    setProfilePrefilled(start.source === 'profile');
+    setProfilePrefillSections(start.profileSections);
     hydratedRef.current = true;
   }, []);
   // Debounced autosave; the cleanup cancels superseded saves (including the
@@ -336,11 +334,13 @@ export function NoticeFlow() {
     clearDraft();
     const fresh = createFlowState();
     const profile = loadProfile();
-    setState(profile ? { ...fresh, data: applyProfile(fresh.data, profile) } : fresh);
+    const start = resolveBrowserNoticeStart(fresh.data, null, profile);
+    setState({ ...fresh, data: start.data });
     setPageIndex(0);
     setShowIssues(false);
     setDraftRestored(false);
-    setProfilePrefilled(!!profile);
+    setProfilePrefilled(start.source === 'profile');
+    setProfilePrefillSections(start.profileSections);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -351,11 +351,6 @@ export function NoticeFlow() {
     const t = setTimeout(() => setDraftRestored(false), 8000);
     return () => clearTimeout(t);
   }, [draftRestored]);
-  useEffect(() => {
-    if (!profilePrefilled) return;
-    const t = setTimeout(() => setProfilePrefilled(false), 8000);
-    return () => clearTimeout(t);
-  }, [profilePrefilled]);
 
   const update = (
     patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>),
@@ -526,17 +521,18 @@ export function NoticeFlow() {
           <div
             role="status"
             aria-live="polite"
-            className="fixed top-4 right-4 z-50 w-[calc(100%-2rem)] max-w-sm flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-lg sm:w-auto"
+            className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white px-4 py-3"
           >
             <p className="text-sm text-gray-700">
-              We restored your in-progress notice from this browser.
+              <span className="block font-semibold text-gray-900">Continuing your in-progress notice</span>
+              <span className="mt-0.5 block">We reopened the notice you were working on in this browser.</span>
             </p>
             <div className="flex items-center gap-4">
               <button
                 onClick={startOver}
                 className="text-sm font-medium text-brand hover:underline"
               >
-                Start over
+                Restart this notice
               </button>
               <button
                 onClick={() => setDraftRestored(false)}
@@ -547,15 +543,16 @@ export function NoticeFlow() {
             </div>
           </div>
         )}
-        {/* Profile-prefilled toast: saved landlord/payment details were applied. */}
-        {profilePrefilled && (
+        {/* Browser-local provenance appears only on sections that actually received saved defaults. */}
+        {profilePrefilled && ((pageIndex === 3 && profilePrefillSections.landlordPayment) || (pageIndex === 4 && profilePrefillSections.signerName)) && (
           <div
             role="status"
             aria-live="polite"
-            className="fixed top-4 right-4 z-50 w-[calc(100%-2rem)] max-w-sm flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-lg sm:w-auto"
+            className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-tint px-4 py-3"
           >
             <p className="text-sm text-gray-700">
-              We prefilled your saved landlord and payment details. Review and edit as needed.
+              <span className="block font-semibold text-gray-900">From your saved details on this browser</span>
+              <span className="mt-0.5 block">{pageIndex === 4 ? 'We filled in the signer name you chose to save. Change it if this notice is different.' : "We filled these in from information you chose to save. Change anything that's different for this notice."}</span>
             </p>
             <button
               onClick={() => setProfilePrefilled(false)}
@@ -1949,13 +1946,8 @@ function PaymentStep({
       </div>
       </CollapsibleSection>
 
-      {/* C2b: optional "save my details" preference at the end of Step 4.
-          Records intent only; no profile storage exists yet.
-          TODO(profile-persistence): when an owner profile exists, on produce
-          persist the landlord identity + payment payee/phone/address if
-          saveLandlordPaymentDefaults is true, and prefill future notices.
-          NEVER persist data.bankAccountNumber — it is sensitive and is
-          re-entered per notice. */}
+      {/* Optional browser-local defaults. Profile persistence is separate from
+          the current Notice draft and never includes bank/EFT or notice-specific facts. */}
       <label className="flex items-start gap-3 rounded-lg border border-rule bg-tint px-4 py-3 cursor-pointer">
         <input
           type="checkbox"
@@ -1967,10 +1959,10 @@ function PaymentStep({
         />
         <span>
           <span className="block text-sm font-medium text-gray-900">
-            Save landlord and payment details for future notices
+            Save landlord and payment details on this browser for future notices
           </span>
           <span className="block text-sm text-gray-500">
-            This can make future notices faster. You can update it anytime.
+            Reuses supported landlord, payee/contact, payment availability, and signer-name details in this browser only. Bank account information and notice-specific facts are not saved.
           </span>
         </span>
       </label>
