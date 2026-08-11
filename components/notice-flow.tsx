@@ -39,7 +39,6 @@ import { validatePaymentMethods } from '@/lib/payments/validatePaymentMethods';
 import { buildMethodsInput } from '@/lib/flow/paymentMethodsAdapter';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import {
-  validateSigningDate,
   getSuccessfulAttempt,
   captureProductionSnapshot,
   evaluateStaleness,
@@ -55,6 +54,11 @@ import {
   captureCreatedNoticeArtifact,
   restoreCreatedNoticeArtifact,
 } from '@/lib/flow/createdNoticeArtifact';
+import {
+  deriveServiceTaskDisplay,
+  getPreviousServerCandidate,
+  restoreServiceTaskContext,
+} from '@/lib/flow/serviceTaskPresentation';
 import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName, formatPropertyLine } from '@/lib/produce/renderNotice';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
@@ -124,7 +128,7 @@ const PAGES: { label: string; subhead?: string; steps: FlowStep[] }[] = [
     ],
   },
   {
-    label: 'Signer, Dates & Review',
+    label: 'Signer & Planned Service',
     steps: [
       FlowStep.LandlordAgentInfo,
       FlowStep.Review,
@@ -2624,11 +2628,6 @@ function LandlordStep({
   data: NoticeFlowData;
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
 }) {
-  // B1: the signing (execution) date is distinct from the service date. Inline
-  // feedback — hard error if signed after service, soft warning if >30 days
-  // before. The hard error also blocks advancement (advancement.ts) and
-  // production (gates.ts); the warning does neither (build decision: warn only).
-  const signingCheck = validateSigningDate(data.signingDate, data.serviceDate);
   const li = data.landlordIdentity;
   return (
     <div className="space-y-6">
@@ -2747,26 +2746,6 @@ function LandlordStep({
         )}
 
       <div>
-        <FieldLabel htmlFor="signingDate">Date you sign the notice<Req /></FieldLabel>
-        <p className="text-sm text-gray-600 leading-relaxed mb-2">
-          This is the &ldquo;Dated:&rdquo; line on the notice itself &mdash; the day you
-          execute it. It can be the same day as your planned service date, or a few
-          days before, but it cannot be after the planned service date.
-        </p>
-        <DateField
-          id="signingDate"
-          value={data.signingDate ?? ''}
-          onChange={(v) => update({ signingDate: v })}
-        />
-        {!signingCheck.ok && signingCheck.error && (
-          <p className="mt-2 text-sm text-red-700">{signingCheck.error}</p>
-        )}
-        {signingCheck.ok && signingCheck.warning && (
-          <p className="mt-2 text-sm text-amber-700">{signingCheck.warning}</p>
-        )}
-      </div>
-
-      <div>
         <FieldLabel htmlFor="serviceDate">Planned service date<Req /></FieldLabel>
         <p className="text-sm text-gray-600 leading-relaxed mb-2">
           This date is used to finalize the notice and calculate the dates shown on it.
@@ -2877,11 +2856,8 @@ function ReviewSummaryCards({
   const signerLine = signerName
     ? signerName + (signerTitle ? `, ${signerTitle}` : '')
     : NOT_SET;
-  const signed = data.signingDate ? formatNoticeDate(data.signingDate) : '';
   const plannedService = data.serviceDate ? formatNoticeDate(data.serviceDate) : '';
-  const datesLine =
-    [signed && `Signed ${signed}`, plannedService && `Planned service ${plannedService}`].filter(Boolean).join(' \u00b7 ') ||
-    'Dates not set';
+  const datesLine = plannedService ? `Planned service ${plannedService}` : 'Planned service not set';
   const deadline = result.computedDates
     ? formatNoticeDate(result.computedDates.expirationDate)
     : '';
@@ -2912,7 +2888,7 @@ function ReviewSummaryCards({
       ].filter(Boolean),
     },
     {
-      title: 'Signer & dates',
+      title: 'Signer & planned service',
       page: 4,
       lines: [signerLine, datesLine, deadline ? `If served as planned, pay or vacate by ${deadline}` : ''].filter(Boolean),
     },
@@ -2932,7 +2908,7 @@ function ReviewSummaryCards({
           <div className="min-w-0">
             <p className="font-serif text-base font-bold text-brand mb-1">{c.title}</p>
             {c.lines.map((line, i) => {
-              const muted = line === NOT_SET || line === 'Dates not set';
+              const muted = line === NOT_SET || line === 'Planned service not set';
               return (
                 <p
                   key={i}
@@ -2958,7 +2934,23 @@ function ReviewSummaryCards({
   );
 }
 
-function NoticeReadyState() {
+function NoticeReadyState({ data }: { data: NoticeFlowData }) {
+  const serviceContext = restoreServiceTaskContext(data);
+  const display = deriveServiceTaskDisplay(data);
+  const noticeData = serviceContext?.noticeData;
+  const attempts = data.serviceAttempts ?? [];
+  const success = getSuccessfulAttempt(data);
+  const propertyLine = noticeData
+    ? formatPropertyLine(noticeData.propertyAddress ?? '', noticeData.propertyUnit)
+    : '';
+  const tenants = noticeData
+    ? (noticeData.tenantNames ?? []).map((name) => name.trim()).filter(Boolean).join(', ')
+    : '';
+  const createdDay = serviceContext?.artifact.createdAtISO.slice(0, 10) ?? '';
+  const createdDate = /^\d{4}-\d{2}-\d{2}$/.test(createdDay)
+    ? formatNoticeDate(createdDay)
+    : '';
+
   return (
     <section
       data-testid="notice-ready-state"
@@ -2974,21 +2966,51 @@ function NoticeReadyState() {
       </div>
       <p>
         <span className="inline-flex rounded-full border border-green-300 bg-white px-3 py-1 text-xs font-bold tracking-wide text-green-900">
-          PREPARED · NOT SERVED
+          {display.statusLabel}
         </span>
       </p>
-      <div className="space-y-2 text-sm text-gray-700 leading-relaxed">
-        <p>Your notice has been prepared. Service has not been recorded.</p>
-        <p>
-          You can leave now. When the notice is actually served, return to record what
-          happened as a separate task.
-        </p>
+
+      {noticeData && (
+        <div className="rounded-lg border border-green-200 bg-white/80 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-green-900 mb-2">This Notice</p>
+          <dl className="grid gap-2 sm:grid-cols-2 text-sm">
+            <div><dt className="text-xs text-gray-500">Property</dt><dd className="font-medium text-gray-900">{propertyLine}</dd></div>
+            <div><dt className="text-xs text-gray-500">Tenant(s)</dt><dd className="font-medium text-gray-900">{tenants}</dd></div>
+            <div><dt className="text-xs text-gray-500">Created</dt><dd className="font-medium text-gray-900">{createdDate}</dd></div>
+            <div><dt className="text-xs text-gray-500">Service status</dt><dd className="font-semibold text-gray-900">{display.statusLabel}</dd></div>
+          </dl>
+        </div>
+      )}
+
+      <div data-testid="record-service-later-task" className="space-y-2 text-sm text-gray-700 leading-relaxed">
+        {success ? (
+          <>
+            <p className="font-semibold text-gray-900">Service task complete.</p>
+            <p>You recorded service as completed for this Notice. Keep the service record with the Notice.</p>
+          </>
+        ) : attempts.length > 0 ? (
+          <>
+            <p className="font-semibold text-gray-900">Service in progress.</p>
+            <p>One or more attempts are recorded. Record another actual attempt only after it happens.</p>
+          </>
+        ) : (
+          <>
+            <p className="font-semibold text-gray-900">Notice preparation is complete.</p>
+            <p>Next task: Record what actually happens when this Notice is served.</p>
+            <p>You do not need to record anything yet. After someone attempts service, return to this Notice and record what happened.</p>
+          </>
+        )}
       </div>
+
       <a
-        href="/"
+        href="/notice/3-day/serve"
         className="inline-flex text-sm font-semibold text-brand underline"
       >
-        Leave for now
+        {success
+          ? 'View service record →'
+          : attempts.length > 0
+            ? 'Record another service attempt →'
+            : 'Record service when it happens →'}
       </a>
     </section>
   );
@@ -3137,7 +3159,7 @@ function ReviewStep({
   return (
     <div className="space-y-6">
       {artifactReady ? (
-        <NoticeReadyState />
+        <NoticeReadyState data={data} />
       ) : (
         <>
           {jurisdictionResolving && (
@@ -3320,15 +3342,6 @@ function ReviewStep({
           <p className="text-xs text-gray-500 leading-relaxed">OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.</p>
         </div>
       )}
-
-      {noticePrepared && (
-        <section data-testid="record-service-later-task" className="rounded-xl border border-rule bg-white px-5 py-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 mb-2">Later task</p>
-          <h3 className="font-semibold text-gray-900 mb-1">Record service later</h3>
-          <p className="text-sm text-gray-700 leading-relaxed mb-3">Service has not been recorded. After someone actually serves the notice, open the separate Serve &amp; Track task and record what happened.</p>
-          <a href="/notice/3-day/serve" className="inline-flex text-sm font-semibold text-brand underline">Record service later &rarr;</a>
-        </section>
-      )}
     </div>
   );
 }
@@ -3365,53 +3378,74 @@ function ReServePanel({
   const attempts = data.serviceAttempts ?? [];
   const success = getSuccessfulAttempt(data);
   const computed = evaluateCanProduceV4(data).computedDates;
-  // B1 stale-guard: compare current data against the snapshot taken at produce.
-  // Computed on the fly (not persisted — persisting stalenessReason + the
-  // re-generation audit event is the deferred D2 slice).
   const staleness = evaluateStaleness(data);
+  const previousServer = getPreviousServerCandidate(data);
+  const latestAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : undefined;
 
-  const [method, setMethod] = useState<ServiceMethod>(data.serviceMethod ?? 'personal');
+  const [method, setMethod] = useState<ServiceMethod | ''>('');
   const [attemptDate, setAttemptDate] = useState('');
-  const [outcome, setOutcome] = useState<'SUCCESS' | 'FAILED'>('FAILED');
+  const [outcome, setOutcome] = useState<'SUCCESS' | 'FAILED' | ''>('');
   const [mailingDate, setMailingDate] = useState('');
   const [notes, setNotes] = useState('');
   const [serverName, setServerName] = useState('');
   const [serverAddress, setServerAddress] = useState('');
   const [serverIs18, setServerIs18] = useState(false);
   const [serverNotParty, setServerNotParty] = useState(false);
+  const [serverSource, setServerSource] = useState<'same' | 'other' | ''>('');
   const [errors, setErrors] = useState<string[]>([]);
-  const [recordedFlash, setRecordedFlash] = useState(false);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const [showAttemptForm, setShowAttemptForm] = useState(attempts.length === 0);
 
   const needsMailing = method === 'substituted' || method === 'post_and_mail';
   const mailingRequiredNow = needsMailing && outcome === 'SUCCESS';
 
   const resetForm = () => {
+    setMethod('');
     setAttemptDate('');
+    setOutcome('');
     setMailingDate('');
     setNotes('');
     setServerName('');
     setServerAddress('');
     setServerIs18(false);
     setServerNotParty(false);
-    setOutcome('FAILED');
+    setServerSource('');
     setErrors([]);
+  };
+
+  const beginAnotherAttempt = () => {
+    resetForm();
+    setShowAttemptForm(true);
+  };
+
+  const chooseServerSource = (source: 'same' | 'other') => {
+    setServerSource(source);
+    if (source === 'same' && previousServer) {
+      setServerName(previousServer.name);
+      setServerAddress(previousServer.address);
+    } else {
+      setServerName('');
+      setServerAddress('');
+    }
+    // Consequential eligibility is deliberately never copied.
+    setServerIs18(false);
+    setServerNotParty(false);
   };
 
   const handleAdd = () => {
     const errs: string[] = [];
+    if (!outcome) errs.push('Choose what happened on this attempt.');
     if (!attemptDate) errs.push('Enter the date of the attempt.');
-    // Server identity is required when service was COMPLETED (it backs the
-    // proof of service). Optional on a failed attempt (JT, 2026-06-12).
+    if (!method) errs.push('Choose the method used.');
     if (outcome === 'SUCCESS' && !serverName.trim()) errs.push('Enter the name of the person who served.');
     if (outcome === 'SUCCESS' && !serverAddress.trim()) errs.push('Enter the address of the person who served.');
-    if (!serverIs18) errs.push('Confirm the person who served is 18 or older.');
-    if (!serverNotParty) errs.push('Confirm the person who served is not a party to this notice.');
+    if (!serverIs18) errs.push('Confirm this person is 18 or older.');
+    if (!serverNotParty) errs.push('Confirm this person is not a party to this Notice.');
     if (mailingRequiredNow && !mailingDate) {
-      errs.push('Enter the mailing date — it sets the 3-day clock for substituted or posting-and-mailing service.');
+      errs.push('Enter the mailing date for this completed service event.');
     }
     setErrors(errs);
-    if (errs.length) return;
+    if (errs.length || !method || !outcome || !attemptDate) return;
 
     const attempt: ServiceAttempt = {
       id: newAttemptId(),
@@ -3433,15 +3467,9 @@ function ReServePanel({
         ? { serviceAttempts: next, successfulServiceAttemptId: attempt.id }
         : { serviceAttempts: next };
     });
-    resetForm();
-    setRecordedFlash(true);
     setLastAddedId(attempt.id ?? null);
-    if (typeof window !== 'undefined') {
-      window.setTimeout(() => {
-        setRecordedFlash(false);
-        setLastAddedId(null);
-      }, 6000);
-    }
+    resetForm();
+    setShowAttemptForm(false);
   };
 
   const handleRemove = (id: string | undefined) => {
@@ -3451,12 +3479,9 @@ function ReServePanel({
         ? { serviceAttempts: next, successfulServiceAttemptId: undefined }
         : { serviceAttempts: next };
     });
+    setLastAddedId(null);
   };
 
-  // B1: a stale notice is legally a NEW notice. Clear the signing date (forces a
-  // fresh re-sign), empty serviceAttempts[] (no carry-over of prior failed
-  // attempts), and drop the prior snapshot/staleness. Current face details are
-  // intentionally KEPT — they are the updated values the new notice will carry.
   const handleStartNew = () => {
     update({
       signingDate: undefined,
@@ -3466,275 +3491,216 @@ function ReServePanel({
       stalenessReason: null,
     });
     resetForm();
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => window.location.assign('/notice/3-day'), 650);
+    }
   };
 
+  const successActualDate = success
+    ? success.method === 'personal'
+      ? success.attemptDate
+      : success.mailingDate ?? success.attemptDate
+    : undefined;
+
   return (
-    <section className="space-y-4">
-      <div>
-        <h3 className="font-semibold text-gray-900">Record what happened when you served</h3>
-        <p className="text-sm text-gray-700 leading-relaxed mt-1">
-          Log each attempt as you make it. Failed attempts are the reasonable-diligence
-          record that lets you move to the next method; the successful attempt is what
-          starts the tenant&apos;s 3-day clock. This does not change the notice itself —
-          only the proof of service and the off-the-notice deadline.
-        </p>
-      </div>
-
-      {recordedFlash && (
-        <p className="rounded-lg border border-green-300 bg-green-50 px-4 py-2.5 text-sm font-medium text-green-900">
-          Attempt recorded &mdash; added to the log below.
-        </p>
-      )}
-
+    <section className="space-y-5">
       {attempts.length > 0 && (
-        <ul className="space-y-2">
-          {attempts.map((a) => (
-            <li
-              key={a.id}
-              className={`rounded-lg border px-4 py-3 text-sm flex items-start justify-between gap-4 ${
-                a.id === lastAddedId ? 'border-green-400 bg-green-50' : 'border-rule bg-white'
-              }`}
-            >
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
-                      a.outcome === 'SUCCESS'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {a.outcome === 'SUCCESS' ? 'Served' : 'Failed'}
-                  </span>
-                  <span className="font-medium text-gray-900">{SERVICE_METHOD_LABELS[a.method]}</span>
-                  <span className="text-gray-500">on {formatNoticeDate(a.attemptDate)}</span>
-                </div>
-                {a.mailingDate && (
-                  <div className="text-gray-600">Mailing completed {formatNoticeDate(a.mailingDate)}</div>
-                )}
-                {a.server.name && (
-                  <div className="text-gray-600">
-                    {a.outcome === 'SUCCESS' ? 'Served by' : 'Attempted by'} {a.server.name}
-                  </div>
-                )}
-                {a.notes && <div className="text-gray-500 italic">{a.notes}</div>}
-              </div>
-              <button
-                type="button"
-                onClick={() => handleRemove(a.id)}
-                className="text-xs text-gray-500 underline shrink-0"
+        <section className="space-y-3">
+          <div>
+            <h3 className="font-semibold text-gray-900">Actual service history</h3>
+            <p className="text-sm text-gray-600 mt-1">Recorded attempts for this exact created Notice.</p>
+          </div>
+          <ul className="space-y-2">
+            {attempts.map((a) => (
+              <li
+                key={a.id}
+                className={`rounded-lg border px-4 py-3 text-sm flex items-start justify-between gap-4 ${
+                  a.id === lastAddedId ? 'border-green-400 bg-green-50' : 'border-rule bg-white'
+                }`}
               >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
+                <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${a.outcome === 'SUCCESS' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
+                      {a.outcome === 'SUCCESS' ? 'Service recorded' : 'Attempt recorded'}
+                    </span>
+                    <span className="font-medium text-gray-900">{SERVICE_METHOD_LABELS[a.method]}</span>
+                    <span className="text-gray-500">on {formatNoticeDate(a.attemptDate)}</span>
+                  </div>
+                  {a.mailingDate && <div className="text-gray-600">Mailing completed {formatNoticeDate(a.mailingDate)}</div>}
+                  {a.server.name && <div className="text-gray-600">{a.outcome === 'SUCCESS' ? 'Recorded server' : 'Attempted by'}: {a.server.name}</div>}
+                  {a.notes && <div className="text-gray-500 italic">{a.notes}</div>}
+                </div>
+                <button type="button" onClick={() => handleRemove(a.id)} className="text-xs text-gray-500 underline shrink-0">Remove</button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {staleness.reason ? (
         <div className="rounded-lg border border-amber-400 bg-amber-50 px-5 py-4 space-y-3">
-          <p className="font-semibold text-amber-900">This notice is now out of date.</p>
+          <p className="font-semibold text-amber-950">This created Notice has changed</p>
+          <p className="text-sm font-medium text-amber-950">Don&apos;t record another service attempt against this version.</p>
           <p className="text-sm text-amber-900 leading-relaxed">
-            Since you produced it,{' '}
-            {staleness.amountChanged
-              ? 'the amount demanded changed'
-              : 'something on the notice changed'}
-            {staleness.changedFields.length > 0
-              ? ` (${staleness.changedFields.join(', ')})`
-              : ''}
-            . Because the notice changed after it was produced, this one can&apos;t be
-            re-served &mdash; you&apos;ll need a new notice with the updated details. Starting
-            a new notice keeps your current entries but clears the prior signing date and
-            service attempts, so you&apos;ll re-sign and record fresh attempts. The earlier
-            failed attempts do not carry over.
+            Some information on the Notice changed after it was created. Return to the Notice flow and create the updated Notice before recording additional service.
           </p>
-          <button
-            type="button"
-            onClick={handleStartNew}
-            className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white"
-          >
-            Start a new notice
+          <button type="button" onClick={handleStartNew} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white">
+            Review updated Notice &rarr;
           </button>
         </div>
       ) : success ? (
-        <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4 space-y-1">
-          <p className="font-semibold text-green-900">Service recorded as complete.</p>
+        <div className="rounded-xl border border-green-300 bg-green-50 px-5 py-5 space-y-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-green-900">SERVICE RECORDED</p>
+            <h3 className="mt-1 font-serif text-xl font-bold text-brand">Service task complete</h3>
+            <p className="mt-1 text-sm text-green-950">You recorded service as completed for this Notice.</p>
+          </div>
+          <dl className="grid gap-2 sm:grid-cols-2 text-sm">
+            <div><dt className="text-xs text-gray-500">Method</dt><dd className="font-medium text-gray-900">{SERVICE_METHOD_LABELS[success.method]}</dd></div>
+            <div><dt className="text-xs text-gray-500">Actual service date</dt><dd className="font-medium text-gray-900">{successActualDate ? formatNoticeDate(successActualDate) : 'Not available'}</dd></div>
+            {success.mailingDate && <div><dt className="text-xs text-gray-500">Mailing completed</dt><dd className="font-medium text-gray-900">{formatNoticeDate(success.mailingDate)}</dd></div>}
+            {success.server.name && <div><dt className="text-xs text-gray-500">Recorded server</dt><dd className="font-medium text-gray-900">{success.server.name}</dd></div>}
+          </dl>
           {computed ? (
-            <p className="text-sm text-green-900 leading-relaxed">
-              Counting from your successful {SERVICE_METHOD_LABELS[success.method]} above, the
-              tenant has until <strong>{formatNoticeDate(computed.expirationDate)}</strong> to pay
-              or vacate (period begins {formatNoticeDate(computed.commencementDate)}). The notice
-              face is unchanged.
-            </p>
+            <div className="rounded-lg border border-green-200 bg-white/80 px-4 py-3 text-sm text-gray-800 space-y-1">
+              <p>Period begins {formatNoticeDate(computed.commencementDate)}.</p>
+              <p>Calculated pay-or-vacate date: <strong>{formatNoticeDate(computed.expirationDate)}</strong>.</p>
+            </div>
           ) : (
-            <p className="text-sm text-green-900 leading-relaxed">
-              The deadline can&apos;t be computed for this date yet (the holiday calendar for that
-              year may not be verified). The notice face is unchanged.
-            </p>
+            <p className="text-sm text-green-950">The calculated dates are not available for this recorded event yet.</p>
           )}
-          <p className="text-xs text-green-800">
-            Need to change something? Remove the successful attempt above first.
-          </p>
+          <div className="border-t border-green-200 pt-4">
+            <h4 className="font-semibold text-gray-900">What happens next</h4>
+            <p className="mt-1 text-sm font-medium text-gray-900">Next task: Track what happens after service.</p>
+            <p className="mt-1 text-sm text-gray-700 leading-relaxed">
+              Post-service outcomes are a separate task. There is nothing else to record in Serve &amp; Track right now. Keep this service record with the Notice.
+            </p>
+          </div>
+        </div>
+      ) : !showAttemptForm && attempts.length > 0 ? (
+        <div className="rounded-xl border border-rule bg-white px-5 py-5 space-y-4">
+          <div>
+            <h3 className="font-serif text-xl font-bold text-brand">Attempt recorded</h3>
+            <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-gray-700">SERVICE NOT COMPLETED</p>
+            <p className="mt-2 text-sm text-gray-700">Service was not completed on this attempt.</p>
+          </div>
+          {latestAttempt && (
+            <dl className="grid gap-2 sm:grid-cols-2 text-sm">
+              <div><dt className="text-xs text-gray-500">Method</dt><dd className="font-medium text-gray-900">{SERVICE_METHOD_LABELS[latestAttempt.method]}</dd></div>
+              <div><dt className="text-xs text-gray-500">Date</dt><dd className="font-medium text-gray-900">{formatNoticeDate(latestAttempt.attemptDate)}</dd></div>
+              {latestAttempt.server.name && <div><dt className="text-xs text-gray-500">Recorded server</dt><dd className="font-medium text-gray-900">{latestAttempt.server.name}</dd></div>}
+            </dl>
+          )}
+          <p className="text-sm text-gray-700">This Notice has not yet been recorded as successfully served.</p>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={beginAnotherAttempt} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Record another attempt</button>
+            <a href="/notice/3-day" className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700">Done for now</a>
+          </div>
         </div>
       ) : (
-        <div className="rounded-lg border border-gray-200 px-5 py-4 space-y-4">
-          <p className="text-sm font-medium text-gray-900">Add an attempt</p>
-
+        <div className="rounded-lg border border-gray-200 px-5 py-4 space-y-5">
           <div>
-            <FieldLabel htmlFor="reserveMethod">Method used</FieldLabel>
-            <p className="text-sm text-gray-600 leading-relaxed mb-3">
-              {renderInlineBold(`California recognizes three service methods, and they aren't interchangeable. Start with **personal service** — handing the notice directly to the tenant. If that doesn't work after reasonable, repeated attempts, **substituted service** becomes available. Only if substituted service can't be completed either does **posting and mailing** become available. Pick the method you plan to use first. If a method fails, you'll come back here and select the next one — keep reading for how that works.`)}
-            </p>
-            <div className="space-y-2">
-              {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((m) => {
-                const guide = SERVICE_GUIDANCE.find((g) => g.method === m);
-                return (
-                  <Fragment key={m}>
-                    <label
-                      className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${
-                        method === m ? 'border-brand bg-tint' : 'border-rule bg-white'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="reserveMethod"
-                        checked={method === m}
-                        onChange={() => setMethod(m)}
-                      />
-                      <span className="text-gray-900">{SERVICE_METHOD_LABELS[m]}</span>
-                    </label>
-                    {method === m && guide && (
-                      <div className="rounded-lg border border-rule bg-white px-5 py-4 space-y-2">
-                        <p className="font-semibold text-gray-900">{guide.title}</p>
-                        <GuidanceBlocks blocks={guide.blocks} />
-                      </div>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </div>
-            <div className="mt-3 rounded-lg border border-rule bg-white px-5 py-4 space-y-2">
-              <GuidanceBlocks blocks={SERVICE_ESCALATION} />
-            </div>
+            <h3 className="font-semibold text-gray-900">Record what happened</h3>
+            <p className="mt-1 text-sm text-gray-600">Enter the actual event. Nothing below is preselected from the plan.</p>
           </div>
 
           <div>
-            <FieldLabel htmlFor="reserveDate">Date of this attempt<Req /></FieldLabel>
-            <DateField id="reserveDate" value={attemptDate} onChange={setAttemptDate} />
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="reserveOutcome">What happened?<Req /></FieldLabel>
+            <FieldLabel>What happened?<Req /></FieldLabel>
             <div className="space-y-2">
-              {(['FAILED', 'SUCCESS'] as const).map((o) => (
-                <label
-                  key={o}
-                  className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${
-                    outcome === o ? 'border-brand bg-tint' : 'border-rule bg-white'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="reserveOutcome"
-                    checked={outcome === o}
-                    onChange={() => setOutcome(o)}
-                  />
-                  <span className="text-gray-900">
-                    {o === 'SUCCESS' ? 'Service was completed' : 'Attempt failed (no one available / refused)'}
-                  </span>
+              {(['SUCCESS', 'FAILED'] as const).map((value) => (
+                <label key={value} className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${outcome === value ? 'border-brand bg-tint' : 'border-rule bg-white'}`}>
+                  <input type="radio" name="reserveOutcome" checked={outcome === value} onChange={() => setOutcome(value)} />
+                  <span className="text-gray-900">{value === 'SUCCESS' ? 'Service was completed' : 'Service was not completed'}</span>
                 </label>
               ))}
             </div>
           </div>
 
+          <div>
+            <FieldLabel htmlFor="reserveDate">Date of attempt<Req /></FieldLabel>
+            <DateField id="reserveDate" value={attemptDate} onChange={setAttemptDate} />
+          </div>
+
+          <div>
+            <FieldLabel>Method used<Req /></FieldLabel>
+            <div className="space-y-2">
+              {(Object.keys(SERVICE_METHOD_LABELS) as ServiceMethod[]).map((value) => (
+                <label key={value} className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${method === value ? 'border-brand bg-tint' : 'border-rule bg-white'}`}>
+                  <input type="radio" name="reserveMethod" checked={method === value} onChange={() => setMethod(value)} />
+                  <span className="text-gray-900">{SERVICE_METHOD_LABELS[value]}</span>
+                </label>
+              ))}
+            </div>
+            {method && (
+              <details className="mt-3 rounded-lg border border-rule bg-white px-4 py-3">
+                <summary className="cursor-pointer text-sm font-semibold text-brand">Service-method guidance</summary>
+                <div className="mt-3 space-y-3">
+                  {(() => {
+                    const guide = SERVICE_GUIDANCE.find((g) => g.method === method);
+                    return guide ? <><p className="font-semibold text-gray-900">{guide.title}</p><GuidanceBlocks blocks={guide.blocks} /></> : null;
+                  })()}
+                  <GuidanceBlocks blocks={SERVICE_ESCALATION} />
+                </div>
+              </details>
+            )}
+          </div>
+
           {mailingRequiredNow && (
             <div>
-              <FieldLabel htmlFor="reserveMailing">Date mailing was completed<Req /></FieldLabel>
-              <p className="text-sm text-gray-600 leading-relaxed mb-2">
-                For substituted service and posting-and-mailing, the 3-day clock counts from
-                the day the copy was mailed.
-              </p>
+              <FieldLabel htmlFor="reserveMailing">When was the copy mailed?<Req /></FieldLabel>
               <DateField id="reserveMailing" value={mailingDate} onChange={setMailingDate} />
             </div>
           )}
 
+          {previousServer && (
+            <div>
+              <FieldLabel>Server for this attempt</FieldLabel>
+              <div className="space-y-2">
+                <label className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${serverSource === 'same' ? 'border-brand bg-tint' : 'border-rule bg-white'}`}>
+                  <input type="radio" name="serverSource" checked={serverSource === 'same'} onChange={() => chooseServerSource('same')} />
+                  <span className="text-gray-900">Same person as the previous attempt — {previousServer.name}</span>
+                </label>
+                <label className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 cursor-pointer ${serverSource === 'other' ? 'border-brand bg-tint' : 'border-rule bg-white'}`}>
+                  <input type="radio" name="serverSource" checked={serverSource === 'other'} onChange={() => chooseServerSource('other')} />
+                  <span className="text-gray-900">Someone else</span>
+                </label>
+              </div>
+            </div>
+          )}
+
           <div>
-            <FieldLabel htmlFor="reserveServerName">
-              Name of person who served
-              {outcome === 'SUCCESS' ? (
-                <Req />
-              ) : (
-                <span className="ml-1 text-xs font-normal text-gray-500">(optional for a failed attempt)</span>
-              )}
-            </FieldLabel>
-            <input
-              id="reserveServerName"
-              type="text"
-              value={serverName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setServerName(e.target.value)}
-              placeholder="Full name"
-              className={inputClass}
-            />
+            <FieldLabel htmlFor="reserveServerName">Name of person who served{outcome === 'SUCCESS' ? <Req /> : <span className="ml-1 text-xs font-normal text-gray-500">(optional for a failed attempt)</span>}</FieldLabel>
+            <input id="reserveServerName" type="text" value={serverName} onChange={(e: ChangeEvent<HTMLInputElement>) => setServerName(e.target.value)} placeholder="Full name" className={inputClass} />
           </div>
 
           <div>
-            <FieldLabel htmlFor="reserveServerAddress">
-              Address of person who served
-              {outcome === 'SUCCESS' ? (
-                <Req />
-              ) : (
-                <span className="ml-1 text-xs font-normal text-gray-500">(optional for a failed attempt)</span>
-              )}
-            </FieldLabel>
-            <input
-              id="reserveServerAddress"
-              type="text"
-              value={serverAddress}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setServerAddress(e.target.value)}
-              placeholder="Street address"
-              className={inputClass}
-            />
+            <FieldLabel htmlFor="reserveServerAddress">Address of person who served{outcome === 'SUCCESS' ? <Req /> : <span className="ml-1 text-xs font-normal text-gray-500">(optional for a failed attempt)</span>}</FieldLabel>
+            <input id="reserveServerAddress" type="text" value={serverAddress} onChange={(e: ChangeEvent<HTMLInputElement>) => setServerAddress(e.target.value)} placeholder="Street address" className={inputClass} />
           </div>
 
           <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={serverIs18}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setServerIs18(e.target.checked)}
-              className="mt-1"
-            />
-            <span className="text-sm text-gray-800 leading-relaxed">
-              The person who served is 18 years of age or older.
-            </span>
+            <input type="checkbox" checked={serverIs18} onChange={(e: ChangeEvent<HTMLInputElement>) => setServerIs18(e.target.checked)} className="mt-1" />
+            <span className="text-sm text-gray-800 leading-relaxed">I confirm this person is 18 or older.</span>
           </label>
 
           <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={serverNotParty}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setServerNotParty(e.target.checked)}
-              className="mt-1"
-            />
-            <span className="text-sm text-gray-800 leading-relaxed">
-              The person who served is not a party to this notice (not the owner or landlord
-              named on it).
-            </span>
+            <input type="checkbox" checked={serverNotParty} onChange={(e: ChangeEvent<HTMLInputElement>) => setServerNotParty(e.target.checked)} className="mt-1" />
+            <span className="text-sm text-gray-800 leading-relaxed">I confirm this person is not a party to this Notice.</span>
           </label>
+
+          <div>
+            <FieldLabel htmlFor="reserveNotes">Notes (optional)</FieldLabel>
+            <textarea id="reserveNotes" value={notes} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)} rows={3} className={inputClass} placeholder="Optional factual notes about this attempt" />
+          </div>
 
           {errors.length > 0 && (
             <ul className="space-y-1 text-sm text-red-700 list-disc pl-5">
-              {errors.map((er, i) => (
-                <li key={i}>{er}</li>
-              ))}
+              {errors.map((er, i) => <li key={i}>{er}</li>)}
             </ul>
           )}
 
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
-          >
-            Add attempt
+          <button type="button" onClick={handleAdd} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
+            Record what happened
           </button>
         </div>
       )}
@@ -3749,40 +3715,17 @@ export function ServiceStep({
   data: NoticeFlowData;
   update: (patch: Partial<NoticeFlowData> | ((d: NoticeFlowData) => Partial<NoticeFlowData>)) => void;
 }) {
-  const serviceDateDisplay =
-    data.serviceDate && /^\d{4}-\d{2}-\d{2}$/.test(data.serviceDate)
-      ? formatNoticeDate(data.serviceDate)
-      : null;
-
+  const attempts = data.serviceAttempts ?? [];
   return (
     <div className="space-y-6">
       <StepIntro>
-        You&apos;ve produced the notice. Serving it correctly is what makes it
-        count — here&apos;s what happens next.
+        {attempts.length > 0
+          ? 'Your actual service history is below. Record another attempt only after it happens.'
+          : 'After someone attempts service, record what happened here.'}
       </StepIntro>
 
-      {/* Echo of choices already captured (the user's own data). */}
-      <div className="rounded-lg border border-gray-200 px-5 py-4 space-y-2 text-sm">
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500">Planned service date</span>
-          <span className="font-medium text-gray-900">
-            {serviceDateDisplay ?? 'Not set'}
-          </span>
-        </div>
-        <p className="text-xs text-gray-500 leading-relaxed">
-          This is the date you planned before producing the notice. Record the actual
-          service attempt or event below.
-        </p>
-      </div>
-
-      {/* Re-serve / attempt recording (slice 2). Sits between the summary and
-          the attorney-verbatim guidance below; does not touch either. */}
       <ReServePanel data={data} update={update} />
 
-      {/* How to serve guidance now lives on the Step 3 method selector (expands
-          under each option). Step 4 keeps proof-of-service + local filing only. */}
-
-      {/* Complete the proof of service — Q4 revised wording (verbatim). */}
       <section className="space-y-2">
         <h3 className="font-semibold text-gray-900">Complete the proof of service</h3>
         <p className="text-sm text-gray-700 leading-relaxed">
@@ -3797,7 +3740,6 @@ export function ServiceStep({
         </p>
       </section>
 
-      {/* Local filing — Q5 attorney-approved generic placeholder (verbatim). */}
       <section className="space-y-2">
         <h3 className="font-semibold text-gray-900">Local filing — does your city require it?</h3>
         <div className="space-y-2">

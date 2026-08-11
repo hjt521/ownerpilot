@@ -103,7 +103,10 @@ ok(
   noticeFlow.includes('Your 3-Day Notice is ready'),
   'successful Create has a standalone Notice Ready heading',
 );
-ok(noticeFlow.includes('PREPARED · NOT SERVED'), 'Notice Ready is explicitly not served');
+ok(
+  noticeFlow.includes('const display = deriveServiceTaskDisplay(data);'),
+  'Notice Ready derives its current service status from the existing service-event fields',
+);
 ok(
   noticeFlow.includes('data-testid="notice-ready-state"'),
   'Notice Ready has a stable component-test boundary',
@@ -141,24 +144,47 @@ ok(
   'sticky summary no longer presents the planned-date deadline as unconditional',
 );
 ok(
+  noticeSummary.includes('restoreServiceTaskContext(data)'),
+  'notice summary uses exact created-artifact identity once a Notice exists',
+);
+ok(
   noticeSummary.includes('Later: Record Service'),
-  'notice-complete sticky hierarchy presents service as a later task',
+  'before any attempt, sticky hierarchy still presents service as a later task',
 );
 ok(
-  !noticeSummary.includes('Next: Serve &amp; Track'),
-  'notice-complete sticky hierarchy does not call service the next task',
+  noticeSummary.includes('SERVICE RECORDED'),
+  'after success, sticky hierarchy has a factual recorded-service state',
 );
 ok(
-  noticeSummary.includes('After the notice is actually served, return to Serve &amp; Track to record'),
-  'sticky task copy tells the landlord to return after actual service',
+  noticeSummary.includes('Original plan'),
+  'after an actual attempt, planned service becomes secondary context',
+);
+const serviceTaskPresentation = readFileSync('lib/flow/serviceTaskPresentation.ts', 'utf8');
+ok(
+  serveTrack.includes('restoreServiceTaskContext(data)'),
+  'Serve & Track restores the exact created Notice context before service entry',
 );
 ok(
-  serveTrack.includes('result.canProduce && !!data.productionSnapshot'),
-  'separate service task retains the existing ProductionSnapshot readiness contract',
+  serveTrack.includes('serviceContext && data && noticeData'),
+  'attempt capture is gated on a usable exact created-Notice service context',
 );
 ok(
-  serveTrack.includes('record the actual service'),
-  'later service surface uses actual-event terminology',
+  serveTrack.includes('draftFound && data?.productionSnapshot'),
+  'a produced draft with unavailable exact artifact remains in a distinct fail-closed state',
+);
+ok(
+  serviceTaskPresentation.includes('const artifact = restoreCreatedNoticeArtifact(currentData);') &&
+    serviceTaskPresentation.includes('if (!artifact) return null;'),
+  'service context fails closed when the exact Created Notice artifact cannot be restored',
+);
+ok(
+  serviceTaskPresentation.includes('noticeData: artifact.createData') &&
+    serviceTaskPresentation.includes('...artifact.createData'),
+  'service context uses the immutable created Notice face instead of mutable draft face data',
+);
+ok(
+  serveTrack.includes('Record an actual attempt only after it happens.'),
+  'service surface uses actual-event terminology',
 );
 ok(
   lockedPlannedDateCopy.includes('LOCKED wizard copy — verbatim. Do NOT edit'),

@@ -3,18 +3,15 @@ import { derivePayeeName, formatNoticeDate, formatPropertyLine } from '@/lib/pro
 import { computeCompliancePeriod } from '@/lib/dates/computeCompliancePeriod';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import { getSuccessfulAttempt } from '@/lib/flow/escalation';
+import { deriveServiceTaskDisplay, restoreServiceTaskContext } from '@/lib/flow/serviceTaskPresentation';
 import { formatUsPhone } from '@/lib/flow/phoneFormat';
 
-/**
- * NoticeSummaryPanel — R1b (Concept #1). Live, read-only mirror of the flow
- * data for the wizard's right column. Derivations reuse the SAME helpers the
- * renderer uses (derivePayeeName); nothing here feeds the document. The
- * compliance badge cites California Code of Civil Procedure § 1161(2),
- * matching the locked notice meta (the concept mock's "Civil Code" was
- * corrected — wrong code).
- */
-
 const EM_DASH = '\u2014';
+const SERVICE_METHOD_LABELS = {
+  personal: 'Personal service',
+  substituted: 'Substituted service',
+  post_and_mail: 'Posting and mailing',
+} as const;
 
 function Row({ k, v }: { k: string; v: string }) {
   return (
@@ -26,11 +23,13 @@ function Row({ k, v }: { k: string; v: string }) {
 }
 
 export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
-  const tenants = (data.tenantNames ?? [])
+  const serviceContext = restoreServiceTaskContext(data);
+  const face = serviceContext?.noticeData ?? data;
+  const tenants = (face.tenantNames ?? [])
     .map((t: string) => t.trim())
     .filter(Boolean)
     .join(', ');
-  const periods = (data.rentPeriods ?? []).filter(
+  const periods = (face.rentPeriods ?? []).filter(
     (p) => p.periodStartDate && p.periodEndDate,
   );
   const total = periods.reduce((s, p) => s + (Number(p.amount) || 0), 0);
@@ -41,41 +40,40 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
           maximumFractionDigits: 2,
         })}`
       : '';
-  const payee = derivePayeeName(data).name;
-  // Deadline mirror: same engine call as the produce gate and the Step-3
-  // preview. Method-independent for the face (engine invariant; broker
-  // determination 2026-06-12), so the pre-selection fallback is safe.
-  let serviceDateText = '';
-  let deadlineText = '';
-  if (data.serviceDate && /^\d{4}-\d{2}-\d{2}$/.test(data.serviceDate)) {
-    serviceDateText = formatNoticeDate(data.serviceDate);
-    try {
-      const year = Number(data.serviceDate.slice(0, 4));
-      const holidays = getVerifiedHolidaySet(year);
-      const period = computeCompliancePeriod({
-        serviceDate: data.serviceDate,
-        serviceMethod: data.serviceMethod ?? 'personal',
-        holidays,
-      });
-      deadlineText = formatNoticeDate(period.expirationDate);
-    } catch {
-      deadlineText = '';
+  const payee = derivePayeeName(face).name;
+
+  let plannedDateText = '';
+  let plannedDeadlineText = '';
+  if (face.serviceDate && /^\d{4}-\d{2}-\d{2}$/.test(face.serviceDate)) {
+    plannedDateText = formatNoticeDate(face.serviceDate);
+    if (serviceContext) {
+      plannedDeadlineText = formatNoticeDate(serviceContext.artifact.dates.compliancePeriodEndDate);
+    } else {
+      try {
+        const year = Number(face.serviceDate.slice(0, 4));
+        const holidays = getVerifiedHolidaySet(year);
+        const period = computeCompliancePeriod({
+          serviceDate: face.serviceDate,
+          serviceMethod: face.serviceMethod ?? 'personal',
+          holidays,
+        });
+        plannedDeadlineText = formatNoticeDate(period.expirationDate);
+      } catch {
+        plannedDeadlineText = '';
+      }
     }
   }
-  // Service attempts summary: None yet / N logged / Served {date}.
+
   const attempts = data.serviceAttempts ?? [];
   const success = getSuccessfulAttempt(data);
-  let attemptsText = 'None yet';
-  if (success) {
-    const servedISO =
-      success.method === 'personal' ? success.attemptDate : success.mailingDate;
-    attemptsText =
-      servedISO && /^\d{4}-\d{2}-\d{2}$/.test(servedISO)
-        ? `Served ${formatNoticeDate(servedISO)}`
-        : 'Served';
-  } else if (attempts.length > 0) {
-    attemptsText = `${attempts.length} attempt${attempts.length === 1 ? '' : 's'} logged`;
-  }
+  const serviceDisplay = deriveServiceTaskDisplay(data);
+  const latestAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : undefined;
+  const actualDate = success
+    ? (success.method === 'personal' ? success.attemptDate : success.mailingDate ?? success.attemptDate)
+    : latestAttempt?.attemptDate;
+  const actualText = actualDate && /^\d{4}-\d{2}-\d{2}$/.test(actualDate)
+    ? formatNoticeDate(actualDate)
+    : '';
 
   return (
     <div className="space-y-4">
@@ -84,17 +82,35 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
         <dl className="mt-3 space-y-3">
           <Row k="Type of Notice" v="3-Day Notice to Pay Rent or Quit" />
           <Row k="Purpose" v="Non-payment of rent" />
-          <Row k="Property" v={formatPropertyLine(data.propertyAddress ?? '', data.propertyUnit)} />
+          <Row k="Property" v={formatPropertyLine(face.propertyAddress ?? '', face.propertyUnit)} />
           <Row k="Tenant(s)" v={tenants} />
           <Row k="Total Demanded" v={totalText} />
           <Row k="Payable To" v={payee} />
           <Row
             k="Payment Phone"
-            v={data.landlordContact?.phone ? formatUsPhone(data.landlordContact.phone) : ''}
+            v={face.landlordContact?.phone ? formatUsPhone(face.landlordContact.phone) : ''}
           />
-          <Row k="Planned Service Date" v={serviceDateText} />
-          <Row k="If served as planned, pay or vacate by" v={deadlineText} />
-          <Row k="Service Attempts" v={attemptsText} />
+          <Row k="Service Status" v={serviceDisplay.statusLabel} />
+          {attempts.length === 0 ? (
+            <>
+              <Row k="Planned Service Date" v={plannedDateText} />
+              <Row k="If served as planned, pay or vacate by" v={plannedDeadlineText} />
+            </>
+          ) : success ? (
+            <Row
+              k="Recorded Service"
+              v={`${SERVICE_METHOD_LABELS[success.method]}${actualText ? ` · ${actualText}` : ''}`}
+            />
+          ) : latestAttempt ? (
+            <Row
+              k="Latest Attempt"
+              v={`${SERVICE_METHOD_LABELS[latestAttempt.method]}${actualText ? ` · ${actualText}` : ''}`}
+            />
+          ) : null}
+          <Row
+            k="Service Attempts"
+            v={attempts.length === 0 ? 'None yet' : `${attempts.length} recorded`}
+          />
         </dl>
         <div className="mt-4 rounded-md bg-tint px-3 py-2.5">
           <p className="text-xs font-semibold text-brand">California 3-Day Notice Workflow</p>
@@ -106,14 +122,31 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
       </section>
 
       <section className="rounded-lg border border-rule bg-white p-5">
-        <h2 className="font-serif text-base font-bold text-brand">
-          Later: Record Service
-        </h2>
-        <p className="mt-2 text-xs leading-relaxed text-muted">
-          After the notice is actually served, return to Serve &amp; Track to record
-          what happened and create a Proof of Service. Service logs and proof of
-          service are separate follow-up tools.
-        </p>
+        {success ? (
+          <>
+            <h2 className="font-serif text-base font-bold text-brand">Recorded service</h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted">
+              SERVICE RECORDED. The actual recorded event is now the primary service history for this Notice.
+            </p>
+          </>
+        ) : attempts.length > 0 ? (
+          <>
+            <h2 className="font-serif text-base font-bold text-brand">Service in progress</h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted">
+              {serviceDisplay.statusLabel}. Return to Serve &amp; Track to record another actual attempt when it happens.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 className="font-serif text-base font-bold text-brand">Later: Record Service</h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted">
+              After the notice is actually served, return to Serve &amp; Track to record what happened and create a Proof of Service. Service logs and proof of service are separate follow-up tools.
+            </p>
+          </>
+        )}
+        {attempts.length > 0 && plannedDateText && (
+          <p className="mt-3 text-xs text-gray-500">Original plan: {plannedDateText}</p>
+        )}
       </section>
     </div>
   );
