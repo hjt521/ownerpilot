@@ -16,29 +16,17 @@
  */
 import type { NoticeFlowData } from './noticeFlowState';
 import type { StorageLike } from './persistence';
+import {
+  applySavedNoticeDefaults,
+  type SavedNoticeDefaults,
+} from './matterHydration';
 
 export const PROFILE_KEY = 'op.noticeProfile.v1';
 export const PROFILE_VERSION = 1;
 
 /** The reusable subset saved across notices. Flat shape (payee contact fields
  *  flattened) so the envelope is explicit about exactly what is stored. */
-export interface OwnerProfile {
-  landlordIdentity?: NoticeFlowData['landlordIdentity'];
-  landlordIdentityConfirmed?: boolean;
-  mailingAddress?: string;
-  mailingUnit?: string;
-  payeeIsNonLandlord?: boolean;
-  payeeOverrideName?: string;
-  payeePhone?: string;
-  payeeStreetAddress?: string;
-  payeeUnit?: string;
-  payeeStreetUserEdited?: boolean;
-  payeeUnitUserEdited?: boolean;
-  paymentBranch?: NoticeFlowData['paymentBranch'];
-  personalDeliveryDays?: string;
-  personalDeliveryHours?: string;
-  signerName?: string;
-}
+export type OwnerProfile = SavedNoticeDefaults;
 
 export interface ProfileEnvelope {
   v: number;
@@ -80,33 +68,11 @@ export function extractProfile(data: NoticeFlowData): OwnerProfile {
 }
 
 /** Overlay a saved profile onto fresh flow data. Only the profile fields are
- *  set; per-notice fields are left as-is. Keeps the save-defaults box checked. */
+ *  set; per-notice fields are left as-is. Keeps the save-defaults box checked.
+ *  Delegates to the Matter Hydration reusable-default layer so profile-only and
+ *  draft+profile initialization share the same deterministic field semantics. */
 export function applyProfile(data: NoticeFlowData, profile: OwnerProfile): NoticeFlowData {
-  return {
-    ...data,
-    landlordIdentity: profile.landlordIdentity ?? data.landlordIdentity,
-    landlordIdentityConfirmed:
-      profile.landlordIdentityConfirmed ?? data.landlordIdentityConfirmed,
-    mailingAddress: profile.mailingAddress ?? data.mailingAddress,
-    mailingUnit: profile.mailingUnit ?? data.mailingUnit,
-    payeeIsNonLandlord: profile.payeeIsNonLandlord ?? data.payeeIsNonLandlord,
-    payeeOverrideName: profile.payeeOverrideName ?? data.payeeOverrideName,
-    landlordContact: {
-      ...(data.landlordContact ?? {}),
-      ...(profile.payeePhone !== undefined ? { phone: profile.payeePhone } : {}),
-      ...(profile.payeeStreetAddress !== undefined
-        ? { streetAddress: profile.payeeStreetAddress }
-        : {}),
-      ...(profile.payeeUnit !== undefined ? { unit: profile.payeeUnit } : {}),
-    },
-    payeeStreetUserEdited: profile.payeeStreetUserEdited ?? data.payeeStreetUserEdited,
-    payeeUnitUserEdited: profile.payeeUnitUserEdited ?? data.payeeUnitUserEdited,
-    paymentBranch: profile.paymentBranch ?? data.paymentBranch,
-    personalDeliveryDays: profile.personalDeliveryDays ?? data.personalDeliveryDays,
-    personalDeliveryHours: profile.personalDeliveryHours ?? data.personalDeliveryHours,
-    signerName: profile.signerName ?? data.signerName,
-    saveLandlordPaymentDefaults: true,
-  };
+  return applySavedNoticeDefaults(data, profile);
 }
 
 /** Persist the reusable profile. Returns false (silently) if unavailable. */

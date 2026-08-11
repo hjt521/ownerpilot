@@ -5,6 +5,12 @@
  * refresh-safe and lets future modules (Serve & Track, Proof of Service)
  * read flow facts after navigation. Data never leaves the browser.
  *
+ * Matter Hydration v1A: when a current-version draft exists, loadDraft returns
+ * one deterministic hydrated Notice state: empty/default -> saved reusable
+ * browser-local profile -> restored current draft. Ordinary in-session customer
+ * edits occur after this mount-time hydration and therefore remain highest
+ * precedence. Hydration clears C6 approval metadata; prefill is not confirmation.
+ *
  * Design rules:
  *  - Fail-soft everywhere. Storage may be absent (SSR), throwing (private
  *    browsing quotas), or hold corrupt/stale payloads; every such case
@@ -14,7 +20,9 @@
  *    a crash is not).
  *  - Injectable storage so the suite can exercise all paths without a DOM.
  */
-import type { NoticeFlowData } from './noticeFlowState';
+import { createFlowState, type NoticeFlowData } from './noticeFlowState';
+import { hydrateMatterData } from './matterHydration';
+import { loadProfile } from './profile';
 
 export const DRAFT_KEY = 'op.noticeDraft.v1';
 // Bumped 1 -> 2 with the 5-page wizard re-partition (Slice A). A stored
@@ -82,7 +90,15 @@ export function saveDraft(
   }
 }
 
-/** Load a draft if present, valid, and current-version; otherwise null. */
+/**
+ * Load a draft if present, valid, and current-version; otherwise null.
+ *
+ * A valid draft is returned through the Matter Hydration v1A boundary so saved
+ * reusable owner/payment defaults can fill fields absent from the current draft,
+ * while the current draft remains higher precedence. C6 approval metadata is
+ * always cleared by hydration and must be re-confirmed against the exact current
+ * Create generation.
+ */
 export function loadDraft(storage?: StorageLike | null): RestoredDraft | null {
   const s = resolveStorage(storage);
   if (!s) return null;
@@ -105,7 +121,14 @@ export function loadDraft(storage?: StorageLike | null): RestoredDraft | null {
   if (typeof env.pageIndex !== 'number' || !Number.isFinite(env.pageIndex)) return null;
   if (typeof env.data !== 'object' || env.data === null) return null;
   if (typeof env.savedAt !== 'string') return null;
-  return { pageIndex: env.pageIndex, data: env.data as NoticeFlowData, savedAt: env.savedAt };
+
+  const hydrated = hydrateMatterData({
+    defaults: createFlowState().data,
+    savedDefaults: loadProfile(s),
+    restoredDraft: env.data as NoticeFlowData,
+  });
+
+  return { pageIndex: env.pageIndex, data: hydrated, savedAt: env.savedAt };
 }
 
 /** Remove any stored draft. Never throws. */
