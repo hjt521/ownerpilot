@@ -26,7 +26,6 @@ export function profilePrefillSections(profile: OwnerProfile | null): ProfilePre
   if (!profile) return noProfileSections();
   const landlordPayment = [
     profile.landlordIdentity,
-    profile.landlordIdentityConfirmed,
     profile.mailingAddress,
     profile.mailingUnit,
     profile.payeeIsNonLandlord,
@@ -61,9 +60,16 @@ export function resolveBrowserNoticeStart(
     };
   }
   if (profile) {
+    const profiled = applyProfile(freshData, profile);
     return {
       source: 'profile',
-      data: applyProfile(freshData, profile),
+      // The legacy profile envelope may contain the prior notice's landlord
+      // identity confirmation bit. Reuse the identity as a convenience default,
+      // never the confirmation: the new notice keeps its fresh confirmation state.
+      data: {
+        ...profiled,
+        landlordIdentityConfirmed: freshData.landlordIdentityConfirmed,
+      },
       pageIndex: 0,
       profileSections: profilePrefillSections(profile),
     };

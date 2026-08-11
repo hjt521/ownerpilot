@@ -60,6 +60,12 @@ const profiled = resolveBrowserNoticeStart(fresh, null, profile);
 assert.equal(profiled.source, 'profile');
 assert.equal(profiled.pageIndex, 0);
 assert.equal(profiled.data.signerName, 'Saved Signer');
+assert.deepEqual(profiled.data.landlordIdentity, profile.landlordIdentity);
+assert.equal(
+  profiled.data.landlordIdentityConfirmed,
+  fresh.landlordIdentityConfirmed,
+  'saved identity may prefill, but a prior-notice confirmation must not carry into a new notice',
+);
 assert.equal(profiled.data.paymentBranch, 'in_person_and_mail');
 assert.equal(profiled.data.landlordContact?.phone, '2135550101');
 assert.equal(profiled.data.tenantNames[0], '');
