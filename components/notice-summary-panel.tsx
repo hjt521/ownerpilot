@@ -68,12 +68,15 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
   const success = getSuccessfulAttempt(data);
   const serviceDisplay = deriveServiceTaskDisplay(data);
   const latestAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : undefined;
-  const actualDate = success
-    ? (success.method === 'personal' ? success.attemptDate : success.mailingDate ?? success.attemptDate)
-    : latestAttempt?.attemptDate;
+  const actualDate = success?.attemptDate ?? latestAttempt?.attemptDate;
   const actualText = actualDate && /^\d{4}-\d{2}-\d{2}$/.test(actualDate)
     ? formatNoticeDate(actualDate)
     : '';
+  const successDateLabel = success?.method === 'personal' ? 'Actual service date' : 'Attempt date';
+  const planHeading = attempts.length === 0 ? 'Plan' : 'Original plan';
+  const planHelper = attempts.length === 0
+    ? 'Plan only — no actual service has been recorded yet.'
+    : 'Original plan only — actual service history is recorded below.';
 
   return (
     <div className="space-y-4">
@@ -97,10 +100,13 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
               <Row k="If served as planned, pay or vacate by" v={plannedDeadlineText} />
             </>
           ) : success ? (
-            <Row
-              k="Recorded Service"
-              v={`${SERVICE_METHOD_LABELS[success.method]}${actualText ? ` · ${actualText}` : ''}`}
-            />
+            <>
+              <Row k="Recorded Service" v={SERVICE_METHOD_LABELS[success.method]} />
+              <Row k={successDateLabel} v={actualText} />
+              {success.method !== 'personal' && success.mailingDate && (
+                <Row k="Mailing completed" v={formatNoticeDate(success.mailingDate)} />
+              )}
+            </>
           ) : latestAttempt ? (
             <Row
               k="Latest Attempt"
@@ -144,8 +150,11 @@ export function NoticeSummaryPanel({ data }: { data: NoticeFlowData }) {
             </p>
           </>
         )}
-        {attempts.length > 0 && plannedDateText && (
-          <p className="mt-3 text-xs text-gray-500">Original plan: {plannedDateText}</p>
+        {plannedDateText && (
+          <div className="mt-3 text-xs text-gray-500">
+            <p className="font-medium text-gray-700">{planHeading}: {plannedDateText}</p>
+            <p className="mt-1">{planHelper}</p>
+          </div>
         )}
       </section>
     </div>

@@ -3496,11 +3496,8 @@ function ReServePanel({
     }
   };
 
-  const successActualDate = success
-    ? success.method === 'personal'
-      ? success.attemptDate
-      : success.mailingDate ?? success.attemptDate
-    : undefined;
+  const successAttemptDate = success?.attemptDate;
+  const successDateLabel = success?.method === 'personal' ? 'Actual service date' : 'Attempt date';
 
   return (
     <section className="space-y-5">
@@ -3557,8 +3554,8 @@ function ReServePanel({
           </div>
           <dl className="grid gap-2 sm:grid-cols-2 text-sm">
             <div><dt className="text-xs text-gray-500">Method</dt><dd className="font-medium text-gray-900">{SERVICE_METHOD_LABELS[success.method]}</dd></div>
-            <div><dt className="text-xs text-gray-500">Actual service date</dt><dd className="font-medium text-gray-900">{successActualDate ? formatNoticeDate(successActualDate) : 'Not available'}</dd></div>
-            {success.mailingDate && <div><dt className="text-xs text-gray-500">Mailing completed</dt><dd className="font-medium text-gray-900">{formatNoticeDate(success.mailingDate)}</dd></div>}
+            <div><dt className="text-xs text-gray-500">{successDateLabel}</dt><dd className="font-medium text-gray-900">{successAttemptDate ? formatNoticeDate(successAttemptDate) : 'Not available'}</dd></div>
+            {success.method !== 'personal' && success.mailingDate && <div><dt className="text-xs text-gray-500">Mailing completed</dt><dd className="font-medium text-gray-900">{formatNoticeDate(success.mailingDate)}</dd></div>}
             {success.server.name && <div><dt className="text-xs text-gray-500">Recorded server</dt><dd className="font-medium text-gray-900">{success.server.name}</dd></div>}
           </dl>
           {computed ? (

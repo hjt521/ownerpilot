@@ -43,5 +43,15 @@ ok(summary.includes('restoreServiceTaskContext(data)'), 'summary uses exact arti
 ok(summary.includes('SERVICE RECORDED'), 'summary transitions to recorded service after success');
 ok(summary.includes('Original plan'), 'plan becomes secondary after an actual attempt');
 ok(!serveTrack.includes('renderNotice({\n        data,'), 'Serve & Track does not render mutable draft face directly');
+ok(noticeFlow.includes("const successDateLabel = success?.method === 'personal' ? 'Actual service date' : 'Attempt date';"), 'personal success is labeled Actual service date while non-personal success is labeled Attempt date');
+ok(noticeFlow.includes("success.method !== 'personal' && success.mailingDate"), 'mailing-completed row is limited to non-personal successful service');
+ok(!noticeFlow.includes('success.mailingDate ?? success.attemptDate'), 'mailing date is not reused as the task-panel actual service date');
+ok(summary.includes("const successDateLabel = success?.method === 'personal' ? 'Actual service date' : 'Attempt date';"), 'summary distinguishes personal actual-service date from substituted/posting attempt date');
+ok(summary.includes('k={successDateLabel}'), 'summary renders the method-aware successful date label');
+ok(summary.includes("success.method !== 'personal' && success.mailingDate"), 'summary renders mailing completed separately for substituted/posting success');
+ok(!summary.includes('success.mailingDate ?? success.attemptDate'), 'summary does not collapse mailing date into actual service date');
+ok(summary.includes("attempts.length === 0 ? 'Plan' : 'Original plan'"), 'plan heading becomes historical after any actual attempt');
+ok(summary.includes('Plan only — no actual service has been recorded yet.'), 'zero-attempt plan helper is factual');
+ok(summary.includes('Original plan only — actual service history is recorded below.'), 'post-attempt plan helper is historical and non-contradictory');
 
 console.log(`${passed} Service Actual-Event UX source assertions passed`);
