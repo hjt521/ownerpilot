@@ -24,6 +24,24 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Disambiguate shared toast class in temporary patcher
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/matter_hydration_v1a_fix.py')
+          s = p.read_text()
+          anchor = "    text = text.replace(old, new, 1)\n\n"
+          helper = "    text = text.replace(old, new, 1)\n\n\ndef replace_first(old: str, new: str):\n    global text\n    if old not in text:\n        raise SystemExit(f'expected occurrence: {old[:120]!r}')\n    text = text.replace(old, new, 1)\n\n"
+          if s.count(anchor) != 1:
+              raise SystemExit('replace_once anchor changed')
+          s = s.replace(anchor, helper, 1)
+          target = "replace_once(\n    'className=\"fixed top-4 right-4 z-50 w-[calc(100%-2rem)] max-w-sm flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white px-4 py-3 shadow-lg sm:w-auto\"'"
+          if s.count(target) != 2:
+              raise SystemExit(f'expected two shared-class calls, found {s.count(target)}')
+          s = s.replace(target, target.replace('replace_once(', 'replace_first('))
+          p.write_text(s)
+          PY
+
       - name: Apply bounded v1A correction
         run: python3 scripts/matter_hydration_v1a_fix.py
 
@@ -75,7 +93,6 @@ jobs:
       - name: Verify bounded scope and commit
         run: |
           git status --short
-          git diff --name-only 00125d02f1833c6d2dfa3954e5a488363e0437bc...HEAD || true
           git add components/notice-flow.tsx lib/flow/matterHydration.ts lib/flow/matterHydration.test.ts .github/workflows/matter-hydration-v1a-workbench.yml scripts/matter_hydration_v1a_fix.py
           git diff --cached --check
           git config user.name 'ownerpilot-workbench'
