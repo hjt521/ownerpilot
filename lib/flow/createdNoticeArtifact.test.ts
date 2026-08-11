@@ -194,7 +194,12 @@ ok(
   'mutable renderedModel fallback is absent from artifact-use path',
 );
 ok(noticeFlow.includes('Your 3-Day Notice is ready'), 'Scenario 9: Notice Ready heading remains');
-ok(noticeFlow.includes('PREPARED · NOT SERVED'), 'Scenario 9: PREPARED · NOT SERVED remains');
+const serviceTaskPresentation = readFileSync('lib/flow/serviceTaskPresentation.ts', 'utf8');
+ok(
+  noticeFlow.includes('const display = deriveServiceTaskDisplay(data);') &&
+    serviceTaskPresentation.includes("statusLabel: 'PREPARED · NOT SERVED'"),
+  'Scenario 9: Notice Ready still derives PREPARED · NOT SERVED before service',
+);
 ok(noticeFlow.includes('href="/notice/3-day/serve"'), 'Scenario 10: actual service remains separate');
 
 console.log(`${passed} created-artifact assertions passed`);

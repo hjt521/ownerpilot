@@ -103,10 +103,13 @@ check(
     gates.includes("'JURISDICTION_NON_CALIFORNIA'") &&
     gates.includes("'JURISDICTION_CALIFORNIA_UNCONFIRMED'"),
 );
+const serviceTaskPresentation = read('lib/flow/serviceTaskPresentation.ts');
 check(
-  'Serve & Track still derives readiness exclusively from shared canProduce gate',
-  serveTrack.includes('const result = data ? evaluateCanProduceV4(data) : null;') &&
-    serveTrack.includes('result.canProduce'),
+  'Serve & Track remains downstream of exact produced-Notice evidence',
+  serveTrack.includes('restoreServiceTaskContext(data)') &&
+    serveTrack.includes('draftFound && data?.productionSnapshot') &&
+    serviceTaskPresentation.includes('restoreCreatedNoticeArtifact(currentData)') &&
+    serviceTaskPresentation.includes('if (!artifact) return null;'),
 );
 check(
   'packet production remains downstream of the shared gate',
