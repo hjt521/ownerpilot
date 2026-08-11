@@ -45,6 +45,7 @@ export function profilePrefillSections(profile: OwnerProfile | null): ProfilePre
  * Browser-local start precedence for the five-page notice wizard:
  * restored current draft > saved defaults > fresh defaults.
  * Customer edits occur after this one-time start resolution and therefore win.
+ * Saved profile values are convenience defaults only and grant no confirmation authority.
  */
 export function resolveBrowserNoticeStart(
   freshData: NoticeFlowData,
