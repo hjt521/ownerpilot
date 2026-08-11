@@ -121,9 +121,12 @@ const responseTotal = fixture.negotiation.responseTree.reduce(
 );
 assert.ok(Math.abs(responseTotal - 1) < 1e-9, 'response tree must sum to 1');
 
-assert.equal(
-  fixture.ownerPriorities.reduce((sum, priority) => sum + priority.weight, 0),
-  1,
+const priorityWeightTotal = fixture.ownerPriorities.reduce(
+  (sum, priority) => sum + priority.weight,
+  0,
+);
+assert.ok(
+  Math.abs(priorityWeightTotal - 1) < 1e-9,
   'synthetic owner priorities must be explicit and normalized',
 );
 
