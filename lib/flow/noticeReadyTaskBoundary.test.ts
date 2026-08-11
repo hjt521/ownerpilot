@@ -75,6 +75,7 @@ ok(
   'Create Notice action is customer-visible',
 );
 
+// UX2 hierarchy lock: detailed facts and preview precede the one final C6, which precedes Create.
 const reviewStepStart = noticeFlow.indexOf('function ReviewStep({');
 const reviewStepEnd = noticeFlow.indexOf('// --- Step 7:', reviewStepStart);
 ok(reviewStepStart >= 0 && reviewStepEnd > reviewStepStart, 'ReviewStep source is inspectable');
