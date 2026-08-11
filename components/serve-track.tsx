@@ -19,7 +19,6 @@ import { evaluateCanProduceV4 } from '@/lib/flow/gates';
 import { renderNotice, NoticeRenderError } from '@/lib/produce/renderNotice';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
-import { captureProductionSnapshot } from '@/lib/flow/escalation';
 import { ServiceStep } from './notice-flow';
 import { NoticeSummaryPanel } from './notice-summary-panel';
 import { PacketPrintOptions } from './packet-print-options';
@@ -85,10 +84,6 @@ export function ServeTrack() {
     }
   }
 
-  const onProduced = () => {
-    if (data) update({ productionSnapshot: captureProductionSnapshot(data) });
-  };
-
   return (
     <main className="min-h-screen bg-ivory">
       <div className="mx-auto flex max-w-6xl items-start gap-10 px-6 py-12 md:py-16">
@@ -115,8 +110,6 @@ export function ServeTrack() {
                   <PacketPrintOptions
                     model={renderedModel}
                     data={data}
-                    noticeDocHtml={docHtml}
-                    onProduced={onProduced}
                     disabledKeys={['tenant', 'owner', 'full']}
                   />
                 </section>

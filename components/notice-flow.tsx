@@ -43,10 +43,21 @@ import {
   captureProductionSnapshot,
   evaluateStaleness,
 } from '@/lib/flow/escalation';
+import {
+  bindReviewApproval,
+  clearReviewApproval,
+  freezeReviewCreateInput,
+  hasCurrentReviewApproval,
+  reviewApprovalGeneration,
+} from '@/lib/flow/reviewApproval';
+import {
+  captureCreatedNoticeArtifact,
+  restoreCreatedNoticeArtifact,
+} from '@/lib/flow/createdNoticeArtifact';
 import { renderNotice, NoticeRenderError, formatNoticeDate, derivePayeeName, formatPropertyLine } from '@/lib/produce/renderNotice';
 import type { NoticeModel } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
-import { PacketPrintOptions } from './packet-print-options';
+import { NoticePreview, PacketPrintOptions } from './packet-print-options';
 import { LaProducePanel } from './la-produce-panel';
 import { buildNoticePdfFilename } from '@/lib/produce/noticePdfFilename';
 import { NoticeSummaryPanel } from './notice-summary-panel';
@@ -351,7 +362,19 @@ export function NoticeFlow() {
   ) => {
     setState((s) => {
       const resolved = typeof patch === 'function' ? patch(s.data) : patch;
-      return { ...s, data: { ...s.data, ...resolved } };
+      let nextData: NoticeFlowData = { ...s.data, ...resolved };
+      const approvalWrite =
+        Object.prototype.hasOwnProperty.call(resolved, 'produceAttestationConfirmed') ||
+        Object.prototype.hasOwnProperty.call(resolved, 'produceAttestationAcceptedAt') ||
+        Object.prototype.hasOwnProperty.call(resolved, 'reviewApprovalGeneration');
+      if (
+        !approvalWrite &&
+        s.data.produceAttestationConfirmed === true &&
+        !hasCurrentReviewApproval(nextData)
+      ) {
+        nextData = { ...nextData, ...clearReviewApproval() };
+      }
+      return { ...s, data: nextData };
     });
     setShowIssues(false);
   };
@@ -1422,30 +1445,9 @@ function AmountStep({
         </span>
       </div>
 
-      {/* Step 3 base-rent-only confirmation. Label is broker-supplied
-          (redesign 2026-06-16), wired verbatim — [LOCKED — broker-supplied].
-          Reuses the existing baseRentOnlyConfirmed field and gates Step-3
-          advancement (advancement.ts). The C6 combined produce-gate
-          attestation (produceAttestationConfirmed) is unchanged and still
-          binds at produce; the two coexist by design. */}
-      <label className="flex items-start gap-3 rounded-lg border border-rule bg-white px-4 py-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={data.baseRentOnlyConfirmed === true}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            update({ baseRentOnlyConfirmed: e.target.checked })
-          }
-          className="mt-1"
-        />
-        <span className="text-sm text-gray-800 leading-relaxed">
-          I confirm this is base rent only &mdash; no late fees, utilities,
-          damages, repair costs, or other charges.
-        </span>
-      </label>
-
       {/* Slice D: compact running total repeated just above the Continue
           button on mobile only (lg:hidden). Normal flow, not sticky — never
-          covers the confirmation checkbox or the CTA. Mirrors the main Total
+          covers the CTA. Mirrors the main Total
           Demanded card above. */}
       <div className="lg:hidden flex items-center justify-between rounded-lg border border-brand bg-tint px-4 py-3">
         <span className="text-sm font-semibold text-gray-700">Total Demanded</span>
@@ -3015,34 +3017,25 @@ function ReviewStep({
   jurisdictionSlow?: boolean;
   onRetryJurisdiction?: () => void;
 }) {
+  const [createError, setCreateError] = useState<string | null>(null);
+
   const result = evaluateCanProduceV4(data);
+  const approvalCurrent = hasCurrentReviewApproval(data);
   const noticePrepared = !!data.productionSnapshot && !evaluateStaleness(data).reason;
 
-  // When the gate says ready, render the notice from the build-locked template
-  // and build the styled document. The renderer fails closed; wrap it so any
-  // unexpected gap surfaces as a clear message rather than a crash.
+  // Informational preview may render before C6. Final Create never trusts this
+  // earlier render; it freezes, re-gates, and re-renders independently below.
   let docHtml: string | null = null;
   let renderedModel: NoticeModel | null = null;
   let renderError: string | null = null;
-  // C6: render the face as soon as the notice is DATA-complete (every
-  // blocker cleared except the produce attestation), so the user can READ
-  // the face before attesting (Eshagian v. Cepeda). The attestation gates
-  // PRINTING, not previewing.
   const onlyAttestationLeft =
     result.blockers.length === 0 ||
     (result.blockers.length === 1 &&
       result.blockers[0].code === 'PRODUCE_ATTESTATION_MISSING');
   const isRenderable = onlyAttestationLeft && !!result.computedDates;
-  // The produce attestation surfaces only as the green confirm-step (when it is
-  // the SOLE remaining blocker), never as a bullet alongside real blockers - the
-  // checkbox it points to isn't shown in the multi-blocker state.
   const visibleBlockers = result.blockers.filter(
     (b) => b.code !== 'PRODUCE_ATTESTATION_MISSING',
   );
-  // Items that require going BACK to another step to fix. Step 5's own fields
-  // (signer/dates, page index 4) are handled by their asterisks above, so they
-  // don't trigger the needs-attention box - it appears only for cross-step
-  // items. The green "ready" state still waits for ALL visible blockers.
   const otherStepBlockers = visibleBlockers.filter(
     (b) => pageForBlocker(b.code) !== 4,
   );
@@ -3065,93 +3058,204 @@ function ReviewStep({
     }
   }
 
-  // B1 stale-guard: record the face-determining fields at the moment of
-  // production. evaluateStaleness (in ReServePanel) later compares current
-  // data against this snapshot to detect a drifted face on re-serve. Called
-  // by PacketPrintOptions whenever any packet document is printed.
-  const onProduced = () => {
-    update({ productionSnapshot: captureProductionSnapshot(data) });
+  // Artifact use is a third, separate UX2 identity contract. If a successful
+  // Create envelope survived the browser-local draft remount, reconstruct only
+  // from its exact frozen Create input + exact Create-time compliance dates.
+  // Never fall back to current mutable data merely because ProductionSnapshot
+  // says a notice was prepared.
+  const restoredArtifact = noticePrepared ? restoreCreatedNoticeArtifact(data) : null;
+  let artifactModel: NoticeModel | null = null;
+  let artifactData: NoticeFlowData | null = null;
+  if (restoredArtifact) {
+    try {
+      artifactModel = renderNotice({
+        data: restoredArtifact.createData,
+        dates: restoredArtifact.dates,
+      }).model;
+      artifactData = restoredArtifact.createData;
+    } catch {
+      // Fail closed below: no exact reconstructable artifact => no Download/Print.
+      artifactModel = null;
+      artifactData = null;
+    }
+  }
+  const artifactReady = noticePrepared && artifactModel !== null && artifactData !== null;
+
+  // UX2 consequential boundary: approved input = gate input = render input =
+  // create input. The frozen object is the only input consumed after selection.
+  const createNotice = () => {
+    setCreateError(null);
+    try {
+      const frozen = freezeReviewCreateInput(data);
+      const generation = reviewApprovalGeneration(frozen);
+      if (
+        !hasCurrentReviewApproval(frozen) ||
+        frozen.reviewApprovalGeneration !== generation
+      ) {
+        throw new Error('Your Review & Confirm approval is no longer current. Please confirm again.');
+      }
+
+      const finalResult = evaluateCanProduceV4(frozen);
+      if (!finalResult.canProduce || !finalResult.computedDates) {
+        throw new Error('The notice is not ready to create. Review the remaining items first.');
+      }
+
+      const rendered = renderNotice({
+        data: frozen,
+        dates: {
+          compliancePeriodStartDate: finalResult.computedDates.commencementDate,
+          compliancePeriodEndDate: finalResult.computedDates.expirationDate,
+        },
+      });
+      // HTML construction remains part of successful Create validation, but
+      // HTML itself is not persisted; the exact model is deterministically
+      // reconstructed later from the frozen Create input + these exact dates.
+      buildNoticeDocumentHtml(rendered.model);
+      const productionSnapshot = captureProductionSnapshot(frozen);
+      const createdNoticeArtifact = captureCreatedNoticeArtifact(
+        frozen,
+        productionSnapshot.producedAtISO,
+        {
+          compliancePeriodStartDate: finalResult.computedDates.commencementDate,
+          compliancePeriodEndDate: finalResult.computedDates.expirationDate,
+        },
+      );
+      update({ productionSnapshot, createdNoticeArtifact });
+    } catch (e) {
+      setCreateError(
+        e instanceof Error
+          ? e.message
+          : 'The notice could not be created. Please review your entries.',
+      );
+    }
   };
 
-  // Slice E: always-visible calm readiness checklist near the top of Step 5.
-  // No produce-click gate - the user sees where things stand the moment they
-  // arrive, in warm/reassuring language (not an alarming error box). The
-  // "Produce Notice Packet" action stays below as the deliberate final step.
+  // Slice E: always-visible calm readiness/status presentation. Deterministic
+  // checks appear as product status; only C6 remains the final general testimony.
+  const displayModel = artifactReady ? artifactModel : renderedModel;
+  const displayData = artifactReady && artifactData ? artifactData : data;
+  // Artifact-use routing is part of artifact identity too: after Create, LAHD/RTC
+  // selection must come from exact artifact A, never later mutable draft B.
+  const laProduceRequired =
+    displayData.cachedResolverVerdict?.verdict === 'confirmed_la' &&
+    displayData.cachedResolverVerdict.addressKey === normalizeAddressKey(displayData.propertyAddress) &&
+    isLaProducePhase2dWired() &&
+    isLaProductionUnblocked();
+
   return (
     <div className="space-y-6">
-      {noticePrepared ? (
+      {artifactReady ? (
         <NoticeReadyState />
       ) : (
         <>
-      {jurisdictionResolving && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-center gap-2 rounded-lg border border-rule bg-tint px-4 py-3 text-sm text-gray-700"
-        >
-          <span
-            aria-hidden="true"
-            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-300 border-t-brand"
-          />
-          <span>
-            {jurisdictionSlow
-              ? 'Confirming jurisdiction. This can take a few seconds.'
-              : 'Confirming jurisdiction\u2026'}
-          </span>
-        </div>
-      )}
-      <StepIntro>
-        Here&apos;s where your notice stands. Once everything below is checked
-        off, produce your packet using the button further down this step.
-      </StepIntro>
-
-      {visibleBlockers.length === 0 ? (
-        <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4">
-          <p className="font-semibold text-green-900 mb-3">Everything&apos;s ready.</p>
-          <ul className="space-y-2 text-sm text-green-900">
-            <li className="flex items-start gap-2">
-              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
-              <span>Property and tenant complete</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
-              <span>Rent amount confirmed as base rent only</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
-              <span>Payment person, phone, and address complete</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span>
-              <span>Signer and planned service date complete</span>
-            </li>
-          </ul>
-          {result.computedDates && (
-            <p className="mt-3 text-sm text-green-900 leading-relaxed">
-              Using your planned service date, the notice shows{' '}
-              <strong>{formatNoticeDate(result.computedDates.expirationDate)}</strong> as the
-              pay-or-vacate deadline (period begins{' '}
-              {formatNoticeDate(result.computedDates.commencementDate)}). Service has not been
-              recorded.
-            </p>
+          {jurisdictionResolving && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-center gap-2 rounded-lg border border-rule bg-tint px-4 py-3 text-sm text-gray-700"
+            >
+              <span
+                aria-hidden="true"
+                className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-300 border-t-brand"
+              />
+              <span>
+                {jurisdictionSlow
+                  ? 'Confirming jurisdiction. This can take a few seconds.'
+                  : 'Confirming jurisdiction…'}
+              </span>
+            </div>
           )}
-          {!result.canProduce && (
-            <div className="mt-4 space-y-3 border-t border-green-200 pt-4">
-              <p className="text-sm font-semibold text-green-900">
-                California law requires you to confirm the following before
-                producing this notice:
-              </p>
-              <label className="flex items-start gap-2 cursor-pointer">
+          <StepIntro>
+            Here&apos;s where your notice stands. Review the details, make the one final
+            confirmation, then create your notice.
+          </StepIntro>
+
+          <ReviewSummaryCards data={data} result={result} goToPage={goToPage} />
+
+          {docHtml && !artifactReady && (
+            <section className="space-y-4 rounded-lg border border-rule bg-white px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Notice preview</h2>
+                <p className="mt-1 text-xs text-gray-500 leading-relaxed">This is a broker-prepared draft for your review. Sign it in ink before serving, and serve it on the date shown. The proof of service is completed after you serve — not before.</p>
+              </div>
+              <NoticePreview html={docHtml} />
+            </section>
+          )}
+
+          {visibleBlockers.length === 0 ? (
+            <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4">
+              <p className="font-semibold text-green-900 mb-3">Everything&apos;s ready.</p>
+              <ul className="space-y-2 text-sm text-green-900">
+                <li className="flex items-start gap-2"><span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span><span>Property and tenant complete</span></li>
+                <li className="flex items-start gap-2"><span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span><span>Rent periods and amount complete</span></li>
+                <li className="flex items-start gap-2"><span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span><span>Payment person, phone, and address complete</span></li>
+                <li className="flex items-start gap-2"><span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span><span>Signer and planned service date complete</span></li>
+                <li className="flex items-start gap-2"><span aria-hidden="true" className="mt-0.5 font-semibold">&#10003;</span><span>California eligibility and jurisdiction complete</span></li>
+              </ul>
+              {result.computedDates && (
+                <p className="mt-3 text-sm text-green-900 leading-relaxed">
+                  Using your planned service date, the notice shows{' '}
+                  <strong>{formatNoticeDate(result.computedDates.expirationDate)}</strong> as the
+                  pay-or-vacate deadline (period begins{' '}
+                  {formatNoticeDate(result.computedDates.commencementDate)}). Service has not been
+                  recorded.
+                </p>
+              )}
+            </div>
+          ) : otherStepBlockers.length > 0 ? (
+            <div className="rounded-lg border border-rule bg-tint px-5 py-4">
+              <p className="font-semibold text-brand mb-1">Almost there — a few things to finish first.</p>
+              <p className="text-sm text-gray-700 leading-relaxed mb-3">No rush. Take care of these and your notice will be ready to create.</p>
+              <ul className="space-y-2 text-sm text-gray-800">
+                {otherStepBlockers.map((b) => {
+                  const targetPage = pageForBlocker(b.code);
+                  return (
+                    <li key={b.code} className="flex items-start gap-2">
+                      <span aria-hidden="true" className="mt-0.5 text-brand">&#9675;</span>
+                      <span>
+                        <span>{b.message}</span>
+                        {targetPage !== null && goToPage && (
+                          <button type="button" onClick={() => goToPage(targetPage)} className="ml-2 align-baseline text-xs font-semibold text-brand underline whitespace-nowrap">Fix this &rarr;</button>
+                        )}
+                        {b.code === 'JURISDICTION_RESOLUTION_FAILED' && onRetryJurisdiction && (
+                          <button type="button" onClick={onRetryJurisdiction} className="ml-2 align-baseline text-xs font-semibold text-brand underline whitespace-nowrap">Try again</button>
+                        )}
+                        {b.code === 'PAYMENT_CONFIG_INVALID' && result.paymentErrors.length > 0 && (
+                          <ul className="mt-1 space-y-0.5 pl-5 list-disc text-gray-700">
+                            {result.paymentErrors.map((pe) => (<li key={pe.code}>{pe.message}</li>))}
+                          </ul>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+
+          {!result.canProduce &&
+            (data.paymentMethods ?? []).includes('bank_deposit') &&
+            (data.bankDepositPaperInstrumentConfirmed !== true || data.bankBranchWithinFiveMilesAttested !== true) && (
+              <div className="space-y-3 rounded-lg border border-gray-200 px-5 py-4">
+                <p className="text-sm font-semibold text-gray-900">Confirm these to finish the bank-deposit method</p>
+                <p className="text-sm text-gray-600 leading-relaxed">These are the same confirmations from the payment step. Check them here to clear the items above without going back.</p>
+                <BankDepositAttestations data={data} update={update} />
+              </div>
+            )}
+
+          {visibleBlockers.length === 0 && (
+            <div className="rounded-lg border border-green-300 bg-green-50 px-5 py-4">
+              <p className="text-sm font-semibold text-green-900">Review &amp; Confirm</p>
+              <label className="mt-3 flex items-start gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={data.produceAttestationConfirmed === true}
+                  checked={approvalCurrent}
                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    update({
-                      produceAttestationConfirmed: e.target.checked,
-                      ...(e.target.checked
-                        ? { produceAttestationAcceptedAt: new Date().toISOString() }
-                        : { produceAttestationAcceptedAt: undefined }),
-                    })
+                    update(
+                      e.target.checked
+                        ? bindReviewApproval(data, new Date().toISOString())
+                        : clearReviewApproval(),
+                    )
                   }
                   className="mt-1"
                 />
@@ -3159,156 +3263,78 @@ function ReviewStep({
                   By producing this notice, I confirm: the amounts entered are base rent only (no late fees, utilities, or other charges); the tenants and landlord(s) named are correct; and the signer is authorized.
                 </span>
               </label>
+              {!approvalCurrent && (
+                <p className="mt-3 text-xs text-green-800">
+                  This confirmation applies only to the exact notice details shown now. If a
+                  material detail changes, you&apos;ll confirm the updated notice again.
+                </p>
+              )}
             </div>
           )}
-        </div>
-      ) : otherStepBlockers.length > 0 ? (
-        <div className="rounded-lg border border-rule bg-tint px-5 py-4">
-          <p className="font-semibold text-brand mb-1">
-            Almost there — a few things to finish first.
-          </p>
-          <p className="text-sm text-gray-700 leading-relaxed mb-3">
-            No rush. Take care of these and your packet will be ready to produce.
-          </p>
-          <ul className="space-y-2 text-sm text-gray-800">
-            {otherStepBlockers.map((b) => {
-              const targetPage = pageForBlocker(b.code);
-              return (
-                <li key={b.code} className="flex items-start gap-2">
-                  <span aria-hidden="true" className="mt-0.5 text-brand">&#9675;</span>
-                  <span>
-                    <span>{b.message}</span>
-                    {targetPage !== null && goToPage && (
-                      <button
-                        type="button"
-                        onClick={() => goToPage(targetPage)}
-                        className="ml-2 align-baseline text-xs font-semibold text-brand underline whitespace-nowrap"
-                      >
-                        Fix this &rarr;
-                      </button>
-                    )}
-		{b.code === 'JURISDICTION_RESOLUTION_FAILED' && onRetryJurisdiction && (
-                      <button
-                        type="button"
-                        onClick={onRetryJurisdiction}
-                        className="ml-2 align-baseline text-xs font-semibold text-brand underline whitespace-nowrap"
-                      >
-                        Try again
-                      </button>
-                    )}
-                    {b.code === 'PAYMENT_CONFIG_INVALID' && result.paymentErrors.length > 0 && (
-                      <ul className="mt-1 space-y-0.5 pl-5 list-disc text-gray-700">
-                        {result.paymentErrors.map((pe) => (
-                          <li key={pe.code}>{pe.message}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
-
-      <ReviewSummaryCards data={data} result={result} goToPage={goToPage} />
-
-      {!result.canProduce &&
-        (data.paymentMethods ?? []).includes('bank_deposit') &&
-        (data.bankDepositPaperInstrumentConfirmed !== true ||
-          data.bankBranchWithinFiveMilesAttested !== true) && (
-          <div className="space-y-3 rounded-lg border border-gray-200 px-5 py-4">
-            <p className="text-sm font-semibold text-gray-900">
-              Confirm these to finish the bank-deposit method
-            </p>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              These are the same confirmations from the payment step. Check them here
-              to clear the items above without going back.
-            </p>
-            <BankDepositAttestations data={data} update={update} />
-          </div>
-        )}
-
         </>
       )}
 
-      {renderError && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
-          {renderError}
+      {noticePrepared && !artifactReady && (
+        <div
+          data-testid="created-artifact-unavailable"
+          role="alert"
+          className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900"
+        >
+          The exact notice created earlier is not available in this browser draft. Review &amp;
+          Confirm and Create Notice again before downloading or printing.
         </div>
       )}
+      {renderError && (<div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">{renderError}</div>)}
+      {createError && (<div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">{createError}</div>)}
 
-      {noticePrepared && docHtml && renderedModel && (
-        <div className="rounded-lg border border-rule bg-white px-5 py-4">
-          <h3 className="font-semibold text-gray-900">Download / Print Notice</h3>
-          <p className="mt-1 text-sm text-gray-600 leading-relaxed">
-            Use the existing notice documents below whenever you need another copy.
-          </p>
-        </div>
-      )}
-
-      {docHtml && renderedModel &&
-        (data.cachedResolverVerdict?.verdict === 'confirmed_la' &&
-        data.cachedResolverVerdict.addressKey === normalizeAddressKey(data.propertyAddress) &&
-        isLaProducePhase2dWired() &&
-        isLaProductionUnblocked() ? (
-          // Phase 2D: LA notices produce through the overlay panel (server-gated RTC
-          // attach + LAHD prompt). Replaces the normal print options so the notice
-          // can never be printed without the Right-to-Counsel attachment.
-          <LaProducePanel
-            model={renderedModel}
-            data={data}
-            noticeDocHtml={docHtml}
-            baseName={buildNoticePdfFilename({
-              tenantNames: data.tenantNames,
-              streetAddress: data.propertyAddress,
-              unit: data.propertyUnit,
-            })}
-            verdictSource={data.cachedResolverVerdict?.source ?? 'live_resolver'}
-            onProduced={onProduced}
-            onAudit={(f) => update({ laProduceAudit: f })}
-          />
-        ) : (
-          <PacketPrintOptions
-            model={renderedModel}
-            data={data}
-            noticeDocHtml={docHtml}
-            onProduced={onProduced}
-            disabledKeys={
-              result.canProduce ? ['serviceLog'] : ['tenant', 'owner', 'serviceLog', 'full']
-            }
-          />
-        ))}
+      {laProduceRequired && displayModel ? (
+        <LaProducePanel
+          model={displayModel}
+          data={displayData}
+          baseName={buildNoticePdfFilename({ tenantNames: displayData.tenantNames, streetAddress: displayData.propertyAddress, unit: displayData.propertyUnit })}
+          verdictSource={displayData.cachedResolverVerdict?.source ?? 'live_resolver'}
+          noticePrepared={artifactReady}
+          canCreate={approvalCurrent && result.canProduce}
+          onCreateNotice={createNotice}
+          onAudit={(f) => update({ laProduceAudit: f })}
+        />
+      ) : !laProduceRequired && artifactReady && artifactModel && artifactData ? (
+        <>
+          <div className="rounded-lg border border-rule bg-white px-5 py-4">
+            <h3 className="font-semibold text-gray-900">Download / Print Notice</h3>
+            <p className="mt-1 text-sm text-gray-600 leading-relaxed">Use the existing notice documents below whenever you need another copy.</p>
+          </div>
+          <PacketPrintOptions model={artifactModel} data={artifactData} disabledKeys={['serviceLog']} />
+        </>
+      ) : !laProduceRequired && renderedModel && docHtml ? (
+        <section className="rounded-lg border border-rule bg-white px-5 py-4">
+          <h3 className="font-semibold text-gray-900">Create Notice</h3>
+          <p className="mt-1 text-sm text-gray-600 leading-relaxed">Create the notice after the final confirmation is current. Download and print become available after creation.</p>
+          <button
+            type="button"
+            data-testid="create-notice-button"
+            onClick={createNotice}
+            disabled={!approvalCurrent || !result.canProduce}
+            className="mt-4 inline-flex min-h-[48px] items-center rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-bar disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Create Notice
+          </button>
+        </section>
+      ) : null}
 
       {/* C6: posture line (locked) on the produce screen. */}
       {docHtml && renderedModel && (
         <div className="rounded-lg border border-rule bg-white px-5 py-4">
-          <p className="text-xs text-gray-500 leading-relaxed">
-            OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.
-          </p>
+          <p className="text-xs text-gray-500 leading-relaxed">OwnerPilot AI is not a law firm and does not provide legal advice. This is a broker-prepared workflow produced under California Licensed Real Estate Broker supervision. For legal matters specific to your situation, consult a California licensed attorney of your choosing.</p>
         </div>
       )}
 
-      {/* R2b: actual service remains a separate later customer-reported task. */}
       {noticePrepared && (
-        <section
-          data-testid="record-service-later-task"
-          className="rounded-xl border border-rule bg-white px-5 py-5 shadow-sm"
-        >
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 mb-2">
-            Later task
-          </p>
+        <section data-testid="record-service-later-task" className="rounded-xl border border-rule bg-white px-5 py-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 mb-2">Later task</p>
           <h3 className="font-semibold text-gray-900 mb-1">Record service later</h3>
-          <p className="text-sm text-gray-700 leading-relaxed mb-3">
-            Service has not been recorded. After someone actually serves the notice,
-            open the separate Serve &amp; Track task and record what happened.
-          </p>
-          <a
-            href="/notice/3-day/serve"
-            className="inline-flex text-sm font-semibold text-brand underline"
-          >
-            Record service later &rarr;
-          </a>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3">Service has not been recorded. After someone actually serves the notice, open the separate Serve &amp; Track task and record what happened.</p>
+          <a href="/notice/3-day/serve" className="inline-flex text-sm font-semibold text-brand underline">Record service later &rarr;</a>
         </section>
       )}
     </div>

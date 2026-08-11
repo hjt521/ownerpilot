@@ -22,23 +22,18 @@ import { buildNoticePdfFilename } from '@/lib/produce/noticePdfFilename';
 
 /**
  * PacketPrintOptions — RiskPath(TM) Connected Forms Phase 1 print screen.
- * Renders on Review once the produce gate passes: the notice preview (moved
- * verbatim from the previous Download PDF block) plus the four packet print
- * cards and the Full Packet confirmation modal (copy from packetCopy, spec
- * verbatim). Printing any document fires onProduced (the B1 stale-guard
- * snapshot in the parent).
+ * Artifact-use surface after a successful Create Notice action. The four packet
+ * cards and Full Packet confirmation modal retain their existing builders/copy.
+ * Printing never establishes production authority; Create captures the existing
+ * ProductionSnapshot before this component becomes available.
  */
 export function PacketPrintOptions({
   model,
   data,
-  noticeDocHtml,
-  onProduced,
   disabledKeys,
 }: {
   model: NoticeModel;
   data: NoticeFlowData;
-  noticeDocHtml: string;
-  onProduced: () => void;
   /** Card keys to render grayed/non-clickable (e.g. 'serviceLog' before serving). */
   disabledKeys?: string[];
 }) {
@@ -81,7 +76,6 @@ export function PacketPrintOptions({
       setPacketError('This packet could not be generated. Please review your entries.');
       return;
     }
-    onProduced();
     openPrintable(html, pdfFilename);
   };
 
@@ -162,17 +156,6 @@ export function PacketPrintOptions({
         </div>
       )}
 
-      {/* Notice preview (moved verbatim from the previous Download PDF block) */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Notice preview</h2>
-        <p className="text-xs text-gray-500 leading-relaxed">
-          This is a broker-prepared draft for your review. Sign it in ink before
-          serving, and serve it on the date shown. The proof of service is
-          completed after you serve — not before.
-        </p>
-        <ScaledNoticePreview html={noticeDocHtml} />
-      </div>
-
       {/* Full Packet confirmation modal */}
       {showFullModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -212,7 +195,7 @@ export function PacketPrintOptions({
 const PREVIEW_PAGE_WIDTH_PX = 816;
 const PREVIEW_VIEWPORT_HEIGHT_PX = 640;
 
-function ScaledNoticePreview({ html }: { html: string }) {
+export function NoticePreview({ html }: { html: string }) {
   const measureRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
 

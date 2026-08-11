@@ -2,6 +2,7 @@ import { evaluateCanProduceV4 } from './gates';
 import type { NoticeFlowData } from './noticeFlowState';
 import { normalizeAddressKey } from './jurisdictionVerdict';
 import { individualLandlord, entityLandlord } from './landlord.fixture';
+import { bindReviewApproval } from './reviewApproval';
 
 let passed = 0;
 let failed = 0;
@@ -57,7 +58,9 @@ function validV4(): NoticeFlowData {
     serviceDate: '2026-06-02',
     serviceMethod: 'personal',
   };
-  return setCaliforniaStatus(d, 'CONFIRMED_CALIFORNIA');
+  setCaliforniaStatus(d, 'CONFIRMED_CALIFORNIA');
+  Object.assign(d, bindReviewApproval(d, '2026-08-10T00:00:00.000Z'));
+  return d;
 }
 
 console.log('\n=== v4 produce gate ===\n');
@@ -101,6 +104,7 @@ console.log('4. Bank-deposit (row 4: mail + bank): 5-mile production gate (rulin
   check('5-mile surfaced as intake warning too', r1.paymentWarnings.some((w) => w.code === 'BANK_5_MILE_UNVERIFIED'));
 
   bank.bankBranchWithinFiveMilesAttested = true;
+  Object.assign(bank, bindReviewApproval(bank, '2026-08-10T00:01:00.000Z'));
   const r2 = evaluateCanProduceV4(bank);
   check('bank with attestation clears bank gates', !has(r2, 'BANK_5_MILE_NOT_VERIFIED') && !has(r2, 'PAYMENT_CONFIG_INVALID'),
     `got: ${codes(r2).join(', ')}`);
@@ -145,6 +149,7 @@ console.log('8. Entity landlord: production OPEN (Defect #3 countersigned 2026-0
 {
   const e = validV4();
   Object.assign(e, entityLandlord('officer_member_trustee')); // entity + signerTitle 'Managing Member'
+  Object.assign(e, bindReviewApproval(e, '2026-08-10T00:02:00.000Z'));
   const r = evaluateCanProduceV4(e);
   check('entity can produce now', r.canProduce === true, `blockers: ${codes(r).join(', ')}`);
   check('ENTITY_LANDLORD_NOT_SUPPORTED no longer fires', !has(r, 'ENTITY_LANDLORD_NOT_SUPPORTED'));
@@ -190,6 +195,7 @@ console.log('12. Broker/agent signer without authority evidence blocks; with evi
   check('broker w/o authority blocks', has(evaluateCanProduceV4(d), 'AUTHORITY_EVIDENCE_MISSING'));
 
   d.authorityEvidenceOnFile = true;
+  Object.assign(d, bindReviewApproval(d, '2026-08-10T00:03:00.000Z'));
   const r = evaluateCanProduceV4(d);
   check('broker w/ authority can produce', r.canProduce === true, codes(r).join(', '));
 }

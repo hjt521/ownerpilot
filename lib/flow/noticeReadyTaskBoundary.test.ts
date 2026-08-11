@@ -6,6 +6,7 @@ import {
   evaluateStaleness,
   getSuccessfulAttempt,
 } from './escalation';
+import { bindReviewApproval } from './reviewApproval';
 
 let passed = 0;
 function ok(condition: unknown, message: string) {
@@ -18,6 +19,7 @@ function equal<T>(actual: T, expected: T, message: string) {
 }
 
 const noticeFlow = readFileSync('components/notice-flow.tsx', 'utf8');
+const packetPrint = readFileSync('components/packet-print-options.tsx', 'utf8');
 const noticeSummary = readFileSync('components/notice-summary-panel.tsx', 'utf8');
 const serveTrack = readFileSync('components/serve-track.tsx', 'utf8');
 const lockedPlannedDateCopy = readFileSync('lib/flow/intendedServiceDateCopy.ts', 'utf8');
@@ -51,9 +53,55 @@ ok(
   !noticeSummary.includes('k="Intended Service Date"'),
   'notice summary no longer uses the old intended-service field label',
 );
+
+ok(
+  !noticeFlow.includes('checked={data.baseRentOnlyConfirmed === true}'),
+  'Rent Owed no longer asks for the duplicate base-rent checkbox',
+);
+ok(
+  noticeFlow.includes('Enter base rent only — not late fees, utilities, or other charges.'),
+  'base-rent explanatory instruction remains visible',
+);
+ok(
+  noticeFlow.includes('By producing this notice, I confirm: the amounts entered are base rent only'),
+  'final C6 substantive testimony remains present',
+);
+ok(
+  noticeFlow.includes('data-testid="create-notice-button"'),
+  'Review exposes an explicit Create Notice boundary',
+);
+ok(
+  noticeFlow.includes('Create Notice'),
+  'Create Notice action is customer-visible',
+);
+
+// UX2 hierarchy lock: detailed facts and preview precede the one final C6, which precedes Create.
+const reviewStepStart = noticeFlow.indexOf('function ReviewStep({');
+const reviewStepEnd = noticeFlow.indexOf('// --- Step 7:', reviewStepStart);
+ok(reviewStepStart >= 0 && reviewStepEnd > reviewStepStart, 'ReviewStep source is inspectable');
+const reviewStepSource = noticeFlow.slice(reviewStepStart, reviewStepEnd);
+const reviewSummaryIndex = reviewStepSource.indexOf('<ReviewSummaryCards data={data} result={result} goToPage={goToPage} />');
+const noticePreviewIndex = reviewStepSource.indexOf('<h2 className="text-lg font-semibold text-gray-900">Notice preview</h2>');
+const c6LabelIndex = reviewStepSource.indexOf('<p className="text-sm font-semibold text-green-900">Review &amp; Confirm</p>');
+const createNoticeIndex = reviewStepSource.indexOf('data-testid="create-notice-button"');
+ok(reviewSummaryIndex >= 0, 'Review Summary remains in the main Review flow');
+ok(noticePreviewIndex > reviewSummaryIndex, 'Notice Preview appears after Review Summary');
+ok(c6LabelIndex > noticePreviewIndex, 'C6 appears only after Review Summary and Notice Preview');
+ok(createNoticeIndex > c6LabelIndex, 'Create Notice appears after the final C6 control');
+equal(
+  (reviewStepSource.match(/checked=\{approvalCurrent\}/g) ?? []).length,
+  1,
+  'exactly one consequential C6 checkbox remains',
+);
+equal(
+  (reviewStepSource.match(/By producing this notice, I confirm: the amounts entered are base rent only/g) ?? []).length,
+  1,
+  'C6 substantive testimony is present exactly once',
+);
+
 ok(
   noticeFlow.includes('Your 3-Day Notice is ready'),
-  'successful production has a standalone Notice Ready heading',
+  'successful Create has a standalone Notice Ready heading',
 );
 ok(noticeFlow.includes('PREPARED · NOT SERVED'), 'Notice Ready is explicitly not served');
 ok(
@@ -67,10 +115,6 @@ ok(
 ok(
   noticeFlow.includes('href="/notice/3-day/serve"'),
   'later service task uses the existing service route',
-);
-ok(
-  noticeFlow.includes('const noticePrepared = !!data.productionSnapshot && !evaluateStaleness(data).reason;'),
-  'Notice Ready derives from successful production and existing staleness logic',
 );
 ok(
   !noticeFlow.includes('served && `Served ${served}`'),
@@ -110,7 +154,7 @@ ok(
 );
 ok(
   serveTrack.includes('result.canProduce && !!data.productionSnapshot'),
-  'separate service task requires an actually prepared notice',
+  'separate service task retains the existing ProductionSnapshot readiness contract',
 );
 ok(
   serveTrack.includes('record the actual service'),
@@ -121,33 +165,52 @@ ok(
   'locked planned/intended-date broker copy remains present and protected',
 );
 
-const onProducedStart = noticeFlow.indexOf('const onProduced = () => {');
-const onProducedEnd = noticeFlow.indexOf('// Slice E:', onProducedStart);
-ok(onProducedStart >= 0 && onProducedEnd > onProducedStart, 'production callback is inspectable');
-const onProducedBody = noticeFlow.slice(onProducedStart, onProducedEnd);
-ok(onProducedBody.includes('productionSnapshot'), 'production records only the existing production snapshot');
-ok(!onProducedBody.includes('serviceAttempts'), 'production callback does not create a service attempt');
+const createStart = noticeFlow.indexOf('const createNotice = () => {');
+const createEnd = noticeFlow.indexOf('// Slice E:', createStart);
+ok(createStart >= 0 && createEnd > createStart, 'Create callback is inspectable');
+const createBody = noticeFlow.slice(createStart, createEnd);
+ok(createBody.includes('freezeReviewCreateInput(data)'), 'Create freezes the current create input');
+ok(createBody.includes('hasCurrentReviewApproval(frozen)'), 'Create requires current C6 approval for frozen input');
+ok(createBody.includes('evaluateCanProduceV4(frozen)'), 'Create performs a fresh final gate on frozen input');
+ok(createBody.includes('data: frozen'), 'renderer receives the exact frozen create input');
+ok(createBody.includes('captureProductionSnapshot(frozen)'), 'ProductionSnapshot is captured from the same frozen input');
+ok(!createBody.includes('preparedNoticeGeneration'), 'Create does not redefine approval identity as a staleness/prepared contract');
+ok(!createBody.includes('serviceAttempts'), 'Create does not create a service attempt');
+ok(!createBody.includes('successfulServiceAttemptId'), 'Create does not set successful service state');
+
 ok(
-  !onProducedBody.includes('successfulServiceAttemptId'),
-  'production callback does not set successful service state',
+  !packetPrint.includes('onProduced: () => void'),
+  'PacketPrintOptions no longer accepts a production-authority callback',
+);
+ok(
+  !packetPrint.includes('onProduced();'),
+  'print/download does not record production authority',
+);
+ok(
+  packetPrint.includes('export function NoticePreview'),
+  'informational notice preview is reusable independently of print authority',
+);
+ok(
+  packetPrint.includes("const w = window.open('', '_blank');"),
+  'browser popup remains an artifact-use concern after Create',
 );
 
-const readyStart = noticeFlow.indexOf('function NoticeReadyState()');
-const readyEnd = noticeFlow.indexOf('function ReviewStep(', readyStart);
-ok(readyStart >= 0 && readyEnd > readyStart, 'Notice Ready component is inspectable');
-const readyBody = noticeFlow.slice(readyStart, readyEnd);
-ok(!readyBody.includes('ReServePanel'), 'service attempt form is not part of Notice Ready');
-ok(!readyBody.includes('ServiceStep'), 'service UI does not visually continue under Notice Ready');
-ok(!readyBody.includes('serviceAttempts'), 'Notice Ready does not mutate or expose service-attempt state');
-
 const base = createFlowState().data;
-const planned = { ...base, serviceDate: '2026-08-12' };
-const produced = {
-  ...planned,
-  productionSnapshot: captureProductionSnapshot(planned),
+const planned: typeof base = {
+  ...base,
+  serviceDate: '2026-08-12',
+  paymentMethods: ['by_mail'],
 };
-equal((produced.serviceAttempts ?? []).length, 0, 'planned date plus production adds no service attempts');
-equal(produced.successfulServiceAttemptId, undefined, 'production adds no successful service id');
+const approved = {
+  ...planned,
+  ...bindReviewApproval(planned, '2026-08-10T12:00:00.000Z'),
+};
+const produced = {
+  ...approved,
+  productionSnapshot: captureProductionSnapshot(approved),
+};
+equal((produced.serviceAttempts ?? []).length, 0, 'planned date plus Create adds no service attempts');
+equal(produced.successfulServiceAttemptId, undefined, 'Create adds no successful service id');
 equal(getSuccessfulAttempt(produced), undefined, 'planned date alone is never successful service');
 equal(evaluateStaleness(produced).reason, null, 'freshly produced unchanged notice is not stale');
 
@@ -164,6 +227,11 @@ equal(
   failedOnly.successfulServiceAttemptId,
   undefined,
   'failed service attempt does not set successful service state',
+);
+equal(
+  evaluateStaleness(failedOnly).reason,
+  null,
+  'later failed service activity preserves existing staleness semantics',
 );
 
 const successfulAttempt: ServiceAttempt = {
@@ -184,8 +252,20 @@ const served = {
   successfulServiceAttemptId: successfulAttempt.id,
 };
 equal(getSuccessfulAttempt(served)?.id, 'success-1', 'actual successful event drives served state');
+equal(
+  evaluateStaleness(served).reason,
+  null,
+  'actual service state remains a later task and preserves existing staleness semantics',
+);
+
+const changedServiceDate = { ...produced, serviceDate: '2026-08-14' };
+equal(
+  evaluateStaleness(changedServiceDate).reason,
+  null,
+  'serviceDate change remains excluded from the existing ProductionSnapshot staleness contract',
+);
 
 const changed = { ...produced, propertyAddress: '200 Changed Ave, Los Angeles, CA 90001' };
-ok(!!evaluateStaleness(changed).reason, 'changed notice fact preserves existing staleness invalidation');
+ok(!!evaluateStaleness(changed).reason, 'changed snapshotted notice fact preserves existing staleness invalidation');
 
-console.log(`${passed} Notice Ready task-boundary assertions passed`);
+console.log(`${passed} Notice Ready / Create-boundary assertions passed`);

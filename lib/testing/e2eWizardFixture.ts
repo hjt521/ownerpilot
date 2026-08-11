@@ -13,6 +13,7 @@
 // owner, tenant, property, email, or phone number (condition #5).
 import type { NoticeFlowData } from '../flow/noticeFlowState';
 import { individualLandlord } from '../flow/landlord.fixture';
+import { bindReviewApproval } from '../flow/reviewApproval';
 
 /**
  * A fully valid, produce-ready NoticeFlowData for a synthetic, non-LA California address.
@@ -20,7 +21,7 @@ import { individualLandlord } from '../flow/landlord.fixture';
  * introduce a second, drifting "valid config" fixture.
  */
 export function e2eCharacterizationWizardData(): NoticeFlowData {
-  return {
+  const data: NoticeFlowData = {
     dispute: { tenantFiledComplaint: 'no', tenantWrittenWithholding: 'no', tenantBankruptcy: 'no' },
     propertyAddress: '442 Fresno St, Fresno, CA 93701',
     propertyCounty: 'Fresno',
@@ -39,4 +40,6 @@ export function e2eCharacterizationWizardData(): NoticeFlowData {
     serviceDate: '2026-06-02',
     serviceMethod: 'personal',
   };
+  Object.assign(data, bindReviewApproval(data, '2026-08-10T00:00:00.000Z'));
+  return data;
 }

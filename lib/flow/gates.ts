@@ -38,6 +38,7 @@ import {
   GEOCODING_LIVE,
 } from './templateVersion';
 import { getSuccessfulAttempt, deriveComplianceInputs } from './escalation';
+import { hasCurrentReviewApproval } from './reviewApproval';
 
 // --- 1. Dispute hard-block -------------------------------------------------
 
@@ -312,7 +313,7 @@ export function evaluateCanProduceV4(data: NoticeFlowData): CanProduceResultV4 {
   if (!data.rentPeriods || data.rentPeriods.length === 0) {
     blockers.push({ code: 'NO_RENT_PERIODS', message: 'At least one rent period (base rent) is required.' });
   }
-  if (data.produceAttestationConfirmed !== true) {
+  if (!hasCurrentReviewApproval(data)) {
     blockers.push({
       code: 'PRODUCE_ATTESTATION_MISSING',
       message:

@@ -29,7 +29,11 @@ export const DRAFT_KEY = 'op.noticeDraft.v1';
 // field-level migration. A draft is cheap to re-enter; an audit log polluted
 // with refresh-driven duplicate resolves is not. In-flight drafts are lost
 // once, at the 4d deploy (the "freeze-loss on deploy" note in the runbook).
-export const DRAFT_VERSION = 3;
+// Bumped 3 -> 4 with UX2 exact review/create approval binding. Pre-UX2
+// drafts may contain a persisted bare produceAttestationConfirmed=true with no
+// generation identity; discard them rather than allow that stale Boolean to
+// cross the new fail-closed approval boundary.
+export const DRAFT_VERSION = 4;
 
 export interface DraftEnvelope {
   v: number;
