@@ -1,0 +1,108 @@
+name: UX2 Review Hierarchy Workbench
+
+on:
+  push:
+    branches:
+      - fix/nonpayment-one-review-confirm
+    paths:
+      - .github/workflows/ux2-review-hierarchy-workbench.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/nonpayment-one-review-confirm
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Apply bounded Review hierarchy correction
+        run: python3 scripts/ux2_review_hierarchy_fix.py
+
+      - name: Remove temporary workbench files
+        run: |
+          rm .github/workflows/ux2-review-hierarchy-workbench.yml
+          rm scripts/ux2_review_hierarchy_fix.py
+
+      - name: Pre-test diff whitespace
+        run: git diff --check
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Focused Review hierarchy regression
+        run: npx tsx lib/flow/noticeReadyTaskBoundary.test.ts
+
+      - name: Review approval binding
+        run: npx tsx lib/flow/reviewApproval.test.ts
+
+      - name: Created artifact integrity
+        run: npx tsx lib/flow/createdNoticeArtifact.test.ts
+
+      - name: Draft persistence
+        run: npx tsx lib/flow/persistence.test.ts
+
+      - name: Existing staleness
+        run: npx tsx lib/flow/escalation.test.ts
+
+      - name: Production gate
+        run: npx tsx lib/flow/gates.v4.test.ts
+
+      - name: Review produce chat regression
+        run: npx tsx lib/chat/reviewProduce.test.ts
+
+      - name: PR 361 source health regression
+        run: npx tsx lib/jurisdiction/geocode/pathSpecificSourceHealth.test.ts
+
+      - name: Full repository tests
+        run: npm test
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: Edge function typecheck
+        run: npm run ci:typecheck-edge
+
+      - name: Locked prose
+        run: npm run ci:verify-locked-prose
+
+      - name: Banned terms
+        run: npm run ci:verify-banned-terms
+
+      - name: Attorney attribution guard
+        run: npm run ci:check-attorney-attribution
+
+      - name: Classifier lock
+        run: npm run ci:verify-classifier-lock
+
+      - name: Geocode failure event lock
+        run: npm run ci:verify-geocode-failure-event
+
+      - name: Fetch binding lock
+        run: npm run ci:verify-fetch-binding
+
+      - name: Parcel health core sync
+        run: npm run ci:verify-parcel-health-core-sync
+
+      - name: Post-test diff whitespace
+        run: git diff --check
+
+      - name: Commit verified hierarchy correction
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name ownerpilot-workbench
+          git config user.email actions@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git status --short
+          git commit -m "fix(nonpayment): put review before final confirmation"
+          git push origin HEAD:fix/nonpayment-one-review-confirm
