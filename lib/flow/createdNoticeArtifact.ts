@@ -12,6 +12,8 @@ import {
  * Capture the exact successful Create identity for browser-local artifact use.
  * The caller supplies the compliance dates from the same final gate that fed
  * renderNotice and the producedAt timestamp from the same ProductionSnapshot.
+ * This envelope is artifact-use identity only; it grants neither Create
+ * approval nor post-production staleness authority.
  */
 export function captureCreatedNoticeArtifact(
   data: NoticeFlowData,
