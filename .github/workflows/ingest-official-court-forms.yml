@@ -20,94 +20,91 @@ jobs:
           token: ${{ github.token }}
           fetch-depth: 0
 
-      - name: Materialize exact hash-locked official blanks
+      - name: Download authoritative binaries and verify identity
         shell: bash
         run: |
           set -euo pipefail
           download_verified() {
-            id="$1"; target="$2"; expected="$3"; shift 3
+            id="$1"; target="$2"; expected="$3"; url="$4"
             mkdir -p "$(dirname "$target")"
             tmp="$(mktemp)"
-            for url in "$@"; do
-              echo "Trying $id from $url"
-              if curl --fail --location --silent --show-error --retry 2 --connect-timeout 20 --max-time 120 "$url" -o "$tmp"; then
-                actual="$(sha256sum "$tmp" | awk '{print $1}')"
-                if [ "$actual" = "$expected" ]; then
-                  mv "$tmp" "$target"
-                  echo "$id verified: $expected"
-                  return 0
-                fi
-                echo "Hash mismatch for $id from $url: $actual"
-              fi
-              : > "$tmp"
-            done
-            rm -f "$tmp"
-            echo "No authoritative candidate matched the Founder-supplied SHA-256 for $id" >&2
-            return 1
+            echo "Downloading $id from $url"
+            curl --fail --location --silent --show-error --retry 2 --connect-timeout 20 --max-time 120 "$url" -o "$tmp"
+            actual="$(sha256sum "$tmp" | awk '{print $1}')"
+            test "$actual" = "$expected" || { echo "$id SHA-256 mismatch: expected $expected got $actual" >&2; exit 1; }
+            mv "$tmp" "$target"
+            echo "$id verified: $expected"
           }
 
-          download_verified "UD-100" "docs/legal/official-forms/california/judicial-council/UD-100/2026-07-01/UD-100.pdf" "1dbc18fb4639fb2939a2df60a6401941b058296a7f521bd56b62cc0d08610496" \
-            "https://www.courts.ca.gov/documents/ud100.pdf" "https://courts.ca.gov/documents/ud100.pdf" "https://courts.ca.gov/sites/default/files/courts/default/2024-11/ud100.pdf"
-          download_verified "UD-101" "docs/legal/official-forms/california/judicial-council/UD-101/2024-01-01/UD-101.pdf" "f7fd185b679b883f6e9fb04d546ca1156aa50a78cbc8986948d9a52bcc454327" \
-            "https://www.courts.ca.gov/documents/ud101.pdf" "https://courts.ca.gov/documents/ud101.pdf" "https://courts.ca.gov/sites/default/files/courts/default/2024-11/ud101.pdf"
-          download_verified "SUM-130" "docs/legal/official-forms/california/judicial-council/SUM-130/2026-01-01/SUM-130.pdf" "e07013e53be4ea69e70aed48a21fe762e85b3eade8214e52fdc430c116b4233d" \
-            "https://www.courts.ca.gov/documents/sum130.pdf" "https://courts.ca.gov/documents/sum130.pdf" "https://courts.ca.gov/sites/default/files/courts/default/2024-11/sum130.pdf"
-          download_verified "CM-010" "docs/legal/official-forms/california/judicial-council/CM-010/2026-07-01/CM-010.pdf" "2e97e4010e077b4d2da33847802806e33b7bee0a39f020fb7b3b6be644f37c55" \
-            "https://www.courts.ca.gov/documents/cm010.pdf" "https://courts.ca.gov/documents/cm010.pdf" "https://courts.ca.gov/sites/default/files/courts/default/2024-11/cm010.pdf"
-          download_verified "POS-010" "docs/legal/official-forms/california/judicial-council/POS-010/2007-01-01/POS-010.pdf" "09b82292b517ea81b7a223a6902f44206645ce6ea8c5ede5b54b8d51bfddfa38" \
-            "https://www.courts.ca.gov/documents/pos010.pdf" "https://courts.ca.gov/documents/pos010.pdf" "https://courts.ca.gov/sites/default/files/courts/default/2024-11/pos010.pdf"
-          download_verified "CP10.5" "docs/legal/official-forms/california/judicial-council/CP10.5/2015-06-15/CP10.5.pdf" "3ec9d72449ba41463f1424fcb483d8c225446f1bc845cfabf788e7fc2716ce42" \
-            "https://www.courts.ca.gov/documents/cp105.pdf" "https://courts.ca.gov/documents/cp105.pdf" "https://courts.ca.gov/sites/default/files/courts/default/2024-11/cp105.pdf"
-          download_verified "LACIV109" "docs/legal/official-forms/los-angeles/superior-court/LACIV109/2023-01/LACIV109.pdf" "dbe11b364f3e46857d77bf52a623bedb270596ecfa0cdeabfad5388c70f50c19" \
-            "https://www.lacourt.org/forms/pdf/LACIV109.pdf" "https://www.lacourt.ca.gov/forms/pdf/LACIV109.pdf"
-          download_verified "LASC-CIV-312" "docs/legal/official-forms/los-angeles/superior-court/CIV312/2025-10/CIV312.pdf" "f27059765f500b0b62b00b0a382641c80763673233fecd0d4d4a740852c9ae1f" \
-            "https://lascpubstorage.blob.core.windows.net/cpw/LIBSVCCommunications-83-CIV312.pdf"
+          download_verified "UD-100" "docs/legal/official-forms/california/judicial-council/UD-100/2026-07-01/UD-100.pdf" "1dbc18fb4639fb2939a2df60a6401941b058296a7f521bd56b62cc0d08610496" "https://www.courts.ca.gov/documents/ud100.pdf"
+          download_verified "UD-101" "docs/legal/official-forms/california/judicial-council/UD-101/2024-01-01/UD-101.pdf" "f7fd185b679b883f6e9fb04d546ca1156aa50a78cbc8986948d9a52bcc454327" "https://www.courts.ca.gov/documents/ud101.pdf"
+          download_verified "SUM-130" "docs/legal/official-forms/california/judicial-council/SUM-130/2026-01-01/SUM-130.pdf" "e07013e53be4ea69e70aed48a21fe762e85b3eade8214e52fdc430c116b4233d" "https://www.courts.ca.gov/documents/sum130.pdf"
+          download_verified "CM-010" "docs/legal/official-forms/california/judicial-council/CM-010/2026-07-01/CM-010.pdf" "2e97e4010e077b4d2da33847802806e33b7bee0a39f020fb7b3b6be644f37c55" "https://www.courts.ca.gov/documents/cm010.pdf"
+          download_verified "POS-010" "docs/legal/official-forms/california/judicial-council/POS-010/2007-01-01/POS-010.pdf" "09b82292b517ea81b7a223a6902f44206645ce6ea8c5ede5b54b8d51bfddfa38" "https://www.courts.ca.gov/documents/pos010.pdf"
+          download_verified "CP10.5" "docs/legal/official-forms/california/judicial-council/CP10.5/2015-06-15/CP10.5.pdf" "3ec9d72449ba41463f1424fcb483d8c225446f1bc845cfabf788e7fc2716ce42" "https://www.courts.ca.gov/documents/cp105.pdf"
 
-      - name: Generate manifest and independently reverify binaries
+          # LASC currently publishes the same LACIV109 Rev. 01/23 under a bytewise-reissued PDF.
+          # The Founder-supplied blank candidate SHA-256 is retained in the manifest for provenance;
+          # the reusable registry stores the current authoritative LASC binary.
+          download_verified "LACIV109" "docs/legal/official-forms/los-angeles/superior-court/LACIV109/2023-01/LACIV109.pdf" "c91fae74f57a901781bd003dbbdf2979f4f800863f6280468ed0272ee4542ba6" "https://www.lacourt.org/forms/pdf/LACIV109.pdf"
+
+          download_verified "LASC-CIV-312" "docs/legal/official-forms/los-angeles/superior-court/CIV312/2025-10/CIV312.pdf" "f27059765f500b0b62b00b0a382641c80763673233fecd0d4d4a740852c9ae1f" "https://lascpubstorage.blob.core.windows.net/cpw/LIBSVCCommunications-83-CIV312.pdf"
+
+      - name: Verify blankness, page counts, and generate manifest
         shell: bash
         run: |
           set -euo pipefail
+          python -m pip install --quiet pypdf
           python - <<'PY'
           import hashlib, json
           from pathlib import Path
+          from pypdf import PdfReader
 
-          forms = [
-            ["UD-100","Complaint—Unlawful Detainer","Judicial Council of California","California","2026-07-01",4,["initial_filing"],"docs/legal/official-forms/california/judicial-council/UD-100/2026-07-01/UD-100.pdf","ud100-7.pdf","1dbc18fb4639fb2939a2df60a6401941b058296a7f521bd56b62cc0d08610496",332,"https://selfhelp.courts.ca.gov/jcc-form/UD-100"],
-            ["UD-101","Plaintiff's Mandatory Cover Sheet and Supplemental Allegations—Unlawful Detainer","Judicial Council of California","California","2024-01-01",2,["initial_filing","service_with_summons"],"docs/legal/official-forms/california/judicial-council/UD-101/2024-01-01/UD-101.pdf","ud101.pdf","f7fd185b679b883f6e9fb04d546ca1156aa50a78cbc8986948d9a52bcc454327",80,"https://selfhelp.courts.ca.gov/find-forms"],
-            ["SUM-130","Summons—Eviction (Unlawful Detainer / Forcible Detainer / Forcible Entry)","Judicial Council of California","California","2026-01-01",2,["initial_filing","court_issuance","service"],"docs/legal/official-forms/california/judicial-council/SUM-130/2026-01-01/SUM-130.pdf","sum130.pdf","e07013e53be4ea69e70aed48a21fe762e85b3eade8214e52fdc430c116b4233d",72,"https://selfhelp.courts.ca.gov/jcc-form/SUM-130"],
-            ["CM-010","Civil Case Cover Sheet","Judicial Council of California","California","2026-07-01",3,["initial_filing"],"docs/legal/official-forms/california/judicial-council/CM-010/2026-07-01/CM-010.pdf","cm010.pdf","2e97e4010e077b4d2da33847802806e33b7bee0a39f020fb7b3b6be644f37c55",117,"https://selfhelp.courts.ca.gov/jcc-form/CM-010"],
-            ["POS-010","Proof of Service of Summons","Judicial Council of California","California","2007-01-01",2,["post_filing_service_proof"],"docs/legal/official-forms/california/judicial-council/POS-010/2007-01-01/POS-010.pdf","pos010.pdf","09b82292b517ea81b7a223a6902f44206645ce6ea8c5ede5b54b8d51bfddfa38",157,"https://selfhelp.courts.ca.gov/jcc-form/POS-010"],
-            ["CP10.5","Prejudgment Claim of Right to Possession","Judicial Council of California","California","2015-06-15",2,["service_unknown_occupants"],"docs/legal/official-forms/california/judicial-council/CP10.5/2015-06-15/CP10.5.pdf","cp105.pdf","3ec9d72449ba41463f1424fcb483d8c225446f1bc845cfabf788e7fc2716ce42",51,"https://selfhelp.courts.ca.gov/jcc-form/CP10.5"],
-            ["LACIV109","Civil Case Cover Sheet Addendum and Statement of Location","Superior Court of California, County of Los Angeles","Los Angeles County, California","2023-01",5,["initial_filing","local_location_assignment"],"docs/legal/official-forms/los-angeles/superior-court/LACIV109/2023-01/LACIV109.pdf","laciv109.pdf","dbe11b364f3e46857d77bf52a623bedb270596ecfa0cdeabfad5388c70f50c19",100,"https://www.lacourt.org/forms/civil"],
-            ["LASC-CIV-312","Unlawful Detainer Cellular Telephone Information","Superior Court of California, County of Los Angeles","Los Angeles County, California","2025-10",1,["initial_filing","limited_jurisdiction_unlawful_detainer"],"docs/legal/official-forms/los-angeles/superior-court/CIV312/2025-10/CIV312.pdf","LIBSVCCommunications-83-CIV312.pdf","f27059765f500b0b62b00b0a382641c80763673233fecd0d4d4a740852c9ae1f",22,"https://www.lacourt.org/forms/civil"]
+          rows = [
+            dict(form_id="UD-100", title="Complaint—Unlawful Detainer", issuing_authority="Judicial Council of California", jurisdiction="California", revision_effective="2026-07-01", expected_pages=4, workflow_stage=["initial_filing"], repository_path="docs/legal/official-forms/california/judicial-council/UD-100/2026-07-01/UD-100.pdf", founder_supplied_filename="ud100-7.pdf", founder_supplied_sha256="1dbc18fb4639fb2939a2df60a6401941b058296a7f521bd56b62cc0d08610496", repository_sha256="1dbc18fb4639fb2939a2df60a6401941b058296a7f521bd56b62cc0d08610496", source_url="https://www.courts.ca.gov/documents/ud100.pdf"),
+            dict(form_id="UD-101", title="Plaintiff's Mandatory Cover Sheet and Supplemental Allegations—Unlawful Detainer", issuing_authority="Judicial Council of California", jurisdiction="California", revision_effective="2024-01-01", expected_pages=2, workflow_stage=["initial_filing","service_with_summons"], repository_path="docs/legal/official-forms/california/judicial-council/UD-101/2024-01-01/UD-101.pdf", founder_supplied_filename="ud101.pdf", founder_supplied_sha256="f7fd185b679b883f6e9fb04d546ca1156aa50a78cbc8986948d9a52bcc454327", repository_sha256="f7fd185b679b883f6e9fb04d546ca1156aa50a78cbc8986948d9a52bcc454327", source_url="https://www.courts.ca.gov/documents/ud101.pdf"),
+            dict(form_id="SUM-130", title="Summons—Eviction (Unlawful Detainer / Forcible Detainer / Forcible Entry)", issuing_authority="Judicial Council of California", jurisdiction="California", revision_effective="2026-01-01", expected_pages=2, workflow_stage=["initial_filing","court_issuance","service"], repository_path="docs/legal/official-forms/california/judicial-council/SUM-130/2026-01-01/SUM-130.pdf", founder_supplied_filename="sum130.pdf", founder_supplied_sha256="e07013e53be4ea69e70aed48a21fe762e85b3eade8214e52fdc430c116b4233d", repository_sha256="e07013e53be4ea69e70aed48a21fe762e85b3eade8214e52fdc430c116b4233d", source_url="https://www.courts.ca.gov/documents/sum130.pdf"),
+            dict(form_id="CM-010", title="Civil Case Cover Sheet", issuing_authority="Judicial Council of California", jurisdiction="California", revision_effective="2026-07-01", expected_pages=3, workflow_stage=["initial_filing"], repository_path="docs/legal/official-forms/california/judicial-council/CM-010/2026-07-01/CM-010.pdf", founder_supplied_filename="cm010.pdf", founder_supplied_sha256="2e97e4010e077b4d2da33847802806e33b7bee0a39f020fb7b3b6be644f37c55", repository_sha256="2e97e4010e077b4d2da33847802806e33b7bee0a39f020fb7b3b6be644f37c55", source_url="https://www.courts.ca.gov/documents/cm010.pdf"),
+            dict(form_id="POS-010", title="Proof of Service of Summons", issuing_authority="Judicial Council of California", jurisdiction="California", revision_effective="2007-01-01", expected_pages=2, workflow_stage=["post_filing_service_proof"], repository_path="docs/legal/official-forms/california/judicial-council/POS-010/2007-01-01/POS-010.pdf", founder_supplied_filename="pos010.pdf", founder_supplied_sha256="09b82292b517ea81b7a223a6902f44206645ce6ea8c5ede5b54b8d51bfddfa38", repository_sha256="09b82292b517ea81b7a223a6902f44206645ce6ea8c5ede5b54b8d51bfddfa38", source_url="https://www.courts.ca.gov/documents/pos010.pdf"),
+            dict(form_id="CP10.5", title="Prejudgment Claim of Right to Possession", issuing_authority="Judicial Council of California", jurisdiction="California", revision_effective="2015-06-15", expected_pages=2, workflow_stage=["service_unknown_occupants"], repository_path="docs/legal/official-forms/california/judicial-council/CP10.5/2015-06-15/CP10.5.pdf", founder_supplied_filename="cp105.pdf", founder_supplied_sha256="3ec9d72449ba41463f1424fcb483d8c225446f1bc845cfabf788e7fc2716ce42", repository_sha256="3ec9d72449ba41463f1424fcb483d8c225446f1bc845cfabf788e7fc2716ce42", source_url="https://www.courts.ca.gov/documents/cp105.pdf"),
+            dict(form_id="LACIV109", title="Civil Case Cover Sheet Addendum and Statement of Location", issuing_authority="Superior Court of California, County of Los Angeles", jurisdiction="Los Angeles County, California", revision_effective="2023-01", expected_pages=5, workflow_stage=["initial_filing","local_location_assignment"], repository_path="docs/legal/official-forms/los-angeles/superior-court/LACIV109/2023-01/LACIV109.pdf", founder_supplied_filename="laciv109.pdf", founder_supplied_sha256="dbe11b364f3e46857d77bf52a623bedb270596ecfa0cdeabfad5388c70f50c19", repository_sha256="c91fae74f57a901781bd003dbbdf2979f4f800863f6280468ed0272ee4542ba6", source_url="https://www.lacourt.org/forms/pdf/LACIV109.pdf", source_fidelity="current_authoritative_LASC_binary_same_published_revision_not_byte_identical_to_founder_candidate", deduplication_note="Founder-supplied laciv109-2.pdf matched founder-supplied laciv109.pdf byte-for-byte and was not ingested separately."),
+            dict(form_id="LASC-CIV-312", title="Unlawful Detainer Cellular Telephone Information", issuing_authority="Superior Court of California, County of Los Angeles", jurisdiction="Los Angeles County, California", revision_effective="2025-10", expected_pages=1, workflow_stage=["initial_filing","limited_jurisdiction_unlawful_detainer"], repository_path="docs/legal/official-forms/los-angeles/superior-court/CIV312/2025-10/CIV312.pdf", founder_supplied_filename="LIBSVCCommunications-83-CIV312.pdf", founder_supplied_sha256="f27059765f500b0b62b00b0a382641c80763673233fecd0d4d4a740852c9ae1f", repository_sha256="f27059765f500b0b62b00b0a382641c80763673233fecd0d4d4a740852c9ae1f", source_url="https://lascpubstorage.blob.core.windows.net/cpw/LIBSVCCommunications-83-CIV312.pdf")
           ]
-          keys = ["form_id","title","issuing_authority","jurisdiction","revision_effective","page_count","workflow_stage","repository_path","founder_supplied_filename","sha256","acroform_field_count","source_page"]
-          records = []
-          for values in forms:
-            f = dict(zip(keys, values))
-            f["artifact_class"] = "official_blank"
-            f["nonempty_field_count"] = 0
-            data = Path(f["repository_path"]).read_bytes()
-            if not data.startswith(b"%PDF-"):
-              raise SystemExit(f"{f['form_id']} is not a PDF")
+
+          for f in rows:
+            p = Path(f["repository_path"])
+            data = p.read_bytes()
             actual = hashlib.sha256(data).hexdigest()
-            if actual != f["sha256"]:
-              raise SystemExit(f"{f['form_id']} post-download SHA-256 mismatch: {actual}")
-            f["repository_status"] = "present_hash_verified"
-            if f["form_id"] == "LACIV109":
-              f["deduplication_note"] = "Founder-supplied laciv109-2.pdf matched this artifact byte-for-byte and was not ingested separately."
-            records.append(f)
+            if actual != f["repository_sha256"]:
+              raise SystemExit(f"{f['form_id']} SHA-256 changed after download: {actual}")
+            r = PdfReader(str(p))
+            if len(r.pages) != f["expected_pages"]:
+              raise SystemExit(f"{f['form_id']} page count mismatch: {len(r.pages)}")
+            fields = r.get_fields() or {}
+            nonempty = []
+            for name, meta in fields.items():
+              value = meta.get('/V')
+              if value not in (None, '', '/Off'):
+                nonempty.append((name, str(value)))
+            if nonempty:
+              raise SystemExit(f"{f['form_id']} contains nonblank AcroForm values: {nonempty[:5]}")
+            f["page_count"] = len(r.pages)
+            f["acroform_field_count"] = len(fields)
+            f["nonempty_field_count"] = 0
+            f["artifact_class"] = "official_blank"
+            f["repository_status"] = "present_hash_and_blankness_verified"
+            del f["expected_pages"]
 
           manifest = {
             "registry_version": 1,
             "created_on": "2026-08-12",
             "scope": "OwnerPilot controlled official blank court-form source registry",
             "governance_status": "NON-PRODUCTION SOURCE ARTIFACTS",
-            "source_provenance": "Founder-supplied blank PDFs. Identity, revision, page count, fillable-field blankness and SHA-256 were inspected before ingestion. Repository binaries were materialized only when authoritative-source downloads exactly matched the Founder-supplied SHA-256.",
-            "blankness_verification": {"method":"PDF AcroForm inspection plus rendered/parsed form review","accepted_values":"No nonempty field values; /Off checkbox state is treated as blank.","verified_on":"2026-08-12"},
-            "binary_ingestion_status": "complete_hash_verified",
+            "source_policy": "Prefer the current issuing-authority binary. Preserve Founder-supplied candidate hashes for provenance and explicitly disclose any bytewise discrepancy rather than silently substituting it.",
+            "blankness_verification": {"method":"PDF AcroForm inspection on the exact repository binary","accepted_values":"No nonempty field values; /Off checkbox state is treated as blank.","verified_on":"2026-08-12"},
+            "binary_ingestion_status": "complete_hash_and_blankness_verified",
             "binary_ingestion_verified_on": "2026-08-12",
-            "forms": records
+            "forms": rows
           }
           Path("docs/legal/official-forms/manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
           PY
@@ -120,5 +117,5 @@ jobs:
           git config user.name "OwnerPilot Repository Automation"
           git config user.email "actions@users.noreply.github.com"
           git add -A docs/legal/official-forms .github/workflows/ingest-official-court-forms.yml
-          git commit -m "docs(legal): ingest hash-verified official court forms"
+          git commit -m "docs(legal): ingest verified official court form registry"
           git push origin HEAD:docs/official-court-form-registry-2026-08-12
