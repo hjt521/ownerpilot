@@ -6,6 +6,48 @@
   "source_policy": "Prefer the current issuing-authority binary. Preserve Founder-supplied candidate hashes for provenance and explicitly disclose any bytewise discrepancy rather than silently substituting it. If a registered authority binary later changes while the published revision remains unchanged, retain the prior registered artifact and ingest the changed binary under a distinct immutable source-snapshot/version identity rather than overwriting it in place.",
   "workflow_stage_semantics": "Lifecycle classification only. workflow_stage does not establish requiredness, applicability, filing readiness, legal sufficiency, or a timing obligation.",
   "source_currentness_semantics": "binary_ingestion_verified_on records the source-verification snapshot for this registry ingestion; it is not an evergreen claim that an authority URL remains unchanged. Future source checks must preserve prior registered binaries and provenance when drift is detected.",
+  "registry_contract": {
+    "version_policy": "registry_version identifies the manifest contract. Consumers must fail closed on an unsupported registry_version rather than guessing field semantics.",
+    "required_entry_fields": [
+      "artifact_id",
+      "authority_key",
+      "form_id",
+      "issuing_authority",
+      "jurisdiction",
+      "revision_effective",
+      "source_snapshot_id",
+      "repository_path",
+      "repository_sha256",
+      "source_url",
+      "page_count",
+      "artifact_class",
+      "repository_status"
+    ],
+    "published_revision_identity": "authority_key + form_id + revision_effective identifies the issuing authority's published revision, but does not uniquely identify exact PDF bytes.",
+    "source_snapshot_identity": "source_snapshot_id is content-addressed as sha256:<repository_sha256> and identifies the exact registered binary independently of filename, repository path, mutable remote URL, or customer Matter.",
+    "artifact_identity": "artifact_id combines authority_key + form_id + revision_effective + source_snapshot_id. SHA-256 therefore participates in exact artifact identity while published revision identity remains separately addressable.",
+    "duplicate_rules": "artifact_id and repository_path must each be unique. Multiple artifacts may share authority_key + form_id + revision_effective only when source_snapshot_id/repository_sha256 differ and each historical binary/path remains immutable.",
+    "same_revision_drift_path_policy": "The first registered revision path remains immutable. If later authority bytes drift under the same published revision, store the new binary at <FORM-ID>/<REVISION>/source-snapshots/sha256-<FULL_SHA256>/<FORM-ID>.pdf (under the same authority root) and add a new manifest entry; never overwrite an existing repository_path.",
+    "artifact_class_values": [
+      "official_blank"
+    ],
+    "repository_status_values": [
+      "present_hash_and_blankness_verified"
+    ],
+    "malformed_entry_policy": "A future machine consumer must reject/fail closed on missing required identity fields, malformed hashes, duplicate artifact_id/repository_path values, unsupported artifact classes, or hash/path mismatch; it must not infer applicability or requiredness from registry presence."
+  },
+  "future_retrieval_contract": {
+    "status": "FOUNDATION_ONLY_NOT_IMPLEMENTED",
+    "verification_chain": "requested artifact_id -> manifest repository_path -> exact repository binary -> SHA-256 equals repository_sha256/source_snapshot_id -> supported artifact_class before any future field-map/document subsystem may bind to it",
+    "fail_closed_states": [
+      "MISSING",
+      "HASH_MISMATCH",
+      "MALFORMED_ARTIFACT",
+      "UNSUPPORTED_ARTIFACT",
+      "SOURCE_HEALTH_UNRESOLVED"
+    ],
+    "source_health_boundary": "Source health/currentness is a future control distinct from historical artifact identity. CURRENT/STALE/CHANGED/UNAVAILABLE/UNRESOLVED health must never rewrite or delete a registered artifact identity."
+  },
   "blankness_verification": {
     "method": "PDF AcroForm inspection on the exact repository binary",
     "accepted_values": "No nonempty field values; /Off checkbox state is treated as blank.",
@@ -15,14 +57,15 @@
   "binary_ingestion_verified_on": "2026-08-12",
   "forms": [
     {
+      "artifact_id": "ca_judicial_council:UD-100:2026-07-01:sha256:1dbc18fb4639fb2939a2df60a6401941b058296a7f521bd56b62cc0d08610496",
+      "authority_key": "ca_judicial_council",
       "form_id": "UD-100",
       "title": "Complaint—Unlawful Detainer",
       "issuing_authority": "Judicial Council of California",
       "jurisdiction": "California",
       "revision_effective": "2026-07-01",
-      "workflow_stage": [
-        "initial_filing"
-      ],
+      "source_snapshot_id": "sha256:1dbc18fb4639fb2939a2df60a6401941b058296a7f521bd56b62cc0d08610496",
+      "workflow_stage": ["initial_filing"],
       "repository_path": "docs/legal/official-forms/california/judicial-council/UD-100/2026-07-01/UD-100.pdf",
       "founder_supplied_filename": "ud100-7.pdf",
       "founder_supplied_sha256": "1dbc18fb4639fb2939a2df60a6401941b058296a7f521bd56b62cc0d08610496",
@@ -35,15 +78,15 @@
       "repository_status": "present_hash_and_blankness_verified"
     },
     {
+      "artifact_id": "ca_judicial_council:UD-101:2024-01-01:sha256:f7fd185b679b883f6e9fb04d546ca1156aa50a78cbc8986948d9a52bcc454327",
+      "authority_key": "ca_judicial_council",
       "form_id": "UD-101",
       "title": "Plaintiff's Mandatory Cover Sheet and Supplemental Allegations—Unlawful Detainer",
       "issuing_authority": "Judicial Council of California",
       "jurisdiction": "California",
       "revision_effective": "2024-01-01",
-      "workflow_stage": [
-        "initial_filing",
-        "service_with_summons"
-      ],
+      "source_snapshot_id": "sha256:f7fd185b679b883f6e9fb04d546ca1156aa50a78cbc8986948d9a52bcc454327",
+      "workflow_stage": ["initial_filing", "service_with_summons"],
       "repository_path": "docs/legal/official-forms/california/judicial-council/UD-101/2024-01-01/UD-101.pdf",
       "founder_supplied_filename": "ud101.pdf",
       "founder_supplied_sha256": "f7fd185b679b883f6e9fb04d546ca1156aa50a78cbc8986948d9a52bcc454327",
@@ -56,16 +99,15 @@
       "repository_status": "present_hash_and_blankness_verified"
     },
     {
+      "artifact_id": "ca_judicial_council:SUM-130:2026-01-01:sha256:e07013e53be4ea69e70aed48a21fe762e85b3eade8214e52fdc430c116b4233d",
+      "authority_key": "ca_judicial_council",
       "form_id": "SUM-130",
       "title": "Summons—Eviction (Unlawful Detainer / Forcible Detainer / Forcible Entry)",
       "issuing_authority": "Judicial Council of California",
       "jurisdiction": "California",
       "revision_effective": "2026-01-01",
-      "workflow_stage": [
-        "initial_filing",
-        "court_issuance",
-        "service"
-      ],
+      "source_snapshot_id": "sha256:e07013e53be4ea69e70aed48a21fe762e85b3eade8214e52fdc430c116b4233d",
+      "workflow_stage": ["initial_filing", "court_issuance", "service"],
       "repository_path": "docs/legal/official-forms/california/judicial-council/SUM-130/2026-01-01/SUM-130.pdf",
       "founder_supplied_filename": "sum130.pdf",
       "founder_supplied_sha256": "e07013e53be4ea69e70aed48a21fe762e85b3eade8214e52fdc430c116b4233d",
@@ -78,14 +120,15 @@
       "repository_status": "present_hash_and_blankness_verified"
     },
     {
+      "artifact_id": "ca_judicial_council:CM-010:2026-07-01:sha256:2e97e4010e077b4d2da33847802806e33b7bee0a39f020fb7b3b6be644f37c55",
+      "authority_key": "ca_judicial_council",
       "form_id": "CM-010",
       "title": "Civil Case Cover Sheet",
       "issuing_authority": "Judicial Council of California",
       "jurisdiction": "California",
       "revision_effective": "2026-07-01",
-      "workflow_stage": [
-        "initial_filing"
-      ],
+      "source_snapshot_id": "sha256:2e97e4010e077b4d2da33847802806e33b7bee0a39f020fb7b3b6be644f37c55",
+      "workflow_stage": ["initial_filing"],
       "repository_path": "docs/legal/official-forms/california/judicial-council/CM-010/2026-07-01/CM-010.pdf",
       "founder_supplied_filename": "cm010.pdf",
       "founder_supplied_sha256": "2e97e4010e077b4d2da33847802806e33b7bee0a39f020fb7b3b6be644f37c55",
@@ -98,14 +141,15 @@
       "repository_status": "present_hash_and_blankness_verified"
     },
     {
+      "artifact_id": "ca_judicial_council:POS-010:2007-01-01:sha256:09b82292b517ea81b7a223a6902f44206645ce6ea8c5ede5b54b8d51bfddfa38",
+      "authority_key": "ca_judicial_council",
       "form_id": "POS-010",
       "title": "Proof of Service of Summons",
       "issuing_authority": "Judicial Council of California",
       "jurisdiction": "California",
       "revision_effective": "2007-01-01",
-      "workflow_stage": [
-        "post_filing_service_proof"
-      ],
+      "source_snapshot_id": "sha256:09b82292b517ea81b7a223a6902f44206645ce6ea8c5ede5b54b8d51bfddfa38",
+      "workflow_stage": ["post_filing_service_proof"],
       "repository_path": "docs/legal/official-forms/california/judicial-council/POS-010/2007-01-01/POS-010.pdf",
       "founder_supplied_filename": "pos010.pdf",
       "founder_supplied_sha256": "09b82292b517ea81b7a223a6902f44206645ce6ea8c5ede5b54b8d51bfddfa38",
@@ -118,14 +162,15 @@
       "repository_status": "present_hash_and_blankness_verified"
     },
     {
+      "artifact_id": "ca_judicial_council:CP10.5:2015-06-15:sha256:3ec9d72449ba41463f1424fcb483d8c225446f1bc845cfabf788e7fc2716ce42",
+      "authority_key": "ca_judicial_council",
       "form_id": "CP10.5",
       "title": "Prejudgment Claim of Right to Possession",
       "issuing_authority": "Judicial Council of California",
       "jurisdiction": "California",
       "revision_effective": "2015-06-15",
-      "workflow_stage": [
-        "service_unknown_occupants"
-      ],
+      "source_snapshot_id": "sha256:3ec9d72449ba41463f1424fcb483d8c225446f1bc845cfabf788e7fc2716ce42",
+      "workflow_stage": ["service_unknown_occupants"],
       "repository_path": "docs/legal/official-forms/california/judicial-council/CP10.5/2015-06-15/CP10.5.pdf",
       "founder_supplied_filename": "cp105.pdf",
       "founder_supplied_sha256": "3ec9d72449ba41463f1424fcb483d8c225446f1bc845cfabf788e7fc2716ce42",
@@ -138,15 +183,15 @@
       "repository_status": "present_hash_and_blankness_verified"
     },
     {
+      "artifact_id": "ca_los_angeles_superior_court:LACIV109:2023-01:sha256:c91fae74f57a901781bd003dbbdf2979f4f800863f6280468ed0272ee4542ba6",
+      "authority_key": "ca_los_angeles_superior_court",
       "form_id": "LACIV109",
       "title": "Civil Case Cover Sheet Addendum and Statement of Location",
       "issuing_authority": "Superior Court of California, County of Los Angeles",
       "jurisdiction": "Los Angeles County, California",
       "revision_effective": "2023-01",
-      "workflow_stage": [
-        "initial_filing",
-        "local_location_assignment"
-      ],
+      "source_snapshot_id": "sha256:c91fae74f57a901781bd003dbbdf2979f4f800863f6280468ed0272ee4542ba6",
+      "workflow_stage": ["initial_filing", "local_location_assignment"],
       "repository_path": "docs/legal/official-forms/los-angeles/superior-court/LACIV109/2023-01/LACIV109.pdf",
       "founder_supplied_filename": "laciv109.pdf",
       "founder_supplied_sha256": "dbe11b364f3e46857d77bf52a623bedb270596ecfa0cdeabfad5388c70f50c19",
@@ -161,15 +206,15 @@
       "repository_status": "present_hash_and_blankness_verified"
     },
     {
+      "artifact_id": "ca_los_angeles_superior_court:LASC-CIV-312:2025-10:sha256:f27059765f500b0b62b00b0a382641c80763673233fecd0d4d4a740852c9ae1f",
+      "authority_key": "ca_los_angeles_superior_court",
       "form_id": "LASC-CIV-312",
       "title": "Unlawful Detainer Cellular Telephone Information",
       "issuing_authority": "Superior Court of California, County of Los Angeles",
       "jurisdiction": "Los Angeles County, California",
       "revision_effective": "2025-10",
-      "workflow_stage": [
-        "initial_filing",
-        "limited_jurisdiction_unlawful_detainer"
-      ],
+      "source_snapshot_id": "sha256:f27059765f500b0b62b00b0a382641c80763673233fecd0d4d4a740852c9ae1f",
+      "workflow_stage": ["initial_filing", "limited_jurisdiction_unlawful_detainer"],
       "repository_path": "docs/legal/official-forms/los-angeles/superior-court/CIV312/2025-10/CIV312.pdf",
       "founder_supplied_filename": "LIBSVCCommunications-83-CIV312.pdf",
       "founder_supplied_sha256": "f27059765f500b0b62b00b0a382641c80763673233fecd0d4d4a740852c9ae1f",
