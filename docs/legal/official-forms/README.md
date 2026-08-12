@@ -12,13 +12,15 @@ Only blank official forms belong here. Do not place any customer-completed form,
 
 Generated case documents must be treated as matter outputs and stored separately from reusable official source forms.
 
-## Identity and version controls
+## Identity, source, and version controls
 
-A form may enter this registry only when its identity, revision/effective date, page count, blankness, and SHA-256 are recorded in `manifest.json`.
+A form may enter this registry only when its identity, revision/effective date, page count, blankness, issuing-authority source, and SHA-256 are recorded in `manifest.json`.
 
 - Artifact identity must be proven; filenames alone are not authoritative.
-- A downloaded binary is accepted only if its SHA-256 matches the Founder-supplied, inspected blank source artifact recorded in the manifest.
-- Revised official forms receive a new version directory. Do not silently overwrite or mutate a prior version.
+- The current issuing-authority binary is preferred for the reusable registry.
+- A Founder-supplied candidate SHA-256 is preserved as provenance. When the current official download is byte-for-byte identical, that identity is recorded. When the issuing authority currently serves a different binary under the same published revision, the registry stores the current authoritative binary and explicitly records both hashes and the discrepancy; it must never be silently substituted.
+- Every repository binary is independently checked for its expected form/page identity and blank AcroForm state before it is classified `official_blank`.
+- Revised official forms receive a new version directory. Do not silently overwrite or mutate a prior published revision.
 - Duplicate source uploads are deduplicated by content identity; they are not stored twice.
 - Form metadata and workflow-stage labels are OwnerPilot control metadata, not a statement that a form is universally required or legally sufficient in every case.
 
@@ -37,7 +39,7 @@ official-forms/
 
 ## Current ingestion set
 
-The initial set contains eight unique blank forms supplied by the Founder on 2026-08-12:
+The initial set contains eight unique blank forms identified from the Founder-supplied source set on 2026-08-12:
 
 - UD-100
 - UD-101
@@ -48,7 +50,9 @@ The initial set contains eight unique blank forms supplied by the Founder on 202
 - LACIV109
 - LASC CIV 312
 
-Two uploaded copies of LACIV109 were byte-for-byte identical and are represented once.
+Seven repository binaries are byte-for-byte identical to the Founder-supplied blank candidates. LACIV109 remains published by LASC as Rev. 01/23, but the current issuing-authority download is a different binary from the two identical Founder-supplied LACIV109 candidates; the registry therefore stores the current LASC binary and preserves the Founder-supplied hash in `manifest.json` for provenance.
+
+The two Founder-supplied LACIV109 files were byte-for-byte identical to each other and are represented once.
 
 ## Product boundary
 
