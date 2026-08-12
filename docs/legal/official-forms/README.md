@@ -8,7 +8,7 @@ These artifacts are **NON-PRODUCTION SOURCE ARTIFACTS**. Their presence in the r
 
 ## Separation rules
 
-Only blank official forms belong here. Do not place any customer-completed form, live-case document, exhibit, signature, phone number, address, or other case-specific/PII artifact in this registry. In particular, the private Clifton Alexander live-case materials are not part of this directory.
+Only blank official forms belong here. Do not place any customer-completed form, live-case document, exhibit, signature, phone number, address, or other case-specific/PII artifact in this registry. Private live-case/customer materials are not part of this directory.
 
 Generated case documents must be treated as matter outputs and stored separately from reusable official source forms.
 
@@ -21,6 +21,7 @@ A form may enter this registry only when its identity, revision/effective date, 
 - A Founder-supplied candidate SHA-256 is preserved as provenance. When the current official download is byte-for-byte identical, that identity is recorded. When the issuing authority currently serves a different binary under the same published revision, the registry stores the current authoritative binary and explicitly records both hashes and the discrepancy; it must never be silently substituted.
 - Every repository binary is independently checked for its expected form/page identity and blank AcroForm state before it is classified `official_blank`.
 - Revised official forms receive a new version directory. Do not silently overwrite or mutate a prior published revision.
+- If an issuing authority changes the binary after a form has already been registered while leaving the published revision unchanged, retain the prior registered binary and ingest the changed official binary under a distinct immutable source-snapshot/version identity. Preserve both hashes and provenance; never replace the prior registered binary in place.
 - Duplicate source uploads are deduplicated by content identity; they are not stored twice.
 - Form metadata and workflow-stage labels are OwnerPilot control metadata, not a statement that a form is universally required or legally sufficient in every case.
 
@@ -36,6 +37,8 @@ official-forms/
     superior-court/
       <FORM-ID>/<REVISION>/<FORM-ID>.pdf
 ```
+
+A future same-published-revision source drift must use a distinct immutable source-snapshot/version identity rather than overwriting an existing path. The exact future path convention is an architecture concern; the Product control is immutability plus explicit provenance.
 
 ## Current ingestion set
 
