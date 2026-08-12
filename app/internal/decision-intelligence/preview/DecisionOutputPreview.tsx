@@ -67,6 +67,9 @@ export function DecisionOutputPreview() {
     throw new Error('exploration selection must remain eligible and forecast-bound');
   }
 
+  const decidedOption = ownerDecision
+    ? output.eligibleOptions.find(option => option.id === ownerDecision.optionId) ?? null
+    : null;
   const nextTask = ownerDecision ? representNextTask(ownerDecision) : null;
 
   const captureOwnerDecision = () => {
@@ -100,19 +103,18 @@ export function DecisionOutputPreview() {
           <p className="mt-3 max-w-4xl text-sm leading-6 text-ink sm:text-base">
             {output.recommendation.rationale}
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {output.recommendation.dimensions.map(dimension => (
-              <div key={dimension.dimension} className="rounded-xl border border-rule bg-white p-4">
-                <p className="text-xs font-semibold text-muted">{dimension.label}</p>
-                <p className="mt-1 text-xl font-semibold text-brand">
-                  {Math.round(dimension.weight * 100)}% priority
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  represented fit {Math.round(dimension.normalizedValue * 100)}% · contribution{' '}
-                  {Math.round(dimension.weightedContribution * 1000) / 10}
-                </p>
-              </div>
-            ))}
+          <div className="mt-5 rounded-xl border border-rule bg-white p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted">
+              Primary modeled consequences
+            </p>
+            <p className="mt-2 text-sm leading-6 text-ink">
+              Expected recovery {money.format(recommendedForecast.expectedRecovery)} · expected resolution{' '}
+              {recommendedForecast.expectedDaysToResolution.toFixed(0)} days · possession by 90 days{' '}
+              {percent(recommendedForecast.possessionBy90Days)} · owner workload {recommendedForecast.workload}.
+            </p>
+            <p className="mt-2 text-xs leading-5 text-muted">
+              These are synthetic represented outcome measures, not a probability or confidence that the recommendation is correct.
+            </p>
           </div>
         </div>
       </Section>
@@ -223,9 +225,14 @@ export function DecisionOutputPreview() {
                     <div key={outcome.id} className="rounded-xl bg-tint p-4">
                       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                         <p className="font-medium text-brand">{outcome.label}</p>
-                        <p className="font-mono text-sm text-gold">{percent(outcome.probability)}</p>
+                        <p className="font-mono text-sm text-gold">{percent(outcome.probability)} synthetic branch</p>
                       </div>
-                      <p className="mt-2 text-sm leading-5 text-muted">{outcome.narrative}</p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                        <SmallMetric label="Recovery consequence" value={money.format(outcome.recovery)} />
+                        <SmallMetric label="Time consequence" value={`${outcome.daysToResolution} days`} />
+                        <SmallMetric label="Possession ≤90d" value={percent(outcome.possessionBy90Days)} />
+                      </div>
+                      <p className="mt-3 text-sm leading-5 text-muted">{outcome.narrative}</p>
                     </div>
                   ))}
                 </div>
@@ -236,6 +243,9 @@ export function DecisionOutputPreview() {
       </Section>
 
       <Section eyebrow="Deep analysis" title="Strategy comparison">
+        <p className="mb-5 rounded-xl bg-tint px-4 py-3 text-xs leading-5 text-muted">
+          Deterministic ranking math only. Normalized ranking values and preference-weighted ranking contributions are unitless comparison values; they are not forecast probabilities, likelihoods, or model confidence.
+        </p>
         <div className="grid gap-4 lg:grid-cols-3">
           {output.eligibleOptions.map(option => {
             const forecast = output.forecast.options.find(item => item.optionId === option.id);
@@ -252,9 +262,10 @@ export function DecisionOutputPreview() {
                 </div>
                 <div className="mt-4 space-y-2 border-t border-rule pt-4">
                   {breakdown.dimensions.map(dimension => (
-                    <p key={dimension.dimension} className="text-xs text-muted">
-                      {dimension.label}: {Math.round(dimension.weight * 100)}% weight ×{' '}
-                      {Math.round(dimension.normalizedValue * 100)}% represented fit
+                    <p key={dimension.dimension} className="text-xs leading-5 text-muted">
+                      {dimension.label}: {Math.round(dimension.weight * 100)}% priority weight × normalized ranking value{' '}
+                      {dimension.normalizedValue.toFixed(3)} = preference-weighted ranking contribution{' '}
+                      {dimension.weightedContribution.toFixed(3)} (unitless)
                     </p>
                   ))}
                 </div>
@@ -301,7 +312,7 @@ export function DecisionOutputPreview() {
           </button>
           {ownerDecision ? (
             <p className="mt-4 text-sm text-white/85">
-              Local Owner Decision represented for <code>{ownerDecision.optionId}</code>. Execution authority: NONE.
+              Local Owner Decision represented: {decidedOption?.label ?? ownerDecision.optionId}. Execution authority: NONE.
             </p>
           ) : (
             <p className="mt-4 text-sm text-white/70">No Owner Decision has been represented.</p>
@@ -310,9 +321,13 @@ export function DecisionOutputPreview() {
       </Section>
 
       <Section eyebrow="Boundary" title="Next task">
-        {nextTask ? (
+        {nextTask && decidedOption ? (
           <div className="rounded-2xl border border-rule bg-tint p-5">
             <p className="font-semibold text-brand">Representational seam only</p>
+            <p className="mt-2 text-sm font-semibold text-brand">
+              Based on your represented decision: {decidedOption.label}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted">No operational task is connected in v1A.</p>
             <p className="mt-2 text-sm leading-6 text-muted">{nextTask.label}</p>
             <p className="mt-3 text-xs font-bold uppercase tracking-wider text-muted">
               CONNECTED: NO · INVOKED: NO · EXECUTION AUTHORITY: NONE
