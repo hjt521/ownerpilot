@@ -124,9 +124,41 @@ for (const heading of hierarchy) {
   prior = index;
 }
 
+const recommendationStart = previewSource.indexOf('title="Recommended strategy"');
+const outcomesStart = previewSource.indexOf('title="Primary modeled outcomes"');
+const executiveRecommendationSource = previewSource.slice(recommendationStart, outcomesStart);
+assert.ok(executiveRecommendationSource.includes('Primary modeled consequences'));
+assert.ok(executiveRecommendationSource.includes('not a probability or confidence that the recommendation is correct'));
+assert.equal(executiveRecommendationSource.includes('represented fit'), false, 'executive recommendation must not expose ambiguous fit percentages');
+assert.equal(executiveRecommendationSource.includes('weightedContribution'), false, 'executive recommendation must not expose raw ranking contribution math');
+assert.equal(executiveRecommendationSource.includes('% priority'), false, 'executive recommendation must not expose priority percentages before the priority section');
+
+const comparisonStart = previewSource.indexOf('title="Strategy comparison"');
+const calculationStart = previewSource.indexOf('title="Calculation detail"');
+const strategyComparisonSource = previewSource.slice(comparisonStart, calculationStart);
+for (const rankingTerm of [
+  'Deterministic ranking math only',
+  'normalized ranking value',
+  'preference-weighted ranking contribution',
+  '(unitless)',
+]) {
+  assert.ok(strategyComparisonSource.includes(rankingTerm), `deeper ranking math must explain ${rankingTerm}`);
+}
+assert.ok(strategyComparisonSource.includes('not forecast probabilities, likelihoods, or model confidence'));
+
+const roadmapStart = previewSource.indexOf('title="Decision roadmap"');
+const roadmapSource = previewSource.slice(roadmapStart, comparisonStart);
+assert.ok(roadmapSource.includes('money.format(outcome.recovery)'), 'roadmap branches must display fixture-backed recovery consequences');
+assert.ok(roadmapSource.includes('outcome.daysToResolution'), 'roadmap branches must display fixture-backed time consequences');
+assert.ok(roadmapSource.includes('percent(outcome.possessionBy90Days)'), 'roadmap branches must display fixture-backed possession consequences');
+assert.ok(roadmapSource.includes('synthetic branch'), 'roadmap probabilities must remain conspicuously synthetic');
+
 assert.ok(previewSource.includes("onClick={() => setExplorationOptionId(option.id)}"));
 assert.ok(previewSource.includes('Exploration selection is not an Owner Decision'));
 assert.ok(previewSource.includes('setOwnerDecision(createOwnerDecision('));
+assert.ok(previewSource.includes('Based on your represented decision: {decidedOption.label}'));
+assert.ok(previewSource.includes('No operational task is connected in v1A.'));
+assert.ok(previewSource.includes('CONNECTED: NO · INVOKED: NO · EXECUTION AUTHORITY: NONE'));
 assert.equal(previewSource.split('overflow-x-auto').length - 1, 1, 'only calculation detail may scroll horizontally');
 assert.ok(previewSource.includes('data-testid="calculation-scroll"'));
 assert.equal(previewSource.includes('<svg'), false, 'core mobile hierarchy cannot depend on a wide SVG tree');
