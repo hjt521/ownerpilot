@@ -3,7 +3,9 @@
   "created_on": "2026-08-12",
   "scope": "OwnerPilot controlled official blank court-form source registry",
   "governance_status": "NON-PRODUCTION SOURCE ARTIFACTS",
-  "source_policy": "Prefer the current issuing-authority binary. Preserve Founder-supplied candidate hashes for provenance and explicitly disclose any bytewise discrepancy rather than silently substituting it.",
+  "source_policy": "Prefer the current issuing-authority binary. Preserve Founder-supplied candidate hashes for provenance and explicitly disclose any bytewise discrepancy rather than silently substituting it. If a registered authority binary later changes while the published revision remains unchanged, retain the prior registered artifact and ingest the changed binary under a distinct immutable source-snapshot/version identity rather than overwriting it in place.",
+  "workflow_stage_semantics": "Lifecycle classification only. workflow_stage does not establish requiredness, applicability, filing readiness, legal sufficiency, or a timing obligation.",
+  "source_currentness_semantics": "binary_ingestion_verified_on records the source-verification snapshot for this registry ingestion; it is not an evergreen claim that an authority URL remains unchanged. Future source checks must preserve prior registered binaries and provenance when drift is detected.",
   "blankness_verification": {
     "method": "PDF AcroForm inspection on the exact repository binary",
     "accepted_values": "No nonempty field values; /Off checkbox state is treated as blank.",
