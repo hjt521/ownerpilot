@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { NoticeFlow } from '@/components/notice-flow';
+import { NonpaymentLifecycleSummary } from '@/components/nonpayment-lifecycle-summary';
 import { SiteHeader } from '@/components/site-header';
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ export default function ThreeDayNoticePage() {
   return (
     <>
       <SiteHeader />
+      <NonpaymentLifecycleSummary surface="notice" />
       <NoticeFlow />
     </>
   );
