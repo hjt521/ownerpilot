@@ -28,6 +28,10 @@ function ok(condition: unknown, message: string) {
 
 const address = '100 Filing Ave, Glendale, CA 91201';
 const addressKey = '100 filing ave, glendale, ca 91201';
+const laAddress = '100 Review Ave, Los Angeles, CA 90001';
+const laAddressKey = '100 review ave, los angeles, ca 90001';
+const santaMonicaAddress = '100 Overlay Ave, Santa Monica, CA 90401';
+const santaMonicaAddressKey = '100 overlay ave, santa monica, ca 90401';
 const base: NoticeFlowData = {
   ...createFlowState().data,
   dispute: {
@@ -350,6 +354,138 @@ equal(
   'unresolved existing jurisdiction/control evidence fails closed',
 );
 
+const hardBlockCreated = createNotice({
+  propertyAddress: santaMonicaAddress,
+  propertyCity: 'Santa Monica',
+  cachedCaliforniaEligibility: {
+    status: 'CONFIRMED_CALIFORNIA',
+    addressKey: santaMonicaAddressKey,
+    resolvedAt: '2026-08-11T05:00:00.000Z',
+    source: 'google_places',
+  },
+  cachedResolverVerdict: {
+    verdict: 'not_la',
+    addressKey: santaMonicaAddressKey,
+    resolvedAt: '2026-08-11T05:00:00.000Z',
+    source: 'live_resolver',
+  },
+});
+const hardBlockServed = serve(hardBlockCreated);
+const hardBlockAfter = eventFor(
+  hardBlockServed,
+  'hard-block-after',
+  { type: 'NO_RESOLUTION_REPORTED', payload: { asOfDate: '2026-08-18' } },
+  '2026-08-18T18:08:00.000Z',
+);
+const hardBlockProjection = project(hardBlockServed, readyFor(hardBlockServed, [hardBlockAfter]));
+equal(hardBlockProjection.state, 'Cannot continue', 'hard-block overlay city cannot enter packet review');
+ok(
+  hardBlockProjection.checklist.find(item => item.key === 'JURISDICTION_CONTROLS')?.status === 'Cannot continue',
+  'hard-block overlay remains a Stage C control blocker even if resolver residue says not_la',
+);
+
+const missingResolverCreated = createNotice({
+  propertyAddress: laAddress,
+  propertyCity: 'Los Angeles',
+  cachedCaliforniaEligibility: {
+    status: 'CONFIRMED_CALIFORNIA',
+    addressKey: laAddressKey,
+    resolvedAt: '2026-08-11T05:00:00.000Z',
+    source: 'google_places',
+  },
+  cachedResolverVerdict: undefined,
+});
+const missingResolverServed = serve(missingResolverCreated);
+const missingResolverAfter = eventFor(
+  missingResolverServed,
+  'missing-resolver-after',
+  { type: 'NO_RESOLUTION_REPORTED', payload: { asOfDate: '2026-08-18' } },
+  '2026-08-18T18:09:00.000Z',
+);
+const missingResolverProjection = project(
+  missingResolverServed,
+  readyFor(missingResolverServed, [missingResolverAfter]),
+);
+equal(missingResolverProjection.state, 'Cannot continue', 'NEEDS_CONFIRMATION remains standing without resolver evidence');
+ok(
+  /no current matching resolver evidence/i.test(
+    missingResolverProjection.checklist.find(item => item.key === 'JURISDICTION_CONTROLS')?.missingOrReview ?? '',
+  ),
+  'missing resolver evidence is surfaced as an unresolved existing control',
+);
+
+const staleResolverCreated = createNotice({
+  propertyAddress: laAddress,
+  propertyCity: 'Los Angeles',
+  cachedCaliforniaEligibility: {
+    status: 'CONFIRMED_CALIFORNIA',
+    addressKey: laAddressKey,
+    resolvedAt: '2026-08-11T05:00:00.000Z',
+    source: 'google_places',
+  },
+  cachedResolverVerdict: {
+    verdict: 'not_la',
+    addressKey,
+    resolvedAt: '2026-08-11T05:00:00.000Z',
+    source: 'live_resolver',
+  },
+});
+const staleResolverServed = serve(staleResolverCreated);
+const staleResolverAfter = eventFor(
+  staleResolverServed,
+  'stale-resolver-after',
+  { type: 'NO_RESOLUTION_REPORTED', payload: { asOfDate: '2026-08-18' } },
+  '2026-08-18T18:10:00.000Z',
+);
+const staleResolverProjection = project(
+  staleResolverServed,
+  readyFor(staleResolverServed, [staleResolverAfter]),
+);
+equal(staleResolverProjection.state, 'Cannot continue', 'stale or mismatched resolver evidence cannot clear NEEDS_CONFIRMATION');
+
+const clearingResolverCreated = createNotice({
+  propertyAddress: laAddress,
+  propertyCity: 'Los Angeles',
+  cachedCaliforniaEligibility: {
+    status: 'CONFIRMED_CALIFORNIA',
+    addressKey: laAddressKey,
+    resolvedAt: '2026-08-11T05:00:00.000Z',
+    source: 'google_places',
+  },
+  cachedResolverVerdict: {
+    verdict: 'not_la',
+    addressKey: laAddressKey,
+    resolvedAt: '2026-08-11T05:00:00.000Z',
+    source: 'live_resolver',
+  },
+});
+const clearingResolverServed = serve(clearingResolverCreated);
+const clearingResolverAfter = eventFor(
+  clearingResolverServed,
+  'clearing-resolver-after',
+  { type: 'NO_RESOLUTION_REPORTED', payload: { asOfDate: '2026-08-18' } },
+  '2026-08-18T18:11:00.000Z',
+);
+const clearingResolverProjection = project(
+  clearingResolverServed,
+  readyFor(clearingResolverServed, [clearingResolverAfter]),
+);
+equal(clearingResolverProjection.state, 'Ready for packet review', 'current matching not_la resolver verdict clears existing NEEDS_CONFIRMATION');
+
+const cleanNoResolverCreated = createNotice({ cachedResolverVerdict: undefined });
+const cleanNoResolverServed = serve(cleanNoResolverCreated);
+const cleanNoResolverAfter = eventFor(
+  cleanNoResolverServed,
+  'clean-no-resolver-after',
+  { type: 'NO_RESOLUTION_REPORTED', payload: { asOfDate: '2026-08-18' } },
+  '2026-08-18T18:12:00.000Z',
+);
+equal(
+  project(cleanNoResolverServed, readyFor(cleanNoResolverServed, [cleanNoResolverAfter])).state,
+  'Ready for packet review',
+  'clean NO_KNOWN_OVERLAY path does not invent a resolver prerequisite',
+);
+
 const blockedInvalid = project(served, { status: 'blocked', reason: 'invalid' });
 equal(blockedInvalid.state, 'Cannot continue', 'invalid Resolve history after successful service fails closed');
 const mismatched = readyFor(served, [after]);
@@ -380,6 +516,8 @@ const source = readFileSync('lib/flow/filingReadiness.ts', 'utf8');
 ok(!source.includes('localStorage') && !source.includes('setItem('), 'pure Stage C projection performs no storage writes');
 ok(!source.includes('saveDraft(') && !source.includes('saveOutcomeHistory('), 'Stage C projection cannot persist readiness');
 ok(!source.toLowerCase().includes('supabase'), 'Stage C adds no database/Supabase dependency');
+ok(source.includes('detectJurisdiction('), 'Stage C reuses the existing jurisdiction detector rather than creating a new rule');
+ok(source.includes('supersedeNeedsConfirmation('), 'Stage C reuses existing NEEDS_CONFIRMATION supersession semantics');
 for (const registryToken of ['UD-100', 'UD-101', 'SUM-130', 'CM-010', 'LACIV109']) {
   ok(!source.includes(registryToken), `registry presence cannot create ${registryToken} applicability`);
 }
@@ -417,6 +555,10 @@ const sampled = [
   beforeProjection,
   readyProjection,
   missingCore,
+  hardBlockProjection,
+  missingResolverProjection,
+  staleResolverProjection,
+  clearingResolverProjection,
   blockedInvalid,
 ];
 ok(sampled.every(result => allowedStates.has(result.state)), 'Stage C aggregate state vocabulary is closed to the five Product states');
