@@ -26,7 +26,7 @@ export type NonpaymentMilestoneState = 'complete' | 'current' | 'pending' | 'rev
 
 export interface NonpaymentLifecycleNextTask {
   label: string;
-  href: '/notice/3-day' | '/notice/3-day/serve' | '/notice/3-day/resolve' | '/notice/3-day/options' | null;
+  href: '/notice/3-day' | '/notice/3-day/serve' | '/notice/3-day/resolve' | '/notice/3-day/options' | '/notice/3-day/filing-readiness' | null;
 }
 
 export interface NonpaymentLifecycleMilestone {
@@ -237,7 +237,7 @@ function presentationForOutcome(
         whatOwnerPilotRecorded: 'A factual no-resolution outcome is recorded for this Notice.',
         reviewRequired: false, reviewReason: null,
         nextTask: next === 'Review available next options'
-          ? { label: next, href: '/notice/3-day/options' }
+          ? { label: next, href: '/notice/3-day/filing-readiness' }
           : { label: 'Continue monitoring', href: null },
         whatOwnerPilotHasNotDone: 'OwnerPilot has not filed anything or treated this factual outcome as court action.',
         milestones: commonMilestone('complete', 'No resolution reported'),
