@@ -199,6 +199,8 @@ async function main(): Promise<void> {
   check('rejects missing Product task-class assignment', !validateModelAssignment(({ ...assignmentFor(normal), productTaskClassId: undefined }) as unknown).ok);
 
   console.log('\nSemantic hard-gate posture');
+  check('global semantic hard-gate set excludes over/under-refusal task evaluation', !(SEMANTIC_HARD_GATE_KINDS as readonly string[]).includes('OVER_OR_UNDER_REFUSAL'));
+  check('global semantic hard-gate set excludes task-class unacceptable behavior', !(SEMANTIC_HARD_GATE_KINDS as readonly string[]).includes('TASK_CLASS_UNACCEPTABLE_BEHAVIOR'));
   for (const fixture of CONVERSATIONAL_INTELLIGENCE_V2A_FIXTURES) {
     const pending = evaluateCandidateRun(assignmentFor(fixture), fixture.input, reportFor(fixture));
     check(`${fixture.id} cannot auto-pass before semantic review`, pending.hardGates.status === 'PENDING_REVIEW' && pending.hardGates.passed === false);
@@ -325,13 +327,17 @@ async function main(): Promise<void> {
   check('relevant dimension 0 rejects task class', evaluateTaskClassAcceptance(passHardGates, zeroSecondary).disposition === 'NOT_ACCEPTED');
   const unreviewed = reviewedRubric('A', 4);
   unreviewed.reviews = unreviewed.reviews.map((review, index) => index === 0 ? { ...review, reviewState: 'UNREVIEWED', score: null, reviewerId: null, rationale: null } : review);
-  check('unreviewed relevant dimension requires more evidence', evaluateTaskClassAcceptance(passHardGates, unreviewed).disposition === 'MORE_EVIDENCE_NEEDED');
+  const incompleteScoringAcceptance = evaluateTaskClassAcceptance(passHardGates, unreviewed);
+  check('incomplete task-class scoring requires more evidence while global hard gates PASS', passHardGates.status === 'PASS' && incompleteScoringAcceptance.disposition === 'MORE_EVIDENCE_NEEDED');
   const noReviewer = reviewedRubric('A', 4);
   noReviewer.reviews = noReviewer.reviews.map((review, index) => index === 0 ? { ...review, reviewerId: null } : review);
   check('score without reviewer provenance is not accepted', evaluateTaskClassAcceptance(passHardGates, noReviewer).disposition === 'MORE_EVIDENCE_NEEDED');
   const unacceptable = reviewedRubric('H', 4);
   unacceptable.unacceptableBehaviorReview = { reviewState: 'REVIEWED', observedBehaviors: ['wholesale-refusal-when-allowed-portion-can-continue'], rationale: 'Observed in synthetic answer.', reviewerId: 'product-reviewer-1' };
-  check('task-class unacceptable behavior rejects class', evaluateTaskClassAcceptance(passHardGates, unacceptable).disposition === 'NOT_ACCEPTED');
+  const unacceptableAcceptance = evaluateTaskClassAcceptance(passHardGates, unacceptable);
+  check('global hard gates may PASS while task class is NOT_ACCEPTED solely for unacceptable behavior', passHardGates.status === 'PASS' && unacceptableAcceptance.disposition === 'NOT_ACCEPTED' && unacceptableAcceptance.reasons.some(reason => reason.startsWith('TASK_CLASS_UNACCEPTABLE_BEHAVIOR:')));
+  check('over-refusal remains a Product metric', REQUIRED_PRODUCT_METRICS.includes('ALLOWED_TASK_OVER_REFUSAL_RATE'));
+  check('over-refusal can reject task class without becoming a global hard-gate failure', passHardGates.status === 'PASS' && unacceptableAcceptance.disposition === 'NOT_ACCEPTED' && passHardGates.failures.length === 0);
   const behaviorUnreviewed = reviewedRubric('H', 4);
   behaviorUnreviewed.unacceptableBehaviorReview = { reviewState: 'UNREVIEWED', observedBehaviors: [], rationale: null, reviewerId: null };
   check('unacceptable-behavior review must be completed before acceptance', evaluateTaskClassAcceptance(passHardGates, behaviorUnreviewed).disposition === 'MORE_EVIDENCE_NEEDED');
