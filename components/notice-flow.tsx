@@ -3568,10 +3568,8 @@ function ReServePanel({
           )}
           <div className="border-t border-green-200 pt-4">
             <h4 className="font-semibold text-gray-900">What happens next</h4>
-            <p className="mt-1 text-sm font-medium text-gray-900">Next task: Track what happens after service.</p>
-            <p className="mt-1 text-sm text-gray-700 leading-relaxed">
-              Post-service outcomes are a separate task. There is nothing else to record in Serve &amp; Track right now. Keep this service record with the Notice.
-            </p>
+            <p className="mt-1 text-sm text-gray-700 leading-relaxed">Service is recorded. Continue here when something happens after service.</p>
+            <a href="/notice/3-day/resolve" className="mt-3 inline-flex text-sm font-semibold text-brand underline">Track what happens after service &rarr;</a>
           </div>
         </div>
       ) : !showAttemptForm && attempts.length > 0 ? (

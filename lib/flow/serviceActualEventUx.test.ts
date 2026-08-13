@@ -30,7 +30,15 @@ ok(noticeFlow.includes("setServerNotParty(false)"), 'new attempt resets party co
 ok(noticeFlow.includes('SERVICE NOT COMPLETED'), 'failed attempt has explicit incomplete task state');
 ok(noticeFlow.includes('Service task complete'), 'successful attempt has explicit completed task state');
 ok(noticeFlow.includes('SERVICE RECORDED'), 'successful state is factual, not a legal sufficiency claim');
-ok(noticeFlow.includes('Next task: Track what happens after service.'), 'post-service outcome is only a future-task seam');
+const resolveHandoffCount = noticeFlow.split('href="/notice/3-day/resolve"').length - 1;
+const serviceCompleteIndex = noticeFlow.indexOf('Service task complete');
+const resolveHandoffIndex = noticeFlow.indexOf('href="/notice/3-day/resolve"');
+ok(resolveHandoffIndex >= 0, 'successful ServiceStep contains the Resolve & Record handoff');
+ok(serviceCompleteIndex >= 0 && resolveHandoffIndex > serviceCompleteIndex, 'Resolve & Record handoff follows successful ServiceStep completion');
+ok(noticeFlow.includes('Track what happens after service'), 'successful ServiceStep gives the owner the after-service task CTA');
+ok(resolveHandoffCount === 1, 'successful ServiceStep exposes exactly one customer-facing Resolve & Record handoff');
+ok(!noticeFlow.includes('Next task: Track what happens after service.'), 'obsolete future-task-only seam is removed');
+ok(!serveTrack.includes('href="/notice/3-day/resolve"'), 'Serve & Track does not introduce a duplicate Resolve & Record handoff');
 ok(noticeFlow.includes('This created Notice has changed'), 'stale Notice state is customer-facing and fail-closed');
 ok(noticeFlow.includes('Review updated Notice'), 'stale Notice CTA returns to the existing recreate path');
 ok(serveTrack.includes('restoreServiceTaskContext(data)'), 'Serve & Track requires exact artifact restoration');
