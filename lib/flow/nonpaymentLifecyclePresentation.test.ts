@@ -296,8 +296,8 @@ const noResolutionAfter = confirmedEvent(
 );
 const noResolutionAfterProjection = project(served, ready([noResolutionAfter]), 4, 'resolve');
 equal(noResolutionAfterProjection.nextTask?.label, 'Review available next options', 'after deterministic timing existing options seam is shown');
-equal(noResolutionAfterProjection.nextTask?.href, '/notice/3-day/options', 'next-options links only to existing nonexecuting route');
-ok(!/filing readiness/i.test(JSON.stringify(noResolutionAfterProjection)), 'no-resolution projection does not invent Filing Readiness');
+equal(noResolutionAfterProjection.nextTask?.href, '/notice/3-day/filing-readiness', 'next-options routes only to the bounded Filing Readiness surface');
+ok(!/you may file|eligible to file/i.test(JSON.stringify(noResolutionAfterProjection)), 'Stage B handoff does not infer filing eligibility from elapsed time');
 
 const withdrawalEvent = confirmedEvent(
   'event-withdrawal',
@@ -430,6 +430,7 @@ const allowedRoutes = new Set<string | null>([
   '/notice/3-day/serve',
   '/notice/3-day/resolve',
   '/notice/3-day/options',
+  '/notice/3-day/filing-readiness',
   null,
 ]);
 ok(projections.every(item => allowedRoutes.has(item.nextTask?.href ?? null)), 'projection links only existing authorized routes');
