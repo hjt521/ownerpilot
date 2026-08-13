@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { NonpaymentLifecycleSummary } from '@/components/nonpayment-lifecycle-summary';
 import { ResolveRecord } from '@/components/resolve-record';
 import { SiteHeader } from '@/components/site-header';
 
@@ -12,6 +13,7 @@ export default function ResolveRecordPage() {
   return (
     <>
       <SiteHeader />
+      <NonpaymentLifecycleSummary surface="resolve" />
       <ResolveRecord />
     </>
   );
