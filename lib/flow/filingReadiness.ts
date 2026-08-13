@@ -1,4 +1,5 @@
 import { californiaEligibilityAddressKey } from '../jurisdiction/californiaEligibility';
+import { detectJurisdiction } from '../jurisdiction/detectJurisdiction';
 import { restoreCreatedNoticeArtifact } from './createdNoticeArtifact';
 import type { NoticeFlowData, ServiceAttempt } from './noticeFlowState';
 import {
@@ -14,7 +15,7 @@ import {
   deriveNonpaymentLifecyclePresentation,
   type NonpaymentLifecyclePresentation,
 } from './nonpaymentLifecyclePresentation';
-import { normalizeAddressKey } from './jurisdictionVerdict';
+import { supersedeNeedsConfirmation } from './jurisdictionSupersession';
 
 export type FilingReadinessAggregateState =
   | 'Needs information'
@@ -182,27 +183,40 @@ function evaluateControlEvidence(data: NoticeFlowData): ControlEvaluation {
     };
   }
 
-  const local = data.cachedResolverVerdict;
-  if (local) {
-    if (local.addressKey !== normalizeAddressKey(address)) {
+  const jurisdiction = detectJurisdiction({
+    address,
+    city: clean(data.propertyCity) || undefined,
+  });
+
+  if (jurisdiction.decision === 'BLOCK_OVERLAY_CITY') {
+    return {
+      status: 'Cannot continue',
+      known: 'OwnerPilot preserved the existing local-jurisdiction control for this property.',
+      problem: 'The existing local-jurisdiction control blocks this property from progressing to packet preparation.',
+    };
+  }
+
+  if (jurisdiction.decision === 'NEEDS_CONFIRMATION') {
+    const supersession = supersedeNeedsConfirmation(address, data.cachedResolverVerdict);
+    if (supersession.kind === 'no_verdict') {
       return {
         status: 'Cannot continue',
-        known: 'A saved local-jurisdiction result exists for the Notice.',
-        problem: 'That saved result does not match the property in the created Notice.',
+        known: 'OwnerPilot preserved a local-jurisdiction state that still requires confirmation for this property.',
+        problem: 'No current matching resolver evidence clears the existing jurisdiction-confirmation requirement.',
       };
     }
-    if (local.verdict === 'manual_review' || local.verdict === 'resolution_failed') {
+    if (supersession.kind === 'superseded') {
       return {
         status: 'Cannot continue',
-        known: 'OwnerPilot preserved the existing local-jurisdiction control result for this Notice.',
-        problem: 'The saved jurisdiction control is unresolved and must be cleared before packet preparation can continue.',
+        known: 'OwnerPilot preserved the existing local-jurisdiction resolver result for this property.',
+        problem: 'The existing jurisdiction result still blocks or requires review before packet preparation can continue.',
       };
     }
   }
 
   return {
     status: 'Complete',
-    known: 'The created Notice preserves matched California eligibility and any saved local-jurisdiction control evidence for the same property.',
+    known: 'The created Notice preserves matched California eligibility and the existing local-jurisdiction control is positively clear for the same property.',
     problem: null,
   };
 }
