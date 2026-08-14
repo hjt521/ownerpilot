@@ -57,8 +57,26 @@ const approved: NoticeFlowData = { ...base, ...bindReviewApproval(base, '2026-08
 const artifact = captureCreatedNoticeArtifact(approved, '2026-08-13T20:01:00.000Z', {
   compliancePeriodStartDate: '2026-08-14', compliancePeriodEndDate: '2026-08-18',
 });
-const facts = projectFilingCanonicalFacts(artifact);
-const evaluation = evaluateUd100FieldMapFoundation(UD100_OFFICIAL_SOURCE_IDENTITY, facts);
+const persisted: NoticeFlowData = {
+  ...approved,
+  productionSnapshot: {
+    producedAtISO: '2026-08-13T20:01:00.000Z',
+    propertyAddress: '100 Foundation Ave',
+    propertyCounty: 'Los Angeles',
+    tenantNames: ['Synthetic Tenant One', 'Synthetic Tenant Two'],
+    totalAmount: 1000,
+    rentPeriods: [{ start: '2026-07-01', end: '2026-07-31', amount: 1000 }],
+    payeeName: 'Synthetic Owner LLC',
+    payeePhone: '5555550101',
+    payeeStreetAddress: '100 Foundation Ave',
+    signerName: 'Synthetic Signer',
+  },
+  createdNoticeArtifact: artifact,
+};
+const facts = projectFilingCanonicalFacts(persisted);
+ok(!Object.prototype.hasOwnProperty.call(UD100_OFFICIAL_SOURCE_IDENTITY, 'sourceHealth'), 'UD-100 immutable identity does not pin source health');
+const immutableUd100Identity = JSON.stringify(UD100_OFFICIAL_SOURCE_IDENTITY);
+const evaluation = evaluateUd100FieldMapFoundation(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts);
 equal(evaluation.status, 'RESOLVED_MAPPING', 'exact identity plus exact facts resolves inert candidates');
 if (evaluation.status === 'RESOLVED_MAPPING') {
   equal(evaluation.formApplicability, 'NOT_EVALUATED', 'map does not decide applicability');
@@ -76,12 +94,26 @@ if (evaluation.status === 'RESOLVED_MAPPING') {
   }
 }
 
+for (const health of ['STALE', 'CHANGED', 'UNAVAILABLE', 'UNRESOLVED'] as const) {
+  equal(
+    evaluateUd100FieldMapFoundation(UD100_OFFICIAL_SOURCE_IDENTITY, health, facts).status,
+    'BLOCKED',
+    `${health} health blocks the UD-100 map without changing historical identity`,
+  );
+  equal(JSON.stringify(UD100_OFFICIAL_SOURCE_IDENTITY), immutableUd100Identity, `${health} leaves pinned UD-100 identity unchanged`);
+}
+equal(
+  evaluateUd100FieldMapFoundation(UD100_OFFICIAL_SOURCE_IDENTITY, undefined, facts).status,
+  'BLOCKED',
+  'missing UD-100 health fails closed and does not default CURRENT',
+);
+
 const wrongBytes = {
   ...UD100_OFFICIAL_SOURCE_IDENTITY,
   repositorySha256: '0'.repeat(64), sourceSnapshotId: `sha256:${'0'.repeat(64)}`,
   artifactId: `ca_judicial_council:UD-100:2026-07-01:sha256:${'0'.repeat(64)}`,
 };
-equal(evaluateUd100FieldMapFoundation(wrongBytes, facts).status, 'BLOCKED', 'same revision different bytes fails closed');
+equal(evaluateUd100FieldMapFoundation(wrongBytes, 'CURRENT', facts).status, 'BLOCKED', 'same revision different bytes fails closed');
 const sourceText = readFileSync(new URL('./ud100FieldMapFoundation.ts', import.meta.url), 'utf8');
 ok(!/UD-101|SUM-130|CM-010|LACIV109|CIV312|POS-010|CP10\.5/.test(sourceText), 'exemplar maps no other form');
 ok(!/fetch\(|writeFile|appendFile|pdf-lib|supabase|database|localStorage|sessionStorage|XMLHttpRequest|FormData/.test(sourceText), 'foundation has no network, persistence, database, or PDF-write path');

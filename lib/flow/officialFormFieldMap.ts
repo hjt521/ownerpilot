@@ -20,7 +20,6 @@ export interface OfficialSourceIdentity {
   repositorySha256: string;
   artifactClass: string;
   repositoryStatus: string;
-  sourceHealth: OfficialSourceHealth;
 }
 
 export interface OfficialFieldBinding {
@@ -143,12 +142,9 @@ export function validateOfficialSourceIdentity(
   if (expected.repositoryStatus !== 'present_hash_and_blankness_verified' || supplied.repositoryStatus !== 'present_hash_and_blankness_verified') {
     return { status: 'BLOCKED', reason: 'UNSUPPORTED_REPOSITORY_STATUS', detail: 'The exact registered binary must have verified repository hash and blankness status.' };
   }
-  if (expected.sourceHealth !== 'CURRENT' || supplied.sourceHealth !== 'CURRENT') {
-    return { status: 'BLOCKED', reason: 'SOURCE_HEALTH_NOT_CURRENT', detail: `Expected and supplied source health must both be CURRENT; got ${expected.sourceHealth}/${supplied.sourceHealth}.` };
-  }
   const identityKeys: readonly (keyof OfficialSourceIdentity)[] = [
     'registryVersion', 'artifactId', 'authorityKey', 'formId', 'revisionEffective', 'sourceSnapshotId',
-    'repositoryPath', 'repositorySha256', 'artifactClass', 'repositoryStatus', 'sourceHealth',
+    'repositoryPath', 'repositorySha256', 'artifactClass', 'repositoryStatus',
   ];
   for (const key of identityKeys) {
     if (expected[key] !== supplied[key]) return { status: 'BLOCKED', reason: 'SOURCE_IDENTITY_MISMATCH', detail: `Exact source identity mismatch at ${key}.` };
@@ -165,13 +161,36 @@ export function validateOfficialSourceIdentity(
   return { status: 'VALID' };
 }
 
+export function validateOfficialSourceHealth(
+  suppliedSourceHealth: OfficialSourceHealth | null | undefined,
+): OfficialSourceValidation {
+  if (suppliedSourceHealth !== 'CURRENT') {
+    return {
+      status: 'BLOCKED',
+      reason: 'SOURCE_HEALTH_NOT_CURRENT',
+      detail: `Source health must be explicitly supplied as CURRENT; got ${suppliedSourceHealth ?? 'MISSING'}.`,
+    };
+  }
+  return { status: 'VALID' };
+}
+
 export function evaluateOfficialFormFieldMap(
   definition: OfficialFormFieldMapDefinition,
   suppliedSourceIdentity: OfficialSourceIdentity,
+  suppliedSourceHealth: OfficialSourceHealth | null | undefined,
   facts: FilingCanonicalFactsProjection,
   artifactRole: OfficialArtifactRole,
 ): OfficialFormFieldMapEvaluation {
-  const sourceValidation = validateOfficialSourceIdentity(definition.sourceIdentity, suppliedSourceIdentity, definition.bindings);
+  const sourceIdentityValidation = validateOfficialSourceIdentity(
+    definition.sourceIdentity,
+    suppliedSourceIdentity,
+    definition.bindings,
+  );
+  const sourceHealthValidation = validateOfficialSourceHealth(suppliedSourceHealth);
+  const sourceValidation =
+    sourceIdentityValidation.status === 'VALID'
+      ? sourceHealthValidation
+      : sourceIdentityValidation;
   if (artifactRole !== definition.artifactRole) {
     return { status: 'BLOCKED', blockReason: 'ARTIFACT_ROLE_MISMATCH', sourceValidation, formApplicability: 'NOT_EVALUATED', formRequiredness: 'NOT_EVALUATED', fieldPopulation: 'NOT_PERFORMED', documentGeneration: 'NOT_PERFORMED', mappings: [] };
   }

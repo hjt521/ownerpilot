@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { captureCreatedNoticeArtifact } from './createdNoticeArtifact';
+import { captureCreatedNoticeArtifact, restoreCreatedNoticeArtifact } from './createdNoticeArtifact';
 import {
   CANONICAL_FILING_FACT_REFS,
   projectFilingCanonicalFacts,
@@ -39,8 +39,33 @@ const artifact = captureCreatedNoticeArtifact(approved, '2026-08-13T18:01:00.000
   compliancePeriodStartDate: '2026-08-14',
   compliancePeriodEndDate: '2026-08-18',
 });
+const persisted: NoticeFlowData = {
+  ...approved,
+  productionSnapshot: {
+    producedAtISO: '2026-08-13T18:01:00.000Z',
+    propertyAddress: '100 Canonical Ave',
+    propertyCounty: 'Los Angeles',
+    tenantNames: ['Synthetic Tenant'],
+    totalAmount: 2500,
+    rentPeriods: [
+      { start: '2026-07-01', end: '2026-07-31', amount: 1000 },
+      { start: '2026-08-01', end: '2026-08-31', amount: 1500 },
+    ],
+    payeeName: 'Synthetic Owner',
+    payeePhone: '5555550100',
+    payeeStreetAddress: '100 Canonical Ave',
+    signerName: 'Synthetic Owner',
+  },
+  createdNoticeArtifact: artifact,
+};
 
-const projection = projectFilingCanonicalFacts(artifact, {
+const restored = restoreCreatedNoticeArtifact(persisted);
+ok(restored !== null, 'fixture passes the authoritative Created Notice restore boundary');
+if (!restored) throw new Error('fixture must restore');
+equal(restored.generation, artifact.generation, 'authoritative restore preserves exact generation');
+equal(restored.createdAtISO, artifact.createdAtISO, 'authoritative restore preserves exact produced timestamp');
+
+const projection = projectFilingCanonicalFacts(persisted, {
   defendantTelephones: [{ state: 'UNANSWERED' }],
 });
 equal(projection.status, 'READY', 'exact Created Notice artifact projects canonical filing facts');
@@ -74,17 +99,17 @@ equal(unit?.state, 'UNANSWERED', 'missing canonical key is explicit UNANSWERED r
 
 const unansweredPhone = readCanonicalFilingFact<string>(projection, 'defendant.0.telephone');
 equal(unansweredPhone?.state, 'UNANSWERED', 'future phone input preserves UNANSWERED');
-const unknownProjection = projectFilingCanonicalFacts(artifact, {
+const unknownProjection = projectFilingCanonicalFacts(persisted, {
   defendantTelephones: [{ state: 'UNKNOWN' }],
 });
 equal(readCanonicalFilingFact(unknownProjection, 'defendant.0.telephone')?.state, 'UNKNOWN', 'affirmatively UNKNOWN remains distinct from UNANSWERED');
 
-const confirmationProjection = projectFilingCanonicalFacts(artifact, {
+const confirmationProjection = projectFilingCanonicalFacts(persisted, {
   defendantTelephones: [{ state: 'REQUIRES_CONFIRMATION', reason: 'Confirm supplemental source.' }],
 });
 equal(readCanonicalFilingFact(confirmationProjection, 'defendant.0.telephone')?.state, 'REQUIRES_CONFIRMATION', 'REQUIRES_CONFIRMATION does not auto-clear');
 
-const confirmedProjection = projectFilingCanonicalFacts(artifact, {
+const confirmedProjection = projectFilingCanonicalFacts(persisted, {
   defendantTelephones: [{ state: 'KNOWN', value: 'confirmed-value' }],
 });
 const confirmedPhone = readCanonicalFilingFact<string>(confirmedProjection, 'defendant.0.telephone');
@@ -94,7 +119,7 @@ if (confirmedPhone?.state === 'KNOWN') {
   equal(confirmedPhone.provenance.provenanceClass, 'SUPPLEMENTAL_CUSTOMER_INPUT', 'supplemental confirmation provenance stays distinct from frozen Notice provenance class');
 }
 
-const conflictProjection = projectFilingCanonicalFacts(artifact, {
+const conflictProjection = projectFilingCanonicalFacts(persisted, {
   defendantTelephones: [{ state: 'CONFLICT', values: ['conflict-a', 'conflict-b'], reason: 'Conflicting supplemental evidence.' }],
 });
 const conflict = readCanonicalFilingFact<string>(conflictProjection, 'defendant.0.telephone');
@@ -108,9 +133,53 @@ if (absent.status !== 'BLOCKED') throw new Error('absent fixture must block');
 equal(absent.reason, 'EXACT_CREATED_NOTICE_REQUIRED', 'missing artifact cannot fall back to mutable draft values');
 equal(absent.facts, null, 'missing artifact exposes no guessed canonical facts');
 
-const tampered = projectFilingCanonicalFacts({ ...artifact, generation: 'tampered-generation' });
+const missingEnvelope = projectFilingCanonicalFacts({
+  ...persisted,
+  createdNoticeArtifact: undefined,
+});
+equal(missingEnvelope.status, 'BLOCKED', 'missing persisted Created Notice envelope fails closed');
+if (missingEnvelope.status !== 'BLOCKED') throw new Error('missing envelope fixture must block');
+equal(missingEnvelope.reason, 'EXACT_CREATED_NOTICE_REQUIRED', 'missing envelope cannot fall back to mutable draft state');
+
+const missingSnapshot = projectFilingCanonicalFacts({
+  ...persisted,
+  productionSnapshot: undefined,
+});
+equal(missingSnapshot.status, 'BLOCKED', 'missing ProductionSnapshot fails authoritative restoration');
+if (missingSnapshot.status !== 'BLOCKED') throw new Error('missing snapshot fixture must block');
+equal(missingSnapshot.reason, 'INVALID_CREATED_NOTICE_IDENTITY', 'missing ProductionSnapshot cannot become canonical');
+
+const mismatchedSnapshot = projectFilingCanonicalFacts({
+  ...persisted,
+  productionSnapshot: {
+    ...persisted.productionSnapshot!,
+    producedAtISO: '2026-08-13T18:02:00.000Z',
+  },
+});
+equal(mismatchedSnapshot.status, 'BLOCKED', 'mismatched ProductionSnapshot timestamp fails authoritative restoration');
+if (mismatchedSnapshot.status !== 'BLOCKED') throw new Error('mismatched snapshot fixture must block');
+equal(mismatchedSnapshot.reason, 'INVALID_CREATED_NOTICE_IDENTITY', 'snapshot mismatch cannot become canonical');
+
+const mutableDraftProjection = projectFilingCanonicalFacts({
+  ...persisted,
+  propertyAddress: '999 Mutable Draft Ave',
+  tenantNames: ['Mutable Draft Tenant'],
+});
+equal(mutableDraftProjection.status, 'READY', 'later mutable draft drift does not replace the restored artifact');
+const restoredProperty = readCanonicalFilingFact<string>(
+  mutableDraftProjection,
+  CANONICAL_FILING_FACT_REFS.propertyStreetAddress,
+);
+equal(restoredProperty?.state, 'KNOWN', 'restored frozen property remains known after mutable draft drift');
+if (restoredProperty?.state !== 'KNOWN') throw new Error('restored property must remain known');
+equal(restoredProperty.value, '100 Canonical Ave', 'projection consumes restored artifact facts, never mutable draft fallback');
+
+const tampered = projectFilingCanonicalFacts({
+  ...persisted,
+  createdNoticeArtifact: { ...artifact, generation: 'tampered-generation' },
+});
 equal(tampered.status, 'BLOCKED', 'mismatched Created Notice generation fails closed');
 if (tampered.status !== 'BLOCKED') throw new Error('tampered fixture must block');
-equal(tampered.reason, 'INVALID_CREATED_NOTICE_IDENTITY', 'invalid frozen envelope is not accepted as canonical');
+equal(tampered.reason, 'INVALID_CREATED_NOTICE_IDENTITY', 'failed restoration is not accepted as canonical');
 
 console.log(`filingCanonicalFacts: ${passed} assertions passed`);

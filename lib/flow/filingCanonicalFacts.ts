@@ -1,13 +1,9 @@
 import type {
-  CreatedNoticeArtifactEnvelope,
   LandlordIdentity,
+  NoticeFlowData,
   RentPeriod,
 } from './noticeFlowState';
-import {
-  freezeReviewCreateInput,
-  hasCurrentReviewApproval,
-  reviewApprovalGeneration,
-} from './reviewApproval';
+import { restoreCreatedNoticeArtifact } from './createdNoticeArtifact';
 
 export const CANONICAL_FILING_FACT_REFS = {
   landlordIdentity: 'landlord.identity',
@@ -202,26 +198,19 @@ function supplementalTelephone(
 }
 
 export function projectFilingCanonicalFacts(
-  createdNotice: CreatedNoticeArtifactEnvelope | null,
+  data: NoticeFlowData | null,
   supplemental: FilingCanonicalFactsSupplementalInput = {},
 ): FilingCanonicalFactsProjection {
-  if (!createdNotice) return { status: 'BLOCKED', reason: 'EXACT_CREATED_NOTICE_REQUIRED', facts: null };
-  if (
-    typeof createdNotice.generation !== 'string' || createdNotice.generation === '' ||
-    typeof createdNotice.createdAtISO !== 'string' || createdNotice.createdAtISO === '' ||
-    !createdNotice.createData
-  ) {
+  if (!data?.createdNoticeArtifact) {
+    return { status: 'BLOCKED', reason: 'EXACT_CREATED_NOTICE_REQUIRED', facts: null };
+  }
+
+  const createdNotice = restoreCreatedNoticeArtifact(data);
+  if (!createdNotice) {
     return { status: 'BLOCKED', reason: 'INVALID_CREATED_NOTICE_IDENTITY', facts: null };
   }
 
-  const createData = freezeReviewCreateInput(createdNotice.createData);
-  if (
-    !hasCurrentReviewApproval(createData) ||
-    createData.reviewApprovalGeneration !== createdNotice.generation ||
-    reviewApprovalGeneration(createData) !== createdNotice.generation
-  ) {
-    return { status: 'BLOCKED', reason: 'INVALID_CREATED_NOTICE_IDENTITY', facts: null };
-  }
+  const createData = createdNotice.createData;
 
   const identity = {
     generation: createdNotice.generation,

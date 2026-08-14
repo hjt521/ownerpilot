@@ -3,6 +3,7 @@ import {
   evaluateOfficialFormFieldMap,
   type OfficialFormFieldMapDefinition,
   type OfficialFormFieldMapEvaluation,
+  type OfficialSourceHealth,
   type OfficialSourceIdentity,
 } from './officialFormFieldMap';
 
@@ -20,7 +21,6 @@ export const UD100_OFFICIAL_SOURCE_IDENTITY: OfficialSourceIdentity = {
   repositorySha256: UD100_SOURCE_SHA256,
   artifactClass: 'official_blank',
   repositoryStatus: 'present_hash_and_blankness_verified',
-  sourceHealth: 'CURRENT',
 };
 
 export interface Ud100AcroFormFieldEvidence {
@@ -58,7 +58,14 @@ export const UD100_FIELD_MAP_FOUNDATION: OfficialFormFieldMapDefinition = {
 
 export function evaluateUd100FieldMapFoundation(
   suppliedSourceIdentity: OfficialSourceIdentity,
+  suppliedSourceHealth: OfficialSourceHealth | null | undefined,
   facts: FilingCanonicalFactsProjection,
 ): OfficialFormFieldMapEvaluation {
-  return evaluateOfficialFormFieldMap(UD100_FIELD_MAP_FOUNDATION, suppliedSourceIdentity, facts, 'OWNER_GENERATED_PREPARATION');
+  return evaluateOfficialFormFieldMap(
+    UD100_FIELD_MAP_FOUNDATION,
+    suppliedSourceIdentity,
+    suppliedSourceHealth,
+    facts,
+    'OWNER_GENERATED_PREPARATION',
+  );
 }
