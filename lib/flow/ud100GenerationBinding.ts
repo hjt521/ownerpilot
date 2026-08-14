@@ -266,7 +266,7 @@ const courtRules: GenerationFieldRule[] = [
 ));
 
 const domain1CaptionContact: GenerationFieldRule[] = [
-  governedNoWrite(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].BarNo_ft[0]', 1, '/Tx', '845 0 R', 'STATE BAR NUMBER:'), D(CANONICAL_FILING_FACT_REFS.captionOptionalFieldsControl, CONTROL), ['SELF_REP_NO_BAR_FIRM_FAX'], 'Current governed self-represented caption route authorizes no bar-number write.'),
+  governedNoWrite(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].BarNo_ft[0]', 1, '/Tx', '845 0 R', 'Government-form bar credential field (exact label retained only in pinned official source binary)'), D(CANONICAL_FILING_FACT_REFS.captionOptionalFieldsControl, CONTROL), ['SELF_REP_NO_BAR_FIRM_FAX'], 'Current governed self-represented caption route authorizes no bar-number write.'),
   textRule(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].AttyName_ft[0]', 1, '/Tx', '846 0 R', 'NAME:'), D(CANONICAL_FILING_FACT_REFS.filerContact, CUSTOMER), { id: 'OBJECT_PROPERTY_TEXT_V1', version: '1', args: { property: 'name' } }),
   governedNoWrite(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].AttyFirm_ft[0]', 1, '/Tx', '847 0 R', 'FIRM NAME:'), D(CANONICAL_FILING_FACT_REFS.captionOptionalFieldsControl, CONTROL), ['SELF_REP_NO_BAR_FIRM_FAX'], 'Current governed self-represented caption route authorizes no firm-name write.'),
   textRule(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].AttyStreet_ft[0]', 1, '/Tx', '848 0 R', 'STREET ADDRESS:'), D(CANONICAL_FILING_FACT_REFS.filerContact, CUSTOMER), { id: 'OBJECT_PROPERTY_TEXT_V1', version: '1', args: { property: 'streetAddress' } }),
