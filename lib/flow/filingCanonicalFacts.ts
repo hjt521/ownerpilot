@@ -13,8 +13,14 @@ export const CANONICAL_FILING_FACT_REFS = {
   propertyUnit: 'property.unit',
   propertyCity: 'property.city',
   propertyCounty: 'property.county',
+  propertyZip: 'property.zip',
   rentPeriods: 'notice.rentPeriods',
   rentDemandTotal: 'notice.rentDemandTotal',
+  selectedFilingCourt: 'ud100.selectedFilingCourt',
+  municipalClassification: 'ud100.control.municipalClassification',
+  initialComplaintLifecycle: 'ud100.lifecycle.initialComplaint',
+  captionRouteControl: 'ud100.control.captionRoute',
+  jurisdictionSupportControl: 'ud100.control.jurisdictionSupport',
 } as const;
 
 export type FixedCanonicalFilingFactRef =
@@ -25,11 +31,32 @@ export type CanonicalFilingFactRef = FixedCanonicalFilingFactRef | DefendantTele
 export type FilingFactProvenanceClass =
   | 'FROZEN_CUSTOMER_CONFIRMED'
   | 'DETERMINISTIC_DERIVATION'
-  | 'SUPPLEMENTAL_CUSTOMER_INPUT';
+  | 'SUPPLEMENTAL_CUSTOMER_INPUT'
+  | 'CUSTOMER_CONFIRMED_LEGAL_ELECTION'
+  | 'GOVERNED_CONTROL_RESULT'
+  | 'LIFECYCLE_EXTERNAL_EVENT';
 
 export interface CreatedNoticeFactIdentity {
   generation: string;
   createdAtISO: string;
+}
+
+export interface LegalElectionConfirmationProvenance {
+  confirmationId: string;
+  confirmedAtISO: string;
+}
+
+export interface GovernedControlProvenance {
+  controlId: string;
+  controlVersion: string;
+  resultId: string;
+  status: 'CURRENT' | 'STALE' | 'UNRESOLVED' | 'UNSUPPORTED';
+}
+
+export interface LifecycleEventProvenance {
+  sourceId: string;
+  eventId: string;
+  eventType: string;
 }
 
 export interface FilingFactProvenance {
@@ -37,6 +64,9 @@ export interface FilingFactProvenance {
   sourcePaths: readonly string[];
   provenanceClass: FilingFactProvenanceClass;
   dependencies: readonly CanonicalFilingFactRef[];
+  legalElectionConfirmation?: LegalElectionConfirmationProvenance;
+  governedControl?: GovernedControlProvenance;
+  lifecycleEvent?: LifecycleEventProvenance;
 }
 
 export type FilingFactState<T> =
@@ -53,8 +83,53 @@ export type SupplementalFactInput<T> =
   | { state: 'REQUIRES_CONFIRMATION'; reason: string }
   | { state: 'CONFLICT'; values: readonly T[]; reason: string };
 
+export type CustomerConfirmedLegalElectionInput<T> =
+  | { state: 'KNOWN'; value: T; confirmation?: LegalElectionConfirmationProvenance }
+  | { state: 'UNANSWERED' }
+  | { state: 'UNKNOWN' }
+  | { state: 'REQUIRES_CONFIRMATION'; reason: string }
+  | { state: 'CONFLICT'; values: readonly T[]; reason: string };
+
+export type GovernedControlInput<T> =
+  | { state: 'KNOWN'; value: T; control?: GovernedControlProvenance }
+  | { state: 'UNANSWERED' }
+  | { state: 'UNKNOWN' }
+  | { state: 'REQUIRES_CONFIRMATION'; reason: string }
+  | { state: 'CONFLICT'; values: readonly T[]; reason: string };
+
+export type LifecycleEventInput<T> =
+  | { state: 'KNOWN'; value: T; event?: LifecycleEventProvenance }
+  | { state: 'UNANSWERED' }
+  | { state: 'UNKNOWN' }
+  | { state: 'REQUIRES_CONFIRMATION'; reason: string }
+  | { state: 'CONFLICT'; values: readonly T[]; reason: string };
+
+export interface SelectedFilingCourt {
+  county: string;
+  streetAddress: string;
+  mailingAddress: string;
+  cityAndZip: string;
+  branchName: string;
+}
+
+export type MunicipalClassification = 'WITHIN_CITY_LIMITS' | 'UNINCORPORATED_AREA';
+export type InitialComplaintLifecycle = 'INITIAL_PREFILING' | 'PRIOR_COMPLAINT_EXISTS';
+export type CaptionRouteControl =
+  | 'SELF_REPRESENTED_SUPPORTED'
+  | 'OUTSIDE_ATTORNEY_UNSUPPORTED'
+  | 'ENTITY_ROUTE_UNRESOLVED';
+export type JurisdictionSupportControl = 'SUPPORTED_INITIAL_UD100' | 'UNSUPPORTED';
+
 export interface FilingCanonicalFactsSupplementalInput {
   defendantTelephones?: readonly SupplementalFactInput<string>[];
+  propertyZip?: SupplementalFactInput<string>;
+  preparation?: {
+    selectedFilingCourt?: CustomerConfirmedLegalElectionInput<SelectedFilingCourt>;
+    municipalClassification?: GovernedControlInput<MunicipalClassification>;
+    initialComplaintLifecycle?: LifecycleEventInput<InitialComplaintLifecycle>;
+    captionRouteControl?: GovernedControlInput<CaptionRouteControl>;
+    jurisdictionSupportControl?: GovernedControlInput<JurisdictionSupportControl>;
+  };
 }
 
 export type FilingCanonicalFactRecord = Record<string, FilingFactState<unknown>>;
@@ -76,8 +151,12 @@ function provenance(
   sourcePaths: readonly string[],
   provenanceClass: FilingFactProvenanceClass,
   dependencies: readonly CanonicalFilingFactRef[] = [],
+  additions: Pick<
+    FilingFactProvenance,
+    'legalElectionConfirmation' | 'governedControl' | 'lifecycleEvent'
+  > = {},
 ): FilingFactProvenance {
-  return { createdNotice: identity, sourcePaths, provenanceClass, dependencies };
+  return { createdNotice: identity, sourcePaths, provenanceClass, dependencies, ...additions };
 }
 
 function directString(
@@ -169,16 +248,12 @@ function rentDemandTotal(
   return { state: 'KNOWN', value: amounts.reduce((sum, amount) => sum + amount, 0), provenance: p };
 }
 
-function supplementalTelephone(
+function supplementalString(
   identity: CreatedNoticeFactIdentity,
-  index: number,
+  sourcePath: string,
   input: SupplementalFactInput<string> | undefined,
 ): FilingFactState<string> {
-  const p = provenance(
-    identity,
-    [`supplemental.defendantTelephones[${index}]`],
-    'SUPPLEMENTAL_CUSTOMER_INPUT',
-  );
+  const p = provenance(identity, [sourcePath], 'SUPPLEMENTAL_CUSTOMER_INPUT');
   if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
   if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
   if (input.state === 'REQUIRES_CONFIRMATION') {
@@ -190,10 +265,75 @@ function supplementalTelephone(
   if (input.value.trim() === '') {
     return {
       state: 'REQUIRES_CONFIRMATION',
-      reason: 'A confirmed telephone value cannot be blank.',
+      reason: `A confirmed supplemental value at ${sourcePath} cannot be blank.`,
       provenance: p,
     };
   }
+  return { state: 'KNOWN', value: input.value, provenance: p };
+}
+
+function supplementalTelephone(
+  identity: CreatedNoticeFactIdentity,
+  index: number,
+  input: SupplementalFactInput<string> | undefined,
+): FilingFactState<string> {
+  return supplementalString(identity, `supplemental.defendantTelephones[${index}]`, input);
+}
+
+function electionState<T>(
+  identity: CreatedNoticeFactIdentity,
+  sourcePath: string,
+  input: CustomerConfirmedLegalElectionInput<T> | undefined,
+): FilingFactState<T> {
+  const p = provenance(
+    identity,
+    [sourcePath],
+    'CUSTOMER_CONFIRMED_LEGAL_ELECTION',
+    [],
+    { legalElectionConfirmation: input?.state === 'KNOWN' ? input.confirmation : undefined },
+  );
+  if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
+  if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
+  if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
+  if (input.state === 'CONFLICT') return { state: 'CONFLICT', values: [...input.values], reason: input.reason, provenance: p };
+  return { state: 'KNOWN', value: input.value, provenance: p };
+}
+
+function controlState<T>(
+  identity: CreatedNoticeFactIdentity,
+  sourcePath: string,
+  input: GovernedControlInput<T> | undefined,
+): FilingFactState<T> {
+  const p = provenance(
+    identity,
+    [sourcePath],
+    'GOVERNED_CONTROL_RESULT',
+    [],
+    { governedControl: input?.state === 'KNOWN' ? input.control : undefined },
+  );
+  if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
+  if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
+  if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
+  if (input.state === 'CONFLICT') return { state: 'CONFLICT', values: [...input.values], reason: input.reason, provenance: p };
+  return { state: 'KNOWN', value: input.value, provenance: p };
+}
+
+function lifecycleState<T>(
+  identity: CreatedNoticeFactIdentity,
+  sourcePath: string,
+  input: LifecycleEventInput<T> | undefined,
+): FilingFactState<T> {
+  const p = provenance(
+    identity,
+    [sourcePath],
+    'LIFECYCLE_EXTERNAL_EVENT',
+    [],
+    { lifecycleEvent: input?.state === 'KNOWN' ? input.event : undefined },
+  );
+  if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
+  if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
+  if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
+  if (input.state === 'CONFLICT') return { state: 'CONFLICT', values: [...input.values], reason: input.reason, provenance: p };
   return { state: 'KNOWN', value: input.value, provenance: p };
 }
 
@@ -241,7 +381,7 @@ export function projectFilingCanonicalFacts(
     identity,
     'createData.tenantNames',
     createData.tenantNames,
-    name => name.trim() !== '',
+    (name: string) => name.trim() !== '',
   );
   facts[CANONICAL_FILING_FACT_REFS.propertyStreetAddress] = directString(
     identity,
@@ -263,8 +403,40 @@ export function projectFilingCanonicalFacts(
     'createData.propertyCounty',
     createData.propertyCounty,
   );
+  facts[CANONICAL_FILING_FACT_REFS.propertyZip] = supplementalString(
+    identity,
+    'supplemental.propertyZip',
+    supplemental.propertyZip,
+  );
   facts[CANONICAL_FILING_FACT_REFS.rentPeriods] = periods;
   facts[CANONICAL_FILING_FACT_REFS.rentDemandTotal] = rentDemandTotal(identity, periods);
+
+  const preparation = supplemental.preparation;
+  facts[CANONICAL_FILING_FACT_REFS.selectedFilingCourt] = electionState(
+    identity,
+    'supplemental.preparation.selectedFilingCourt',
+    preparation?.selectedFilingCourt,
+  );
+  facts[CANONICAL_FILING_FACT_REFS.municipalClassification] = controlState(
+    identity,
+    'supplemental.preparation.municipalClassification',
+    preparation?.municipalClassification,
+  );
+  facts[CANONICAL_FILING_FACT_REFS.initialComplaintLifecycle] = lifecycleState(
+    identity,
+    'supplemental.preparation.initialComplaintLifecycle',
+    preparation?.initialComplaintLifecycle,
+  );
+  facts[CANONICAL_FILING_FACT_REFS.captionRouteControl] = controlState(
+    identity,
+    'supplemental.preparation.captionRouteControl',
+    preparation?.captionRouteControl,
+  );
+  facts[CANONICAL_FILING_FACT_REFS.jurisdictionSupportControl] = controlState(
+    identity,
+    'supplemental.preparation.jurisdictionSupportControl',
+    preparation?.jurisdictionSupportControl,
+  );
 
   const telephoneCount = Math.max(createData.tenantNames.length, supplemental.defendantTelephones?.length ?? 0);
   for (let index = 0; index < telephoneCount; index += 1) {
