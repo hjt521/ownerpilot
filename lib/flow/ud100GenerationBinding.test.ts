@@ -6,6 +6,7 @@ import {
   projectFilingCanonicalFacts,
   readCanonicalFilingFact,
   type FilingCanonicalFactsSupplementalInput,
+  type PropertyUnitRepresentation,
 } from './filingCanonicalFacts';
 import { createFlowState, type NoticeFlowData } from './noticeFlowState';
 import { bindReviewApproval } from './reviewApproval';
@@ -58,7 +59,10 @@ const persisted: NoticeFlowData = {
   createdNoticeArtifact: artifact,
 };
 
-const confirmation = { confirmationId: 'court-confirm-1', confirmedAtISO: '2026-08-14T12:02:00.000Z' };
+const confirmation = (id: string) => ({
+  confirmationId: id,
+  confirmedAtISO: '2026-08-14T12:02:00.000Z',
+});
 const selectedCourt = {
   county: 'Los Angeles',
   streetAddress: '111 N Hill St',
@@ -66,106 +70,299 @@ const selectedCourt = {
   cityAndZip: 'Los Angeles, CA 90012',
   branchName: 'Stanley Mosk Courthouse',
 };
-const control = (controlId: string, resultId: string, status: 'CURRENT' | 'STALE' | 'UNRESOLVED' | 'UNSUPPORTED' = 'CURRENT') => ({
+const control = (
+  controlId: string,
+  resultId: string,
+  status: 'CURRENT' | 'STALE' | 'UNRESOLVED' | 'UNSUPPORTED' = 'CURRENT',
+) => ({
   controlId,
   controlVersion: '1.0.0',
   resultId,
   status,
 });
-const event = { sourceId: 'case-lifecycle', eventId: 'prefiling-1', eventType: 'INITIAL_COMPLAINT_STATUS' };
+const event = (eventType: string, eventId: string) => ({
+  sourceId: 'case-lifecycle',
+  eventId,
+  eventType,
+});
 
-function supplemental(overrides: Partial<FilingCanonicalFactsSupplementalInput> = {}): FilingCanonicalFactsSupplementalInput {
+const allOptionalReliefFalse = {
+  fairRentalValue: false,
+  statutoryDamages: false,
+  relocationDamages: false,
+  forfeiture: false,
+  attorneyFees: false,
+  otherRelief: false,
+  otherAllegations: false,
+};
+
+function supplemental(
+  overrides: Partial<FilingCanonicalFactsSupplementalInput> = {},
+): FilingCanonicalFactsSupplementalInput {
   const baseSupplemental: FilingCanonicalFactsSupplementalInput = {
     propertyZip: { state: 'KNOWN', value: '91203' },
     preparation: {
-      selectedFilingCourt: { state: 'KNOWN', value: selectedCourt, confirmation },
-      municipalClassification: { state: 'KNOWN', value: 'WITHIN_CITY_LIMITS', control: control('municipal-classification', 'municipal-city') },
-      initialComplaintLifecycle: { state: 'KNOWN', value: 'INITIAL_PREFILING', event },
-      captionRouteControl: { state: 'KNOWN', value: 'SELF_REPRESENTED_SUPPORTED', control: control('caption-route', 'self-represented') },
-      jurisdictionSupportControl: { state: 'KNOWN', value: 'SUPPORTED_INITIAL_UD100', control: control('jurisdiction-support', 'supported') },
+      selectedFilingCourt: {
+        state: 'KNOWN',
+        value: selectedCourt,
+        confirmation: confirmation('court-confirm-1'),
+      },
+      municipalClassification: {
+        state: 'KNOWN',
+        value: 'WITHIN_CITY_LIMITS',
+        control: control('municipal-classification', 'municipal-city'),
+      },
+      initialComplaintLifecycle: {
+        state: 'KNOWN',
+        value: 'INITIAL_PREFILING',
+        event: event('INITIAL_COMPLAINT_STATUS', 'prefiling-1'),
+      },
+      captionRouteControl: {
+        state: 'KNOWN',
+        value: 'SELF_REPRESENTED_SUPPORTED',
+        control: control('caption-route', 'self-represented'),
+      },
+      jurisdictionSupportControl: {
+        state: 'KNOWN',
+        value: 'SUPPORTED_INITIAL_UD100',
+        control: control('jurisdiction-support', 'supported'),
+      },
+
+      plaintiffRelationship: { state: 'KNOWN', value: 'OWNER' },
+      plaintiffType: { state: 'KNOWN', value: 'INDIVIDUAL_OVER_18' },
+      plaintiffStandingControl: {
+        state: 'KNOWN',
+        value: 'SUPPORTED',
+        control: control('plaintiff-standing', 'supported'),
+        dependencies: [CANONICAL_FILING_FACT_REFS.plaintiffRelationship, CANONICAL_FILING_FACT_REFS.plaintiffType],
+      },
+      dbaUse: { state: 'KNOWN', value: 'NO_DBA' },
+      doeElection: {
+        state: 'KNOWN',
+        value: { include: false },
+        confirmation: confirmation('doe-no'),
+      },
+      filerContact: {
+        state: 'KNOWN',
+        value: {
+          name: 'Synthetic Owner',
+          streetAddress: '100 Binding Ave',
+          city: 'Glendale',
+          state: 'CA',
+          zip: '91203',
+          telephone: '5555550100',
+          email: 'owner@example.test',
+          captionForText: 'Synthetic Owner',
+        },
+      },
+      captionOptionalFieldsControl: {
+        state: 'KNOWN',
+        value: 'SELF_REP_NO_BAR_FIRM_FAX',
+        control: control('caption-optional-fields', 'self-rep-optional'),
+        dependencies: [CANONICAL_FILING_FACT_REFS.captionRouteControl],
+      },
+
+      premisesAge: { state: 'KNOWN', value: '1990' },
+      tpaClassificationControl: {
+        state: 'KNOWN',
+        value: 'SUBJECT_AT_FAULT',
+        control: control('tpa-classification', 'subject-at-fault'),
+      },
+      localControl: {
+        state: 'KNOWN',
+        value: 'NOT_SUBJECT',
+        control: control('local-rent-control', 'not-subject'),
+      },
+      civilClassificationControl: {
+        state: 'KNOWN',
+        value: 'LIMITED_LE_10000',
+        control: control('civil-classification', 'limited-le-10000'),
+        dependencies: [CANONICAL_FILING_FACT_REFS.pastDueRentRelief, CANONICAL_FILING_FACT_REFS.otherReliefSelections],
+      },
+      leaseStatus: { state: 'KNOWN', value: 'NO_AGREEMENT' },
+      leaseApplicabilityControl: {
+        state: 'KNOWN',
+        value: 'NO_AGREEMENT_FIELDS_NOT_APPLICABLE',
+        control: control('lease-applicability', 'not-applicable'),
+        dependencies: [CANONICAL_FILING_FACT_REFS.leaseStatus],
+      },
+
+      noticeComplaintElection: {
+        state: 'KNOWN',
+        value: 'PAY_RENT_OR_QUIT_3_DAY',
+        confirmation: confirmation('notice-election-pay-rent'),
+      },
+      noticeElectionConsistencyControl: {
+        state: 'KNOWN',
+        value: 'CONSISTENT',
+        control: control('notice-election-consistency', 'consistent'),
+        dependencies: [CANONICAL_FILING_FACT_REFS.noticeComplaintElection, CANONICAL_FILING_FACT_REFS.serviceFacts],
+      },
+      serviceComplaintElection: {
+        state: 'KNOWN',
+        value: 'PERSONAL_HAND_DELIVERY',
+        confirmation: confirmation('service-election-personal'),
+      },
+      serviceElectionConsistencyControl: {
+        state: 'KNOWN',
+        value: 'CONSISTENT',
+        control: control('service-election-consistency', 'consistent'),
+        dependencies: [CANONICAL_FILING_FACT_REFS.serviceComplaintElection, CANONICAL_FILING_FACT_REFS.serviceFacts],
+      },
+      serviceFacts: {
+        state: 'KNOWN',
+        value: {
+          defendantNames: ['Synthetic Tenant One', 'Synthetic Tenant Two'],
+          serviceDate: '2026-08-14',
+          noticeExpirationDate: '2026-08-19',
+          serviceMethod: 'PERSONAL_HAND_DELIVERY',
+          noticeIncludedForfeiture: false,
+        },
+        event: event('NOTICE_SERVICE_FACTS', 'service-1'),
+      },
+      rentDueAtService: { state: 'KNOWN', value: 2450 },
+      fixedTermExpirationElection: {
+        state: 'KNOWN',
+        value: 'DO_NOT_SELECT',
+        confirmation: confirmation('fixed-term-no'),
+      },
+      rentalAssistanceFacts: {
+        state: 'KNOWN',
+        value: {
+          item11aReceived: false,
+          item11bReceived: false,
+          item11cHas: false,
+          item11dHas: false,
+        },
+      },
+      rentalAssistanceControl: {
+        state: 'KNOWN',
+        value: 'APPLICABLE',
+        control: control('rental-assistance', 'applicable'),
+        dependencies: [CANONICAL_FILING_FACT_REFS.rentalAssistanceFacts],
+      },
+      otherNoticesFact: { state: 'KNOWN', value: 'NO_OTHER_NOTICES' },
+
+      pastDueRentRelief: {
+        state: 'KNOWN',
+        value: { selected: true, amount: 2400 },
+        confirmation: confirmation('past-due-rent-relief'),
+      },
+      otherReliefSelections: {
+        state: 'KNOWN',
+        value: allOptionalReliefFalse,
+        confirmation: confirmation('other-relief-none'),
+      },
+
+      udaDisclosureControl: {
+        state: 'KNOWN',
+        value: 'NO_COMPENSATED_ASSISTANT',
+        control: control('uda-disclosure', 'no-compensated-assistant'),
+      },
     },
   };
+
   return {
     ...baseSupplemental,
     ...overrides,
-    preparation: { ...baseSupplemental.preparation, ...overrides.preparation },
+    preparation: {
+      ...baseSupplemental.preparation,
+      ...overrides.preparation,
+    },
   };
 }
 
-function evaluate(input: FilingCanonicalFactsSupplementalInput = supplemental()) {
-  const facts = projectFilingCanonicalFacts(persisted, input);
-  return { facts, result: evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts) };
+function evaluate(
+  input: FilingCanonicalFactsSupplementalInput = supplemental(),
+  data: NoticeFlowData = persisted,
+) {
+  const facts = projectFilingCanonicalFacts(data, input);
+  return {
+    facts,
+    result: evaluateUd100GenerationBinding(
+      UD100_OFFICIAL_SOURCE_IDENTITY,
+      'CURRENT',
+      facts,
+    ),
+  };
 }
 
 const ready = evaluate();
-equal(ready.facts.status, 'READY', 'exact restored Created Notice plus governed supplemental inputs project');
-equal(ready.result.status, 'GENERATION_BINDING_READY', 'current initial pre-filing profile produces deterministic field-write plan only');
-if (ready.result.status !== 'GENERATION_BINDING_READY') throw new Error('ready fixture must resolve');
+equal(ready.facts.status, 'READY', 'exact restored Created Notice plus complete governed six-domain inputs project');
+equal(ready.result.status, 'GENERATION_BINDING_READY', 'complete bounded initial pre-filing profile produces deterministic field-write plan only');
+if (ready.result.status !== 'GENERATION_BINDING_READY') {
+  throw new Error(`ready fixture must resolve: ${JSON.stringify(ready.result)}`);
+}
 equal(ready.result.documentGeneration, 'NOT_PERFORMED', 'GENERATION_BINDING_READY does not generate a document');
 equal(ready.result.pdfMutation, 'NOT_PERFORMED', 'GENERATION_BINDING_READY does not mutate PDF bytes');
 equal(ready.result.formApplicability, 'NOT_EVALUATED', 'D.1 does not decide applicability');
 equal(ready.result.formRequiredness, 'NOT_EVALUATED', 'D.1 does not decide requiredness');
 equal(UD100_GENERATION_BINDING.mapId, UD100_GENERATION_BINDING_MAP_ID, 'map id is explicit');
-equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'map version is explicit');
-equal(UD100_GENERATION_BINDING.profileId, UD100_GENERATION_PROFILE_ID, 'bounded initial pre-filing profile is explicit');
+equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'remediation changes explicit map version');
+equal(UD100_GENERATION_BINDING.profileId, UD100_GENERATION_PROFILE_ID, 'bounded initial pre-filing profile remains explicit');
 ok(UD100_GENERATION_BINDING.mapSnapshotId.startsWith('map:sha256:'), 'map snapshot is content-addressed');
-equal(UD100_GENERATION_BINDING.matrixDomainCoverage.length, 6, 'all six Product/Legal matrix domains are carried by the profile contract');
 equal(validateGenerationBindingDefinition(UD100_FIELD_MAP_FOUNDATION).status, 'BLOCKED', 'six-field Stage D foundation remains not generation-capable');
+equal(validateGenerationBindingDefinition(UD100_GENERATION_BINDING).status, 'VALID', 'remediated D.1 definition independently validates');
 
-const premises = ready.result.fieldWritePlan.find(item => item.fieldId === 'UD-100[0].Page1[0].List3[0].SubList3[0].Lia[0].FillText6[0]');
-equal(premises?.action, 'WRITE_TEXT', 'independently evidenced premises field is admitted as a deterministic text write');
+equal(UD100_GENERATION_BINDING.fieldRules.length, 186, 'all 186 exact-binary widgets receive executable classification');
+const fieldIds = new Set(UD100_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.fieldId));
+const objectRefs = new Set(UD100_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.objectReference));
+equal(fieldIds.size, 186, 'all classified widget field IDs are unique');
+equal(objectRefs.size, 186, 'all exact PDF object references are unique');
+const coveredFieldIds = new Set(UD100_GENERATION_BINDING.fieldFamilyCoverage.flatMap(family => family.fieldIds));
+equal(coveredFieldIds.size, 186, 'field-family coverage executablely covers every classified widget');
+for (const domain of ['DOMAIN_1', 'DOMAIN_2', 'DOMAIN_3', 'DOMAIN_4', 'DOMAIN_5', 'DOMAIN_6']) {
+  ok(UD100_GENERATION_BINDING.fieldFamilyCoverage.some(family => family.domainId === domain), `${domain} has executable family coverage`);
+}
+for (const rule of UD100_GENERATION_BINDING.fieldRules) {
+  ok(rule.evidence.fieldId.startsWith('UD-100[0].'), `${rule.evidence.objectReference} carries exact UD-100 field identity`);
+  ok(rule.evidence.sourcePage >= 1 && rule.evidence.sourcePage <= 4, `${rule.evidence.objectReference} carries exact page evidence`);
+  ok(rule.evidence.fieldType === '/Tx' || rule.evidence.fieldType === '/Btn', `${rule.evidence.objectReference} carries exact field type`);
+  ok(/^\d+ 0 R$/.test(rule.evidence.objectReference), `${rule.evidence.fieldId} carries exact indirect-object evidence`);
+  ok(rule.evidence.visibleLabelEvidence.trim().length > 0, `${rule.evidence.objectReference} carries visible/alternate label evidence`);
+}
+
+const uniquePlanFields = new Set(ready.result.fieldWritePlan.map(item => item.fieldId));
+equal(uniquePlanFields.size, ready.result.fieldWritePlan.length, 'successful whitelist contains no duplicate/conflicting actions');
+equal(ready.result.fieldWritePlan.length, 186, 'successful bounded profile explicitly classifies every widget as write or authorized no-write');
+
+const premises = ready.result.fieldWritePlan.find(item => item.objectReference === '799 0 R');
+equal(premises?.action, 'WRITE_TEXT', 'premises field is a deterministic positive write');
 if (premises?.action === 'WRITE_TEXT') {
-  equal(premises.value, '100 Binding Ave, Unit 4, Glendale, 91203, Los Angeles', 'premises transform composes only exact governed components and punctuation');
-  equal(premises.objectReference, '799 0 R', 'premises exact PDF object evidence is preserved');
+  equal(premises.value, '100 Binding Ave, Unit 4, Glendale, 91203, Los Angeles', 'premises uses exact governed components only');
 }
-const zip = readCanonicalFilingFact<string>(ready.facts, CANONICAL_FILING_FACT_REFS.propertyZip);
-equal(zip?.state, 'KNOWN', 'explicit ZIP is canonical supplemental fact');
-if (zip?.state === 'KNOWN') {
-  equal(zip.value, '91203', 'ZIP value is preserved without normalization/inference');
-  equal(zip.provenance.provenanceClass, 'SUPPLEMENTAL_CUSTOMER_INPUT', 'ZIP retains supplemental-customer provenance');
-  equal(zip.provenance.sourcePaths[0], 'supplemental.propertyZip', 'ZIP source path is explicit');
-}
-
-const courtCounty = ready.result.fieldWritePlan.find(item => item.fieldId.endsWith('CourtInfo[0].CrtCounty_ft[0]'));
-equal(courtCounty?.action, 'WRITE_TEXT', 'selected filing court supplies caption court county');
-if (courtCounty?.action === 'WRITE_TEXT') equal(courtCounty.value, 'Los Angeles', 'court county comes from selectedFilingCourt, not property.county inference');
-const courtBranch = ready.result.fieldWritePlan.find(item => item.fieldId.endsWith('CourtInfo[0].Branch_ft[0]'));
-if (courtBranch?.action === 'WRITE_TEXT') equal(courtBranch.value, 'Stanley Mosk Courthouse', 'selected court branch is preserved exactly');
+const courtCounty = ready.result.fieldWritePlan.find(item => item.objectReference === '840 0 R');
+if (courtCounty?.action === 'WRITE_TEXT') equal(courtCounty.value, 'Los Angeles', 'selected court county comes from confirmed selectedFilingCourt');
+const propertyCounty = ready.result.fieldWritePlan.find(item => item.objectReference === '796 0 R');
+equal(propertyCounty?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'city-limits control makes unincorporated county subfield explicit no-write');
 
 const cityCheckbox = ready.result.fieldWritePlan.find(item => item.objectReference === '797 0 R');
 const unincorporatedCheckbox = ready.result.fieldWritePlan.find(item => item.objectReference === '795 0 R');
-equal(cityCheckbox?.action, 'SET_SELECTED', 'resolved governed municipal control selects city-limits checkbox');
-equal(unincorporatedCheckbox?.action, 'SET_EXPLICIT_NONSELECTION', 'resolved mutually exclusive control explicitly represents nonselection');
-const complaint = ready.result.fieldWritePlan.find(item => item.objectReference === '833 0 R');
-const amended = ready.result.fieldWritePlan.find(item => item.objectReference === '834 0 R');
-equal(complaint?.action, 'SET_SELECTED', 'authoritative initial lifecycle selects original complaint');
-equal(amended?.action, 'SET_EXPLICIT_NONSELECTION', 'authoritative initial lifecycle permits explicit amended nonselection');
+equal(cityCheckbox?.action, 'SET_SELECTED', 'valid city-limits control selects city checkbox');
+equal(unincorporatedCheckbox?.action, 'SET_EXPLICIT_NONSELECTION', 'valid mutually exclusive control explicitly nonselects unincorporated checkbox');
 
-const noWrites = ready.result.fieldWritePlan.filter(item => item.action === 'PRESERVE_OFFICIAL_BLANK_NO_WRITE');
-ok(noWrites.some(item => item.objectReference === '856 0 R'), 'pre-filing case number is explicit zero-write');
-ok(noWrites.some(item => item.objectReference === '865 0 R'), 'signature date is explicit zero-write');
-ok(noWrites.some(item => item.objectReference === '882 0 R'), 'attachment count is explicit zero-write');
-ok(noWrites.some(item => item.objectReference === '877 0 R'), 'paid UDA/LDA registration credential remains explicit zero-write');
-const uniqueFields = new Set(ready.result.fieldWritePlan.map(item => item.fieldId));
-equal(uniqueFields.size, ready.result.fieldWritePlan.length, 'successful whitelist contains no duplicate/conflicting field actions');
+const noticePayRent = ready.result.fieldWritePlan.find(item => item.objectReference === '696 0 R');
+equal(noticePayRent?.action, 'SET_SELECTED', 'customer-confirmed complaint notice election selects pay-rent-or-quit');
+const servicePersonal = ready.result.fieldWritePlan.find(item => item.objectReference === '652 0 R');
+equal(servicePersonal?.action, 'SET_SELECTED', 'customer-confirmed complaint service election selects personal hand delivery');
+const serviceDate = ready.result.fieldWritePlan.find(item => item.objectReference === '653 0 R');
+if (serviceDate?.action === 'WRITE_TEXT') equal(serviceDate.value, '2026-08-14', 'service date comes from authoritative lifecycle event facts');
+const noticeExpirationDate = ready.result.fieldWritePlan.find(item => item.objectReference === '664 0 R');
+if (noticeExpirationDate?.action === 'WRITE_TEXT') equal(noticeExpirationDate.value, '2026-08-19', 'notice-expiration date is separately supplied lifecycle evidence and is not inferred from service date');
+const rentAtService = ready.result.fieldWritePlan.find(item => item.objectReference === '606 0 R');
+if (rentAtService?.action === 'WRITE_TEXT') equal(rentAtService.value, '2450', 'rent due at service comes from explicit customer fact, not Notice demand');
+
+const pastDueRent = ready.result.fieldWritePlan.find(item => item.objectReference === '902 0 R');
+if (pastDueRent?.action === 'WRITE_TEXT') {
+  equal(pastDueRent.value, '2400', 'complaint past-due-rent amount comes from explicit owner relief election');
+  notEqual(pastDueRent.value, '2500', 'Notice demand is not silently substituted into complaint relief');
+}
 
 const agreedRentField = 'UD-100[0].Page2[0].List6[0].SubList6[0].Lia[0].SubLista[0].Li2[0].dollar[0]';
-ok(!ready.result.fieldWritePlan.some(item => item.fieldId === agreedRentField), 'page-2 agreed-rent field is not populated from Notice demand');
-ok(UD100_PROHIBITED_SEMANTIC_SUBSTITUTIONS.some(item => 'fieldId' in item && item.fieldId === agreedRentField && item.prohibitedSourceRef === CANONICAL_FILING_FACT_REFS.rentDemandTotal), 'agreed-rent prohibition is explicit and evidence-bound');
-ok(!UD100_GENERATION_BINDING.fieldRules.some(rule => rule.disposition === 'WRITE' && rule.dependencies.some(dep => dep.ref === CANONICAL_FILING_FACT_REFS.rentDemandTotal)), 'Notice demand is not reused for complaint/agreement/damages semantics');
-
-for (const propertyZip of [
-  undefined,
-  { state: 'UNKNOWN' } as const,
-  { state: 'REQUIRES_CONFIRMATION', reason: 'confirm ZIP' } as const,
-  { state: 'CONFLICT', values: ['91203', '91204'], reason: 'ZIP conflict' } as const,
-]) {
-  const input = supplemental({ propertyZip });
-  const result = evaluate(input).result;
-  equal(result.status, 'BLOCKED', `${propertyZip?.state ?? 'missing'} ZIP blocks premises write`);
-}
-const blankZip = evaluate(supplemental({ propertyZip: { state: 'KNOWN', value: '   ' } })).result;
-equal(blankZip.status, 'BLOCKED', 'blank KNOWN ZIP cannot masquerade as a value');
+const agreedRent = ready.result.fieldWritePlan.find(item => item.fieldId === agreedRentField);
+equal(agreedRent?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'current no-agreement governed control leaves agreed-rent source blank without Notice-demand substitution');
+ok(UD100_PROHIBITED_SEMANTIC_SUBSTITUTIONS.some(item => 'fieldId' in item && item.fieldId === agreedRentField && item.prohibitedSourceRef === CANONICAL_FILING_FACT_REFS.rentDemandTotal), 'agreed-rent Notice-demand prohibition remains explicit');
+ok(!UD100_GENERATION_BINDING.fieldRules.some(rule => rule.disposition === 'WRITE' && rule.dependencies.some(dep => dep.ref === CANONICAL_FILING_FACT_REFS.rentDemandTotal)), 'Notice demand is not reused by any writable complaint field');
 
 const noUnitBase: NoticeFlowData = { ...base, propertyUnit: undefined };
 const noUnitApproved: NoticeFlowData = { ...noUnitBase, ...bindReviewApproval(noUnitBase, '2026-08-14T12:10:00.000Z') };
@@ -175,91 +372,294 @@ const noUnitArtifact = captureCreatedNoticeArtifact(noUnitApproved, '2026-08-14T
 });
 const noUnitPersisted: NoticeFlowData = {
   ...noUnitApproved,
-  productionSnapshot: {
-    ...persisted.productionSnapshot!,
-    producedAtISO: '2026-08-14T12:11:00.000Z',
-  },
+  productionSnapshot: { ...persisted.productionSnapshot!, producedAtISO: '2026-08-14T12:11:00.000Z' },
   createdNoticeArtifact: noUnitArtifact,
 };
-const noUnitFacts = projectFilingCanonicalFacts(noUnitPersisted, supplemental());
-const noUnitResult = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', noUnitFacts);
-equal(noUnitResult.status, 'GENERATION_BINDING_READY', 'already-governed optional unit may be UNANSWERED without authorizing ZIP omission');
-if (noUnitResult.status === 'GENERATION_BINDING_READY') {
-  const noUnitPremises = noUnitResult.fieldWritePlan.find(item => item.objectReference === '799 0 R');
-  if (noUnitPremises?.action === 'WRITE_TEXT') equal(noUnitPremises.value, '100 Binding Ave, Glendale, 91203, Los Angeles', 'optional unit omission changes only punctuation/composition');
+
+const unansweredUnit = evaluate(supplemental(), noUnitPersisted);
+equal(unansweredUnit.result.status, 'BLOCKED', 'UNANSWERED property unit blocks rather than authorizing omission');
+equal(unansweredUnit.result.fieldWritePlan.length, 0, 'UNANSWERED unit blocker returns zero writes');
+
+const explicitNoUnit = evaluate(
+  supplemental({ propertyUnitConfirmation: { state: 'KNOWN', value: 'NO_UNIT' } }),
+  noUnitPersisted,
+);
+equal(explicitNoUnit.result.status, 'GENERATION_BINDING_READY', 'identity-bearing explicit NO_UNIT can resolve premises composition');
+if (explicitNoUnit.result.status === 'GENERATION_BINDING_READY') {
+  const noUnitPremises = explicitNoUnit.result.fieldWritePlan.find(item => item.objectReference === '799 0 R');
+  if (noUnitPremises?.action === 'WRITE_TEXT') {
+    equal(noUnitPremises.value, '100 Binding Ave, Glendale, 91203, Los Angeles', 'explicit NO_UNIT changes only deterministic punctuation/composition');
+  }
 }
-const noUnitNoZip = projectFilingCanonicalFacts(noUnitPersisted, supplemental({ propertyZip: { state: 'UNANSWERED' } }));
-equal(evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', noUnitNoZip).status, 'BLOCKED', 'optional unit semantics never authorize missing ZIP');
+const noUnitFact = readCanonicalFilingFact<PropertyUnitRepresentation>(
+  explicitNoUnit.facts,
+  CANONICAL_FILING_FACT_REFS.propertyUnitRepresentation,
+);
+if (noUnitFact?.state === 'KNOWN') {
+  equal(noUnitFact.value.kind, 'NO_UNIT', 'explicit no-unit remains distinct in fact snapshot');
+  equal(noUnitFact.provenance.provenanceClass, 'SUPPLEMENTAL_CUSTOMER_INPUT', 'explicit no-unit has identity-bearing customer provenance');
+}
 
-const zipChanged = evaluate(supplemental({ propertyZip: { state: 'KNOWN', value: '91204' } })).result;
-if (zipChanged.status !== 'GENERATION_BINDING_READY') throw new Error('changed ZIP fixture must still resolve');
-notEqual(zipChanged.referencedFactSnapshotId, ready.result.referencedFactSnapshotId, 'ZIP value change changes referenced-fact identity');
-notEqual(zipChanged.generationInputId, ready.result.generationInputId, 'ZIP value change changes generation-input identity');
+for (const propertyUnitConfirmation of [
+  { state: 'UNKNOWN' } as const,
+  { state: 'REQUIRES_CONFIRMATION', reason: 'confirm unit' } as const,
+  { state: 'CONFLICT', values: ['NO_UNIT'] as const, reason: 'unit conflict' } as const,
+]) {
+  const result = evaluate(supplemental({ propertyUnitConfirmation }), noUnitPersisted).result;
+  equal(result.status, 'BLOCKED', `${propertyUnitConfirmation.state} unit state cannot authorize omission`);
+  equal(result.fieldWritePlan.length, 0, `${propertyUnitConfirmation.state} unit state yields zero writes`);
+}
 
-const confirmationChanged = evaluate(supplemental({
+const malformedMunicipal = evaluate(supplemental({
   preparation: {
-    selectedFilingCourt: { state: 'KNOWN', value: selectedCourt, confirmation: { ...confirmation, confirmationId: 'court-confirm-2' } },
+    municipalClassification: {
+      state: 'KNOWN',
+      value: 'MALFORMED_RUNTIME_VALUE' as any,
+      control: control('municipal-classification', 'malformed-but-current'),
+    },
   },
 })).result;
-if (confirmationChanged.status !== 'GENERATION_BINDING_READY') throw new Error('confirmation-change fixture must resolve');
-notEqual(confirmationChanged.referencedFactSnapshotId, ready.result.referencedFactSnapshotId, 'legal-election confirmation provenance changes identity even with same visible court values');
+equal(malformedMunicipal.status, 'BLOCKED', 'malformed CURRENT municipal value hard-blocks');
+equal(malformedMunicipal.fieldWritePlan.length, 0, 'malformed enum value produces zero checkbox writes');
 
-const controlProvenanceChanged = evaluate(supplemental({
+const unincorporated = evaluate(supplemental({
   preparation: {
-    municipalClassification: { state: 'KNOWN', value: 'WITHIN_CITY_LIMITS', control: control('municipal-classification', 'municipal-city-second-evidence') },
+    municipalClassification: {
+      state: 'KNOWN',
+      value: 'UNINCORPORATED_AREA',
+      control: control('municipal-classification', 'unincorporated'),
+    },
   },
 })).result;
-if (controlProvenanceChanged.status !== 'GENERATION_BINDING_READY') throw new Error('control provenance fixture must resolve');
-notEqual(controlProvenanceChanged.referencedFactSnapshotId, ready.result.referencedFactSnapshotId, 'governed-control result provenance changes identity even when selected checkbox output is unchanged');
+equal(unincorporated.status, 'GENERATION_BINDING_READY', 'second exact municipal choice is valid');
+if (unincorporated.status === 'GENERATION_BINDING_READY') {
+  equal(unincorporated.fieldWritePlan.find(item => item.objectReference === '795 0 R')?.action, 'SET_SELECTED', 'unincorporated choice selects only its checkbox');
+  equal(unincorporated.fieldWritePlan.find(item => item.objectReference === '797 0 R')?.action, 'SET_EXPLICIT_NONSELECTION', 'unincorporated choice nonselects city checkbox');
+  equal(unincorporated.fieldWritePlan.find(item => item.objectReference === '796 0 R')?.action, 'WRITE_TEXT', 'unincorporated choice writes county detail');
+  equal(unincorporated.fieldWritePlan.find(item => item.objectReference === '798 0 R')?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'unincorporated choice preserves city detail blank');
+}
 
-const unconfirmedCourt = evaluate(supplemental({
-  preparation: { selectedFilingCourt: { state: 'KNOWN', value: selectedCourt } },
-})).result;
-equal(unconfirmedCourt.status, 'BLOCKED', 'KNOWN legal election without affirmative confirmation provenance blocks');
-const missingCourt = evaluate(supplemental({ preparation: { selectedFilingCourt: { state: 'UNANSWERED' } } })).result;
-equal(missingCourt.status, 'BLOCKED', 'property county cannot substitute for missing selected filing court');
-
-const staleMunicipal = evaluate(supplemental({
+const lifecycleOnlyService = evaluate(supplemental({
   preparation: {
-    municipalClassification: { state: 'KNOWN', value: 'WITHIN_CITY_LIMITS', control: control('municipal-classification', 'stale', 'STALE') },
+    serviceComplaintElection: { state: 'UNANSWERED' },
   },
 })).result;
-equal(staleMunicipal.status, 'BLOCKED', 'stale governed municipal control cannot authorize checkboxes');
-const bareLifecycle = evaluate(supplemental({
-  preparation: { initialComplaintLifecycle: { state: 'KNOWN', value: 'INITIAL_PREFILING' } },
+equal(lifecycleOnlyService.status, 'BLOCKED', 'authoritative service facts cannot choose complaint-side service legal election');
+equal(lifecycleOnlyService.fieldWritePlan.length, 0, 'missing owner service election yields zero writes');
+
+const unconfirmedServiceElection = evaluate(supplemental({
+  preparation: {
+    serviceComplaintElection: { state: 'KNOWN', value: 'PERSONAL_HAND_DELIVERY' },
+  },
 })).result;
-equal(bareLifecycle.status, 'BLOCKED', 'lifecycle fact without authoritative source/event identity blocks');
+equal(unconfirmedServiceElection.status, 'BLOCKED', 'KNOWN service election without affirmative customer confirmation provenance blocks');
+
+const unconfirmedNoticeElection = evaluate(supplemental({
+  preparation: {
+    noticeComplaintElection: { state: 'KNOWN', value: 'PAY_RENT_OR_QUIT_3_DAY' },
+  },
+})).result;
+equal(unconfirmedNoticeElection.status, 'BLOCKED', 'Notice artifact/lifecycle cannot substitute for affirmative complaint notice election confirmation');
+
+const inconsistentServiceControl = evaluate(supplemental({
+  preparation: {
+    serviceElectionConsistencyControl: {
+      state: 'KNOWN',
+      value: 'CONSISTENT',
+      control: control('service-election-consistency', 'stale', 'STALE'),
+    },
+  },
+})).result;
+equal(inconsistentServiceControl.status, 'BLOCKED', 'service-election consistency requires explicit versioned CURRENT control provenance');
+
+const detachedServiceConsistency = evaluate(supplemental({
+  preparation: {
+    serviceElectionConsistencyControl: {
+      state: 'KNOWN',
+      value: 'CONSISTENT',
+      control: control('service-election-consistency', 'detached-current'),
+      dependencies: [],
+    },
+  },
+})).result;
+equal(detachedServiceConsistency.status, 'BLOCKED', 'CURRENT service-consistency token without the governed service/election provenance dependencies blocks');
+equal(detachedServiceConsistency.fieldWritePlan.length, 0, 'detached service-consistency provenance produces zero writes');
+
+const detachedCivilControl = evaluate(supplemental({
+  preparation: {
+    civilClassificationControl: {
+      state: 'KNOWN',
+      value: 'LIMITED_LE_10000',
+      control: control('civil-classification', 'detached-current'),
+      dependencies: [],
+    },
+  },
+})).result;
+equal(detachedCivilControl.status, 'BLOCKED', 'CURRENT civil-classification token without complaint-relief provenance dependencies blocks');
+equal(detachedCivilControl.fieldWritePlan.length, 0, 'detached civil-classification provenance produces zero writes');
+
+const malformedCivil = evaluate(supplemental({
+  preparation: {
+    civilClassificationControl: {
+      state: 'KNOWN',
+      value: 'WRONG_CLASSIFICATION' as any,
+      control: control('civil-classification', 'wrong-current'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.pastDueRentRelief, CANONICAL_FILING_FACT_REFS.otherReliefSelections],
+    },
+  },
+})).result;
+equal(malformedCivil.status, 'BLOCKED', 'malformed CURRENT civil classification blocks exact checkbox domain');
+equal(malformedCivil.fieldWritePlan.length, 0, 'malformed civil classification returns zero writes');
+
+const staleTpa = evaluate(supplemental({
+  preparation: {
+    tpaClassificationControl: {
+      state: 'KNOWN',
+      value: 'SUBJECT_AT_FAULT',
+      control: control('tpa-classification', 'stale', 'STALE'),
+    },
+  },
+})).result;
+equal(staleTpa.status, 'BLOCKED', 'deterministic TPA family requires versioned CURRENT provenance');
+
+const noPastDueRelief = evaluate(supplemental({
+  preparation: {
+    pastDueRentRelief: {
+      state: 'KNOWN',
+      value: { selected: false },
+      confirmation: confirmation('past-due-no'),
+    },
+  },
+})).result;
+equal(noPastDueRelief.status, 'GENERATION_BINDING_READY', 'explicit owner nonselection of past-due-rent relief is governed');
+if (noPastDueRelief.status === 'GENERATION_BINDING_READY') {
+  equal(noPastDueRelief.fieldWritePlan.find(item => item.objectReference === '901 0 R')?.action, 'SET_EXPLICIT_NONSELECTION', 'explicit no relief becomes explicit checkbox nonselection');
+  equal(noPastDueRelief.fieldWritePlan.find(item => item.objectReference === '902 0 R')?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'explicit no relief authorizes no amount write');
+}
+
+const selectedPastDueWithoutAmount = evaluate(supplemental({
+  preparation: {
+    pastDueRentRelief: {
+      state: 'KNOWN',
+      value: { selected: true },
+      confirmation: confirmation('past-due-missing-amount'),
+    },
+  },
+})).result;
+equal(selectedPastDueWithoutAmount.status, 'BLOCKED', 'selected complaint relief requires every selected amount prerequisite');
+equal(selectedPastDueWithoutAmount.fieldWritePlan.length, 0, 'missing selected relief amount yields zero writes');
+
+const selectedFairRentalUnsupported = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...allOptionalReliefFalse, fairRentalValue: true },
+      confirmation: confirmation('fair-rental-selected'),
+    },
+  },
+})).result;
+equal(selectedFairRentalUnsupported.status, 'BLOCKED', 'selected optional relief outside current exact amount/text binding hard-blocks rather than leaving fields blank');
+equal(selectedFairRentalUnsupported.fieldWritePlan.length, 0, 'unsupported selected relief returns zero writes');
+
+const missingReliefReview = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: { state: 'UNANSWERED' },
+  },
+})).result;
+equal(missingReliefReview.status, 'BLOCKED', 'unreviewed optional relief cannot silently become unchecked');
+
+const changedZip = evaluate(supplemental({ propertyZip: { state: 'KNOWN', value: '91204' } })).result;
+if (changedZip.status !== 'GENERATION_BINDING_READY') throw new Error('changed ZIP fixture must resolve');
+notEqual(changedZip.referencedFactSnapshotId, ready.result.referencedFactSnapshotId, 'referenced ZIP value changes fact snapshot identity');
+notEqual(changedZip.generationInputId, ready.result.generationInputId, 'referenced ZIP value changes generation-input identity');
+
+const changedElectionConfirmation = evaluate(supplemental({
+  preparation: {
+    noticeComplaintElection: {
+      state: 'KNOWN',
+      value: 'PAY_RENT_OR_QUIT_3_DAY',
+      confirmation: confirmation('notice-election-confirmation-2'),
+    },
+  },
+})).result;
+if (changedElectionConfirmation.status !== 'GENERATION_BINDING_READY') throw new Error('changed confirmation fixture must resolve');
+notEqual(changedElectionConfirmation.referencedFactSnapshotId, ready.result.referencedFactSnapshotId, 'customer legal-election confirmation identity changes referenced fact snapshot');
+
+const changedControlIdentity = evaluate(supplemental({
+  preparation: {
+    civilClassificationControl: {
+      state: 'KNOWN',
+      value: 'LIMITED_LE_10000',
+      control: control('civil-classification', 'limited-new-evidence'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.pastDueRentRelief, CANONICAL_FILING_FACT_REFS.otherReliefSelections],
+    },
+  },
+})).result;
+if (changedControlIdentity.status !== 'GENERATION_BINDING_READY') throw new Error('changed control fixture must resolve');
+notEqual(changedControlIdentity.referencedFactSnapshotId, ready.result.referencedFactSnapshotId, 'control result identity changes referenced fact snapshot');
 
 const outsideAttorney = evaluate(supplemental({
   preparation: {
-    captionRouteControl: { state: 'KNOWN', value: 'OUTSIDE_ATTORNEY_UNSUPPORTED', control: control('caption-route', 'outside-attorney') },
+    captionRouteControl: {
+      state: 'KNOWN',
+      value: 'OUTSIDE_ATTORNEY_UNSUPPORTED',
+      control: control('caption-route', 'outside-attorney'),
+    },
   },
 })).result;
 equal(outsideAttorney.status, 'BLOCKED', 'outside-attorney caption route hard-blocks current profile');
+
 const priorComplaint = evaluate(supplemental({
   preparation: {
-    initialComplaintLifecycle: { state: 'KNOWN', value: 'PRIOR_COMPLAINT_EXISTS', event: { ...event, eventId: 'prior-complaint' } },
+    initialComplaintLifecycle: {
+      state: 'KNOWN',
+      value: 'PRIOR_COMPLAINT_EXISTS',
+      event: event('INITIAL_COMPLAINT_STATUS', 'prior-complaint'),
+    },
   },
 })).result;
 equal(priorComplaint.status, 'BLOCKED', 'amended/prior-complaint path hard-blocks current initial profile');
+
 const unsupportedJurisdiction = evaluate(supplemental({
   preparation: {
-    jurisdictionSupportControl: { state: 'KNOWN', value: 'UNSUPPORTED', control: control('jurisdiction-support', 'unsupported') },
+    jurisdictionSupportControl: {
+      state: 'KNOWN',
+      value: 'UNSUPPORTED',
+      control: control('jurisdiction-support', 'unsupported'),
+    },
   },
 })).result;
 equal(unsupportedJurisdiction.status, 'BLOCKED', 'unsupported jurisdiction/control state hard-blocks');
 
+const paidUda = evaluate(supplemental({
+  preparation: {
+    udaDisclosureControl: {
+      state: 'KNOWN',
+      value: 'PAID_ASSISTANCE' as any,
+      control: control('uda-disclosure', 'paid'),
+    },
+  },
+})).result;
+equal(paidUda.status, 'BLOCKED', 'paid UDA/LDA path remains unsupported before activation');
+
 for (const scenario of ['MODEL_DRAFTED_OPEN_ENDED_ALLEGATION', 'PAID_COMPLIANCE_PATH_BEFORE_ACTIVATION']) {
   const facts = projectFilingCanonicalFacts(persisted, supplemental());
-  equal(
-    evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts, { unsupportedScenarios: [scenario] }).status,
-    'BLOCKED',
-    `${scenario} hard-blocks with no fallback/default`,
+  const result = evaluateUd100GenerationBinding(
+    UD100_OFFICIAL_SOURCE_IDENTITY,
+    'CURRENT',
+    facts,
+    { unsupportedScenarios: [scenario] },
   );
+  equal(result.status, 'BLOCKED', `${scenario} hard-blocks with no fallback/default`);
+  equal(result.fieldWritePlan.length, 0, `${scenario} returns zero writes`);
 }
 
 for (const health of [undefined, 'STALE', 'CHANGED', 'UNAVAILABLE', 'UNRESOLVED'] as const) {
-  equal(evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, health, ready.facts).status, 'BLOCKED', `${health ?? 'missing'} exact-source health blocks`);
+  equal(
+    evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, health, ready.facts).status,
+    'BLOCKED',
+    `${health ?? 'missing'} exact-source health blocks`,
+  );
 }
 const wrongBytes = {
   ...UD100_OFFICIAL_SOURCE_IDENTITY,
@@ -270,6 +670,11 @@ const wrongBytes = {
 equal(evaluateUd100GenerationBinding(wrongBytes, 'CURRENT', ready.facts).status, 'BLOCKED', 'same revision with different exact bytes blocks');
 
 const sourceText = readFileSync(new URL('./ud100GenerationBinding.ts', import.meta.url), 'utf8');
-ok(!/pdf-lib|writeFile|appendFile|fetch\(|XMLHttpRequest|supabase|database|localStorage|sessionStorage|FormData|model\.generate|signDocument|fileDocument|serveDocument/.test(sourceText), 'D.1 profile has no PDF mutation, network, persistence, provider/model, signing, filing, or service path');
+ok(!/pdf-lib|writeFile|appendFile|fetch\(|XMLHttpRequest|supabase|database|localStorage|sessionStorage|FormData|model\.generate|signDocument|fileDocument|serveDocument/.test(sourceText), 'D.1 profile has no PDF mutation, network, persistence, provider/model, signing, filing, or service execution path');
 
+console.log(`UD100_MAP_SNAPSHOT=${UD100_GENERATION_BINDING.mapSnapshotId}`);
+console.log(`UD100_REFERENCED_FACT_SNAPSHOT=${ready.result.referencedFactSnapshotId}`);
+console.log(`UD100_GENERATION_INPUT=${ready.result.generationInputId}`);
+console.log(`UD100_FIELD_RULE_COUNT=${UD100_GENERATION_BINDING.fieldRules.length}`);
+console.log(`UD100_FAMILY_COUNT=${UD100_GENERATION_BINDING.fieldFamilyCoverage.length}`);
 console.log(`ud100GenerationBinding: ${passed} assertions passed`);
