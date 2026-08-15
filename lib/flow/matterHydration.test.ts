@@ -1,4 +1,5 @@
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import { createFlowState, type NoticeFlowData } from './noticeFlowState';
 import { bindReviewApproval, hasCurrentReviewApproval } from './reviewApproval';
 import { resolveBrowserNoticeStart } from './matterHydration';
@@ -81,6 +82,81 @@ assert.equal(profiled.data.bankBranchAddress, undefined);
 assert.equal(profiled.data.eftElectionAvailable, undefined);
 assert.equal(profiled.data.eftPreviouslyEstablishedConfirmed, undefined);
 assert.deepEqual(profiled.profileSections, { landlordPayment: true, signerName: true });
+
+const entityProfile: OwnerProfile = {
+  ...profile,
+  landlordIdentity: {
+    type: 'entity',
+    entityLegalName: 'Saved Holdings LLC',
+    entityType: 'llc',
+    managementType: 'manager-managed',
+  },
+};
+const entityProfiled = resolveBrowserNoticeStart(createFlowState().data, null, entityProfile);
+assert.equal(entityProfiled.source, 'profile');
+assert.deepEqual(
+  entityProfiled.data.landlordIdentity,
+  entityProfile.landlordIdentity,
+  'saved entity identity remains reusable during new-Notice hydration',
+);
+assert.equal(
+  entityProfiled.data.landlordIdentityConfirmed,
+  createFlowState().data.landlordIdentityConfirmed,
+  'saved entity identity cannot manufacture current-Notice confirmation',
+);
+
+const confirmedDraftData: NoticeFlowData = {
+  ...draftBase,
+  landlordIdentity: { type: 'individual', names: ['Confirmed Draft Landlord'] },
+  landlordIdentityConfirmed: true,
+  mailingAddress: '111 Draft St, Los Angeles, CA 90001',
+};
+const confirmedDraft = resolveBrowserNoticeStart(
+  createFlowState().data,
+  {
+    pageIndex: 3,
+    savedAt: '2026-08-10T21:00:00.000Z',
+    data: confirmedDraftData,
+  },
+  entityProfile,
+);
+assert.equal(confirmedDraft.source, 'draft');
+assert.deepEqual(confirmedDraft.data.landlordIdentity, confirmedDraftData.landlordIdentity);
+assert.equal(
+  confirmedDraft.data.landlordIdentityConfirmed,
+  true,
+  'restored current draft keeps its current-Notice confirmation',
+);
+
+const noticeFlowSource = readFileSync('components/notice-flow.tsx', 'utf8');
+assert.ok(
+  noticeFlowSource.includes(
+    'checked={data.landlordIdentityConfirmed === true && li?.type === t}',
+  ),
+  'landlord radio checked state requires both reusable identity and current-Notice confirmation',
+);
+assert.equal(
+  (noticeFlowSource.match(
+    /checked=\{data\.landlordIdentityConfirmed === true && li\?\.type === t\}/g,
+  ) ?? []).length,
+  1,
+  'the landlord type group has one governed confirmation-aware checked expression',
+);
+assert.ok(
+  noticeFlowSource.includes(
+    'update(setLandlordTypePatch(t, { ...data, landlordIdentity: restored }));',
+  ),
+  'same-type and alternate-type selections continue through the existing selection/reset path',
+);
+const landlordTypePatchSource = noticeFlowSource.match(
+  /function setLandlordTypePatch\([\s\S]*?\nconst SERVICE_METHOD_LABELS/,
+)?.[0];
+assert.ok(landlordTypePatchSource, 'landlord type selection helper remains present');
+assert.equal(
+  (landlordTypePatchSource?.match(/landlordIdentityConfirmed: true/g) ?? []).length,
+  2,
+  'explicit selection confirms the current Notice for both individual and entity branches',
+);
 
 // No draft + no profile is the ordinary empty/default notice.
 const empty = resolveBrowserNoticeStart(fresh, null, null);
