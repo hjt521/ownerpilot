@@ -102,6 +102,14 @@ export function NonpaymentLifecycleSummary({
   const currentStageLabel = allComplete
     ? 'All stages complete'
     : PRODUCT_STAGE_LABELS[firstIncompleteMilestoneIndex] ?? PRODUCT_STAGE_LABELS[0];
+  const normalizedStatus = presentation.status.trim().toLowerCase();
+  const compactReviewReason =
+    presentation.reviewRequired &&
+    presentation.reviewReason &&
+    normalizedStatus === 'needs review' &&
+    presentation.reviewReason.trim().toLowerCase() !== normalizedStatus
+      ? presentation.reviewReason
+      : null;
   const nextTaskIsCurrentSurface = presentation.nextTask?.href === SURFACE_HREFS[surface];
 
   return (
@@ -109,70 +117,22 @@ export function NonpaymentLifecycleSummary({
       aria-label="Nonpayment lifecycle status"
       className="mx-auto w-full max-w-5xl px-4 pt-3 sm:px-6"
     >
-      <details className="border-y border-rule bg-white">
+      <details className="group border-y border-rule bg-white">
         <summary className="cursor-pointer list-none py-2.5 [&::-webkit-details-marker]:hidden">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-            <ol
-              aria-label="Nonpayment lifecycle"
-              className="flex w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-xs md:w-auto"
-            >
-              {presentation.milestones.map((milestone, index) => {
-                const displayState =
-                  allComplete || milestone.state === 'complete'
-                    ? 'complete'
-                    : index === firstIncompleteMilestoneIndex
-                      ? 'current'
-                      : 'upcoming';
-                const marker =
-                  displayState === 'complete'
-                    ? '✓'
-                    : displayState === 'current'
-                      ? '▶'
-                      : '○';
-                const stateText =
-                  displayState === 'complete'
-                    ? 'Completed'
-                    : displayState === 'current'
-                      ? 'Current'
-                      : 'Upcoming';
+          <div className="flex w-full min-w-0 flex-col gap-1 md:flex-row md:items-center md:gap-3">
+            <p className="w-full min-w-0 text-sm font-semibold leading-snug text-ink md:flex-1">
+              <span>{presentation.status}</span>
+              {compactReviewReason && (
+                <span className="font-normal group-open:hidden"> — {compactReviewReason}</span>
+              )}
+            </p>
 
-                return (
-                  <li
-                    key={milestone.key}
-                    aria-current={displayState === 'current' ? 'step' : undefined}
-                    className={`inline-flex items-center gap-1 whitespace-nowrap ${
-                      displayState === 'current'
-                        ? 'font-bold text-ink'
-                        : displayState === 'complete'
-                          ? 'font-semibold text-muted'
-                          : 'font-medium text-muted'
-                    }`}
-                  >
-                    <span aria-hidden="true">{marker}</span>
-                    <span className="sr-only">{stateText}: </span>
-                    <span>{PRODUCT_STAGE_LABELS[index]}</span>
-                    {index < PRODUCT_STAGE_LABELS.length - 1 && (
-                      <span aria-hidden="true" className="ml-0.5 text-muted">
-                        →
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-
-            <span aria-hidden="true" className="hidden text-muted md:inline">
-              •
-            </span>
-
-            <div className="flex w-full min-w-0 flex-col gap-1 md:flex-1 md:flex-row md:items-start md:justify-between md:gap-3">
-              <p className="w-full text-xs leading-snug text-ink md:min-w-0 md:flex-1 md:text-sm">
-                <span className="font-semibold">Current:</span>{' '}
-                <span className="font-semibold">{currentStageLabel}</span>
-                <span aria-hidden="true"> — </span>
-                <span>{presentation.status}</span>
+            <div className="flex w-full min-w-0 items-center justify-between gap-3 md:w-auto md:shrink-0 md:justify-start">
+              <p className="min-w-0 text-xs leading-snug text-muted">
+                <span className="font-medium">Stage:</span>{' '}
+                <span>{currentStageLabel}</span>
               </p>
-              <span className="inline-flex shrink-0 self-end items-center gap-1 text-xs font-semibold text-brand md:self-auto">
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-brand">
                 Details <span aria-hidden="true">⌄</span>
               </span>
             </div>

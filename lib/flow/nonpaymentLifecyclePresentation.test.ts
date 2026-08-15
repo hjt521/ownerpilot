@@ -484,64 +484,102 @@ ok(
   componentSource.includes(
     "const PRODUCT_STAGE_LABELS = [\n  'Notice',\n  'Unlawful Detainer',\n  'Service & Possession',\n] as const;",
   ),
-  'compact bar uses exactly the locked three Product stage labels in order',
+  'summary uses exactly the locked three Product stage labels in order',
 );
 ok(
   componentSource.includes(
     "presentation.milestones.findIndex(\n    (milestone) => milestone.state !== 'complete',\n  )",
   ),
-  'compact bar derives current presentation from the first incomplete existing milestone',
+  'current secondary stage derives from the first incomplete existing governed milestone',
 );
 ok(
   componentSource.includes("const allComplete = firstIncompleteMilestoneIndex === -1;"),
-  'compact bar handles the existing all-complete milestone state explicitly',
+  'summary handles the existing all-complete milestone state explicitly',
 );
 ok(
   componentSource.includes("? 'All stages complete'"),
   'all-complete presentation does not invent a fourth lifecycle stage',
 );
-ok(
-  componentSource.includes("aria-current={displayState === 'current' ? 'step' : undefined}"),
-  'current Product stage exposes semantic aria-current treatment',
-);
-ok(
-  componentSource.includes("? '✓'") &&
-    componentSource.includes("? '▶'") &&
-    componentSource.includes(": '○'"),
-  'completed/current/upcoming stages are distinguished with non-color markers',
-);
-ok(componentSource.includes('<span className="font-semibold">Current:</span>'), 'compact bar exposes an explicit textual Current marker');
-ok(
-  componentSource.includes('flex flex-col gap-2 md:flex-row md:items-center md:gap-3'),
-  'compact bar keeps phone-width presentation stacked and switches to horizontal layout only at desktop width',
-);
-ok(
-  componentSource.includes(
-    'flex w-full min-w-0 flex-col gap-1 md:flex-1 md:flex-row md:items-start md:justify-between md:gap-3',
-  ),
-  'mobile current-status block receives full width below the lifecycle sequence instead of a narrow side column',
-);
-ok(
-  componentSource.includes(
-    'w-full text-xs leading-snug text-ink md:min-w-0 md:flex-1 md:text-sm',
-  ),
-  'mobile Current status keeps a full-width readable line',
-);
+
 const compactSummarySource = componentSource.match(/<summary[\s\S]*?<\/summary>/)?.[0];
 ok(compactSummarySource, 'compact lifecycle summary source remains present');
+const expandedDetailsSource = componentSource.match(/<\/summary>([\s\S]*?)<\/details>/)?.[1];
+ok(expandedDetailsSource, 'expanded lifecycle Details source remains present');
+
+const compactStatusIndex = compactSummarySource?.indexOf('{presentation.status}') ?? -1;
+const compactStageIndex = compactSummarySource?.indexOf('Stage:') ?? -1;
 ok(
-  !compactSummarySource?.includes('presentation.reviewReason'),
-  'compact Current line stays short; the longer review reason remains in Details only',
+  compactStatusIndex >= 0 && compactStageIndex >= 0 && compactStatusIndex < compactStageIndex,
+  'collapsed customer-readable status is structurally primary before lifecycle-stage context',
 );
-ok(componentSource.includes('Details <span aria-hidden="true">⌄</span>'), 'full lifecycle explanation is secondary behind compact Details disclosure');
+ok(
+  compactSummarySource?.includes('{currentStageLabel}'),
+  'collapsed state exposes only the current governed stage as secondary context',
+);
+ok(
+  !compactSummarySource?.includes('presentation.milestones.map(') &&
+    !compactSummarySource?.includes('PRODUCT_STAGE_LABELS[index]') &&
+    !compactSummarySource?.includes('<ol'),
+  'collapsed state does not render the complete three-stage lifecycle sequence',
+);
+ok(
+  expandedDetailsSource?.includes('presentation.milestones.map((milestone, index)') &&
+    expandedDetailsSource?.includes('{PRODUCT_STAGE_LABELS[index]}'),
+  'complete lifecycle labels and governed milestone history remain inside Details',
+);
+ok(
+  componentSource.includes(
+    'flex w-full min-w-0 flex-col gap-1 md:flex-row md:items-center md:gap-3',
+  ),
+  'collapsed summary is at most two short mobile rows and becomes one compact desktop row',
+);
+ok(
+  componentSource.includes(
+    'w-full min-w-0 text-sm font-semibold leading-snug text-ink md:flex-1',
+  ),
+  'mobile customer-readable status receives full width instead of a narrow side column',
+);
+ok(
+  componentSource.includes(
+    'flex w-full min-w-0 items-center justify-between gap-3 md:w-auto md:shrink-0 md:justify-start',
+  ),
+  'secondary stage and Details share one compact mobile row and remain compact on desktop',
+);
+ok(
+  compactSummarySource?.includes('Details <span aria-hidden="true">⌄</span>'),
+  'Details affordance remains obvious in collapsed state',
+);
+ok(
+  componentSource.includes("normalizedStatus === 'needs review'"),
+  'compact review reason is reserved for the otherwise ambiguous generic Needs review status',
+);
+ok(
+  componentSource.includes(
+    'presentation.reviewReason.trim().toLowerCase() !== normalizedStatus',
+  ),
+  'compact review reason does not repeat text equivalent to the status',
+);
+equal(
+  compactSummarySource?.match(/\{compactReviewReason\}/g)?.length ?? 0,
+  1,
+  'compact review reason is rendered only once when needed',
+);
+ok(
+  compactSummarySource?.includes('group-open:hidden'),
+  'compact review reason hides when Details opens so the expanded full reason is not duplicated',
+);
+ok(
+  expandedDetailsSource?.includes('{presentation.reviewReason}'),
+  'expanded Details retain the governed review reason when applicable',
+);
 ok(componentSource.includes('Lifecycle history'), 'expanded details retain governed lifecycle history');
 ok(componentSource.includes('What happened'), 'expanded details retain what happened');
 ok(componentSource.includes('What OwnerPilot recorded'), 'expanded details retain what OwnerPilot recorded');
 ok(componentSource.includes('What OwnerPilot has not done'), 'expanded details retain truthful boundary copy');
 ok(componentSource.includes('Review needed'), 'expanded details retain review-needed reason treatment');
-ok(!componentSource.includes('Step {presentation.currentStep} of 3'), 'compact bar removes the competing lifecycle numeric counter');
-ok(!componentSource.includes('Current stage · {lifecycleStageLabel}'), 'compact bar removes the old repeated stage/status rows');
-ok(!componentSource.includes('rounded-xl border border-rule bg-white p-5 shadow-sm sm:p-6'), 'compact bar removes the oversized lifecycle card shell');
+ok(!componentSource.includes('Step {presentation.currentStep} of 3'), 'compact summary removes the competing lifecycle numeric counter');
+ok(!componentSource.includes('Current stage · {lifecycleStageLabel}'), 'compact summary removes the old repeated stage/status rows');
+ok(!componentSource.includes('rounded-xl border border-rule bg-white p-5 shadow-sm sm:p-6'), 'compact summary removes the oversized lifecycle card shell');
 ok(!componentSource.includes('LIFECYCLE_STAGE_LABELS'), 'component does not introduce a second lifecycle-stage state mapping');
 ok(componentSource.includes('{presentation.status}'), 'displayed status remains sourced from existing rule-derived presentation state');
 ok(componentSource.includes('!nextTaskIsCurrentSurface'), 'summary suppresses same-surface next-task navigation');
