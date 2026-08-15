@@ -2380,7 +2380,7 @@ function LandlordIdentityStep({
                 type="radio"
                 name="landlordType"
                 className="mt-1"
-                checked={li?.type === t}
+                checked={data.landlordIdentityConfirmed === true && li?.type === t}
                 onChange={() => selectType(t)}
               />
               <span>

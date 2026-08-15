@@ -435,6 +435,20 @@ const allowedRoutes = new Set<string | null>([
 ]);
 ok(projections.every(item => allowedRoutes.has(item.nextTask?.href ?? null)), 'projection links only existing authorized routes');
 ok(projections.every(item => item.milestones.length === 3), 'history stays compact Notice-Service-Outcome');
+for (const item of projections) {
+  const firstIncompleteIndex = item.milestones.findIndex(
+    (milestone) => milestone.state !== 'complete',
+  );
+  equal(
+    item.currentStep,
+    firstIncompleteIndex === -1 ? 3 : firstIncompleteIndex + 1,
+    'existing lifecycle currentStep agrees with the first incomplete governed milestone',
+  );
+}
+ok(
+  fullProjection.milestones.every((milestone) => milestone.state === 'complete'),
+  'resolved outcome preserves the existing all-three-milestones-complete state',
+);
 ok(projections.every(item => item.nextTask === null || typeof item.nextTask.label === 'string'), 'projection exposes at most one next task object');
 ok(projections.every(item => !/(^|\s)(filed|court accepted|court-issued)(\s|$)/i.test(item.status)), 'no status invents filed/court-accepted/court-issued completion');
 
@@ -466,10 +480,52 @@ ok(componentSource.includes('loadDraft()'), 'summary reads existing Notice draft
 ok(componentSource.includes('restoreOutcomeHistory('), 'summary reads existing Resolve persistence source');
 ok(!componentSource.includes('saveDraft(') && !componentSource.includes('saveOutcomeHistory('), 'summary performs no Notice or Resolve writes');
 ok(!componentSource.includes('localStorage.setItem'), 'summary creates no lifecycle storage envelope');
-ok(componentSource.includes('View lifecycle history'), 'history is secondary and collapsible');
-ok(componentSource.includes('What OwnerPilot has not done'), 'summary exposes truthful boundary copy');
-ok(componentSource.includes('Current stage · {lifecycleStageLabel}'), 'summary presents customer-readable lifecycle stage separately');
-ok(componentSource.includes('Status'), 'summary labels status separately from lifecycle stage');
+ok(
+  componentSource.includes(
+    "const PRODUCT_STAGE_LABELS = [\n  'Notice',\n  'Unlawful Detainer',\n  'Service & Possession',\n] as const;",
+  ),
+  'compact bar uses exactly the locked three Product stage labels in order',
+);
+ok(
+  componentSource.includes(
+    "presentation.milestones.findIndex(\n    (milestone) => milestone.state !== 'complete',\n  )",
+  ),
+  'compact bar derives current presentation from the first incomplete existing milestone',
+);
+ok(
+  componentSource.includes("const allComplete = firstIncompleteMilestoneIndex === -1;"),
+  'compact bar handles the existing all-complete milestone state explicitly',
+);
+ok(
+  componentSource.includes("? 'All stages complete'"),
+  'all-complete presentation does not invent a fourth lifecycle stage',
+);
+ok(
+  componentSource.includes("aria-current={displayState === 'current' ? 'step' : undefined}"),
+  'current Product stage exposes semantic aria-current treatment',
+);
+ok(
+  componentSource.includes("? '✓'") &&
+    componentSource.includes("? '▶'") &&
+    componentSource.includes(": '○'"),
+  'completed/current/upcoming stages are distinguished with non-color markers',
+);
+ok(componentSource.includes('<span className="font-semibold">Current:</span>'), 'compact bar exposes an explicit textual Current marker');
+ok(
+  componentSource.includes('flex flex-col gap-1.5 sm:flex-row'),
+  'compact bar uses stacked mobile and horizontal desktop responsive presentation',
+);
+ok(componentSource.includes('Details <span aria-hidden="true">⌄</span>'), 'full lifecycle explanation is secondary behind compact Details disclosure');
+ok(componentSource.includes('Lifecycle history'), 'expanded details retain governed lifecycle history');
+ok(componentSource.includes('What happened'), 'expanded details retain what happened');
+ok(componentSource.includes('What OwnerPilot recorded'), 'expanded details retain what OwnerPilot recorded');
+ok(componentSource.includes('What OwnerPilot has not done'), 'expanded details retain truthful boundary copy');
+ok(componentSource.includes('Review needed'), 'expanded details retain review-needed reason treatment');
+ok(!componentSource.includes('Step {presentation.currentStep} of 3'), 'compact bar removes the competing lifecycle numeric counter');
+ok(!componentSource.includes('Current stage · {lifecycleStageLabel}'), 'compact bar removes the old repeated stage/status rows');
+ok(!componentSource.includes('rounded-xl border border-rule bg-white p-5 shadow-sm sm:p-6'), 'compact bar removes the oversized lifecycle card shell');
+ok(!componentSource.includes('LIFECYCLE_STAGE_LABELS'), 'component does not introduce a second lifecycle-stage state mapping');
+ok(componentSource.includes('{presentation.status}'), 'displayed status remains sourced from existing rule-derived presentation state');
 ok(componentSource.includes('!nextTaskIsCurrentSurface'), 'summary suppresses same-surface next-task navigation');
 ok(componentSource.includes('SURFACE_HREFS[surface]'), 'same-surface suppression compares against the active task surface');
 
