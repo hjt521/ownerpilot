@@ -6,12 +6,19 @@ import {
   computeFieldWritePlanDigest,
   computeGeneratedDocumentId,
   computePreparationAuthorizationSnapshotId,
+  computeQpdfAssetIdentityDigest,
+  computeQpdfCommandDigest,
   computePreparationRuntimeManifestId,
   computeSourceWarningInventoryDigest,
+  GOVERNED_QPDF_ASSET_IDENTITY,
+  QPDF_SOURCE_ADMISSION_PASS_A_COMMAND,
+  QPDF_SOURCE_ADMISSION_PASS_B_COMMAND,
   validateFormPreparationAuthorization,
+  validateQpdfSourceAdmission,
   type FormPreparationAuthorization,
   type GeneratedDraftIdentity,
   type PreparationRuntimeManifest,
+  type QpdfSourceAdmissionEvidence,
 } from './officialFormGeneratedDraft';
 
 let passed = 0;
@@ -111,7 +118,7 @@ equal(
 );
 
 const syntheticManifest: PreparationRuntimeManifest = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   artifactClass: 'PREPARATION_RUNTIME_DERIVATIVE',
   preparationSourceId: `prep-source:sha256:${'c'.repeat(64)}`,
   preparationSourcePath: 'synthetic/prep.pdf',
@@ -119,20 +126,42 @@ const syntheticManifest: PreparationRuntimeManifest = {
   sourceAdmission: {
     policyId: 'qpdf-dual-pass-linearization-isolation-v2',
     status: 'SOURCE_ADMITTED_WITH_ISOLATED_LINEARIZATION_WARNINGS',
-    qpdfVersion: '12.3.2',
-    qpdfDistributionSha256: 'd'.repeat(64),
-    qpdfExecutableSha256: 'e'.repeat(64),
-    fullCheckExit: 3,
-    linearizationCheckExit: 3,
-    warningCount: 1,
-    warningInventoryDigest: computeSourceWarningInventoryDigest(['WARNING: <OFFICIAL_SOURCE>: synthetic linearization warning']),
-    warningInventory: ['WARNING: <OFFICIAL_SOURCE>: synthetic linearization warning'],
+    qpdfAsset: GOVERNED_QPDF_ASSET_IDENTITY,
+    passA: {
+      passId: 'PASS_A_FULL_CHECK',
+      command: QPDF_SOURCE_ADMISSION_PASS_A_COMMAND,
+      commandDigest: computeQpdfCommandDigest(QPDF_SOURCE_ADMISSION_PASS_A_COMMAND),
+      exitCode: 3,
+      warningCount: 1,
+      warningInventoryDigest: computeSourceWarningInventoryDigest([
+        'WARNING: <OFFICIAL_SOURCE>: synthetic linearization warning',
+      ]),
+      warningInventory: ['WARNING: <OFFICIAL_SOURCE>: synthetic linearization warning'],
+      errorObserved: false,
+      recoveryObserved: false,
+      damageWarningObserved: false,
+      passwordRecoveryObserved: false,
+    },
+    passB: {
+      passId: 'PASS_B_LINEARIZATION_CHECK',
+      command: QPDF_SOURCE_ADMISSION_PASS_B_COMMAND,
+      commandDigest: computeQpdfCommandDigest(QPDF_SOURCE_ADMISSION_PASS_B_COMMAND),
+      exitCode: 3,
+      warningCount: 1,
+      warningInventoryDigest: computeSourceWarningInventoryDigest([
+        'WARNING: <OFFICIAL_SOURCE>: synthetic linearization warning',
+      ]),
+      warningInventory: ['WARNING: <OFFICIAL_SOURCE>: synthetic linearization warning'],
+      errorObserved: false,
+      recoveryObserved: false,
+      damageWarningObserved: false,
+      passwordRecoveryObserved: false,
+    },
     recoverySuppressed: true,
     passwordRecoverySuppressed: true,
-    linearizationWarningIsolationVerified: true,
+    warningInventoryEqualityVerified: true,
+    warningMultiplicityEqualityVerified: true,
     nonLinearizationWarningObserved: false,
-    recoveryObserved: false,
-    damageWarningObserved: false,
   },
   qpdfNormalization: {
     operation: 'DECRYPT_DISABLE_OBJECT_STREAMS_DETERMINISTIC_ID',
@@ -171,6 +200,7 @@ const syntheticManifest: PreparationRuntimeManifest = {
     repeatedByteEqual: true,
   },
   preparationDerivative: {
+    admission: 'VERIFIED_PREPARATION_FIELD_EQUIVALENT',
     sha256: 'c'.repeat(64),
     byteLength: 123,
     pageCount: 4,
@@ -193,9 +223,124 @@ const syntheticManifest: PreparationRuntimeManifest = {
 const manifestId = computePreparationRuntimeManifestId(syntheticManifest);
 equal(manifestId, computePreparationRuntimeManifestId(structuredClone(syntheticManifest)), 'manifest identity is deterministic');
 equal(
-  syntheticManifest.sourceAdmission.warningInventoryDigest,
-  computeSourceWarningInventoryDigest(syntheticManifest.sourceAdmission.warningInventory),
-  'source warning inventory digest uses sorted duplicate-preserving LF serialization',
+  syntheticManifest.sourceAdmission.passA.warningInventoryDigest,
+  computeSourceWarningInventoryDigest(syntheticManifest.sourceAdmission.passA.warningInventory),
+  'Pass A warning inventory digest uses sorted duplicate-preserving LF serialization',
+);
+equal(
+  validateQpdfSourceAdmission(syntheticManifest.sourceAdmission).status,
+  'VALID',
+  'isolated-warning 3/3 admission validates with separate Pass A and Pass B evidence',
+);
+
+const cleanWarningDigest = computeSourceWarningInventoryDigest([]);
+const cleanAdmission: QpdfSourceAdmissionEvidence = {
+  ...structuredClone(syntheticManifest.sourceAdmission),
+  status: 'SOURCE_ADMITTED_CLEAN',
+  passA: {
+    ...structuredClone(syntheticManifest.sourceAdmission.passA),
+    exitCode: 0,
+    warningCount: 0,
+    warningInventory: [],
+    warningInventoryDigest: cleanWarningDigest,
+  },
+  passB: {
+    ...structuredClone(syntheticManifest.sourceAdmission.passB),
+    exitCode: 0,
+    warningCount: 0,
+    warningInventory: [],
+    warningInventoryDigest: cleanWarningDigest,
+  },
+};
+equal(
+  validateQpdfSourceAdmission(cleanAdmission).status,
+  'VALID',
+  'clean 0/0 source admission is a first-class contract state',
+);
+
+const duplicatedPassBWarnings = [
+  ...syntheticManifest.sourceAdmission.passB.warningInventory,
+  syntheticManifest.sourceAdmission.passB.warningInventory[0],
+];
+const multiplicityMismatch: QpdfSourceAdmissionEvidence = {
+  ...structuredClone(syntheticManifest.sourceAdmission),
+  passB: {
+    ...structuredClone(syntheticManifest.sourceAdmission.passB),
+    warningInventory: duplicatedPassBWarnings,
+    warningCount: duplicatedPassBWarnings.length,
+    warningInventoryDigest: computeSourceWarningInventoryDigest(duplicatedPassBWarnings),
+  },
+};
+equal(
+  validateQpdfSourceAdmission(multiplicityMismatch).status,
+  'BLOCKED',
+  'Pass A/Pass B duplicate multiplicity mismatch fails closed',
+);
+
+const exitMismatchWarnings = ['WARNING: <OFFICIAL_SOURCE>: synthetic linearization warning'];
+const exitMismatch: QpdfSourceAdmissionEvidence = {
+  ...structuredClone(cleanAdmission),
+  passB: {
+    ...structuredClone(cleanAdmission.passB),
+    exitCode: 3,
+    warningInventory: exitMismatchWarnings,
+    warningCount: exitMismatchWarnings.length,
+    warningInventoryDigest: computeSourceWarningInventoryDigest(exitMismatchWarnings),
+  },
+};
+equal(validateQpdfSourceAdmission(exitMismatch).status, 'BLOCKED', 'mixed 0/3 admission fails closed');
+
+const commandMismatchCommand = [
+  ...syntheticManifest.sourceAdmission.passA.command,
+  '--verbose',
+];
+const commandMismatch: QpdfSourceAdmissionEvidence = {
+  ...structuredClone(syntheticManifest.sourceAdmission),
+  passA: {
+    ...structuredClone(syntheticManifest.sourceAdmission.passA),
+    command: commandMismatchCommand,
+    commandDigest: computeQpdfCommandDigest(commandMismatchCommand),
+  },
+};
+equal(
+  validateQpdfSourceAdmission(commandMismatch).status,
+  'BLOCKED',
+  'changed Pass A command fails even when the changed command digest is self-consistent',
+);
+
+const errorEvidence = {
+  ...structuredClone(syntheticManifest.sourceAdmission),
+  passA: {
+    ...structuredClone(syntheticManifest.sourceAdmission.passA),
+    errorObserved: true,
+  },
+};
+equal(
+  validateQpdfSourceAdmission(errorEvidence as unknown as QpdfSourceAdmissionEvidence).status,
+  'BLOCKED',
+  'Pass A error evidence fails closed',
+);
+
+const recoveryEvidence = {
+  ...structuredClone(syntheticManifest.sourceAdmission),
+  passB: {
+    ...structuredClone(syntheticManifest.sourceAdmission.passB),
+    recoveryObserved: true,
+  },
+};
+equal(
+  validateQpdfSourceAdmission(recoveryEvidence as unknown as QpdfSourceAdmissionEvidence).status,
+  'BLOCKED',
+  'Pass B recovery evidence fails closed',
+);
+
+notEqual(
+  computeQpdfAssetIdentityDigest(GOVERNED_QPDF_ASSET_IDENTITY),
+  computeQpdfAssetIdentityDigest({
+    ...GOVERNED_QPDF_ASSET_IDENTITY,
+    executableSha256: '0'.repeat(64),
+  }),
+  'governed qpdf asset identity participates in its digest',
 );
 notEqual(
   manifestId,
@@ -245,11 +390,18 @@ notEqual(
 const generatedIdentity: GeneratedDraftIdentity = {
   schemaVersion: 1,
   artifactClass: 'GENERATED_DRAFT',
+  artifactRole: 'OWNER_GENERATED_PREPARATION',
   officialSourceArtifactId: source.artifactId,
   officialSourceSnapshotId: source.sourceSnapshotId,
   officialSourceSha256: source.repositorySha256,
   sourceAdmissionPolicyId: syntheticManifest.sourceAdmission.policyId,
-  sourceWarningInventoryDigest: syntheticManifest.sourceAdmission.warningInventoryDigest,
+  sourceAdmissionStatus: syntheticManifest.sourceAdmission.status,
+  qpdfAssetIdentityDigest: computeQpdfAssetIdentityDigest(syntheticManifest.sourceAdmission.qpdfAsset),
+  sourcePassACommandDigest: syntheticManifest.sourceAdmission.passA.commandDigest,
+  sourcePassAWarningInventoryDigest: syntheticManifest.sourceAdmission.passA.warningInventoryDigest,
+  sourcePassBCommandDigest: syntheticManifest.sourceAdmission.passB.commandDigest,
+  sourcePassBWarningInventoryDigest: syntheticManifest.sourceAdmission.passB.warningInventoryDigest,
+  sourceWarningInventoryDigest: syntheticManifest.sourceAdmission.passA.warningInventoryDigest,
   qpdfIntermediateSha256: syntheticManifest.qpdfNormalization.intermediateSha256,
   xfaPolicyId: syntheticManifest.xfaDisconnection.policyId,
   xfaDigest: syntheticManifest.xfaDisconnection.xfaDigest,
@@ -286,6 +438,22 @@ notEqual(
   generatedId,
   computeGeneratedDocumentId({ ...generatedIdentity, preparationAuthorizationSnapshotId: 'changed' }),
   'preparation-relevance authorization participates in generated-document identity',
+);
+notEqual(
+  generatedId,
+  computeGeneratedDocumentId({
+    ...generatedIdentity,
+    artifactRole: 'OTHER_ROLE' as unknown as 'OWNER_GENERATED_PREPARATION',
+  }),
+  'OWNER_GENERATED_PREPARATION role participates directly in generatedDocumentId',
+);
+notEqual(
+  generatedId,
+  computeGeneratedDocumentId({
+    ...generatedIdentity,
+    sourcePassBCommandDigest: 'qpdf-command:sha256:' + '0'.repeat(64),
+  }),
+  'Pass B command provenance participates directly in generatedDocumentId',
 );
 
 ok(generatedId.startsWith('generated-document:sha256:'), 'generated-document identity is content addressed');

@@ -40,30 +40,56 @@ export interface FormPreparationAuthorization {
   createdNoticeIdentity: CreatedNoticeFactIdentity;
 }
 
+export type QpdfSourceAdmissionStatus =
+  | 'SOURCE_ADMITTED_CLEAN'
+  | 'SOURCE_ADMITTED_WITH_ISOLATED_LINEARIZATION_WARNINGS';
+
+export type QpdfSourceAdmissionPassId =
+  | 'PASS_A_FULL_CHECK'
+  | 'PASS_B_LINEARIZATION_CHECK';
+
+export interface QpdfAssetIdentity {
+  version: '12.3.2';
+  distributionAsset: 'qpdf-12.3.2-bin-linux-x86_64.zip';
+  platform: 'linux-x86_64';
+  distributionSha256: string;
+  executableSha256: string;
+}
+
+export interface QpdfSourceAdmissionPassEvidence {
+  passId: QpdfSourceAdmissionPassId;
+  command: readonly string[];
+  commandDigest: string;
+  exitCode: 0 | 3;
+  warningCount: number;
+  warningInventoryDigest: string;
+  warningInventory: readonly string[];
+  errorObserved: false;
+  recoveryObserved: false;
+  damageWarningObserved: false;
+  passwordRecoveryObserved: false;
+}
+
+export interface QpdfSourceAdmissionEvidence {
+  policyId: 'qpdf-dual-pass-linearization-isolation-v2';
+  status: QpdfSourceAdmissionStatus;
+  qpdfAsset: QpdfAssetIdentity;
+  passA: QpdfSourceAdmissionPassEvidence;
+  passB: QpdfSourceAdmissionPassEvidence;
+  recoverySuppressed: true;
+  passwordRecoverySuppressed: true;
+  warningInventoryEqualityVerified: true;
+  warningMultiplicityEqualityVerified: true;
+  nonLinearizationWarningObserved: false;
+}
+
 export interface PreparationRuntimeManifest {
-  schemaVersion: 1;
+  schemaVersion: 2;
   artifactClass: 'PREPARATION_RUNTIME_DERIVATIVE';
   preparationSourceId: string;
   preparationSourcePath: string;
   parentOfficialSource: OfficialSourceIdentity;
-  sourceAdmission: {
-    policyId: 'qpdf-dual-pass-linearization-isolation-v2';
-    status: 'SOURCE_ADMITTED_WITH_ISOLATED_LINEARIZATION_WARNINGS';
-    qpdfVersion: '12.3.2';
-    qpdfDistributionSha256: string;
-    qpdfExecutableSha256: string;
-    fullCheckExit: 0 | 3;
-    linearizationCheckExit: 0 | 3;
-    warningCount: number;
-    warningInventoryDigest: string;
-    warningInventory: readonly string[];
-    recoverySuppressed: true;
-    passwordRecoverySuppressed: true;
-    linearizationWarningIsolationVerified: true;
-    nonLinearizationWarningObserved: false;
-    recoveryObserved: false;
-    damageWarningObserved: false;
-  };
+  sourceAdmission: QpdfSourceAdmissionEvidence;
   qpdfNormalization: {
     operation: 'DECRYPT_DISABLE_OBJECT_STREAMS_DETERMINISTIC_ID';
     sourceSha256: string;
@@ -101,6 +127,7 @@ export interface PreparationRuntimeManifest {
     repeatedByteEqual: true;
   };
   preparationDerivative: {
+    admission: 'VERIFIED_PREPARATION_FIELD_EQUIVALENT';
     sha256: string;
     byteLength: number;
     pageCount: 4;
@@ -124,6 +151,7 @@ export interface OfficialGeneratedDraftDefinition {
   generatorImplementationId: string;
   generatorImplementationVersion: string;
   expectedSourceIdentity: OfficialSourceIdentity;
+  expectedArtifactRole: 'OWNER_GENERATED_PREPARATION';
   expectedPreparationManifestId: string;
   expectedMapSnapshotId: string;
   expectedGeneratorContractVersion: string;
@@ -152,10 +180,17 @@ export type GeneratedDraftBlockReason =
 export interface GeneratedDraftIdentity {
   schemaVersion: typeof OFFICIAL_FORM_GENERATED_DRAFT_SCHEMA_VERSION;
   artifactClass: 'GENERATED_DRAFT';
+  artifactRole: 'OWNER_GENERATED_PREPARATION';
   officialSourceArtifactId: string;
   officialSourceSnapshotId: string;
   officialSourceSha256: string;
   sourceAdmissionPolicyId: string;
+  sourceAdmissionStatus: QpdfSourceAdmissionStatus;
+  qpdfAssetIdentityDigest: string;
+  sourcePassACommandDigest: string;
+  sourcePassAWarningInventoryDigest: string;
+  sourcePassBCommandDigest: string;
+  sourcePassBWarningInventoryDigest: string;
   sourceWarningInventoryDigest: string;
   qpdfIntermediateSha256: string;
   xfaPolicyId: string;
@@ -254,6 +289,152 @@ export function computeSourceWarningInventoryDigest(warnings: readonly string[])
   return `source-warning-inventory:sha256:${createHash('sha256').update(canonical).digest('hex')}`;
 }
 
+export const QPDF_SOURCE_ADMISSION_PASS_A_COMMAND = Object.freeze([
+  'qpdf',
+  '--password=',
+  '--suppress-password-recovery',
+  '--suppress-recovery',
+  '--check',
+  '<OFFICIAL_SOURCE>',
+] as const);
+
+export const QPDF_SOURCE_ADMISSION_PASS_B_COMMAND = Object.freeze([
+  'qpdf',
+  '--password=',
+  '--suppress-password-recovery',
+  '--suppress-recovery',
+  '--check-linearization',
+  '<OFFICIAL_SOURCE>',
+] as const);
+
+export const GOVERNED_QPDF_ASSET_IDENTITY: QpdfAssetIdentity = Object.freeze({
+  version: '12.3.2',
+  distributionAsset: 'qpdf-12.3.2-bin-linux-x86_64.zip',
+  platform: 'linux-x86_64',
+  distributionSha256: '44f2c53bf784c0143128d80d2b9946e9793962c5bb403b75c0024cb4d8e346b9',
+  executableSha256: 'bfc1708204fd1ae0c7b49e7cda737e35e89e509286974d1729366f1a58d697b3',
+});
+
+export function computeQpdfCommandDigest(command: readonly string[]): string {
+  return digest('qpdf-command', command);
+}
+
+export function computeQpdfAssetIdentityDigest(asset: QpdfAssetIdentity): string {
+  return digest('qpdf-asset', asset);
+}
+
+function qpdfAdmissionBlocked(detail: string): { status: 'BLOCKED'; detail: string } {
+  return { status: 'BLOCKED', detail };
+}
+
+function hasProhibitedQpdfAdmissionSignal(warning: string): boolean {
+  return /ERROR:|file is damaged|attempting to reconstruct cross-reference table|reconstruct(?:ing|ed|ion)?[^\n]*cross-reference|\brecover(?:y|ed|ing)?\b|password recovery|error encountered while checking linearization data:/i.test(warning);
+}
+
+function validateQpdfAdmissionPass(
+  pass: QpdfSourceAdmissionPassEvidence,
+  expectedPassId: QpdfSourceAdmissionPassId,
+  expectedCommand: readonly string[],
+):
+  | { status: 'VALID' }
+  | { status: 'BLOCKED'; detail: string } {
+  if (pass.passId !== expectedPassId) {
+    return qpdfAdmissionBlocked(`${expectedPassId} identity mismatch.`);
+  }
+  if (!Array.isArray(pass.command)
+    || canonicalizeGenerationIdentity(pass.command) !== canonicalizeGenerationIdentity(expectedCommand)
+    || pass.commandDigest !== computeQpdfCommandDigest(expectedCommand)) {
+    return qpdfAdmissionBlocked(`${expectedPassId} command identity/digest mismatch.`);
+  }
+  if (pass.exitCode !== 0 && pass.exitCode !== 3) {
+    return qpdfAdmissionBlocked(`${expectedPassId} exit ${String(pass.exitCode)} is not admissible.`);
+  }
+  if (!Array.isArray(pass.warningInventory)
+    || pass.warningInventory.some(item => typeof item !== 'string')) {
+    return qpdfAdmissionBlocked(`${expectedPassId} warning inventory is malformed.`);
+  }
+  const canonicalWarnings = [...pass.warningInventory].sort();
+  if (canonicalizeGenerationIdentity(pass.warningInventory)
+    !== canonicalizeGenerationIdentity(canonicalWarnings)) {
+    return qpdfAdmissionBlocked(`${expectedPassId} warning inventory is not canonical sorted duplicate-preserving evidence.`);
+  }
+  if (pass.warningCount !== pass.warningInventory.length
+    || pass.warningInventoryDigest !== computeSourceWarningInventoryDigest(pass.warningInventory)) {
+    return qpdfAdmissionBlocked(`${expectedPassId} warning count/digest does not match its complete inventory.`);
+  }
+  if (pass.warningInventory.some(item => !item.startsWith('WARNING: <OFFICIAL_SOURCE>:'))) {
+    return qpdfAdmissionBlocked(`${expectedPassId} contains an unnormalized or ambiguous warning source prefix.`);
+  }
+  if (pass.warningInventory.some(hasProhibitedQpdfAdmissionSignal)
+    || pass.errorObserved
+    || pass.recoveryObserved
+    || pass.damageWarningObserved
+    || pass.passwordRecoveryObserved) {
+    return qpdfAdmissionBlocked(`${expectedPassId} contains error/recovery/damage/password-recovery evidence.`);
+  }
+  if (pass.exitCode === 0 && pass.warningCount !== 0) {
+    return qpdfAdmissionBlocked(`${expectedPassId} clean exit 0 must have zero warnings.`);
+  }
+  if (pass.exitCode === 3 && pass.warningCount === 0) {
+    return qpdfAdmissionBlocked(`${expectedPassId} warning exit 3 must retain a nonempty warning inventory.`);
+  }
+  return { status: 'VALID' };
+}
+
+export function validateQpdfSourceAdmission(
+  admission: QpdfSourceAdmissionEvidence,
+):
+  | { status: 'VALID' }
+  | { status: 'BLOCKED'; detail: string } {
+  if (admission.policyId !== 'qpdf-dual-pass-linearization-isolation-v2') {
+    return qpdfAdmissionBlocked('Source-admission policy identity mismatch.');
+  }
+  if (canonicalizeGenerationIdentity(admission.qpdfAsset)
+    !== canonicalizeGenerationIdentity(GOVERNED_QPDF_ASSET_IDENTITY)) {
+    return qpdfAdmissionBlocked('Governed qpdf asset identity mismatch.');
+  }
+  if (!admission.recoverySuppressed
+    || !admission.passwordRecoverySuppressed
+    || !admission.warningInventoryEqualityVerified
+    || !admission.warningMultiplicityEqualityVerified
+    || admission.nonLinearizationWarningObserved) {
+    return qpdfAdmissionBlocked('Source-admission suppression/equality/isolation posture is invalid.');
+  }
+  const passA = validateQpdfAdmissionPass(
+    admission.passA,
+    'PASS_A_FULL_CHECK',
+    QPDF_SOURCE_ADMISSION_PASS_A_COMMAND,
+  );
+  if (passA.status === 'BLOCKED') return passA;
+  const passB = validateQpdfAdmissionPass(
+    admission.passB,
+    'PASS_B_LINEARIZATION_CHECK',
+    QPDF_SOURCE_ADMISSION_PASS_B_COMMAND,
+  );
+  if (passB.status === 'BLOCKED') return passB;
+  if (admission.passA.exitCode !== admission.passB.exitCode) {
+    return qpdfAdmissionBlocked('Pass A and Pass B exits differ; only 0/0 or 3/3 is admissible.');
+  }
+  if (admission.passA.warningCount !== admission.passB.warningCount
+    || admission.passA.warningInventoryDigest !== admission.passB.warningInventoryDigest
+    || canonicalizeGenerationIdentity(admission.passA.warningInventory)
+      !== canonicalizeGenerationIdentity(admission.passB.warningInventory)) {
+    return qpdfAdmissionBlocked('Pass A and Pass B warning inventories differ in content or multiplicity.');
+  }
+  if (admission.passA.exitCode === 0) {
+    if (admission.status !== 'SOURCE_ADMITTED_CLEAN'
+      || admission.passA.warningCount !== 0
+      || admission.passB.warningCount !== 0) {
+      return qpdfAdmissionBlocked('Clean source admission must be exact 0/0 with two empty warning inventories.');
+    }
+  } else if (admission.status !== 'SOURCE_ADMITTED_WITH_ISOLATED_LINEARIZATION_WARNINGS'
+    || admission.passA.warningCount === 0
+    || admission.passB.warningCount === 0) {
+    return qpdfAdmissionBlocked('Isolated-warning source admission must be exact 3/3 with equal nonempty warning inventories.');
+  }
+  return { status: 'VALID' };
+}
+
 export function computePreparationRuntimeManifestId(manifest: PreparationRuntimeManifest): string {
   return digest('preparation-manifest', manifest);
 }
@@ -347,7 +528,7 @@ export function validatePreparationRuntimeManifest(
 ):
   | { status: 'VALID'; manifestId: string }
   | { status: 'BLOCKED'; detail: string } {
-  if (manifest.schemaVersion !== 1 || manifest.artifactClass !== 'PREPARATION_RUNTIME_DERIVATIVE') {
+  if (manifest.schemaVersion !== 2 || manifest.artifactClass !== 'PREPARATION_RUNTIME_DERIVATIVE') {
     return { status: 'BLOCKED', detail: 'Preparation-runtime manifest schema/artifact class is unsupported.' };
   }
   const manifestId = computePreparationRuntimeManifestId(manifest);
@@ -358,24 +539,12 @@ export function validatePreparationRuntimeManifest(
     !== canonicalizeGenerationIdentity(definition.expectedSourceIdentity)) {
     return { status: 'BLOCKED', detail: 'Preparation-runtime manifest parent source identity mismatch.' };
   }
-  const canonicalWarnings = [...manifest.sourceAdmission.warningInventory].sort();
-  if (manifest.sourceAdmission.policyId !== 'qpdf-dual-pass-linearization-isolation-v2'
-    || manifest.sourceAdmission.status !== 'SOURCE_ADMITTED_WITH_ISOLATED_LINEARIZATION_WARNINGS'
-    || manifest.sourceAdmission.qpdfVersion !== '12.3.2'
-    || canonicalizeGenerationIdentity(manifest.sourceAdmission.warningInventory)
-      !== canonicalizeGenerationIdentity(canonicalWarnings)
-    || manifest.sourceAdmission.warningInventoryDigest
-      !== computeSourceWarningInventoryDigest(manifest.sourceAdmission.warningInventory)
-    || !manifest.sourceAdmission.recoverySuppressed
-    || !manifest.sourceAdmission.passwordRecoverySuppressed
-    || !manifest.sourceAdmission.linearizationWarningIsolationVerified
-    || manifest.sourceAdmission.nonLinearizationWarningObserved
-    || manifest.sourceAdmission.recoveryObserved
-    || manifest.sourceAdmission.damageWarningObserved
-    || ![0, 3].includes(manifest.sourceAdmission.fullCheckExit)
-    || manifest.sourceAdmission.fullCheckExit !== manifest.sourceAdmission.linearizationCheckExit
-    || manifest.sourceAdmission.warningCount !== manifest.sourceAdmission.warningInventory.length) {
-    return { status: 'BLOCKED', detail: 'Preparation-runtime manifest source-admission evidence is invalid.' };
+  const sourceAdmission = validateQpdfSourceAdmission(manifest.sourceAdmission);
+  if (sourceAdmission.status === 'BLOCKED') {
+    return {
+      status: 'BLOCKED',
+      detail: `Preparation-runtime manifest source-admission evidence is invalid: ${sourceAdmission.detail}`,
+    };
   }
   if (manifest.qpdfNormalization.sourceSha256 !== definition.expectedSourceIdentity.repositorySha256
     || !/^[a-f0-9]{64}$/.test(manifest.qpdfNormalization.intermediateSha256)
@@ -411,6 +580,7 @@ export function validatePreparationRuntimeManifest(
   const derivative = manifest.preparationDerivative;
   const actualSha = sha256Bytes(preparationDerivativeBytes);
   if (manifest.preparationSourceId !== `prep-source:sha256:${derivative.sha256}`
+    || derivative.admission !== 'VERIFIED_PREPARATION_FIELD_EQUIVALENT'
     || !/^[a-f0-9]{64}$/.test(derivative.sha256)
     || derivative.sha256 !== actualSha
     || derivative.byteLength !== preparationDerivativeBytes.byteLength
@@ -715,6 +885,13 @@ function validateStaticInputs(
       detail: manifest.detail,
     };
   }
+  if (inputs.definition.expectedArtifactRole !== 'OWNER_GENERATED_PREPARATION') {
+    return {
+      status: 'BLOCKED',
+      reason: 'GENERATION_BINDING_IDENTITY_MISMATCH',
+      detail: 'Generated-draft definition must preserve D.1 OWNER_GENERATED_PREPARATION artifact role.',
+    };
+  }
   const binding = inputs.evaluateBinding();
   if (binding.status !== 'GENERATION_BINDING_READY') {
     return { status: 'BLOCKED', reason: 'GENERATION_BINDING_BLOCKED', detail: `${binding.blockReason}: ${binding.detail}` };
@@ -818,11 +995,18 @@ export async function generateOfficialFormGeneratedDraft(
   const identity: GeneratedDraftIdentity = {
     schemaVersion: OFFICIAL_FORM_GENERATED_DRAFT_SCHEMA_VERSION,
     artifactClass: 'GENERATED_DRAFT',
+    artifactRole: inputs.definition.expectedArtifactRole,
     officialSourceArtifactId: inputs.definition.expectedSourceIdentity.artifactId,
     officialSourceSnapshotId: inputs.definition.expectedSourceIdentity.sourceSnapshotId,
     officialSourceSha256: inputs.definition.expectedSourceIdentity.repositorySha256,
     sourceAdmissionPolicyId: manifest.sourceAdmission.policyId,
-    sourceWarningInventoryDigest: manifest.sourceAdmission.warningInventoryDigest,
+    sourceAdmissionStatus: manifest.sourceAdmission.status,
+    qpdfAssetIdentityDigest: computeQpdfAssetIdentityDigest(manifest.sourceAdmission.qpdfAsset),
+    sourcePassACommandDigest: manifest.sourceAdmission.passA.commandDigest,
+    sourcePassAWarningInventoryDigest: manifest.sourceAdmission.passA.warningInventoryDigest,
+    sourcePassBCommandDigest: manifest.sourceAdmission.passB.commandDigest,
+    sourcePassBWarningInventoryDigest: manifest.sourceAdmission.passB.warningInventoryDigest,
+    sourceWarningInventoryDigest: manifest.sourceAdmission.passA.warningInventoryDigest,
     qpdfIntermediateSha256: manifest.qpdfNormalization.intermediateSha256,
     xfaPolicyId: manifest.xfaDisconnection.policyId,
     xfaDigest: manifest.xfaDisconnection.xfaDigest,
@@ -877,11 +1061,18 @@ export function evaluateOfficialFormGeneratedDraftCurrentness(
   }
   const manifest = inputs.preparationManifest;
   const comparisons: readonly [string, unknown, unknown][] = [
+    ['ARTIFACT_ROLE', draft.artifactRole, inputs.definition.expectedArtifactRole],
     ['OFFICIAL_SOURCE_ARTIFACT', draft.officialSourceArtifactId, inputs.definition.expectedSourceIdentity.artifactId],
     ['OFFICIAL_SOURCE_SNAPSHOT', draft.officialSourceSnapshotId, inputs.definition.expectedSourceIdentity.sourceSnapshotId],
     ['OFFICIAL_SOURCE_SHA', draft.officialSourceSha256, inputs.definition.expectedSourceIdentity.repositorySha256],
     ['SOURCE_ADMISSION_POLICY', draft.sourceAdmissionPolicyId, manifest.sourceAdmission.policyId],
-    ['SOURCE_WARNING_INVENTORY', draft.sourceWarningInventoryDigest, manifest.sourceAdmission.warningInventoryDigest],
+    ['SOURCE_ADMISSION_STATUS', draft.sourceAdmissionStatus, manifest.sourceAdmission.status],
+    ['QPDF_ASSET_IDENTITY', draft.qpdfAssetIdentityDigest, computeQpdfAssetIdentityDigest(manifest.sourceAdmission.qpdfAsset)],
+    ['SOURCE_PASS_A_COMMAND', draft.sourcePassACommandDigest, manifest.sourceAdmission.passA.commandDigest],
+    ['SOURCE_PASS_A_WARNING_INVENTORY', draft.sourcePassAWarningInventoryDigest, manifest.sourceAdmission.passA.warningInventoryDigest],
+    ['SOURCE_PASS_B_COMMAND', draft.sourcePassBCommandDigest, manifest.sourceAdmission.passB.commandDigest],
+    ['SOURCE_PASS_B_WARNING_INVENTORY', draft.sourcePassBWarningInventoryDigest, manifest.sourceAdmission.passB.warningInventoryDigest],
+    ['SOURCE_WARNING_INVENTORY', draft.sourceWarningInventoryDigest, manifest.sourceAdmission.passA.warningInventoryDigest],
     ['QPDF_INTERMEDIATE', draft.qpdfIntermediateSha256, manifest.qpdfNormalization.intermediateSha256],
     ['XFA_POLICY', draft.xfaPolicyId, manifest.xfaDisconnection.policyId],
     ['XFA_DIGEST', draft.xfaDigest, manifest.xfaDisconnection.xfaDigest],

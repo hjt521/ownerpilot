@@ -18,11 +18,14 @@ import {
 import { createFlowState, type NoticeFlowData } from './noticeFlowState';
 import { bindReviewApproval } from './reviewApproval';
 import {
+  computeGeneratedDocumentId,
   computePreparationRuntimeManifestId,
   evaluateOfficialFormGeneratedDraftCurrentness,
   generateOfficialFormGeneratedDraft,
   sha256Bytes,
+  validateQpdfSourceAdmission,
   type FormPreparationAuthorization,
+  type GeneratedDraftIdentity,
   type OfficialGeneratedDraftDefinition,
   type PreparationRuntimeManifest,
 } from './officialFormGeneratedDraft';
@@ -35,6 +38,7 @@ import {
 import {
   evaluateUd100GeneratedDraftCurrentness,
   generateUd100GeneratedDraft,
+  UD100_GENERATED_DRAFT_ARTIFACT_ROLE,
   UD100_GENERATED_DRAFT_IMPLEMENTATION_ID,
   UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION,
   UD100_PREPARATION_RUNTIME_MANIFEST,
@@ -336,6 +340,7 @@ function canonicalDefinition(expectedManifestId: string = UD100_PREPARATION_RUNT
     generatorImplementationId: UD100_GENERATED_DRAFT_IMPLEMENTATION_ID,
     generatorImplementationVersion: UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION,
     expectedSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
+    expectedArtifactRole: UD100_GENERATED_DRAFT_ARTIFACT_ROLE,
     expectedPreparationManifestId: expectedManifestId,
     expectedMapSnapshotId: UD100_GENERATION_BINDING.mapSnapshotId,
     expectedGeneratorContractVersion: UD100_GENERATOR_CONTRACT_VERSION,
@@ -391,6 +396,24 @@ async function generateWithCustomDerivative(
     UD100_PREPARATION_RUNTIME_MANIFEST.preparationDerivative.sha256,
     'committed preparation derivative bytes match manifest SHA-256',
   );
+  equal(UD100_PREPARATION_RUNTIME_MANIFEST.schemaVersion, 2, 'manifest uses remediated dual-pass evidence schema');
+  equal(
+    validateQpdfSourceAdmission(UD100_PREPARATION_RUNTIME_MANIFEST.sourceAdmission).status,
+    'VALID',
+    'committed manifest validates independent Pass A and Pass B evidence',
+  );
+  equal(UD100_PREPARATION_RUNTIME_MANIFEST.sourceAdmission.passA.exitCode, 3, 'committed Pass A exit remains 3');
+  equal(UD100_PREPARATION_RUNTIME_MANIFEST.sourceAdmission.passB.exitCode, 3, 'committed Pass B exit remains 3');
+  equal(
+    UD100_PREPARATION_RUNTIME_MANIFEST.sourceAdmission.passA.warningInventoryDigest,
+    UD100_PREPARATION_RUNTIME_MANIFEST.sourceAdmission.passB.warningInventoryDigest,
+    'committed Pass A and Pass B warning digests are independently retained and equal',
+  );
+  equal(
+    UD100_PREPARATION_RUNTIME_MANIFEST.preparationDerivative.admission,
+    'VERIFIED_PREPARATION_FIELD_EQUIVALENT',
+    'derivative carries explicit VERIFIED_PREPARATION_FIELD_EQUIVALENT admission',
+  );
   equal(
     preparationDerivativeBytes.byteLength,
     UD100_PREPARATION_RUNTIME_MANIFEST.preparationDerivative.byteLength,
@@ -432,6 +455,12 @@ async function generateWithCustomDerivative(
   });
   equal(first.status, 'GENERATED_DRAFT', 'exact CURRENT source/auth/facts/derivative generates a draft');
   if (first.status !== 'GENERATED_DRAFT') throw new Error(`generation failed: ${JSON.stringify(first)}`);
+  equal(first.evidence.artifactClass, 'GENERATED_DRAFT', 'generated evidence remains GENERATED_DRAFT');
+  equal(
+    first.evidence.artifactRole,
+    'OWNER_GENERATED_PREPARATION',
+    'generated-document envelope explicitly retains OWNER_GENERATED_PREPARATION',
+  );
   equal(first.ownerReview, 'NOT_PERFORMED', 'Stage E.1 does not create owner review state');
   equal(first.signing, 'NOT_PERFORMED', 'Stage E.1 does not sign');
   equal(first.filing, 'NOT_PERFORMED', 'Stage E.1 does not file');
@@ -639,6 +668,37 @@ async function generateWithCustomDerivative(
     draftBytes: first.bytes,
   });
   equal(current.status, 'CURRENT', 'unchanged exact source/auth/manifest/facts/generator remains CURRENT');
+  const wrongRoleSeed = {
+    ...first.evidence,
+    artifactRole: 'FILING_PACKET',
+  } as unknown as typeof first.evidence;
+  const { generatedDocumentId: _discardedRoleId, ...wrongRoleIdentity } = wrongRoleSeed;
+  void _discardedRoleId;
+  const wrongRoleEvidence = {
+    ...wrongRoleSeed,
+    generatedDocumentId: computeGeneratedDocumentId(
+      wrongRoleIdentity as unknown as GeneratedDraftIdentity,
+    ),
+  };
+  const wrongRoleCurrentness = evaluateUd100GeneratedDraftCurrentness(wrongRoleEvidence, {
+    officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
+    officialSourceHealth: 'CURRENT',
+    officialSourceBytes,
+    preparationAuthorization: authorization,
+    preparationDerivativeBytes,
+    facts,
+    draftBytes: first.bytes,
+  });
+  equal(
+    wrongRoleCurrentness.status,
+    'OUT_OF_DATE',
+    'artifact-role drift is OUT_OF_DATE even when generatedDocumentId is recomputed over the forged role',
+  );
+  ok(
+    wrongRoleCurrentness.status === 'OUT_OF_DATE'
+      && wrongRoleCurrentness.reasons.includes('ARTIFACT_ROLE_CHANGED'),
+    'currentness explicitly reports OWNER_GENERATED_PREPARATION role drift',
+  );
 
   equal(
     evaluateUd100GeneratedDraftCurrentness(
