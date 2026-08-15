@@ -87,7 +87,7 @@ export type OfficialFormOwnerReviewResult =
     };
 
 export type OwnerReviewedDocumentCurrentness =
-  | { status: 'CURRENT'; reasons: readonly [] }
+  | { status: 'CURRENT'; reasons: readonly string[] }
   | { status: 'OUT_OF_DATE'; reasons: readonly string[] };
 
 function nonempty(value: unknown): value is string {
