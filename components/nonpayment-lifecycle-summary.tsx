@@ -111,10 +111,10 @@ export function NonpaymentLifecycleSummary({
     >
       <details className="border-y border-rule bg-white">
         <summary className="cursor-pointer list-none py-2.5 [&::-webkit-details-marker]:hidden">
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
             <ol
               aria-label="Nonpayment lifecycle"
-              className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs"
+              className="flex w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-xs md:w-auto"
             >
               {presentation.milestones.map((milestone, index) => {
                 const displayState =
@@ -161,24 +161,18 @@ export function NonpaymentLifecycleSummary({
               })}
             </ol>
 
-            <span aria-hidden="true" className="hidden text-muted sm:inline">
+            <span aria-hidden="true" className="hidden text-muted md:inline">
               •
             </span>
 
-            <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
-              <p className="text-xs leading-snug text-ink sm:text-sm">
+            <div className="flex w-full min-w-0 flex-col gap-1 md:flex-1 md:flex-row md:items-start md:justify-between md:gap-3">
+              <p className="w-full text-xs leading-snug text-ink md:min-w-0 md:flex-1 md:text-sm">
                 <span className="font-semibold">Current:</span>{' '}
                 <span className="font-semibold">{currentStageLabel}</span>
                 <span aria-hidden="true"> — </span>
                 <span>{presentation.status}</span>
-                {presentation.reviewRequired && presentation.reviewReason && (
-                  <>
-                    <span aria-hidden="true"> — </span>
-                    <span className="font-medium">{presentation.reviewReason}</span>
-                  </>
-                )}
               </p>
-              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-brand">
+              <span className="inline-flex shrink-0 self-end items-center gap-1 text-xs font-semibold text-brand md:self-auto">
                 Details <span aria-hidden="true">⌄</span>
               </span>
             </div>

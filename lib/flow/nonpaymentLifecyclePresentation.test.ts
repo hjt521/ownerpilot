@@ -512,8 +512,26 @@ ok(
 );
 ok(componentSource.includes('<span className="font-semibold">Current:</span>'), 'compact bar exposes an explicit textual Current marker');
 ok(
-  componentSource.includes('flex flex-col gap-1.5 sm:flex-row'),
-  'compact bar uses stacked mobile and horizontal desktop responsive presentation',
+  componentSource.includes('flex flex-col gap-2 md:flex-row md:items-center md:gap-3'),
+  'compact bar keeps phone-width presentation stacked and switches to horizontal layout only at desktop width',
+);
+ok(
+  componentSource.includes(
+    'flex w-full min-w-0 flex-col gap-1 md:flex-1 md:flex-row md:items-start md:justify-between md:gap-3',
+  ),
+  'mobile current-status block receives full width below the lifecycle sequence instead of a narrow side column',
+);
+ok(
+  componentSource.includes(
+    'w-full text-xs leading-snug text-ink md:min-w-0 md:flex-1 md:text-sm',
+  ),
+  'mobile Current status keeps a full-width readable line',
+);
+const compactSummarySource = componentSource.match(/<summary[\s\S]*?<\/summary>/)?.[0];
+ok(compactSummarySource, 'compact lifecycle summary source remains present');
+ok(
+  !compactSummarySource?.includes('presentation.reviewReason'),
+  'compact Current line stays short; the longer review reason remains in Details only',
 );
 ok(componentSource.includes('Details <span aria-hidden="true">⌄</span>'), 'full lifecycle explanation is secondary behind compact Details disclosure');
 ok(componentSource.includes('Lifecycle history'), 'expanded details retain governed lifecycle history');
