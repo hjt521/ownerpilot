@@ -17,7 +17,7 @@ import {
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 
 export const UD100_GENERATION_BINDING_MAP_ID = 'ud100-2026-07-01-initial-prefiling-generation-binding' as const;
-export const UD100_GENERATION_BINDING_MAP_VERSION = '1.1.0' as const;
+export const UD100_GENERATION_BINDING_MAP_VERSION = '1.2.0' as const;
 export const UD100_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v2' as const;
 export const UD100_GENERATION_PROFILE_ID = 'ud100-initial-prefiling-owner-preparation-v1' as const;
 
@@ -276,7 +276,7 @@ const domain1CaptionContact: GenerationFieldRule[] = [
   textRule(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].Phone_ft[0]', 1, '/Tx', '852 0 R', 'TELEPHONE NUMBER:'), D(CANONICAL_FILING_FACT_REFS.filerContact, CUSTOMER), { id: 'OBJECT_PROPERTY_TEXT_V1', version: '1', args: { property: 'telephone' } }),
   governedNoWrite(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].Fax_ft[0]', 1, '/Tx', '853 0 R', 'FAX NUMBER:'), D(CANONICAL_FILING_FACT_REFS.captionOptionalFieldsControl, CONTROL), ['SELF_REP_NO_BAR_FIRM_FAX'], 'Current governed self-represented caption route authorizes no fax write.'),
   textRule(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].Email_ft[0]', 1, '/Tx', '854 0 R', 'EMAIL ADDRESS:'), D(CANONICAL_FILING_FACT_REFS.filerContact, CUSTOMER), { id: 'OBJECT_PROPERTY_TEXT_V1', version: '1', args: { property: 'email' } }),
-  textRule(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].AttyFor_ft[0]', 1, '/Tx', '855 0 R', 'ATTORNEY FOR (name):'), D(CANONICAL_FILING_FACT_REFS.filerContact, CUSTOMER), { id: 'OBJECT_PROPERTY_TEXT_V1', version: '1', args: { property: 'captionForText' } }),
+  textRule(evidence('UD-100[0].Page1[0].P1Caption[0].attyInfo[0].AttyFor_ft[0]', 1, '/Tx', '855 0 R', 'ATTORNEY FOR (name):'), D(CANONICAL_FILING_FACT_REFS.captionFormValueControl, CONTROL)),
 ];
 
 const domain2Premises: GenerationFieldRule[] = [
@@ -568,6 +568,7 @@ const semantics: OfficialFormGenerationBindingSemantics = {
   profileRequirements: [
     { dependency: lifecycleDep, allowedValues: ['INITIAL_PREFILING'], blockerCode: 'AMENDED_OR_PRIOR_COMPLAINT_UNSUPPORTED' },
     { dependency: D(CANONICAL_FILING_FACT_REFS.captionRouteControl, CONTROL), allowedValues: ['SELF_REPRESENTED_SUPPORTED'], blockerCode: 'OUTSIDE_ATTORNEY_OR_UNRESOLVED_CAPTION_ROUTE_UNSUPPORTED' },
+    { dependency: D(CANONICAL_FILING_FACT_REFS.captionFormValueControl, CONTROL), allowedValues: ['Self-represented'], blockerCode: 'SELF_REPRESENTED_CAPTION_FORM_VALUE_UNRESOLVED', requiredProvenanceDependencies: [CANONICAL_FILING_FACT_REFS.captionRouteControl] },
     { dependency: D(CANONICAL_FILING_FACT_REFS.jurisdictionSupportControl, CONTROL), allowedValues: ['SUPPORTED_INITIAL_UD100'], blockerCode: 'UNSUPPORTED_JURISDICTION_CONTROL_STATE' },
     { dependency: D(CANONICAL_FILING_FACT_REFS.plaintiffRelationship, CUSTOMER), allowedValues: ['OWNER'], blockerCode: 'OTHER_PLAINTIFF_RELATIONSHIP_REQUIRES_SEPARATE_BINDING' },
     { dependency: D(CANONICAL_FILING_FACT_REFS.plaintiffType, CUSTOMER), allowedValues: ['INDIVIDUAL_OVER_18'], blockerCode: 'ENTITY_OR_OTHER_PLAINTIFF_TYPE_REQUIRES_SEPARATE_CAPTION_BINDING' },
@@ -581,7 +582,7 @@ const semantics: OfficialFormGenerationBindingSemantics = {
     { dependency: D(CANONICAL_FILING_FACT_REFS.leaseApplicabilityControl, CONTROL), allowedValues: ['NO_AGREEMENT_FIELDS_NOT_APPLICABLE'], blockerCode: 'LEASE_AGREEMENT_FIELDS_REQUIRE_EXACT_CUSTOMER_FACT_BINDING', requiredProvenanceDependencies: [CANONICAL_FILING_FACT_REFS.leaseStatus] },
     { dependency: civilDep, allowedValues: civilDomain, blockerCode: 'CIVIL_CLASSIFICATION_CONTROL_UNRESOLVED', requiredProvenanceDependencies: [CANONICAL_FILING_FACT_REFS.pastDueRentRelief, CANONICAL_FILING_FACT_REFS.otherReliefSelections] },
     { dependency: noticeElectionDep, allowedValues: ['PAY_RENT_OR_QUIT_3_DAY'], blockerCode: 'NOTICE_ELECTION_OUTSIDE_BOUNDED_NONPAYMENT_PROFILE' },
-    { dependency: D(CANONICAL_FILING_FACT_REFS.noticeElectionConsistencyControl, CONTROL), allowedValues: ['CONSISTENT'], blockerCode: 'NOTICE_ELECTION_NOT_CONSISTENT_WITH_GOVERNED_NOTICE_FACTS', requiredProvenanceDependencies: [CANONICAL_FILING_FACT_REFS.noticeComplaintElection, CANONICAL_FILING_FACT_REFS.serviceFacts] },
+    { dependency: D(CANONICAL_FILING_FACT_REFS.noticeElectionConsistencyControl, CONTROL), allowedValues: ['CONSISTENT'], blockerCode: 'NOTICE_ELECTION_NOT_CONSISTENT_WITH_GOVERNED_NOTICE_FACTS', requiredProvenanceDependencies: [CANONICAL_FILING_FACT_REFS.noticeComplaintElection] },
     { dependency: serviceElectionDep, allowedValues: ['PERSONAL_HAND_DELIVERY'], blockerCode: 'SERVICE_ELECTION_OUTSIDE_BOUNDED_PERSONAL_SERVICE_PROFILE' },
     { dependency: D(CANONICAL_FILING_FACT_REFS.serviceElectionConsistencyControl, CONTROL), allowedValues: ['CONSISTENT'], blockerCode: 'SERVICE_ELECTION_NOT_CONSISTENT_WITH_GOVERNED_SERVICE_FACTS', requiredProvenanceDependencies: [CANONICAL_FILING_FACT_REFS.serviceComplaintElection, CANONICAL_FILING_FACT_REFS.serviceFacts] },
     { dependency: D(CANONICAL_FILING_FACT_REFS.rentalAssistanceControl, CONTROL), allowedValues: ['APPLICABLE'], blockerCode: 'RENTAL_ASSISTANCE_CONTROL_UNRESOLVED', requiredProvenanceDependencies: [CANONICAL_FILING_FACT_REFS.rentalAssistanceFacts] },
