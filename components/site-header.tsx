@@ -12,7 +12,7 @@ export function SiteHeader() {
             OwnerPilot<span className="text-gold">.AI</span>
           </span>
         </Link>
-        <nav className="flex items-center gap-6 text-sm font-medium">
+        <nav className="flex flex-wrap items-center justify-end gap-x-6 gap-y-3 text-sm font-medium">
           <Link href="/notice/3-day" className="text-ink transition-colors hover:text-brand">
             3-Day Notice
           </Link>
@@ -22,8 +22,11 @@ export function SiteHeader() {
           <Link href="/our-approach" className="text-ink transition-colors hover:text-brand">
             Our Approach
           </Link>
-          <Link href="/chat" className="text-ink transition-colors hover:text-brand">
-            Ask OwnerPilot
+          <Link
+            href="/chat"
+            className="rounded-full bg-ink px-4 py-2 text-white transition-colors hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
+          >
+            Ask OwnerPilot AI
           </Link>
         </nav>
       </div>
