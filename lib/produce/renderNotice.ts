@@ -37,6 +37,7 @@ import type {
   SignerCapacity,
   PaymentBranch,
 } from '../flow/noticeFlowState';
+import { CREATED_NOTICE_SEMANTIC_CONTRACT } from '../flow/createdNoticeArtifact';
 import { normalizeBankName } from '../flow/bankNames';
 import { formatUsPhone } from '../flow/phoneFormat';
 
@@ -72,6 +73,13 @@ export const FORM_META = {
     'Three-Day Notice to Pay Rent or Quit \u00B7 Cal. Code Civ. Proc. \u00A7 1161(2)',
   posFooterCitation: 'Proof of Service \u00B7 Cal. Code Civ. Proc. \u00A7 1162',
 } as const;
+
+/**
+ * The renderer and Created Notice capture intentionally share this exact
+ * build-owned semantic contract. It is not customer input and does not change
+ * the locked face text.
+ */
+export const RENDER_NOTICE_SEMANTIC_CONTRACT = CREATED_NOTICE_SEMANTIC_CONTRACT;
 
 /**
  * Structured view of the rendered notice, for the styled HTML layout.
@@ -605,6 +613,14 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     ...paySentences,
   ];
 
+  // The current build-owned semantic contract states that this exact bounded
+  // renderer includes the locked forfeiture-election content. The contract is
+  // shared with artifact capture; customer/browser input cannot select it.
+  const forfeitureElectionContent =
+    RENDER_NOTICE_SEMANTIC_CONTRACT.forfeitureElectionContentIncluded
+      ? NOTICE_PROSE.forfeitureElection
+      : '';
+
   // --- LOCKED notice text --------------------------------------------------
   const noticeText = [
     FORM_META.title,
@@ -634,7 +650,7 @@ export function renderNotice(input: RenderNoticeInput): RenderedNotice {
     '',
     ...payTextLines,
     '',
-    NOTICE_PROSE.forfeitureElection,
+    forfeitureElectionContent,
     '',
     `Dated: ${formatNoticeDate(dateOfService)}`,
     '',
