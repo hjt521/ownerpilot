@@ -411,9 +411,10 @@ export function FilingReadiness() {
   const phaseA = useMemo(() => buildPhaseA(supportSelections), [supportSelections]);
 
   if (!snapshot) return null;
+  const draftData = snapshot.draft?.data ?? null;
 
   const readiness = deriveFilingReadiness({
-    data: snapshot.draft?.data ?? null,
+    data: draftData,
     noticePageIndex: snapshot.draft?.pageIndex ?? null,
     outcome: snapshot.outcome,
   });
@@ -422,7 +423,7 @@ export function FilingReadiness() {
     item.status === 'Needs owner review' ||
     item.status === 'Cannot continue',
   );
-  const canStartE22 = readiness.state === 'Ready for packet review' && !!snapshot.draft?.data;
+  const canStartE22 = readiness.state === 'Ready for packet review' && !!draftData;
 
   const setSupport = (key: SupportKey, value: string) => {
     setSupportSelections(previous => ({ ...previous, [key]: value }));
@@ -448,7 +449,7 @@ export function FilingReadiness() {
         cache: 'no-store',
         body: JSON.stringify({
           action: 'support',
-          context: { data: snapshot.draft?.data ?? null, phaseA },
+          context: { data: draftData, phaseA },
         }),
       });
       const payload = await response.json() as SupportResponse;
@@ -477,7 +478,7 @@ export function FilingReadiness() {
         cache: 'no-store',
         body: JSON.stringify({
           action: 'prepare',
-          context: { data: snapshot.draft?.data ?? null, phaseA, phaseB },
+          context: { data: draftData, phaseA, phaseB },
           filingChoiceConfirmation: {
             confirmed: true,
             confirmationId: identity.confirmationId,
@@ -529,7 +530,7 @@ export function FilingReadiness() {
         cache: 'no-store',
         body: JSON.stringify({
           action: 'review',
-          context: { data: snapshot.draft?.data ?? null, phaseA, phaseB },
+          context: { data: draftData, phaseA, phaseB },
           generatedDraft: generated.generatedDraft,
           generatedBytesBase64: generated.generatedBytesBase64,
           renderedAcknowledgment: {
