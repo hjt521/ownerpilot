@@ -180,7 +180,17 @@ export interface FilerContact {
   zip: string;
   telephone: string;
   email: string;
-  representationStatus: RepresentationStatus;
+  /**
+   * Raw customer factual representation status. Optional only so historical
+   * D.1/E.1 fixture shapes remain structurally readable; the P1-v2 producer
+   * requires an affirmative supported value before any governed caption result.
+   */
+  representationStatus?: RepresentationStatus;
+  /**
+   * Historical extra contact keys are structurally tolerated but have no
+   * canonical form authority. P1-v2 never consumes them as governed output.
+   */
+  [legacyInputKey: string]: unknown;
 }
 
 export type TpaClassification = 'SUBJECT_AT_FAULT';
