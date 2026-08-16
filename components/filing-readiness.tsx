@@ -352,6 +352,13 @@ function bytesFromBase64(value: string): Uint8Array {
   return bytes;
 }
 
+function phaseBConfirmationIdentity(preparedAtISO: string) {
+  return {
+    confirmedAtISO: preparedAtISO,
+    confirmationId: `e2-2-filing-choice:${preparedAtISO}`,
+  };
+}
+
 export function FilingReadiness() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const signatureRef = useRef('');
@@ -458,9 +465,9 @@ export function FilingReadiness() {
       setOperationError('Review and affirm the filing choices before preparing the UD-100.');
       return;
     }
-    const confirmedAtISO = new Date().toISOString();
-    const confirmationId = `e2-2-filing-choice:${crypto.randomUUID()}`;
-    const phaseB = buildPhaseB(completion, supportSelections, confirmedAtISO, confirmationId);
+    const preparedAtISO = new Date().toISOString();
+    const identity = phaseBConfirmationIdentity(preparedAtISO);
+    const phaseB = buildPhaseB(completion, supportSelections, identity.confirmedAtISO, identity.confirmationId);
     setBusy('prepare');
     setOperationError(null);
     try {
@@ -473,10 +480,10 @@ export function FilingReadiness() {
           context: { data: snapshot.draft?.data ?? null, phaseA, phaseB },
           filingChoiceConfirmation: {
             confirmed: true,
-            confirmationId,
-            confirmedAtISO,
+            confirmationId: identity.confirmationId,
+            confirmedAtISO: identity.confirmedAtISO,
           },
-          preparedAtISO: new Date().toISOString(),
+          preparedAtISO,
         }),
       });
       const payload = await response.json() as GeneratedResponse | { status: 'BLOCKED'; detail: string };
@@ -487,7 +494,8 @@ export function FilingReadiness() {
       }
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       const bytes = bytesFromBase64(payload.generatedBytesBase64);
-      const nextUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      const exactArrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+      const nextUrl = URL.createObjectURL(new Blob([exactArrayBuffer], { type: 'application/pdf' }));
       setPdfUrl(nextUrl);
       setGenerated(payload);
       setRenderedAtISO(null);
@@ -505,12 +513,12 @@ export function FilingReadiness() {
       setOperationError('Render and review the exact generated document, then affirm that exact document before continuing.');
       return;
     }
-    const confirmedAtISO = new Date().toISOString();
+    const identity = phaseBConfirmationIdentity(generated.generatedDraft.preparedAtISO);
     const phaseB = buildPhaseB(
       completion,
       supportSelections,
-      confirmedAtISO,
-      `e2-2-review-context:${crypto.randomUUID()}`,
+      identity.confirmedAtISO,
+      identity.confirmationId,
     );
     setBusy('review');
     setOperationError(null);
