@@ -122,6 +122,12 @@ function supplemental(
         value: 'SELF_REPRESENTED_SUPPORTED',
         control: control('caption-route', 'self-represented'),
       },
+      captionFormValueControl: {
+        state: 'KNOWN',
+        value: 'Self-represented',
+        control: control('caption-form-value', 'self-represented-form-value'),
+        dependencies: [CANONICAL_FILING_FACT_REFS.captionRouteControl],
+      },
       jurisdictionSupportControl: {
         state: 'KNOWN',
         value: 'SUPPORTED_INITIAL_UD100',
@@ -152,7 +158,7 @@ function supplemental(
           zip: '91203',
           telephone: '5555550100',
           email: 'owner@example.test',
-          captionForText: 'Synthetic Owner',
+          representationStatus: 'SELF_REPRESENTED',
         },
       },
       captionOptionalFieldsControl: {
@@ -196,7 +202,7 @@ function supplemental(
         state: 'KNOWN',
         value: 'CONSISTENT',
         control: control('notice-election-consistency', 'consistent'),
-        dependencies: [CANONICAL_FILING_FACT_REFS.noticeComplaintElection, CANONICAL_FILING_FACT_REFS.serviceFacts],
+        dependencies: [CANONICAL_FILING_FACT_REFS.noticeComplaintElection],
       },
       serviceComplaintElection: {
         state: 'KNOWN',
@@ -216,7 +222,7 @@ function supplemental(
           serviceDate: '2026-08-14',
           noticeExpirationDate: '2026-08-19',
           serviceMethod: 'PERSONAL_HAND_DELIVERY',
-          noticeIncludedForfeiture: false,
+          noticeIncludedForfeiture: true,
         },
         event: event('NOTICE_SERVICE_FACTS', 'service-1'),
       },
@@ -326,6 +332,19 @@ const uniquePlanFields = new Set(ready.result.fieldWritePlan.map(item => item.fi
 equal(uniquePlanFields.size, ready.result.fieldWritePlan.length, 'successful whitelist contains no duplicate/conflicting actions');
 equal(ready.result.fieldWritePlan.length, 186, 'successful bounded profile explicitly classifies every widget as write or authorized no-write');
 
+const attorneyFor = ready.result.fieldWritePlan.find(item => item.objectReference === '855 0 R');
+equal(attorneyFor?.action, 'WRITE_TEXT', 'ATTORNEY FOR is an explicit controlled write in the supported route');
+if (attorneyFor?.action === 'WRITE_TEXT') {
+  equal(attorneyFor.value, 'Self-represented', 'ATTORNEY FOR exact value comes from governed caption form value');
+}
+const attorneyForRule = UD100_GENERATION_BINDING.fieldRules.find(rule => rule.evidence.objectReference === '855 0 R');
+ok(
+  attorneyForRule?.disposition === 'WRITE'
+    && attorneyForRule.dependencies[0]?.ref === CANONICAL_FILING_FACT_REFS.captionFormValueControl
+    && attorneyForRule.dependencies[0]?.authorityClass === 'DETERMINISTIC_GOVERNED_CONTROL_REQUIRED',
+  'ATTORNEY FOR rule is CONTROL-derived rather than filer-contact customer text',
+);
+
 const premises = ready.result.fieldWritePlan.find(item => item.objectReference === '799 0 R');
 equal(premises?.action, 'WRITE_TEXT', 'premises field is a deterministic positive write');
 if (premises?.action === 'WRITE_TEXT') {
@@ -343,6 +362,8 @@ equal(unincorporatedCheckbox?.action, 'SET_EXPLICIT_NONSELECTION', 'valid mutual
 
 const noticePayRent = ready.result.fieldWritePlan.find(item => item.objectReference === '696 0 R');
 equal(noticePayRent?.action, 'SET_SELECTED', 'customer-confirmed complaint notice election selects pay-rent-or-quit');
+const forfeitureIncluded = ready.result.fieldWritePlan.find(item => item.objectReference === '661 0 R');
+equal(forfeitureIncluded?.action, 'SET_SELECTED', 'PROVEN Notice-content fact selects the exact forfeiture-included checkbox');
 const servicePersonal = ready.result.fieldWritePlan.find(item => item.objectReference === '652 0 R');
 equal(servicePersonal?.action, 'SET_SELECTED', 'customer-confirmed complaint service election selects personal hand delivery');
 const serviceDate = ready.result.fieldWritePlan.find(item => item.objectReference === '653 0 R');
@@ -363,6 +384,57 @@ const agreedRent = ready.result.fieldWritePlan.find(item => item.fieldId === agr
 equal(agreedRent?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'current no-agreement governed control leaves agreed-rent source blank without Notice-demand substitution');
 ok(UD100_PROHIBITED_SEMANTIC_SUBSTITUTIONS.some(item => 'fieldId' in item && item.fieldId === agreedRentField && item.prohibitedSourceRef === CANONICAL_FILING_FACT_REFS.rentDemandTotal), 'agreed-rent Notice-demand prohibition remains explicit');
 ok(!UD100_GENERATION_BINDING.fieldRules.some(rule => rule.disposition === 'WRITE' && rule.dependencies.some(dep => dep.ref === CANONICAL_FILING_FACT_REFS.rentDemandTotal)), 'Notice demand is not reused by any writable complaint field');
+
+const spoofedCaptionText = supplemental({
+  preparation: {
+    filerContact: {
+      state: 'KNOWN',
+      value: {
+        ...(supplemental().preparation!.filerContact as any).value,
+        captionForText: 'Customer supplied counsel role',
+      },
+    } as any,
+  },
+});
+const spoofedCaptionResult = evaluate(spoofedCaptionText).result;
+if (spoofedCaptionResult.status !== 'GENERATION_BINDING_READY') throw new Error('caption spoof fixture must otherwise resolve');
+const spoofedAttorneyFor = spoofedCaptionResult.fieldWritePlan.find(item => item.objectReference === '855 0 R');
+if (spoofedAttorneyFor?.action === 'WRITE_TEXT') {
+  equal(spoofedAttorneyFor.value, 'Self-represented', 'customer captionForText cannot affect ATTORNEY FOR');
+  notEqual(spoofedAttorneyFor.value, 'Customer supplied counsel role', 'customer caption free text is not a form-facing authority source');
+}
+
+const missingCaptionFormValue = evaluate(supplemental({
+  preparation: {
+    captionFormValueControl: { state: 'UNANSWERED' },
+  },
+})).result;
+equal(missingCaptionFormValue.status, 'BLOCKED', 'missing governed caption form value fails closed');
+equal(missingCaptionFormValue.fieldWritePlan.length, 0, 'missing caption form value yields zero writes');
+
+const staleCaptionFormValue = evaluate(supplemental({
+  preparation: {
+    captionFormValueControl: {
+      state: 'KNOWN',
+      value: 'Self-represented',
+      control: control('caption-form-value', 'stale-self-represented', 'STALE'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.captionRouteControl],
+    },
+  },
+})).result;
+equal(staleCaptionFormValue.status, 'BLOCKED', 'stale governed caption form value fails closed');
+
+const detachedCaptionFormValue = evaluate(supplemental({
+  preparation: {
+    captionFormValueControl: {
+      state: 'KNOWN',
+      value: 'Self-represented',
+      control: control('caption-form-value', 'detached-self-represented'),
+      dependencies: [],
+    },
+  },
+})).result;
+equal(detachedCaptionFormValue.status, 'BLOCKED', 'caption form value without governed caption-route dependency fails closed');
 
 const noUnitBase: NoticeFlowData = { ...base, propertyUnit: undefined };
 const noUnitApproved: NoticeFlowData = { ...noUnitBase, ...bindReviewApproval(noUnitBase, '2026-08-14T12:10:00.000Z') };
@@ -460,6 +532,18 @@ const unconfirmedNoticeElection = evaluate(supplemental({
   },
 })).result;
 equal(unconfirmedNoticeElection.status, 'BLOCKED', 'Notice artifact/lifecycle cannot substitute for affirmative complaint notice election confirmation');
+
+const detachedNoticeConsistency = evaluate(supplemental({
+  preparation: {
+    noticeElectionConsistencyControl: {
+      state: 'KNOWN',
+      value: 'CONSISTENT',
+      control: control('notice-election-consistency', 'detached-current'),
+      dependencies: [],
+    },
+  },
+})).result;
+equal(detachedNoticeConsistency.status, 'BLOCKED', 'CURRENT Notice-consistency token without separate election dependency blocks');
 
 const inconsistentServiceControl = evaluate(supplemental({
   preparation: {
@@ -670,6 +754,7 @@ const wrongBytes = {
 equal(evaluateUd100GenerationBinding(wrongBytes, 'CURRENT', ready.facts).status, 'BLOCKED', 'same revision with different exact bytes blocks');
 
 const sourceText = readFileSync(new URL('./ud100GenerationBinding.ts', import.meta.url), 'utf8');
+ok(!/captionForText/.test(sourceText), 'official-form binding contains no customer caption free-text transform');
 ok(!/pdf-lib|writeFile|appendFile|fetch\(|XMLHttpRequest|supabase|database|localStorage|sessionStorage|FormData|model\.generate|signDocument|fileDocument|serveDocument/.test(sourceText), 'D.1 profile has no PDF mutation, network, persistence, provider/model, signing, filing, or service execution path');
 
 console.log(`UD100_MAP_SNAPSHOT=${UD100_GENERATION_BINDING.mapSnapshotId}`);

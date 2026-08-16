@@ -21,6 +21,7 @@ export const CANONICAL_FILING_FACT_REFS = {
   municipalClassification: 'ud100.control.municipalClassification',
   initialComplaintLifecycle: 'ud100.lifecycle.initialComplaint',
   captionRouteControl: 'ud100.control.captionRoute',
+  captionFormValueControl: 'ud100.control.captionFormValue',
   jurisdictionSupportControl: 'ud100.control.jurisdictionSupport',
 
   plaintiffRelationship: 'ud100.fact.plaintiffRelationship',
@@ -151,6 +152,7 @@ export type CaptionRouteControl =
   | 'SELF_REPRESENTED_SUPPORTED'
   | 'OUTSIDE_ATTORNEY_UNSUPPORTED'
   | 'ENTITY_ROUTE_UNRESOLVED';
+export type SelfRepresentedCaptionFormValue = 'Self-represented';
 export type JurisdictionSupportControl = 'SUPPORTED_INITIAL_UD100' | 'UNSUPPORTED';
 
 export type PropertyUnitRepresentation =
@@ -168,6 +170,7 @@ export type DbaUse = 'NO_DBA' | 'USES_DBA';
 export type DoeElection =
   | { include: false }
   | { include: true; rangeText: string };
+export type RepresentationStatus = 'SELF_REPRESENTED' | 'OUTSIDE_ATTORNEY';
 
 export interface FilerContact {
   name: string;
@@ -177,7 +180,17 @@ export interface FilerContact {
   zip: string;
   telephone: string;
   email: string;
-  captionForText: string;
+  /**
+   * Raw customer factual representation status. Optional only so historical
+   * D.1/E.1 fixture shapes remain structurally readable; the P1-v2 producer
+   * requires an affirmative supported value before any governed caption result.
+   */
+  representationStatus?: RepresentationStatus;
+  /**
+   * Historical extra contact keys are structurally tolerated but have no
+   * canonical form authority. P1-v2 never consumes them as governed output.
+   */
+  [legacyInputKey: string]: unknown;
 }
 
 export type TpaClassification = 'SUBJECT_AT_FAULT';
@@ -224,6 +237,7 @@ export interface FilingCanonicalFactsSupplementalInput {
     municipalClassification?: GovernedControlInput<MunicipalClassification>;
     initialComplaintLifecycle?: LifecycleEventInput<InitialComplaintLifecycle>;
     captionRouteControl?: GovernedControlInput<CaptionRouteControl>;
+    captionFormValueControl?: GovernedControlInput<SelfRepresentedCaptionFormValue>;
     jurisdictionSupportControl?: GovernedControlInput<JurisdictionSupportControl>;
 
     plaintiffRelationship?: SupplementalFactInput<PlaintiffRelationship>;
@@ -539,6 +553,7 @@ export function projectFilingCanonicalFacts(
   facts[CANONICAL_FILING_FACT_REFS.municipalClassification] = controlState(identity, 'supplemental.preparation.municipalClassification', preparation?.municipalClassification);
   facts[CANONICAL_FILING_FACT_REFS.initialComplaintLifecycle] = lifecycleState(identity, 'supplemental.preparation.initialComplaintLifecycle', preparation?.initialComplaintLifecycle);
   facts[CANONICAL_FILING_FACT_REFS.captionRouteControl] = controlState(identity, 'supplemental.preparation.captionRouteControl', preparation?.captionRouteControl);
+  facts[CANONICAL_FILING_FACT_REFS.captionFormValueControl] = controlState(identity, 'supplemental.preparation.captionFormValueControl', preparation?.captionFormValueControl);
   facts[CANONICAL_FILING_FACT_REFS.jurisdictionSupportControl] = controlState(identity, 'supplemental.preparation.jurisdictionSupportControl', preparation?.jurisdictionSupportControl);
 
   const supplementalFacts: readonly [FixedCanonicalFilingFactRef, string, SupplementalFactInput<unknown> | undefined][] = [
