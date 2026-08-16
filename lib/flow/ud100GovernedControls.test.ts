@@ -326,8 +326,16 @@ ok(
   'UNPROVEN_LEGACY cannot produce Notice consistency',
 );
 
-const invalidNotice = clone(persisted);
-(invalidNotice.createdNoticeArtifact as any).artifactSemantics.semanticId = 'tampered-semantic-id';
+const invalidNotice: NoticeFlowData = {
+  ...clone(persisted),
+  createdNoticeArtifact: {
+    ...clone(persisted.createdNoticeArtifact!),
+    artifactSemantics: {
+      ...clone((persisted.createdNoticeArtifact as any).artifactSemantics),
+      semanticId: 'tampered-semantic-id',
+    },
+  } as any,
+};
 equal(
   evaluateCreatedNoticeSemanticProvenance(invalidNotice.createdNoticeArtifact).status,
   'INVALID',
@@ -338,8 +346,13 @@ ok(
   'INVALID semantics cannot produce Notice consistency',
 );
 
-const crossGenerationNotice = clone(persisted);
-(crossGenerationNotice.createdNoticeArtifact as any).generation = 'different-create-generation';
+const crossGenerationNotice: NoticeFlowData = {
+  ...clone(persisted),
+  createdNoticeArtifact: {
+    ...clone(persisted.createdNoticeArtifact!),
+    generation: 'different-create-generation',
+  } as any,
+};
 equal(
   evaluateCreatedNoticeSemanticProvenance(crossGenerationNotice.createdNoticeArtifact).status,
   'INVALID',
@@ -459,8 +472,16 @@ const legacyServiceResult = produceServiceElectionConsistency({
 ok(legacyServiceResult.serviceFacts.state !== 'KNOWN', 'UNPROVEN_LEGACY cannot produce D.1 ServiceFacts');
 ok(legacyServiceResult.serviceElectionConsistencyControl.state !== 'KNOWN', 'UNPROVEN_LEGACY cannot produce service consistency');
 
-const invalidServed = clone(served);
-(invalidServed.createdNoticeArtifact as any).artifactSemantics.semanticId = 'invalid-service-semantic-id';
+const invalidServed: NoticeFlowData = {
+  ...clone(served),
+  createdNoticeArtifact: {
+    ...clone(served.createdNoticeArtifact!),
+    artifactSemantics: {
+      ...clone((served.createdNoticeArtifact as any).artifactSemantics),
+      semanticId: 'invalid-service-semantic-id',
+    },
+  } as any,
+};
 const invalidServiceResult = produceServiceElectionConsistency({
   data: invalidServed,
   serviceComplaintElection: serviceElection('invalid-service'),
