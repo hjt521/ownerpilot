@@ -4,10 +4,23 @@ import type { NoticeFlowData } from './noticeFlowState';
 import { individualLandlord } from './landlord.fixture';
 import { normalizeAddressKey } from './jurisdictionVerdict';
 import { bindReviewApproval, freezeReviewCreateInput, hasCurrentReviewApproval, reviewApprovalGeneration } from './reviewApproval';
-import { captureCreatedNoticeArtifact, restoreCreatedNoticeArtifact } from './createdNoticeArtifact';
+import {
+  captureCreatedNoticeArtifact,
+  CREATED_NOTICE_ARTIFACT_TYPE,
+  CREATED_NOTICE_SEMANTIC_CONTRACT,
+  CREATED_NOTICE_SEMANTIC_ID,
+  CREATED_NOTICE_SEMANTIC_SCHEMA,
+  deriveCreatedNoticeSemanticBindingId,
+  evaluateCreatedNoticeSemanticProvenance,
+  restoreCreatedNoticeArtifact,
+} from './createdNoticeArtifact';
 import { captureProductionSnapshot, evaluateStaleness } from './escalation';
 import { evaluateCanProduceV4 } from './gates';
-import { renderNotice } from '../produce/renderNotice';
+import {
+  NOTICE_PROSE,
+  RENDER_NOTICE_SEMANTIC_CONTRACT,
+  renderNotice,
+} from '../produce/renderNotice';
 import { saveDraft, loadDraft, DRAFT_VERSION, type StorageLike } from './persistence';
 
 let passed = 0;
@@ -77,7 +90,7 @@ function successfulCreate(input: NoticeFlowData) {
     compliancePeriodStartDate: gate.computedDates!.commencementDate,
     compliancePeriodEndDate: gate.computedDates!.expirationDate,
   };
-  const model = renderNotice({ data: frozen, dates }).model;
+  const rendered = renderNotice({ data: frozen, dates });
   const productionSnapshot = captureProductionSnapshot(frozen);
   const createdNoticeArtifact = captureCreatedNoticeArtifact(
     frozen,
@@ -86,7 +99,8 @@ function successfulCreate(input: NoticeFlowData) {
   );
   return {
     state: { ...input, productionSnapshot, createdNoticeArtifact } as NoticeFlowData,
-    model,
+    model: rendered.model,
+    noticeText: rendered.noticeText,
     envelope: createdNoticeArtifact,
   };
 }
@@ -94,9 +108,35 @@ function successfulCreate(input: NoticeFlowData) {
 console.log('=== UX2 created artifact integrity ===');
 
 const createdA = successfulCreate(validData());
+const semanticA = evaluateCreatedNoticeSemanticProvenance(createdA.envelope);
+equal(semanticA.status, 'PROVEN', 'P1-A: a newly captured Created Notice has proven semantic provenance');
+equal(createdA.envelope.artifactSemantics.schema, CREATED_NOTICE_SEMANTIC_SCHEMA, 'P1-A: semantic schema is explicit');
+equal(createdA.envelope.artifactSemantics.semanticId, CREATED_NOTICE_SEMANTIC_ID, 'P1-A: semantic/render-contract identity is explicit');
+equal(createdA.envelope.artifactSemantics.artifactType, CREATED_NOTICE_ARTIFACT_TYPE, 'P1-A: exact CA 3-day Notice artifact type is explicit');
+equal(createdA.envelope.artifactSemantics.forfeitureElectionContentIncluded, true, 'P1-A: exact created Notice records locked forfeiture-election content');
+equal(
+  createdA.envelope.artifactSemanticBindingId,
+  deriveCreatedNoticeSemanticBindingId(createdA.envelope.generation),
+  'P1-A: semantic provenance is deterministically bound to exact Create generation',
+);
+ok(Object.isFrozen(createdA.envelope.artifactSemantics), 'P1-A: captured build-owned semantic record is immutable in memory');
+ok(
+  RENDER_NOTICE_SEMANTIC_CONTRACT === CREATED_NOTICE_SEMANTIC_CONTRACT,
+  'P1-A: renderNotice and artifact capture use the same build-owned semantic contract object',
+);
+ok(
+  createdA.noticeText.includes(NOTICE_PROSE.forfeitureElection),
+  'P1-A: current renderer still emits the pre-existing locked forfeiture-election content',
+);
+
 const restoredA = restoreCreatedNoticeArtifact(createdA.state);
 ok(restoredA !== null, 'Scenario 1: successful Create A exposes exact artifact A');
 equal(restoredA!.generation, createdA.envelope.generation, 'Scenario 1: artifact generation is A');
+equal(
+  evaluateCreatedNoticeSemanticProvenance(restoredA!).status,
+  'PROVEN',
+  'P1-A: ordinary restore preserves proven semantic provenance without rewriting it',
+);
 equal(
   JSON.stringify(renderNotice({ data: restoredA!.createData, dates: restoredA!.dates }).model),
   JSON.stringify(createdA.model),
@@ -112,6 +152,11 @@ equal(
   const remounted = restoreCreatedNoticeArtifact(draft!.data);
   ok(remounted !== null, 'Scenario 2: ordinary remount restores exact artifact identity');
   equal(remounted!.createData.serviceDate, '2026-06-02', 'Scenario 2: remount artifact retains A service date');
+  equal(
+    evaluateCreatedNoticeSemanticProvenance(remounted!).status,
+    'PROVEN',
+    'P1-A: persisted new semantic provenance remains proven after ordinary remount',
+  );
 }
 
 {
@@ -121,6 +166,11 @@ equal(
   const artifact = restoreCreatedNoticeArtifact(currentB);
   ok(artifact !== null, 'Scenario 3: stored artifact A remains independently recoverable');
   equal(artifact!.createData.rentPeriods[0].amount, 3000, 'Scenario 3: artifact use cannot silently substitute mutable rent B');
+  equal(
+    artifact!.artifactSemanticBindingId,
+    createdA.envelope.artifactSemanticBindingId,
+    'P1-A: mutable draft changes cannot rewrite already captured artifact semantics',
+  );
 }
 
 {
@@ -151,6 +201,103 @@ equal(
   ok(createdB.envelope.generation !== createdA.envelope.generation, 'Scenario 6: fresh successful Create B replaces artifact generation A');
   equal(createdB.envelope.createData.rentPeriods[0].amount, 3250, 'Scenario 6: new artifact identity contains exact B');
   equal(createdB.envelope.createData.createdNoticeArtifact, undefined, 'Scenario 6: new artifact does not recursively contain old artifact A');
+
+  const substituted = clone(createdB.state);
+  const substitutedEnvelope = substituted.createdNoticeArtifact as any;
+  substitutedEnvelope.artifactSemantics = clone(createdA.envelope.artifactSemantics);
+  substitutedEnvelope.artifactSemanticBindingId = createdA.envelope.artifactSemanticBindingId;
+  equal(
+    evaluateCreatedNoticeSemanticProvenance(substitutedEnvelope).status,
+    'INVALID',
+    'P1-A: semantic metadata from artifact A cannot validate against Create generation B',
+  );
+  equal(
+    restoreCreatedNoticeArtifact(substituted),
+    null,
+    'P1-A: exact-generation semantic substitution fails ordinary restore closed',
+  );
+}
+
+{
+  const injected = validData();
+  (injected as any).createdNoticeArtifact = {
+    ...clone(createdA.envelope),
+    artifactSemantics: {
+      schema: 999,
+      semanticId: 'customer-supplied-semantic-id',
+      artifactType: 'CUSTOMER_SELECTED_TYPE',
+      forfeitureElectionContentIncluded: false,
+    },
+    artifactSemanticBindingId: 'customer-supplied-binding',
+  };
+  const created = successfulCreate(injected);
+  equal(
+    created.envelope.artifactSemantics.semanticId,
+    CREATED_NOTICE_SEMANTIC_ID,
+    'P1-A: prior/browser artifact metadata cannot choose newly captured semantic identity',
+  );
+  equal(
+    created.envelope.artifactSemantics.artifactType,
+    CREATED_NOTICE_ARTIFACT_TYPE,
+    'P1-A: prior/browser artifact metadata cannot choose newly captured Notice type',
+  );
+  equal(
+    created.envelope.artifactSemantics.forfeitureElectionContentIncluded,
+    true,
+    'P1-A: prior/browser artifact metadata cannot choose the created-content fact',
+  );
+}
+
+{
+  const legacyState = clone(createdA.state);
+  const legacyEnvelope = legacyState.createdNoticeArtifact as any;
+  delete legacyEnvelope.artifactSemantics;
+  delete legacyEnvelope.artifactSemanticBindingId;
+  equal(
+    evaluateCreatedNoticeSemanticProvenance(legacyEnvelope).status,
+    'UNPROVEN_LEGACY',
+    'P1-A: semantic-less historical envelope is explicitly UNPROVEN_LEGACY',
+  );
+  const legacyRestored = restoreCreatedNoticeArtifact(legacyState);
+  ok(legacyRestored !== null, 'P1-A: legacy ordinary Created Notice restoration remains intact');
+  equal(
+    evaluateCreatedNoticeSemanticProvenance(legacyRestored!).status,
+    'UNPROVEN_LEGACY',
+    'P1-A: current restore does not silently upgrade a legacy artifact',
+  );
+  ok(
+    !Object.prototype.hasOwnProperty.call(legacyRestored!, 'artifactSemantics') &&
+      !Object.prototype.hasOwnProperty.call(legacyRestored!, 'artifactSemanticBindingId'),
+    'P1-A: legacy restore performs no semantic auto-backfill',
+  );
+}
+
+{
+  const malformed = clone(createdA.state);
+  const malformedEnvelope = malformed.createdNoticeArtifact as any;
+  malformedEnvelope.artifactSemantics.semanticId = 'tampered-semantic-id';
+  equal(
+    evaluateCreatedNoticeSemanticProvenance(malformedEnvelope).status,
+    'INVALID',
+    'P1-A: malformed semantic identity is INVALID',
+  );
+  equal(
+    restoreCreatedNoticeArtifact(malformed),
+    null,
+    'P1-A: malformed semantic metadata fails restore closed rather than receiving current defaults',
+  );
+}
+
+{
+  const partial = clone(createdA.state);
+  const partialEnvelope = partial.createdNoticeArtifact as any;
+  delete partialEnvelope.artifactSemanticBindingId;
+  equal(
+    evaluateCreatedNoticeSemanticProvenance(partialEnvelope).status,
+    'INVALID',
+    'P1-A: partially present semantic provenance is INVALID, not legacy',
+  );
+  equal(restoreCreatedNoticeArtifact(partial), null, 'P1-A: partial semantic provenance fails closed');
 }
 
 {
