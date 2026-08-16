@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loadDraft, type RestoredDraft } from '@/lib/flow/persistence';
 import { deriveExactNoticeDemand, deriveResolveRecordContext } from '@/lib/flow/outcomeEvents';
 import { restoreOutcomeHistory, type RestoredResolveOutcome } from '@/lib/flow/outcomePersistence';
@@ -109,8 +109,63 @@ const SUPPORT_OPTIONS = {
 type SupportKey = keyof typeof SUPPORT_OPTIONS;
 type SupportSelections = Record<SupportKey, string>;
 
+const EDITABLE_SUPPORT_KEYS: readonly SupportKey[] = [
+  'plaintiffRelationship',
+  'plaintiffType',
+  'representationStatus',
+  'dbaUse',
+  'doePosture',
+  'initialComplaintLifecycle',
+  'leasePosture',
+  'otherNoticesPosture',
+  'fixedTermPosture',
+  'optionalReliefPosture',
+];
+
+const SUPPORT_LABELS: Record<SupportKey, string> = {
+  plaintiffRelationship: 'Plaintiff relationship',
+  plaintiffType: 'Plaintiff type',
+  representationStatus: 'Representation',
+  dbaUse: 'DBA / fictitious business name',
+  doePosture: 'Doe defendants',
+  initialComplaintLifecycle: 'Complaint stage',
+  leasePosture: 'Rental agreement path',
+  noticePosture: 'Notice allegation',
+  servicePosture: 'Recorded service method',
+  otherNoticesPosture: 'Other notices',
+  fixedTermPosture: 'Fixed-term expiration theory',
+  optionalReliefPosture: 'Optional relief',
+};
+
+const RENTAL_ASSISTANCE_QUESTIONS = {
+  rental11a: 'Has plaintiff received rental assistance or other financial compensation from any other source corresponding to the amount demanded in the notice underlying the complaint?',
+  rental11b: 'Has plaintiff received rental assistance or other financial compensation from any other source for rent accruing after the date of the notice underlying the complaint?',
+  rental11c: 'Does plaintiff have any pending application for rental assistance or other financial compensation from any other source corresponding to the amount demanded in the notice underlying the complaint?',
+  rental11d: 'Does plaintiff have any pending application for rental assistance or other financial compensation from any other source for rent accruing after the date on the notice underlying the complaint?',
+} as const;
+
+const OPTIONAL_RELIEF_ITEMS = [
+  'Fair rental value',
+  'Statutory damages',
+  'Relocation damages',
+  'Forfeiture',
+  'Attorney fees',
+  'Other relief',
+  'Other allegations',
+] as const;
+
+const COURT_IDENTITY_KEYS = [
+  'courtCounty',
+  'courtStreetAddress',
+  'courtMailingAddress',
+  'courtCityAndZip',
+  'courtBranchName',
+] as const;
+type CourtIdentityKey = (typeof COURT_IDENTITY_KEYS)[number];
+
 interface CompletionFields {
   propertyZip: string;
+  propertyNoUnitConfirmed: boolean;
   premisesAge: string;
   courtCounty: string;
   courtStreetAddress: string;
@@ -130,8 +185,11 @@ interface CompletionFields {
   rental11b: '' | 'YES' | 'NO';
   rental11c: '' | 'YES' | 'NO';
   rental11d: '' | 'YES' | 'NO';
+  noticeComplaintUse: '' | 'YES' | 'NO';
+  serviceComplaintUse: '' | 'YES' | 'NO';
   pastDueSelected: '' | 'YES' | 'NO';
   pastDueAmount: string;
+  optionalReliefNoneConfirmed: boolean;
 }
 
 const EMPTY_SUPPORT: SupportSelections = {
@@ -151,6 +209,7 @@ const EMPTY_SUPPORT: SupportSelections = {
 
 const EMPTY_COMPLETION: CompletionFields = {
   propertyZip: '',
+  propertyNoUnitConfirmed: false,
   premisesAge: '',
   courtCounty: '',
   courtStreetAddress: '',
@@ -170,8 +229,11 @@ const EMPTY_COMPLETION: CompletionFields = {
   rental11b: '',
   rental11c: '',
   rental11d: '',
+  noticeComplaintUse: '',
+  serviceComplaintUse: '',
   pastDueSelected: '',
   pastDueAmount: '',
+  optionalReliefNoneConfirmed: false,
 };
 
 function readSnapshot(): Snapshot {
@@ -227,6 +289,7 @@ function booleanFacts(value: '' | 'YES' | 'NO') {
 function buildPhaseB(
   fields: CompletionFields,
   support: SupportSelections,
+  frozenUnitPresent: boolean,
   confirmedAtISO: string,
   confirmationId: string,
 ): Ud100PhaseBCompletionInput {
@@ -241,6 +304,11 @@ function buildPhaseB(
     propertyZip: fields.propertyZip.trim()
       ? { state: 'KNOWN', value: fields.propertyZip.trim() }
       : { state: 'UNANSWERED' },
+    propertyUnitConfirmation: frozenUnitPresent
+      ? undefined
+      : fields.propertyNoUnitConfirmed
+        ? { state: 'KNOWN', value: 'NO_UNIT' }
+        : { state: 'UNANSWERED' },
     selectedFilingCourt: fields.courtConfirmed && [
       fields.courtCounty,
       fields.courtStreetAddress,
@@ -305,16 +373,24 @@ function buildPhaseB(
       value: { include: false },
       confirmation: shared,
     },
-    noticeComplaintElection: {
-      state: 'KNOWN',
-      value: 'PAY_RENT_OR_QUIT_3_DAY',
-      confirmation: shared,
-    },
-    serviceComplaintElection: {
-      state: 'KNOWN',
-      value: 'PERSONAL_HAND_DELIVERY',
-      confirmation: shared,
-    },
+    noticeComplaintElection: fields.noticeComplaintUse === 'YES'
+      ? {
+          state: 'KNOWN',
+          value: 'PAY_RENT_OR_QUIT_3_DAY',
+          confirmation: shared,
+        }
+      : fields.noticeComplaintUse === 'NO'
+        ? { state: 'REQUIRES_CONFIRMATION', reason: 'The current E.2.2 path requires the owner to elect use of the exact Created Notice for this complaint.' }
+        : { state: 'UNANSWERED' },
+    serviceComplaintElection: fields.serviceComplaintUse === 'YES'
+      ? {
+          state: 'KNOWN',
+          value: 'PERSONAL_HAND_DELIVERY',
+          confirmation: shared,
+        }
+      : fields.serviceComplaintUse === 'NO'
+        ? { state: 'REQUIRES_CONFIRMATION', reason: 'The current E.2.2 path requires the owner to elect use of the recorded personal hand delivery for this complaint.' }
+        : { state: 'UNANSWERED' },
     fixedTermExpirationElection: {
       state: 'KNOWN',
       value: 'DO_NOT_SELECT',
@@ -329,19 +405,21 @@ function buildPhaseB(
           confirmation: shared,
         }
       : { state: 'UNANSWERED' },
-    otherReliefSelections: {
-      state: 'KNOWN',
-      value: {
-        fairRentalValue: false,
-        statutoryDamages: false,
-        relocationDamages: false,
-        forfeiture: false,
-        attorneyFees: false,
-        otherRelief: false,
-        otherAllegations: false,
-      },
-      confirmation: shared,
-    },
+    otherReliefSelections: fields.optionalReliefNoneConfirmed
+      ? {
+          state: 'KNOWN',
+          value: {
+            fairRentalValue: false,
+            statutoryDamages: false,
+            relocationDamages: false,
+            forfeiture: false,
+            attorneyFees: false,
+            otherRelief: false,
+            otherAllegations: false,
+          },
+          confirmation: shared,
+        }
+      : { state: 'UNANSWERED' },
   };
 }
 
@@ -357,6 +435,19 @@ function phaseBConfirmationIdentity(preparedAtISO: string) {
     confirmedAtISO: preparedAtISO,
     confirmationId: `e2-2-filing-choice:${preparedAtISO}`,
   };
+}
+
+function serviceMethodLabel(method: string | undefined): string {
+  if (method === 'personal') return 'Personal hand delivery';
+  if (method === 'substituted') return 'Substituted service';
+  if (method === 'post_and_mail') return 'Posting and mailing';
+  return 'Unavailable';
+}
+
+function formatMoney(value: number | null): string {
+  return value === null || !Number.isFinite(value)
+    ? 'Unavailable'
+    : value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
 export function FilingReadiness() {
@@ -382,6 +473,8 @@ export function FilingReadiness() {
       const signature = JSON.stringify(next);
       if (signature === signatureRef.current) return;
       if (signatureRef.current && signature !== signatureRef.current) {
+        setSupportResult(null);
+        setFilingChoiceConfirmed(false);
         setGenerated(null);
         setPdfUrl(previous => {
           if (previous) URL.revokeObjectURL(previous);
@@ -408,10 +501,20 @@ export function FilingReadiness() {
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
   }, [pdfUrl]);
 
-  const phaseA = useMemo(() => buildPhaseA(supportSelections), [supportSelections]);
-
   if (!snapshot) return null;
   const draftData = snapshot.draft?.data ?? null;
+  const resolveContext = draftData ? deriveResolveRecordContext(draftData) : null;
+  const createdNotice = resolveContext?.artifact ?? null;
+  const noticeData = createdNotice?.createData ?? null;
+  const successfulService = resolveContext?.successfulAttempt ?? null;
+  const effectiveSupportSelections: SupportSelections = {
+    ...supportSelections,
+    noticePosture: createdNotice ? 'PAY_RENT_OR_QUIT_3_DAY' : '',
+    servicePosture: successfulService
+      ? successfulService.method === 'personal' ? 'PERSONAL_HAND_DELIVERY' : 'OTHER'
+      : '',
+  };
+  const phaseA = buildPhaseA(effectiveSupportSelections);
 
   const readiness = deriveFilingReadiness({
     data: draftData,
@@ -424,15 +527,68 @@ export function FilingReadiness() {
     item.status === 'Cannot continue',
   );
   const canStartE22 = readiness.state === 'Ready for packet review' && !!draftData;
+  const frozenUnit = noticeData?.propertyUnit?.trim() ?? '';
+  const hasFrozenUnit = frozenUnit !== '';
+  const noticeAddress = noticeData
+    ? [noticeData.propertyAddress, noticeData.propertyUnit, noticeData.propertyCity, noticeData.propertyCounty]
+        .filter(value => typeof value === 'string' && value.trim() !== '')
+        .join(', ')
+    : 'Unavailable';
+  const noticeTenantNames = noticeData?.tenantNames?.filter(name => name.trim() !== '').join(', ') || 'Unavailable';
+  const noticeDemand = createdNotice ? deriveExactNoticeDemand(createdNotice) : null;
+
+  const courtComplete = completion.courtConfirmed && COURT_IDENTITY_KEYS.every(key => completion[key].trim() !== '');
+  const filerComplete = [
+    completion.filerName,
+    completion.filerStreetAddress,
+    completion.filerCity,
+    completion.filerState,
+    completion.filerZip,
+    completion.filerTelephone,
+    completion.filerEmail,
+  ].every(value => value.trim() !== '');
+  const rentalAssistanceComplete = [
+    completion.rental11a,
+    completion.rental11b,
+    completion.rental11c,
+    completion.rental11d,
+  ].every(value => value !== '');
+  const pastDueComplete = completion.pastDueSelected !== ''
+    && (completion.pastDueSelected === 'NO'
+      || (completion.pastDueAmount.trim() !== '' && Number.isFinite(Number(completion.pastDueAmount))));
+  const unitComplete = hasFrozenUnit || completion.propertyNoUnitConfirmed;
+  const filingPrerequisitesComplete = supportResult?.status === 'SUPPORTED'
+    && completion.propertyZip.trim() !== ''
+    && completion.premisesAge.trim() !== ''
+    && completion.rentDueAtService.trim() !== ''
+    && Number.isFinite(Number(completion.rentDueAtService))
+    && unitComplete
+    && courtComplete
+    && filerComplete
+    && rentalAssistanceComplete
+    && completion.noticeComplaintUse === 'YES'
+    && completion.serviceComplaintUse === 'YES'
+    && pastDueComplete
+    && completion.optionalReliefNoneConfirmed;
 
   const setSupport = (key: SupportKey, value: string) => {
     setSupportSelections(previous => ({ ...previous, [key]: value }));
     setSupportResult(null);
+    setFilingChoiceConfirmed(false);
     setGenerated(null);
+    setRenderedAtISO(null);
+    setOwnerReviewConfirmed(false);
     setReviewResult(null);
   };
+
   const setField = <K extends keyof CompletionFields>(key: K, value: CompletionFields[K]) => {
-    setCompletion(previous => ({ ...previous, [key]: value }));
+    const invalidatesCourtConfirmation = COURT_IDENTITY_KEYS.includes(key as CourtIdentityKey);
+    setCompletion(previous => ({
+      ...previous,
+      [key]: value,
+      ...(invalidatesCourtConfirmation ? { courtConfirmed: false } : {}),
+    }));
+    setFilingChoiceConfirmed(false);
     setGenerated(null);
     setRenderedAtISO(null);
     setOwnerReviewConfirmed(false);
@@ -462,13 +618,19 @@ export function FilingReadiness() {
   }
 
   async function prepare() {
-    if (!filingChoiceConfirmed) {
-      setOperationError('Review and affirm the filing choices before preparing the UD-100.');
+    if (!filingChoiceConfirmed || !filingPrerequisitesComplete) {
+      setOperationError('Complete the current filing choices and affirm them before preparing the UD-100.');
       return;
     }
     const preparedAtISO = new Date().toISOString();
     const identity = phaseBConfirmationIdentity(preparedAtISO);
-    const phaseB = buildPhaseB(completion, supportSelections, identity.confirmedAtISO, identity.confirmationId);
+    const phaseB = buildPhaseB(
+      completion,
+      effectiveSupportSelections,
+      hasFrozenUnit,
+      identity.confirmedAtISO,
+      identity.confirmationId,
+    );
     setBusy('prepare');
     setOperationError(null);
     try {
@@ -517,7 +679,8 @@ export function FilingReadiness() {
     const identity = phaseBConfirmationIdentity(generated.generatedDraft.preparedAtISO);
     const phaseB = buildPhaseB(
       completion,
-      supportSelections,
+      effectiveSupportSelections,
+      hasFrozenUnit,
       identity.confirmedAtISO,
       identity.confirmationId,
     );
@@ -603,25 +766,28 @@ export function FilingReadiness() {
           <div className="mt-5 rounded-lg border border-rule p-4">
             <h3 className="text-sm font-semibold text-ink">1. Check this configuration</h3>
             <p className="mt-2 text-sm text-muted">These answers check the current Product capability. They do not determine whether you legally may file.</p>
+
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              {(Object.keys(SUPPORT_OPTIONS) as SupportKey[]).map(key => (
+              <div className="rounded-md bg-tint p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">From your Notice</p>
+                <p className="mt-2 text-sm font-semibold text-ink">3-Day Notice to Pay Rent or Quit</p>
+                <p className="mt-1 text-sm text-ink">Property: {noticeAddress}</p>
+                <p className="mt-1 text-sm text-ink">Tenant/defendant: {noticeTenantNames}</p>
+                <p className="mt-1 text-sm text-ink">Notice amount: {formatMoney(noticeDemand)}</p>
+              </div>
+              <div className="rounded-md bg-tint p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">From your service record</p>
+                <p className="mt-2 text-sm font-semibold text-ink">{serviceMethodLabel(successfulService?.method)}</p>
+                <p className="mt-1 text-sm text-ink">Service date: {successfulService?.attemptDate ?? 'Unavailable'}</p>
+                <p className="mt-1 text-sm text-ink">Tenant/defendant: {noticeTenantNames}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-muted">These historical Notice and service facts are reused from their exact records here; they are not editable filing answers.</p>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {EDITABLE_SUPPORT_KEYS.map(key => (
                 <label key={key} className="text-sm text-ink">
-                  <span className="mb-1 block font-semibold">
-                    {{
-                      plaintiffRelationship: 'Plaintiff relationship',
-                      plaintiffType: 'Plaintiff type',
-                      representationStatus: 'Representation',
-                      dbaUse: 'DBA / fictitious business name',
-                      doePosture: 'Doe defendants',
-                      initialComplaintLifecycle: 'Complaint stage',
-                      leasePosture: 'Rental agreement path',
-                      noticePosture: 'Notice allegation',
-                      servicePosture: 'Recorded service method',
-                      otherNoticesPosture: 'Other notices',
-                      fixedTermPosture: 'Fixed-term expiration theory',
-                      optionalReliefPosture: 'Optional relief',
-                    }[key]}
-                  </span>
+                  <span className="mb-1 block font-semibold">{SUPPORT_LABELS[key]}</span>
                   <select
                     className="w-full rounded-md border border-rule bg-white px-3 py-2"
                     value={supportSelections[key]}
@@ -660,6 +826,41 @@ export function FilingReadiness() {
           {supportResult?.status === 'SUPPORTED' && (
             <div className="mt-5 rounded-lg border border-rule p-4">
               <h3 className="text-sm font-semibold text-ink">2. Complete the remaining filing information</h3>
+
+              <div className="mt-4 rounded-md bg-tint p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">From your Notice</p>
+                <p className="mt-2 text-sm text-ink">Property: {noticeAddress}</p>
+                {hasFrozenUnit ? (
+                  <p className="mt-1 text-sm text-ink">Unit/suite: <span className="font-semibold">{frozenUnit}</span> — reused from the Created Notice.</p>
+                ) : (
+                  <label className="mt-3 flex items-start gap-2 text-sm text-ink">
+                    <input type="checkbox" checked={completion.propertyNoUnitConfirmed} onChange={event => setField('propertyNoUnitConfirmed', event.target.checked)} className="mt-1" />
+                    <span>This property has no unit/suite number.</span>
+                  </label>
+                )}
+                <p className="mt-1 text-sm text-ink">Tenant/defendant: {noticeTenantNames}</p>
+                <p className="mt-1 text-sm text-ink">Notice amount: {formatMoney(noticeDemand)}</p>
+                <label className="mt-3 block text-sm text-ink">
+                  <span className="mb-1 block font-semibold">Use this 3-Day Notice to Pay Rent or Quit as the notice allegation for this complaint?</span>
+                  <select className="w-full rounded-md border border-rule bg-white px-3 py-2" value={completion.noticeComplaintUse} onChange={event => setField('noticeComplaintUse', event.target.value as CompletionFields['noticeComplaintUse'])}>
+                    <option value="">Select</option><option value="YES">Yes</option><option value="NO">No</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="mt-4 rounded-md bg-tint p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">From your service record</p>
+                <p className="mt-2 text-sm text-ink">Method: <span className="font-semibold">{serviceMethodLabel(successfulService?.method)}</span></p>
+                <p className="mt-1 text-sm text-ink">Service date: {successfulService?.attemptDate ?? 'Unavailable'}</p>
+                <p className="mt-1 text-sm text-ink">Tenant/defendant: {noticeTenantNames}</p>
+                <label className="mt-3 block text-sm text-ink">
+                  <span className="mb-1 block font-semibold">Use this recorded personal hand delivery as the service statement for this complaint?</span>
+                  <select className="w-full rounded-md border border-rule bg-white px-3 py-2" value={completion.serviceComplaintUse} onChange={event => setField('serviceComplaintUse', event.target.value as CompletionFields['serviceComplaintUse'])}>
+                    <option value="">Select</option><option value="YES">Yes</option><option value="NO">No</option>
+                  </select>
+                </label>
+              </div>
+
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <label className="text-sm"><span className="mb-1 block font-semibold">Property ZIP</span><input className="w-full rounded-md border border-rule px-3 py-2" value={completion.propertyZip} onChange={event => setField('propertyZip', event.target.value)} /></label>
                 <label className="text-sm"><span className="mb-1 block font-semibold">Approximate year premises were built</span><input className="w-full rounded-md border border-rule px-3 py-2" value={completion.premisesAge} onChange={event => setField('premisesAge', event.target.value)} /></label>
@@ -711,23 +912,73 @@ export function FilingReadiness() {
 
               <div className="mt-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">Rental-assistance facts</p>
+                <p className="mt-1 text-sm text-muted">Answer each factual question Yes or No. Leaving a question unselected remains unanswered.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {([
-                    ['rental11a', 'Item 11a — received?'],
-                    ['rental11b', 'Item 11b — received?'],
-                    ['rental11c', 'Item 11c — has?'],
-                    ['rental11d', 'Item 11d — has?'],
-                  ] as const).map(([key, label]) => (
+                  {(Object.entries(RENTAL_ASSISTANCE_QUESTIONS) as Array<[keyof typeof RENTAL_ASSISTANCE_QUESTIONS, string]>).map(([key, label]) => (
                     <label key={key} className="text-sm"><span className="mb-1 block font-semibold">{label}</span><select className="w-full rounded-md border border-rule px-3 py-2" value={completion[key]} onChange={event => setField(key, event.target.value as CompletionFields[typeof key])}><option value="">Select</option><option value="YES">Yes</option><option value="NO">No</option></select></label>
                   ))}
                 </div>
               </div>
 
+              <div className="mt-5 rounded-md border border-rule p-4">
+                <p className="text-sm font-semibold text-ink">Additional relief items</p>
+                <p className="mt-1 text-sm text-muted">This E.2.2 path can proceed only when none of these additional items is being requested:</p>
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink">
+                  {OPTIONAL_RELIEF_ITEMS.map(item => <li key={item}>{item}</li>)}
+                </ul>
+                <label className="mt-4 flex items-start gap-2 text-sm text-ink">
+                  <input type="checkbox" checked={completion.optionalReliefNoneConfirmed} onChange={event => setField('optionalReliefNoneConfirmed', event.target.checked)} className="mt-1" />
+                  <span>I am not asking OwnerPilot to include any of these additional relief items in this complaint.</span>
+                </label>
+                <p className="mt-2 text-sm text-muted">If you want any listed item, this current E.2.2 preparation path does not support it.</p>
+              </div>
+
+              <div className="mt-5 rounded-md border border-rule p-4" aria-label="Pre-generation provenance summary">
+                <p className="text-sm font-semibold text-ink">Review what will be used</p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">From your Notice</p>
+                    <p className="mt-1 text-sm text-ink">{noticeAddress}</p>
+                    <p className="mt-1 text-sm text-ink">{noticeTenantNames}; notice amount {formatMoney(noticeDemand)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">From your service record</p>
+                    <p className="mt-1 text-sm text-ink">{serviceMethodLabel(successfulService?.method)} on {successfulService?.attemptDate ?? 'Unavailable'} for {noticeTenantNames}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">You confirmed for this filing</p>
+                    <p className="mt-1 text-sm text-ink">Court: {completion.courtBranchName || 'Not yet complete'}</p>
+                    <p className="mt-1 text-sm text-ink">Notice election: {completion.noticeComplaintUse || 'Unanswered'}; service election: {completion.serviceComplaintUse || 'Unanswered'}</p>
+                    <p className="mt-1 text-sm text-ink">Past-due rent: {completion.pastDueSelected || 'Unanswered'}; additional relief: {completion.optionalReliefNoneConfirmed ? 'None selected' : 'Not yet confirmed'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">Checked by OwnerPilot</p>
+                    <p className="mt-1 text-sm text-ink">{supportResult.detail}</p>
+                    <p className="mt-1 text-sm text-ink">The exact Created Notice and successful service record remain the historical sources for the facts shown above.</p>
+                  </div>
+                </div>
+              </div>
+
+              {!filingPrerequisitesComplete && (
+                <p className="mt-4 text-sm text-muted">Complete every required factual answer, separate complaint election, court confirmation, no-unit confirmation when applicable, and additional-relief nonselection before the final filing-choice affirmation.</p>
+              )}
               <label className="mt-5 flex items-start gap-2 rounded-md bg-tint p-4 text-sm text-ink">
-                <input type="checkbox" checked={filingChoiceConfirmed} onChange={event => { setFilingChoiceConfirmed(event.target.checked); setGenerated(null); setReviewResult(null); }} className="mt-1" />
+                <input
+                  type="checkbox"
+                  checked={filingChoiceConfirmed}
+                  disabled={!filingPrerequisitesComplete}
+                  onChange={event => {
+                    setFilingChoiceConfirmed(event.target.checked);
+                    setGenerated(null);
+                    setRenderedAtISO(null);
+                    setOwnerReviewConfirmed(false);
+                    setReviewResult(null);
+                  }}
+                  className="mt-1"
+                />
                 <span>I reviewed these filing choices and want OwnerPilot to use them to prepare this complaint.</span>
               </label>
-              <button type="button" onClick={prepare} disabled={busy !== null || !filingChoiceConfirmed} className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button type="button" onClick={prepare} disabled={busy !== null || !filingChoiceConfirmed || !filingPrerequisitesComplete} className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
                 {busy === 'prepare' ? 'Preparing…' : 'Prepare UD-100 for review'}
               </button>
             </div>
