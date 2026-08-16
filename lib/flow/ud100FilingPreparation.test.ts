@@ -99,6 +99,26 @@ const persisted: NoticeFlowData = {
   successfulServiceAttemptId: 'service-success-1',
 };
 
+const noUnitBase: NoticeFlowData = {
+  ...base,
+  propertyUnit: undefined,
+};
+const noUnitApproved: NoticeFlowData = {
+  ...noUnitBase,
+  ...bindReviewApproval(noUnitBase, '2026-08-16T16:59:00.000Z'),
+};
+const noUnitArtifact = captureCreatedNoticeArtifact(noUnitApproved, createdAtISO, {
+  compliancePeriodStartDate: '2026-08-15',
+  compliancePeriodEndDate: '2026-08-19',
+});
+const persistedNoUnit: NoticeFlowData = {
+  ...noUnitApproved,
+  productionSnapshot: persisted.productionSnapshot,
+  createdNoticeArtifact: noUnitArtifact,
+  serviceAttempts: clone(persisted.serviceAttempts),
+  successfulServiceAttemptId: persisted.successfulServiceAttemptId,
+};
+
 const confirmation = (id: string, at = '2026-08-16T17:01:00.000Z') => ({
   confirmationId: id,
   confirmedAtISO: at,
@@ -265,6 +285,7 @@ function context(overrides: Partial<Ud100PreparationContext> = {}): Ud100Prepara
 
 const officialSourceBytes = new Uint8Array(readFileSync(UD100_OFFICIAL_SOURCE_IDENTITY.repositoryPath));
 const preparationDerivativeBytes = new Uint8Array(readFileSync(UD100_PREPARATION_RUNTIME_PATH));
+const filingReadinessSource = readFileSync('components/filing-readiness.tsx', 'utf8');
 const runtime = {
   officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
   officialSourceHealth: 'CURRENT' as const,
@@ -274,6 +295,85 @@ const runtime = {
 
 (async () => {
   console.log('=== Stage E.2.2 bounded UD-100 filing preparation ===');
+
+  equal(
+    UD100_OFFICIAL_SOURCE_IDENTITY.repositoryPath,
+    'docs/legal/official-forms/california/judicial-council/UD-100/2026-07-01/UD-100.pdf',
+    'Item 11 remediation remains bound to the registered July 1, 2026 canonical UD-100 source path',
+  );
+  equal(
+    UD100_OFFICIAL_SOURCE_IDENTITY.repositorySha256,
+    '1dbc18fb4639fb2939a2df60a6401941b058296a7f521bd56b62cc0d08610496',
+    'Item 11 remediation retains the registered canonical UD-100 SHA-256 identity',
+  );
+
+  const editableSupportStart = filingReadinessSource.indexOf('const EDITABLE_SUPPORT_KEYS');
+  const editableSupportEnd = filingReadinessSource.indexOf('const SUPPORT_LABELS');
+  const editableSupportBlock = filingReadinessSource.slice(editableSupportStart, editableSupportEnd);
+  ok(editableSupportStart >= 0 && editableSupportEnd > editableSupportStart, 'bounded UI exposes an explicit editable-support key ceiling');
+  ok(!editableSupportBlock.includes("'noticePosture'"), 'Created Notice posture is not customer-reentered in editable support controls');
+  ok(!editableSupportBlock.includes("'servicePosture'"), 'recorded service posture is not customer-reentered in editable support controls');
+  ok(filingReadinessSource.includes('const createdNotice = resolveContext?.artifact ?? null;'), 'UI consumes exact restored Created Notice artifact facts');
+  ok(filingReadinessSource.includes('const successfulService = resolveContext?.successfulAttempt ?? null;'), 'UI consumes the safely bound successful service record');
+  ok(filingReadinessSource.includes('This property has no unit/suite number.'), 'absent frozen unit has the required explicit NO_UNIT owner confirmation copy');
+  ok(filingReadinessSource.includes('propertyUnitConfirmation: frozenUnitPresent'), 'UI only supplies NO_UNIT when the frozen Created Notice lacks a unit');
+  ok(filingReadinessSource.includes('Use this 3-Day Notice to Pay Rent or Quit as the notice allegation for this complaint?'), 'Notice artifact fact and complaint Notice election are presented separately');
+  ok(filingReadinessSource.includes('Use this recorded personal hand delivery as the service statement for this complaint?'), 'service record fact and complaint service election are presented separately');
+  ok(filingReadinessSource.includes('otherReliefSelections: fields.optionalReliefNoneConfirmed'), 'all-false optional-relief election requires explicit owner nonselection');
+  for (const item of [
+    'Fair rental value',
+    'Statutory damages',
+    'Relocation damages',
+    'Forfeiture',
+    'Attorney fees',
+    'Other relief',
+    'Other allegations',
+  ]) {
+    ok(filingReadinessSource.includes(item), `optional-relief nonselection visibly includes ${item}`);
+  }
+  ok(
+    filingReadinessSource.includes('I am not asking OwnerPilot to include any of these additional relief items in this complaint.'),
+    'complete optional-relief list precedes explicit aggregate nonselection',
+  );
+  for (const heading of [
+    'From your Notice',
+    'From your service record',
+    'You confirmed for this filing',
+    'Checked by OwnerPilot',
+  ]) {
+    ok(filingReadinessSource.includes(heading), `pre-generation provenance summary contains ${heading}`);
+  }
+
+  const item11Text = [
+    'Has plaintiff received rental assistance or other financial compensation from any other source corresponding to the amount demanded in the notice underlying the complaint?',
+    'Has plaintiff received rental assistance or other financial compensation from any other source for rent accruing after the date of the notice underlying the complaint?',
+    'Does plaintiff have any pending application for rental assistance or other financial compensation from any other source corresponding to the amount demanded in the notice underlying the complaint?',
+    'Does plaintiff have any pending application for rental assistance or other financial compensation from any other source for rent accruing after the date on the notice underlying the complaint?',
+  ] as const;
+  for (const question of item11Text) {
+    ok(filingReadinessSource.includes(question), 'each Item 11(a)-(d) prompt uses the complete controlled factual proposition');
+  }
+  ok(!filingReadinessSource.includes('Item 11a — received?'), 'old Item 11 shorthand is removed');
+  ok(!filingReadinessSource.includes('Item 11b — received?'), 'old Item 11 shorthand is removed');
+  ok(!filingReadinessSource.includes('Item 11c — has?'), 'old Item 11 shorthand is removed');
+  ok(!filingReadinessSource.includes('Item 11d — has?'), 'old Item 11 shorthand is removed');
+
+  ok(
+    /const setSupport = [\s\S]*?setSupportResult\(null\);[\s\S]*?setFilingChoiceConfirmed\(false\);/.test(filingReadinessSource),
+    'every editable Phase-A support change invalidates aggregate filing-choice confirmation',
+  );
+  ok(
+    /const setField = [\s\S]*?courtConfirmed: false[\s\S]*?setFilingChoiceConfirmed\(false\);/.test(filingReadinessSource),
+    'material Phase-B edits invalidate aggregate confirmation and court-detail edits invalidate court confirmation',
+  );
+  ok(
+    filingReadinessSource.includes('disabled={!filingPrerequisitesComplete}'),
+    'stale or incomplete underlying choices cannot keep the aggregate filing-choice checkbox actionable',
+  );
+  ok(
+    filingReadinessSource.includes("if (!filingChoiceConfirmed || !filingPrerequisitesComplete)"),
+    'Prepare rechecks current prerequisites rather than minting provenance from stale checked state',
+  );
 
   const supported = evaluateUd100FilingSupport(context());
   equal(supported.status, 'SUPPORTED', 'bounded profile passes Phase A when required current governed evidence is supplied');
@@ -368,6 +468,37 @@ const runtime = {
 
   const noPhaseB = evaluateUd100FilingCompletion({ data: persisted, phaseA: phaseA(), authoritative: authoritative() }, runtime);
   equal(noPhaseB.status, 'BLOCKED', 'Phase B cannot become preparation-ready before completion inputs exist');
+
+  const noUnitUnconfirmed = evaluateUd100FilingCompletion({
+    ...context(),
+    data: persistedNoUnit,
+  }, runtime);
+  equal(noUnitUnconfirmed.status, 'BLOCKED', 'absent frozen unit plus no explicit NO_UNIT confirmation remains unresolved');
+
+  const noUnitConfirmed = evaluateUd100FilingCompletion({
+    ...context(),
+    data: persistedNoUnit,
+    phaseB: phaseB({ propertyUnitConfirmation: { state: 'KNOWN', value: 'NO_UNIT' } }),
+  }, runtime);
+  equal(noUnitConfirmed.status, 'READY_FOR_PREPARATION', 'absent frozen unit plus explicit NO_UNIT can satisfy the existing bounded projection');
+
+  const frozenUnitWins = evaluateUd100FilingCompletion({
+    ...context(),
+    phaseB: phaseB({ propertyUnitConfirmation: { state: 'KNOWN', value: 'NO_UNIT' } }),
+  }, runtime);
+  equal(frozenUnitWins.status, 'READY_FOR_PREPARATION', 'exact frozen Created Notice unit remains authoritative and cannot be overridden by supplemental NO_UNIT');
+
+  const unansweredRentalAssistance = evaluateUd100FilingCompletion({
+    ...context(),
+    phaseB: phaseB({ rentalAssistanceFacts: { state: 'UNANSWERED' } }),
+  }, runtime);
+  equal(unansweredRentalAssistance.status, 'BLOCKED', 'rental-assistance silence remains unanswered and never becomes No');
+
+  const noOptionalReliefConfirmation = evaluateUd100FilingCompletion({
+    ...context(),
+    phaseB: phaseB({ otherReliefSelections: { state: 'UNANSWERED' } }),
+  }, runtime);
+  equal(noOptionalReliefConfirmation.status, 'BLOCKED', 'optional-relief all-false omission semantics require an explicit owner election');
 
   const failedServiceData: NoticeFlowData = {
     ...persisted,
