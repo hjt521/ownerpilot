@@ -146,6 +146,12 @@ function supplemental(
         value: 'SELF_REPRESENTED_SUPPORTED',
         control: control('caption-route', 'self-represented'),
       },
+      captionFormValueControl: {
+        state: 'KNOWN',
+        value: 'Self-represented',
+        control: control('caption-form-value', 'self-represented-form-value'),
+        dependencies: [CANONICAL_FILING_FACT_REFS.captionRouteControl],
+      },
       jurisdictionSupportControl: {
         state: 'KNOWN',
         value: 'SUPPORTED_INITIAL_UD100',
@@ -175,7 +181,7 @@ function supplemental(
           zip: '91203',
           telephone: '5555550100',
           email: 'owner@example.test',
-          captionForText: 'Synthetic Owner',
+          representationStatus: 'SELF_REPRESENTED',
         },
       },
       captionOptionalFieldsControl: {
@@ -638,7 +644,7 @@ async function generateWithCustomDerivative(
           zip: '91203',
           telephone: '5555550100',
           email: 'owner@example.test',
-          captionForText: 'Synthetic Owner 😀',
+          representationStatus: 'SELF_REPRESENTED',
         },
       },
     },
