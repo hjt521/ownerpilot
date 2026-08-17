@@ -25,13 +25,13 @@ const officialBefore = Buffer.from(officialBytes);
 const officialBeforeHash = hash(officialBytes);
 const sourceDoc = await PDFDocument.load(officialBytes, { updateMetadata: false });
 
-const tinyPng = Uint8Array.from(Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z0N8AAAAASUVORK5CYII=',
+const tinyJpeg = Uint8Array.from(Buffer.from(
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD6pooooA//2Q==',
   'base64',
 ));
-const derivative = await renderStampedPhotoDerivative(tinyPng, 'image/png', {
+const derivative = await renderStampedPhotoDerivative(tinyJpeg, 'image/jpeg', {
   evidenceId: '49d44a79-8444-4f20-b126-14599e985c67',
-  originalSha256: sha256Hex(tinyPng),
+  originalSha256: sha256Hex(tinyJpeg),
   captureClassification: 'CONTEMPORANEOUS_CAMERA_INTENT',
   captureClientAt: '2027-01-05T18:00:05.000Z',
   geoStatus: 'CAPTURED',
@@ -60,7 +60,7 @@ const photo: Pos010PhotoAttachmentInput = {
     latitude: 34.101,
     longitude: -118.326,
     accuracyMeters: 4.5,
-    originalSha256: sha256Hex(tinyPng),
+    originalSha256: sha256Hex(tinyJpeg),
     stampedDerivativeSha256: derivative.sha256,
     stampSchemaVersion: derivative.stampPayload.schemaVersion,
     stampText: derivative.stampText,
