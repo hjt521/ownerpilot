@@ -9,6 +9,7 @@ import { loadSession, serviceClient } from '@/lib/chat/session';
 import {
   MAX_SERVICE_EVIDENCE_BYTES,
   SERVICE_EVIDENCE_BUCKET,
+  buildServiceEvidenceGeoFields,
   hasFinalizedCreatedNoticeBinding,
   type CreatedNoticeBindingRecord,
   type ServiceEvidenceMimeType,
@@ -16,6 +17,12 @@ import {
 
 const COOKIE = 'op_chat_token';
 const noStore = { 'Cache-Control': 'no-store' } as const;
+
+const finiteNumber = z.number().refine(Number.isFinite, { message: 'must be finite' });
+const latitudeNumber = finiteNumber.refine((v) => v >= -90 && v <= 90, { message: 'latitude out of range' });
+const longitudeNumber = finiteNumber.refine((v) => v >= -180 && v <= 180, { message: 'longitude out of range' });
+const nonNegativeFinite = finiteNumber.refine((v) => v >= 0, { message: 'must be non-negative' });
+const headingNumber = finiteNumber.refine((v) => v >= 0 && v < 360, { message: 'heading out of range' });
 
 const serviceEventSchema = z.object({
   action: z.literal('record_service_event'),
@@ -42,9 +49,13 @@ const evidenceIntentSchema = z.object({
   byteSize: z.number().int().min(1).max(MAX_SERVICE_EVIDENCE_BYTES),
   captureSource: z.enum(['CAMERA_INTENT', 'FILE_PICKER', 'DOCUMENT_UPLOAD']),
   geoStatus: z.enum(['CAPTURED', 'PERMISSION_DENIED', 'UNAVAILABLE', 'OPTED_OUT', 'NOT_REQUESTED']),
-  latitude: z.number().min(-90).max(90).nullable().optional(),
-  longitude: z.number().min(-180).max(180).nullable().optional(),
-  accuracyMeters: z.number().min(0).nullable().optional(),
+  latitude: latitudeNumber.nullable().optional(),
+  longitude: longitudeNumber.nullable().optional(),
+  accuracyMeters: nonNegativeFinite.nullable().optional(),
+  geoAltitudeM: finiteNumber.nullable().optional(),
+  geoAltitudeAccuracyM: nonNegativeFinite.nullable().optional(),
+  geoHeadingDeg: headingNumber.nullable().optional(),
+  geoSpeedMps: nonNegativeFinite.nullable().optional(),
   geoClientCapturedAt: z.string().datetime({ offset: true }).nullable().optional(),
   deviceClass: z.enum(['MOBILE', 'TABLET', 'DESKTOP', 'UNKNOWN']),
   platformFamily: z.string().trim().min(1).max(80),
@@ -53,7 +64,10 @@ const evidenceIntentSchema = z.object({
   timezoneOffsetMinutes: z.number().int().min(-840).max(840),
   correctionOfEvidenceId: z.string().uuid().nullable().optional(),
 }).strict().superRefine((value, ctx) => {
-  const hasGeo = value.latitude != null || value.longitude != null || value.accuracyMeters != null || value.geoClientCapturedAt != null;
+  const hasGeo =
+    value.latitude != null || value.longitude != null || value.accuracyMeters != null ||
+    value.geoAltitudeM != null || value.geoAltitudeAccuracyM != null || value.geoHeadingDeg != null ||
+    value.geoSpeedMps != null || value.geoClientCapturedAt != null;
   if (value.geoStatus === 'CAPTURED') {
     if (value.latitude == null || value.longitude == null || value.accuracyMeters == null || !value.geoClientCapturedAt) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'captured location requires coordinates, accuracy, and timestamp' });
@@ -108,7 +122,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .select('id, attempt_date, method, outcome, mailing_date, notes, server_name, server_address, server_age18_plus, server_party_to_notice, client_recorded_at, timezone_offset_minutes, correction_of_service_event_id, server_received_at, created_at')
       .eq('riskpath_record_id', auth.record.id).eq('created_notice_artifact_id', auth.record.created_notice_artifact_id).order('created_at', { ascending: true }),
     auth.sb.from('service_evidence_assets')
-      .select('id, service_event_id, evidence_kind, original_filename, declared_mime_type, declared_byte_size, verified_mime_type, verified_byte_size, capture_source, geo_status, geo_source, latitude, longitude, accuracy_meters, geo_client_captured_at, device_class, platform_family, browser_family, client_recorded_at, timezone_offset_minutes, correction_of_evidence_id, server_received_at, admitted_at, created_at')
+      .select('id, service_event_id, evidence_kind, original_filename, declared_mime_type, declared_byte_size, verified_mime_type, verified_byte_size, capture_source, geo_status, geo_source, latitude, longitude, accuracy_meters, geo_altitude_m, geo_altitude_accuracy_m, geo_heading_deg, geo_speed_mps, geo_client_captured_at, device_class, platform_family, browser_family, client_recorded_at, timezone_offset_minutes, correction_of_evidence_id, server_received_at, admitted_at, created_at')
       .eq('riskpath_record_id', auth.record.id).eq('created_notice_artifact_id', auth.record.created_notice_artifact_id).order('created_at', { ascending: true }),
   ]);
   if (eventsResult.error || evidenceResult.error) return NextResponse.json({ error: 'service_history_unavailable' }, { status: 503, headers: noStore });
@@ -131,16 +145,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .eq('riskpath_record_id', auth.record.id).eq('created_notice_artifact_id', auth.record.created_notice_artifact_id).eq('service_event_id', value.serviceEventId).maybeSingle();
       if (!prior) return NextResponse.json({ error: 'correction_target_unavailable' }, { status: 404, headers: noStore });
     }
+    let geoFields;
+    try {
+      geoFields = buildServiceEvidenceGeoFields(value);
+    } catch {
+      return NextResponse.json({ error: 'invalid_evidence_geo' }, { status: 400, headers: noStore });
+    }
     const evidenceId = randomUUID();
     const objectPath = `${randomUUID()}/${randomUUID()}/${randomUUID()}`;
-    const captured = value.geoStatus === 'CAPTURED';
     const { error: insertError } = await auth.sb.from('service_evidence_assets').insert({
       id: evidenceId, riskpath_record_id: auth.record.id, created_notice_artifact_id: auth.record.created_notice_artifact_id,
       service_event_id: value.serviceEventId, evidence_kind: value.evidenceKind, storage_object_path: objectPath,
       original_filename: value.originalFilename, declared_mime_type: value.mimeType, declared_byte_size: value.byteSize,
-      capture_source: value.captureSource, geo_status: value.geoStatus, geo_source: captured ? 'DEVICE_BROWSER_GEOLOCATION' : null,
-      latitude: captured ? value.latitude : null, longitude: captured ? value.longitude : null,
-      accuracy_meters: captured ? value.accuracyMeters : null, geo_client_captured_at: captured ? value.geoClientCapturedAt : null,
+      capture_source: value.captureSource, ...geoFields,
       device_class: value.deviceClass, platform_family: value.platformFamily, browser_family: value.browserFamily,
       client_recorded_at: value.clientRecordedAt, timezone_offset_minutes: value.timezoneOffsetMinutes,
       correction_of_evidence_id: value.correctionOfEvidenceId ?? null, created_by_user_id: auth.userId,
