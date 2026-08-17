@@ -1,7 +1,7 @@
 // lib/riskpath/durableService.ts
 // Durable Service Evidence V1 — exact Created Notice identity and bounded evidence metadata helpers.
 // Material generation identity is deterministic; the opaque artifact UUID identifies one generation event.
-// Neither identity is approval or matter authorization.
+// Neither identity nor GPS provenance is approval, authorization, proof of service, or legal sufficiency.
 
 import type { IntakeState } from '@/lib/chat/intakeSchema';
 import { toNoticeFlowData } from '@/lib/chat/toNoticeFlowData';
@@ -33,6 +33,31 @@ export type ServiceEvidenceGeoStatus =
 export type ServiceEvidenceGeoSource = 'DEVICE_BROWSER_GEOLOCATION' | 'FILE_EMBEDDED_EXIF';
 export type ServiceEvidenceDeviceClass = 'MOBILE' | 'TABLET' | 'DESKTOP' | 'UNKNOWN';
 
+export interface ServiceEvidenceGeoInput {
+  geoStatus: ServiceEvidenceGeoStatus;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMeters?: number | null;
+  geoAltitudeM?: number | null;
+  geoAltitudeAccuracyM?: number | null;
+  geoHeadingDeg?: number | null;
+  geoSpeedMps?: number | null;
+  geoClientCapturedAt?: string | null;
+}
+
+export interface ServiceEvidenceGeoDbFields {
+  geo_status: ServiceEvidenceGeoStatus;
+  geo_source: ServiceEvidenceGeoSource | null;
+  latitude: number | null;
+  longitude: number | null;
+  accuracy_meters: number | null;
+  geo_altitude_m: number | null;
+  geo_altitude_accuracy_m: number | null;
+  geo_heading_deg: number | null;
+  geo_speed_mps: number | null;
+  geo_client_captured_at: string | null;
+}
+
 export interface CreatedNoticeBindingRecord {
   created_notice_artifact_id: string | null;
   created_notice_service_date: string | null;
@@ -62,6 +87,82 @@ export function isIsoDay(value: string): boolean {
 
 export function isAllowedServiceEvidenceMimeType(value: string): value is ServiceEvidenceMimeType {
   return (SERVICE_EVIDENCE_MIME_TYPES as readonly string[]).includes(value);
+}
+
+function finite(value: number | null | undefined, label: string): number | null {
+  if (value == null) return null;
+  if (!Number.isFinite(value)) throw new Error(`durableService: ${label} must be finite`);
+  return value;
+}
+
+/**
+ * Convert factual browser geolocation provenance into the exact durable DB field shape.
+ * FILE_PICKER + browser GPS means device location WHEN EVIDENCE WAS ADDED; it is never represented
+ * as the historical photo capture location. Non-captured statuses may not carry coordinate values.
+ */
+export function buildServiceEvidenceGeoFields(input: ServiceEvidenceGeoInput): ServiceEvidenceGeoDbFields {
+  const latitude = finite(input.latitude, 'latitude');
+  const longitude = finite(input.longitude, 'longitude');
+  const accuracy = finite(input.accuracyMeters, 'accuracyMeters');
+  const altitude = finite(input.geoAltitudeM, 'geoAltitudeM');
+  const altitudeAccuracy = finite(input.geoAltitudeAccuracyM, 'geoAltitudeAccuracyM');
+  const heading = finite(input.geoHeadingDeg, 'geoHeadingDeg');
+  const speed = finite(input.geoSpeedMps, 'geoSpeedMps');
+  const capturedAt = input.geoClientCapturedAt ?? null;
+
+  if (input.geoStatus !== 'CAPTURED') {
+    if (
+      latitude != null || longitude != null || accuracy != null || altitude != null ||
+      altitudeAccuracy != null || heading != null || speed != null || capturedAt != null
+    ) {
+      throw new Error('durableService: non-captured geo status cannot carry coordinate provenance');
+    }
+    return {
+      geo_status: input.geoStatus,
+      geo_source: null,
+      latitude: null,
+      longitude: null,
+      accuracy_meters: null,
+      geo_altitude_m: null,
+      geo_altitude_accuracy_m: null,
+      geo_heading_deg: null,
+      geo_speed_mps: null,
+      geo_client_captured_at: null,
+    };
+  }
+
+  if (latitude == null || latitude < -90 || latitude > 90) {
+    throw new Error('durableService: latitude must be finite and between -90 and 90');
+  }
+  if (longitude == null || longitude < -180 || longitude > 180) {
+    throw new Error('durableService: longitude must be finite and between -180 and 180');
+  }
+  if (accuracy == null || accuracy < 0) {
+    throw new Error('durableService: accuracyMeters must be finite and non-negative');
+  }
+  if (!capturedAt) throw new Error('durableService: captured geolocation requires a client timestamp');
+  if (altitudeAccuracy != null && altitudeAccuracy < 0) {
+    throw new Error('durableService: geoAltitudeAccuracyM must be finite and non-negative');
+  }
+  if (heading != null && (heading < 0 || heading >= 360)) {
+    throw new Error('durableService: geoHeadingDeg must be finite and in [0, 360)');
+  }
+  if (speed != null && speed < 0) {
+    throw new Error('durableService: geoSpeedMps must be finite and non-negative');
+  }
+
+  return {
+    geo_status: 'CAPTURED',
+    geo_source: 'DEVICE_BROWSER_GEOLOCATION',
+    latitude,
+    longitude,
+    accuracy_meters: accuracy,
+    geo_altitude_m: altitude,
+    geo_altitude_accuracy_m: altitudeAccuracy,
+    geo_heading_deg: heading,
+    geo_speed_mps: speed,
+    geo_client_captured_at: capturedAt,
+  };
 }
 
 export function hasCompleteCreatedNoticeBinding(
