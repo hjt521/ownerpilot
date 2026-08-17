@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CookiebotBanner } from "@/components/CookiebotBanner";
 import { GoogleTagManagerScript } from "@/components/GoogleTagManagerScript";
@@ -23,6 +23,14 @@ export const metadata: Metadata = {
     "Create a California 3-Day Notice to Pay Rent or Quit in minutes. Broker-prepared workflow, service tracking, and RiskPath™ follow-up support for California property owners.",
 };
 
+function sensitiveTelemetryUrl(rawUrl: string): boolean {
+  let pathname: string;
+  try { pathname = new URL(rawUrl, 'https://ownerpilot.invalid').pathname; }
+  catch { return true; }
+  if (pathname === '/owner-continuation' || pathname === '/owner-continuation/') return true;
+  return /^\/riskpath\/[^/]+\/?$/.test(pathname);
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,12 +44,13 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-ivory text-ink">
         {/* Consent gate first (Cookiebot Path A, data-blockingmode="auto"), then the consent-gated GTM
             container. GTM only mounts when NEXT_PUBLIC_GTM_ID is provisioned, so preview builds without GA4
-            envs don't break and nothing fires pre-consent (Guard G). Vercel Analytics is cookieless. */}
+            envs don't break and nothing fires pre-consent (Guard G). Sensitive Owner Continuation routes are
+            additionally suppressed in the GTM component and Vercel telemetry beforeSend filters below. */}
         <CookiebotBanner />
         <GoogleTagManagerScript />
         {children}
-        <Analytics />
-        <SpeedInsights />
+        <Analytics beforeSend={(event) => sensitiveTelemetryUrl(event.url) ? null : event} />
+        <SpeedInsights beforeSend={(event) => sensitiveTelemetryUrl(event.url) ? null : event} />
       </body>
     </html>
   );
