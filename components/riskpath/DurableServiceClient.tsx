@@ -42,6 +42,10 @@ interface EvidenceRow {
   latitude: number | null;
   longitude: number | null;
   accuracy_meters: number | null;
+  geo_altitude_m: number | null;
+  geo_altitude_accuracy_m: number | null;
+  geo_heading_deg: number | null;
+  geo_speed_mps: number | null;
   geo_client_captured_at: string | null;
   device_class: string;
   platform_family: string;
@@ -66,6 +70,10 @@ type GeoCapture = {
   latitude?: number;
   longitude?: number;
   accuracyMeters?: number;
+  geoAltitudeM?: number;
+  geoAltitudeAccuracyM?: number;
+  geoHeadingDeg?: number;
+  geoSpeedMps?: number;
   geoClientCapturedAt?: string;
 };
 
@@ -124,6 +132,10 @@ async function captureLocation(enabled: boolean): Promise<GeoCapture> {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracyMeters: position.coords.accuracy,
+        geoAltitudeM: position.coords.altitude ?? undefined,
+        geoAltitudeAccuracyM: position.coords.altitudeAccuracy ?? undefined,
+        geoHeadingDeg: position.coords.heading ?? undefined,
+        geoSpeedMps: position.coords.speed ?? undefined,
         geoClientCapturedAt: new Date(position.timestamp).toISOString(),
       }),
       (error) => resolve({ geoStatus: error.code === error.PERMISSION_DENIED ? 'PERMISSION_DENIED' : 'UNAVAILABLE' }),
@@ -398,7 +410,7 @@ export function DurableServiceClient({ riskpathId }: { riskpathId: string }) {
         </label>}
         <label className="flex items-start gap-3 rounded-lg border border-rule bg-tint p-3 text-sm text-gray-700">
           <input type="checkbox" checked={captureGps} onChange={(e) => setCaptureGps(e.target.checked)} className="mt-1" />
-          <span><span className="font-medium text-gray-900">Try to capture device location when I add evidence</span><span className="mt-1 block text-xs text-gray-500">Location is requested only for this evidence action. You may turn it off; denied or unavailable location is recorded as such.</span></span>
+          <span><span className="font-medium text-gray-900">Try to capture device location when I add evidence</span><span className="mt-1 block text-xs text-gray-500">Location is requested only for this evidence action. For an existing file, this is the device location when the evidence is added, not the file&apos;s historical capture location. You may turn it off; denied or unavailable location is recorded as such.</span></span>
         </label>
         <div className="flex flex-wrap gap-3">
           <label className="inline-flex min-h-[48px] cursor-pointer items-center rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white">
