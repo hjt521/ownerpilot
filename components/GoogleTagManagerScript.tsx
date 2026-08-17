@@ -11,10 +11,17 @@
 
 'use client';
 import Script from 'next/script';
+import { usePathname } from 'next/navigation';
+
+function sensitiveFreshRoute(pathname: string): boolean {
+  if (pathname === '/owner-continuation' || pathname === '/owner-continuation/') return true;
+  return /^\/riskpath\/[^/]+\/?$/.test(pathname);
+}
 
 export function GoogleTagManagerScript() {
   const id = process.env.NEXT_PUBLIC_GTM_ID;
-  if (!id) return null;
+  const pathname = usePathname();
+  if (!id || sensitiveFreshRoute(pathname)) return null;
   return (
     <Script
       id="gtm-container"

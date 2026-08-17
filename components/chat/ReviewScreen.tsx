@@ -286,7 +286,7 @@ export function ReviewScreen() {
         </div>
       )}
 
-      {/* FF-3 Block C §3.1 — reconciliation mismatch: entry-14 card verbatim + three-way buttons (neutral, no
+      {/* FF-3 Block C §3.1 — reconciliation mismatch: render the entry-14 card verbatim + three-way buttons (neutral, no
           "recommended" highlight; labels parsed verbatim from the ratified card). */}
       {produce.phase === 'reconcile' && produce.reconcile && (
         <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4" data-testid="ff3-reconcile-card">
@@ -368,6 +368,7 @@ function LaProduceMount({ plan }: { plan: ProducePlan }) {
         noticeDocHtml={html}
         baseName={plan.baseName}
         verdictSource="live_resolver"
+        riskpathId={plan.riskpathId}
         onProduced={() => setProduced(true)}
         // §5.2 produce-audit fast-follow (pr_a3_5_2_core_countersign_and_open_items_broker_ruling_2026-07-01.md
         // §2): persist the LA produce audit (RTC hashes + LAHD ack) onto the riskpath record — compliance

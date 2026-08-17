@@ -47,6 +47,7 @@ export function LaProducePanel({
   data,
   baseName,
   verdictSource,
+  riskpathId,
   noticePrepared,
   canCreate,
   onCreateNotice,
@@ -57,6 +58,8 @@ export function LaProducePanel({
   baseName: string;
   /** cachedResolverVerdict.source ('live_resolver' | 'broker_confirm'). */
   verdictSource: string;
+  /** Exact server-created RiskPath row when this caller has one (chat produce path). */
+  riskpathId?: string;
   /** True only when this exact prepared generation has completed Create (wizard UX2). */
   noticePrepared?: boolean;
   /** Current final C6 + deterministic gate eligibility for the current generation (wizard UX2). */
@@ -170,6 +173,7 @@ export function LaProducePanel({
             <PacketPrintOptions
               model={model}
               data={data}
+              riskpathId={riskpathId}
               disabledKeys={['serviceLog']}
             />
           ) : !noticePrepared ? (
@@ -198,6 +202,7 @@ export function LaProducePanel({
             <PacketPrintOptions
               model={model}
               data={data}
+              riskpathId={riskpathId}
               disabledKeys={['serviceLog']}
             />
           )}
