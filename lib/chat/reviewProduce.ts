@@ -5,12 +5,7 @@
 // This module is the TESTABLE core of the Review-step produce path: it turns the from-chat produce-ready
 // envelope into a wizard-parity NoticeFlowData (via toNoticeFlowData — the SAME assembly source the wizard
 // renders from), computes the facial dates, resolves the jurisdiction verdict client-side (reusing the wizard's
-// runJurisdictionResolution — Fork A(iii)), and routes to the produce surface. All side effects (fetch, the LA
-// gate predicate) are injected so the routing is unit-testable without a browser.
-//
-// SCOPE (§5.2 core, Option 2): the LA green path is built end-to-end. The non-LA, manual-review, and
-// unresolved branches ROUTE correctly to a single stubbed "not available in this pass / save-and-resume"
-// surface — wired, not styled. Full stub-branch UX + non-LA production are a fast-follow (fork ruling §5).
+// runJurisdictionResolution — Fork A(iii)), and routes to the produce surface.
 
 import type { NoticeFlowData } from '@/lib/flow/noticeFlowState';
 import type { IntakeState } from './intakeSchema';
@@ -24,6 +19,8 @@ import type { ComputedNoticeDates } from '@/lib/produce/renderNotice';
 export interface ProduceEnvelope {
   ok: boolean;
   riskpathId: string;
+  /** Opaque server-generated identity for this one prospective Created Notice generation event. */
+  createdNoticeArtifactId: string;
   lahdCopyVersion: string;
   baseName: string;
   /** Flattened intake_state values + serviceDate (= intendedServiceDate). */
@@ -61,12 +58,10 @@ export function computeDatesForData(data: NoticeFlowData): ComputedNoticeDates {
   return { compliancePeriodStartDate: p.commencementDate, compliancePeriodEndDate: p.expirationDate };
 }
 
-/** Where the Review step routes after verdict resolution. */
 export type ProduceRoute =
-  | { kind: 'la_overlay' }                                                    // confirmed_la — green path
+  | { kind: 'la_overlay' }
   | { kind: 'stub'; reason: 'non_la' | 'broker_confirm' | 'unresolved' | 'gate_closed' };
 
-/** Map a jurisdiction-bridge result to a produce route (fork ruling 3-branch; §5.2-core stubs the non-green). */
 export function routeForVerdict(r: BridgeRunResult): ProduceRoute {
   switch (r.kind) {
     case 'skipped_gate_closed':
@@ -81,7 +76,6 @@ export function routeForVerdict(r: BridgeRunResult): ProduceRoute {
         case 'not_la':
           return { kind: 'stub', reason: 'non_la' };
         case 'manual_review':
-          // TODO(§5.2 fast-follow): broker-confirm UX (Decision B). Fork ruling §5 — deferred; routes to stub.
           return { kind: 'stub', reason: 'broker_confirm' };
         case 'resolution_failed':
         default:
@@ -97,13 +91,10 @@ export interface ProducePlan {
   baseName: string;
   lahdCopyVersion: string;
   riskpathId: string;
+  createdNoticeArtifactId: string;
 }
 
-/**
- * Full client produce plan: envelope → data + dates → client verdict resolution → route.
- * `deps` injects the LA gate predicate and the bound fetch (production passes isLaProductionUnblocked +
- * boundFetch; tests pass stubs). The property address is read from the envelope payload.
- */
+/** The opaque artifact ID follows the exact riskpathId through this plan; it is never derived by the client. */
 export async function planProduce(env: ProduceEnvelope, deps: BridgeDeps): Promise<ProducePlan> {
   const data = buildNoticeDataFromEnvelope(env);
   const dates = computeDatesForData(data);
@@ -116,5 +107,6 @@ export async function planProduce(env: ProduceEnvelope, deps: BridgeDeps): Promi
     baseName: env.baseName,
     lahdCopyVersion: env.lahdCopyVersion,
     riskpathId: env.riskpathId,
+    createdNoticeArtifactId: env.createdNoticeArtifactId,
   };
 }

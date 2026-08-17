@@ -64,6 +64,13 @@ export interface RiskPathRecordRow {
   produce_audit?: Record<string, unknown> | null;
   // PR-B (migration 035): ProductionSnapshot captured at produce time for the serve-time staleness guard.
   produce_snapshot?: Record<string, unknown> | null;
+  // Durable Service Evidence V1: purpose-specific server-authoritative exact Created Notice binding.
+  // notice_document_id remains the separate generic optional documents relationship.
+  created_notice_artifact_id: string | null;
+  created_notice_service_date: string | null;
+  created_notice_generation: string | null;
+  created_notice_semantic_binding_id: string | null;
+  created_notice_finalized_at: string | null;
   retention_class: string;
   legal_hold: boolean;
   legal_hold_ref: string | null;
