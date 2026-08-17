@@ -43,6 +43,7 @@ alter table public.riskpath_records
 create or replace function public.enforce_riskpath_created_notice_identity_immutability()
 returns trigger
 language plpgsql
+set search_path = pg_catalog, public
 as $$
 begin
   -- Legacy/unbound rows are never upgraded heuristically after insert.
@@ -108,10 +109,15 @@ create table public.service_events (
 
 create index service_events_riskpath_created_idx
   on public.service_events (riskpath_record_id, created_at, id);
+create index service_events_exact_notice_fk_idx
+  on public.service_events (riskpath_record_id, created_notice_artifact_id);
+create index service_events_correction_same_notice_fk_idx
+  on public.service_events (correction_of_service_event_id, riskpath_record_id, created_notice_artifact_id);
 
 create or replace function public.enforce_service_event_finalized_notice()
 returns trigger
 language plpgsql
+set search_path = pg_catalog, public
 as $$
 begin
   if not exists (
@@ -135,6 +141,7 @@ for each row execute function public.enforce_service_event_finalized_notice();
 create or replace function public.prevent_service_event_mutation()
 returns trigger
 language plpgsql
+set search_path = pg_catalog, public
 as $$
 begin
   raise exception 'Service events are append-only; record a correction event instead';
@@ -244,10 +251,15 @@ create table public.service_evidence_assets (
 
 create index service_evidence_assets_event_created_idx
   on public.service_evidence_assets (service_event_id, created_at, id);
+create index service_evidence_exact_event_fk_idx
+  on public.service_evidence_assets (service_event_id, riskpath_record_id, created_notice_artifact_id);
+create index service_evidence_correction_same_event_fk_idx
+  on public.service_evidence_assets (correction_of_evidence_id, riskpath_record_id, created_notice_artifact_id, service_event_id);
 
 create or replace function public.enforce_service_evidence_identity_and_admission()
 returns trigger
 language plpgsql
+set search_path = pg_catalog, public
 as $$
 begin
   if not exists (
@@ -325,6 +337,7 @@ for each row execute function public.enforce_service_evidence_identity_and_admis
 create or replace function public.prevent_service_evidence_delete()
 returns trigger
 language plpgsql
+set search_path = pg_catalog, public
 as $$
 begin
   raise exception 'Evidence history is append-preserving';
