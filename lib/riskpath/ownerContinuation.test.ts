@@ -112,7 +112,7 @@ check('migration: no user authority claim column', !/^\s*user_id\s+/m.test(migra
 check('migration: no arbitrary URL/return column', !/return_to|callback_url|target_url/i.test(migration));
 check('migration: RLS enabled', migration.includes('alter table public.owner_continuations enable row level security'));
 check('migration: public grants revoked', migration.includes('revoke all on public.owner_continuations from anon, authenticated'));
-check('migration: no one-active-per-record unique index', !/unique[^;]*riskpath_record_id/is.test(migration));
+check('migration: no one-active-per-record unique index', !/unique[^;]*riskpath_record_id/i.test(migration));
 check('migration: purpose-bound magic association', migration.includes('magic_link_tokens_owner_continuation_binding_check'));
 
 const authRoute = src('app/api/owner-continuation/auth/route.ts');
@@ -158,10 +158,15 @@ check('print: later QR render retry reuses scan URL', printClient.includes('if (
 check('print: QR failure does not block base Notice', printClient.includes('Build the legal document first') && printClient.includes('html = baseHtml'));
 
 // Vercel Web Analytics/Speed Insights and GTM sensitive fresh routes are narrowly suppressed.
-check('analytics: Vercel beforeSend present twice', (layout.match(/beforeSend=/g) ?? []).length === 2);
-check('analytics: public scan filtered', layout.includes("pathname === '/owner-continuation'"));
-check('analytics: exact RiskPath filtered', layout.includes('/^\\/riskpath\\/[^/]+\\/?$/.test(pathname)'));
-check('analytics: generic RiskPath remains outside exact-record regex', !isSensitiveOwnerContinuationTelemetryUrl('/riskpath'));
+check('analytics: exact-equivalent transport guard installed before children', layout.includes('SENSITIVE_TELEMETRY_GUARD') && layout.indexOf('SENSITIVE_TELEMETRY_GUARD') < layout.indexOf('{children}'));
+check('analytics: public scan path filtered by guard', layout.includes("p === '/owner-continuation'"));
+check('analytics: exact RiskPath path filtered by guard', layout.includes('/^\\\\/riskpath\\\\/[^/]+\\\\/?$/.test(p)'));
+check('analytics: Vercel view/event ingestion path blocked', layout.includes("u.pathname.startsWith('/_vercel/insights/')"));
+check('analytics: Vercel Speed Insights ingestion path blocked', layout.includes("u.pathname.startsWith('/_vercel/speed-insights/')") && layout.includes("vitals.vercel-analytics.com"));
+check('analytics: fetch transport guarded', layout.includes('window.fetch = (input, init)'));
+check('analytics: sendBeacon transport guarded', layout.includes('navigator.sendBeacon = (url, data)'));
+check('analytics: components otherwise retain generic mounting', layout.includes('<Analytics />') && layout.includes('<SpeedInsights />'));
+check('analytics: generic RiskPath remains outside sensitive classifier', !isSensitiveOwnerContinuationTelemetryUrl('/riskpath'));
 check('GTM: usePathname fresh-route suppression', gtm.includes('usePathname') && gtm.includes('sensitiveFreshRoute(pathname)'));
 check('GTM: public scan suppression present', gtm.includes("pathname === '/owner-continuation'"));
 check('GTM: exact RiskPath suppression present', gtm.includes('/^\\/riskpath\\/[^/]+\\/?$/.test(pathname)'));
