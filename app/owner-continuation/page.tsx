@@ -5,6 +5,9 @@
 import type { Metadata } from 'next';
 import { OwnerContinuationScan } from '@/components/owner-continuation/OwnerContinuationScan';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: 'Continue your OwnerPilot record',
   robots: { index: false, follow: false },

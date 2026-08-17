@@ -143,6 +143,7 @@ check('exact page: current user exact-row filter', exactPage.includes(".eq('user
 check('exact page: soft-deleted row filter', exactPage.includes(".is('soft_deleted_at', null)"));
 check('exact page: dynamic no public cache', exactPage.includes("dynamic = 'force-dynamic'") && exactPage.includes('revalidate = 0'));
 check('exact page: noindex + no-referrer', exactPage.includes('index: false') && exactPage.includes("referrer: 'no-referrer'"));
+check('scan page: dynamic no-store route posture', scanPage.includes("dynamic = 'force-dynamic'") && scanPage.includes('revalidate = 0'));
 
 // Fragment capture/scrub is inline and precedes client admission; raw locator is ephemeral only.
 check('fragment: synchronous bootstrap captures location.hash', scanPage.includes('window.location.hash'));
