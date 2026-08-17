@@ -9,6 +9,7 @@ import {
   buildServiceLogHtml,
   buildFullPacketHtml,
 } from '@/lib/produce/buildPacketHtml';
+import { ownerContinuationQrDataUrl, withOwnerContinuationQr } from '@/lib/produce/ownerContinuationQr';
 import {
   PRINT_OPTIONS_TITLE,
   PRINT_OPTIONS_SUBTITLE,
@@ -31,15 +32,26 @@ export function PacketPrintOptions({
   model,
   data,
   disabledKeys,
+  riskpathId,
 }: {
   model: NoticeModel;
   data: NoticeFlowData;
   /** Card keys to render grayed/non-clickable (e.g. 'serviceLog' before serving). */
   disabledKeys?: string[];
+  /** Exact server-created RiskPath id. Optional so existing wizard callers remain unchanged. */
+  riskpathId?: string;
 }) {
   const disabled = new Set(disabledKeys ?? []);
   const [showFullModal, setShowFullModal] = useState(false);
   const [packetError, setPacketError] = useState<string | null>(null);
+  const [continuationError, setContinuationError] = useState<string | null>(null);
+
+  // Same mounted exact-record session: at most one locator issuance attempt. A successful raw scan URL remains
+  // browser-memory-only and is reused across Owner/Full/retry prints. Concurrent calls share one in-flight promise.
+  const scanUrlRef = useRef<string | null>(null);
+  const issuePromiseRef = useRef<Promise<string | null> | null>(null);
+  const issuanceAttemptedRef = useRef(false);
+  const qrDataUrlRef = useRef<string | null>(null);
 
   // Smart PDF filename (Save-as-PDF uses the print window's document.title).
   const pdfFilename = buildNoticePdfFilename({
@@ -79,6 +91,69 @@ export function PacketPrintOptions({
     openPrintable(html, pdfFilename);
   };
 
+  async function ownerQrDataUrl(): Promise<string | null> {
+    if (!riskpathId) return null;
+    if (qrDataUrlRef.current) return qrDataUrlRef.current;
+
+    let scanUrl = scanUrlRef.current;
+    if (!scanUrl) {
+      if (issuanceAttemptedRef.current && !issuePromiseRef.current) return null;
+      if (!issuePromiseRef.current) {
+        issuanceAttemptedRef.current = true;
+        issuePromiseRef.current = (async () => {
+          const r = await fetch('/api/owner-continuation/issue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+            body: JSON.stringify({ riskpathId }),
+          });
+          if (!r.ok) return null;
+          const j = await r.json().catch(() => ({})) as { scanUrl?: string };
+          return typeof j.scanUrl === 'string' ? j.scanUrl : null;
+        })().then((url) => {
+          if (url) scanUrlRef.current = url;
+          return url;
+        }).finally(() => { issuePromiseRef.current = null; });
+      }
+      scanUrl = await issuePromiseRef.current;
+    }
+    if (!scanUrl) return null;
+
+    try {
+      const qr = await ownerContinuationQrDataUrl(scanUrl, { size: 220 });
+      qrDataUrlRef.current = qr;
+      return qr;
+    } catch {
+      return null; // keep scanUrlRef so a later print can retry QR rendering without issuing another locator
+    }
+  }
+
+  async function printOwnerPacket(build: () => string) {
+    setPacketError(null);
+    setContinuationError(null);
+    let baseHtml: string;
+    try {
+      // Build the legal document first. Owner Continuation infrastructure is never a prerequisite to printing it.
+      baseHtml = build();
+    } catch {
+      setPacketError('This packet could not be generated. Please review your entries.');
+      return;
+    }
+
+    let html = baseHtml;
+    const qr = await ownerQrDataUrl();
+    if (riskpathId && !qr) {
+      setContinuationError('The continuation code could not be added. You can still print this notice.');
+    } else if (qr) {
+      try { html = withOwnerContinuationQr(baseHtml, qr); }
+      catch {
+        setContinuationError('The continuation code could not be added. You can still print this notice.');
+        html = baseHtml;
+      }
+    }
+    openPrintable(html, pdfFilename);
+  }
+
   const cards: { key: string; title: string; description: string; onClick: () => void }[] = [
     {
       key: 'tenant',
@@ -90,7 +165,7 @@ export function PacketPrintOptions({
       key: 'owner',
       title: PRINT_CARDS.owner.title,
       description: PRINT_CARDS.owner.description,
-      onClick: () => printPacket(() => buildOwnerRecordCopyHtml(model, data)),
+      onClick: () => { void printOwnerPacket(() => buildOwnerRecordCopyHtml(model, data)); },
     },
     {
       key: 'serviceLog',
@@ -155,6 +230,11 @@ export function PacketPrintOptions({
           {packetError}
         </div>
       )}
+      {continuationError && (
+        <div className="rounded-lg border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+          {continuationError}
+        </div>
+      )}
 
       {/* Full Packet confirmation modal */}
       {showFullModal && (
@@ -174,7 +254,7 @@ export function PacketPrintOptions({
                 type="button"
                 onClick={() => {
                   setShowFullModal(false);
-                  printPacket(() => buildFullPacketHtml(model, data));
+                  void printOwnerPacket(() => buildFullPacketHtml(model, data));
                 }}
                 className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
               >
