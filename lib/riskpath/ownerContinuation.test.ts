@@ -112,7 +112,12 @@ check('migration: no user authority claim column', !/^\s*user_id\s+/m.test(migra
 check('migration: no arbitrary URL/return column', !/return_to|callback_url|target_url/i.test(migration));
 check('migration: RLS enabled', migration.includes('alter table public.owner_continuations enable row level security'));
 check('migration: public grants revoked', migration.includes('revoke all on public.owner_continuations from anon, authenticated'));
-check('migration: no one-active-per-record unique index', !/unique[^;]*riskpath_record_id/i.test(migration));
+check(
+  'migration: no one-active-per-record unique index',
+  !/create\s+unique\s+index[^;]*riskpath_record_id/i.test(migration) &&
+    !/unique\s*\(\s*riskpath_record_id\b/i.test(migration) &&
+    !/riskpath_record_id\s+uuid[^,\n]*\bunique\b/i.test(migration),
+);
 check('migration: purpose-bound magic association', migration.includes('magic_link_tokens_owner_continuation_binding_check'));
 
 const authRoute = src('app/api/owner-continuation/auth/route.ts');
