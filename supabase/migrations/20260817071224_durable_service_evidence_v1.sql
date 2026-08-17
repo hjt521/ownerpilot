@@ -176,9 +176,13 @@ create table public.service_evidence_assets (
   capture_source               text not null check (capture_source in ('CAMERA_INTENT', 'FILE_PICKER', 'DOCUMENT_UPLOAD')),
   geo_status                   text not null check (geo_status in ('CAPTURED', 'PERMISSION_DENIED', 'UNAVAILABLE', 'OPTED_OUT', 'NOT_REQUESTED')),
   geo_source                   text check (geo_source is null or geo_source in ('DEVICE_BROWSER_GEOLOCATION', 'FILE_EMBEDDED_EXIF')),
-  latitude                     double precision check (latitude is null or latitude between -90 and 90),
-  longitude                    double precision check (longitude is null or longitude between -180 and 180),
-  accuracy_meters              double precision check (accuracy_meters is null or accuracy_meters >= 0),
+  latitude                     double precision check (latitude is null or (latitude::text not in ('NaN', 'Infinity', '-Infinity') and latitude between -90 and 90)),
+  longitude                    double precision check (longitude is null or (longitude::text not in ('NaN', 'Infinity', '-Infinity') and longitude between -180 and 180)),
+  accuracy_meters              double precision check (accuracy_meters is null or (accuracy_meters::text not in ('NaN', 'Infinity', '-Infinity') and accuracy_meters >= 0)),
+  geo_altitude_m               double precision check (geo_altitude_m is null or geo_altitude_m::text not in ('NaN', 'Infinity', '-Infinity')),
+  geo_altitude_accuracy_m      double precision check (geo_altitude_accuracy_m is null or (geo_altitude_accuracy_m::text not in ('NaN', 'Infinity', '-Infinity') and geo_altitude_accuracy_m >= 0)),
+  geo_heading_deg              double precision check (geo_heading_deg is null or (geo_heading_deg::text not in ('NaN', 'Infinity', '-Infinity') and geo_heading_deg >= 0 and geo_heading_deg < 360)),
+  geo_speed_mps                double precision check (geo_speed_mps is null or (geo_speed_mps::text not in ('NaN', 'Infinity', '-Infinity') and geo_speed_mps >= 0)),
   geo_client_captured_at       timestamptz,
   device_class                 text not null check (device_class in ('MOBILE', 'TABLET', 'DESKTOP', 'UNKNOWN')),
   platform_family              text not null check (char_length(platform_family) between 1 and 80),
@@ -206,6 +210,10 @@ create table public.service_evidence_assets (
       and latitude is null
       and longitude is null
       and accuracy_meters is null
+      and geo_altitude_m is null
+      and geo_altitude_accuracy_m is null
+      and geo_heading_deg is null
+      and geo_speed_mps is null
       and geo_client_captured_at is null
     )
   ),
@@ -269,6 +277,10 @@ begin
        or new.latitude is distinct from old.latitude
        or new.longitude is distinct from old.longitude
        or new.accuracy_meters is distinct from old.accuracy_meters
+       or new.geo_altitude_m is distinct from old.geo_altitude_m
+       or new.geo_altitude_accuracy_m is distinct from old.geo_altitude_accuracy_m
+       or new.geo_heading_deg is distinct from old.geo_heading_deg
+       or new.geo_speed_mps is distinct from old.geo_speed_mps
        or new.geo_client_captured_at is distinct from old.geo_client_captured_at
        or new.device_class is distinct from old.device_class
        or new.platform_family is distinct from old.platform_family
