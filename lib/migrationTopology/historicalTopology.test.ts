@@ -63,7 +63,7 @@ const recoveredApp = new Map<string, string>([
   ['20260630162352_030_magic_link_tokens.sql', '77678b259b1787e47396efd6c9c777f8827ce3a1'],
   ['20260630163231_023_broker_confirm_requests.sql', '63a90d1ee5340c6b06c00b16407a146058431755'],
   ['20260630163250_024_broker_confirm_sla_cron.sql', '73b05d52050c3e7bae021576c5d8a59c856b5bb3'],
-  ['20260630163312_025_broker_confirm_attestation_lookup.sql', '26f0aff6c81c33192a6d6a35e0823a3044b79bb596'],
+  ['20260630163312_025_broker_confirm_attestation_lookup.sql', '26f0aff6c81c331a5d6a35e0823a3044b79bb596'],
   ['20260630170022_025a_broker_confirm_attestation_view_grant_correction.sql', '27ec901eefe687faa9c8ceadb2ee0c398a1b477c'],
   ['20260630171954_025b_manual_review_queue_aging_view_grant_correction.sql', '6c5221891db6b02407e456800429befd9f36030d'],
   ['20260630174034_025c_broker_confirm_fn_exec_lockdown.sql', '1a335c677d7095bae951d918278aa8ee69b1351a'],
