@@ -145,7 +145,7 @@ export type OwnerContinuationTask =
   | { kind: 'existing_lahd_action'; label: 'Record LAHD filing'; href: null; readOnly: false }
   | { kind: 'review_record'; label: 'Review this record'; href: null; readOnly: true };
 
-/** Presentation-only resolver. It deliberately does not consult ALLOWED_TRANSITIONS. */
+/** Presentation-only resolver. It deliberately does not consult the RiskPath transition graph. */
 export function resolveOwnerContinuationTask(input: {
   currentState: string;
   stale: boolean;
