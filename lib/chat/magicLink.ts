@@ -18,12 +18,15 @@ export function magicExpiry(nowMs: number = Date.now()): string {
   return new Date(nowMs + MAGIC_TTL_MINUTES * 60_000).toISOString();
 }
 
+export type MagicPurpose = 'claim_session' | 'save_to_riskpath' | 'owner_record_continuation';
+
 export interface MagicTokenRow {
   expires_at: string;
   consumed_at: string | null;
   chat_session_id: string | null;
   email: string;
-  purpose: 'claim_session' | 'save_to_riskpath';
+  purpose: MagicPurpose;
+  owner_continuation_id: string | null;
 }
 
 export type MagicReason = 'not_found' | 'consumed' | 'expired';
