@@ -79,7 +79,6 @@ export function LandingVariant({ variantLabel }: LandingVariantProps) {
         <nav className="nav" aria-label="Main navigation">
           <Link href="/notice/3-day">3-Day Notice</Link>
           <Link href="/notice/3-day/serve">Serve &amp; Track</Link>
-          <Link href="/chat">Ask OwnerPilot</Link>
           <Link href="/our-approach">Our Approach</Link>
         </nav>
         <Link className="nav-cta" href="/chat">Ask OwnerPilot AI</Link>
