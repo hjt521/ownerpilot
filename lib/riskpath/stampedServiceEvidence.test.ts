@@ -74,6 +74,7 @@ check('readable stamp contains capture time', lines.some((line) => line.includes
 check('readable stamp contains latitude and longitude', lines.some((line) => line.includes('34.101000') && line.includes('-118.326000')));
 check('readable stamp contains accuracy and provenance', lines.some((line) => line.includes('4.50 m')) && lines.some((line) => line.includes('DEVICE_BROWSER_GEOLOCATION')));
 
+async function main() {
 const rendered1 = await renderStampedPhotoDerivative(tinyPng, 'image/png', canonical);
 const rendered2 = await renderStampedPhotoDerivative(tinyPng, 'image/png', canonical);
 check('original admitted bytes remain byte-identical after derivative generation', Buffer.compare(originalBefore, Buffer.from(tinyPng)) === 0);
@@ -123,3 +124,9 @@ check('derivative table is immutable and private-table access stays service-role
 
 console.log(`\n${'-'.repeat(48)}\n  ${passed} passed, ${failed} failed\n${'-'.repeat(48)}`);
 if (failed > 0) process.exit(1);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

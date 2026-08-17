@@ -23,6 +23,8 @@ const officialPath = join(process.cwd(), ...POS010_SOURCE_RELATIVE_PATH.split('/
 const officialBytes = new Uint8Array(readFileSync(officialPath));
 const officialBefore = Buffer.from(officialBytes);
 const officialBeforeHash = hash(officialBytes);
+
+async function main() {
 const sourceDoc = await PDFDocument.load(officialBytes, { updateMetadata: false });
 
 const tinyJpeg = Uint8Array.from(Buffer.from(
@@ -94,3 +96,9 @@ check('attachment count reflects exact photographic evidence facts', package1.at
 
 console.log(`\n${'-'.repeat(48)}\n  ${passed} passed, ${failed} failed\n${'-'.repeat(48)}`);
 if (failed > 0) process.exit(1);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
