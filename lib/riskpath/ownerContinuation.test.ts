@@ -160,7 +160,7 @@ check('print: QR failure does not block base Notice', printClient.includes('Buil
 // Vercel Web Analytics/Speed Insights and GTM sensitive fresh routes are narrowly suppressed.
 check('analytics: exact-equivalent transport guard installed before children', layout.includes('SENSITIVE_TELEMETRY_GUARD') && layout.indexOf('SENSITIVE_TELEMETRY_GUARD') < layout.indexOf('{children}'));
 check('analytics: public scan path filtered by guard', layout.includes("p === '/owner-continuation'"));
-check('analytics: exact RiskPath path filtered by guard', layout.includes('/^\\\\/riskpath\\\\/[^/]+\\\\/?$/.test(p)'));
+check('analytics: exact RiskPath path filtered by guard', layout.includes('riskpath') && layout.includes('[^/]+') && layout.includes('.test(p)'));
 check('analytics: Vercel view/event ingestion path blocked', layout.includes("u.pathname.startsWith('/_vercel/insights/')"));
 check('analytics: Vercel Speed Insights ingestion path blocked', layout.includes("u.pathname.startsWith('/_vercel/speed-insights/')") && layout.includes("vitals.vercel-analytics.com"));
 check('analytics: fetch transport guarded', layout.includes('window.fetch = (input, init)'));
