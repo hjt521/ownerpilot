@@ -94,7 +94,7 @@ check('task: notice_created -> Record service', noticeTask.kind === 'record_serv
 check('task: notice_created guidance exact', noticeTask.kind === 'record_service' && noticeTask.guidance === 'Record an actual service attempt only after it happens.');
 check('task: LAHD follows notice_created precedence', resolveOwnerContinuationTask({ currentState: 'tenant_responded', stale: false, lahdEligible: true, lahdFiled: false }).kind === 'existing_lahd_action');
 check('task: fallback is Review this record', resolveOwnerContinuationTask({ currentState: 'notice_closed', stale: false, lahdEligible: false, lahdFiled: false }).label === 'Review this record');
-check('status catalog: locked 15 unchanged', RISKPATH_STATUSES.length === 15 && !RISKPATH_STATUSES.includes('notice_created' as never));
+check('status catalog: locked 15 unchanged', RISKPATH_STATUSES.length === 15 && !(RISKPATH_STATUSES as readonly string[]).includes('notice_created'));
 check('task resolver: no transition graph inference', !src('lib/riskpath/ownerContinuation.ts').includes('ALLOWED_TRANSITIONS'));
 
 // Sensitive telemetry classifier.
@@ -104,7 +104,7 @@ check('telemetry: exact RiskPath sensitive', isSensitiveOwnerContinuationTelemet
 check('telemetry: generic RiskPath dashboard allowed', !isSensitiveOwnerContinuationTelemetryUrl('/riskpath'));
 check('telemetry: ordinary notice route allowed', !isSensitiveOwnerContinuationTelemetryUrl('/notice/3-day'));
 
-// Static route/security pins across the two authorized route files and telemetry seams.
+// Static route/security pins across the authorized implementation seams.
 const migration = src('supabase/migrations/056_owner_continuations.sql');
 check('migration: locator digest unique', /locator_digest\s+text not null unique/.test(migration));
 check('migration: raw locator column absent', !/raw_locator|locator_raw/i.test(migration));
@@ -119,6 +119,9 @@ const authRoute = src('app/api/owner-continuation/auth/route.ts');
 const issueRoute = src('app/api/owner-continuation/issue/route.ts');
 const redeemRoute = src('app/api/magic-link/redeem/route.ts');
 const exactPage = src('app/riskpath/[id]/page.tsx');
+const scanPage = src('app/owner-continuation/page.tsx');
+const scanClient = src('components/owner-continuation/OwnerContinuationScan.tsx');
+const printClient = src('components/packet-print-options.tsx');
 const layout = src('app/layout.tsx');
 const gtm = src('components/GoogleTagManagerScript.tsx');
 
@@ -128,14 +131,40 @@ check('issue: soft-delete filter present', issueRoute.includes(".is('soft_delete
 check('issue: Host header cannot choose printed origin', !issueRoute.includes("headers.get('host')") && !issueRoute.includes("headers.get(\"host\")"));
 check('auth return: continuation purpose explicit', redeemRoute.includes("tok.purpose === 'owner_record_continuation'"));
 check('auth return: revoked association re-read', redeemRoute.includes(".is('revoked_at', null)"));
-check('auth return: post-auth owner equality re-executed', redeemRoute.includes(".eq('user_id', userId)"));
+check('auth return: post-auth owner equality re-executed', redeemRoute.includes(".eq('user_id', owner.id)"));
 check('auth return: same-browser session required', redeemRoute.includes('currentSession.id !== tok.chat_session_id'));
 check('open redirect: no returnTo/callback parameters', !/returnTo|return_to|callbackUrl|callback_url/.test(authRoute + redeemRoute));
 check('exact page: current user exact-row filter', exactPage.includes(".eq('user_id', session.user_id)"));
 check('exact page: soft-deleted row filter', exactPage.includes(".is('soft_deleted_at', null)"));
-check('exact page: dynamic no public cache', exactPage.includes("dynamic = 'force-dynamic'"));
-check('analytics: Vercel beforeSend present', layout.includes('beforeSend') && layout.includes('isSensitiveOwnerContinuationTelemetryUrl'));
-check('GTM: sensitive fresh-route suppression present', gtm.includes('isSensitiveOwnerContinuationTelemetryUrl') && gtm.includes('usePathname'));
+check('exact page: dynamic no public cache', exactPage.includes("dynamic = 'force-dynamic'") && exactPage.includes('revalidate = 0'));
+check('exact page: noindex + no-referrer', exactPage.includes('index: false') && exactPage.includes("referrer: 'no-referrer'"));
+
+// Fragment capture/scrub is inline and precedes client admission; raw locator is ephemeral only.
+check('fragment: synchronous bootstrap captures location.hash', scanPage.includes('window.location.hash'));
+check('fragment: synchronous history scrub', scanPage.includes('history.replaceState'));
+check('fragment: bootstrap script precedes client component', scanPage.indexOf('<script') < scanPage.indexOf('<OwnerContinuationScan'));
+check('fragment: client deletes bootstrap global', scanClient.includes('delete window.__opOwnerContinuationLocator'));
+check('fragment: no local/session storage', !/localStorage|sessionStorage/.test(scanPage + scanClient));
+check('fragment: controlled admission is POST', scanClient.includes("fetch('/api/owner-continuation/auth'") && scanClient.includes("method: 'POST'"));
+check('fragment: hard server navigation to exact record', scanClient.includes('window.location.assign'));
+check('fragment: raw locator is released after admission', scanClient.includes('locatorRef.current = null'));
+check('fragment: no app-visible locator logging', !/console\.(log|info|warn|error).*locator/i.test(scanPage + scanClient + authRoute));
+
+// Same mounted print session deduplicates issuance and reuses the returned raw scan URL in browser memory only.
+check('print: same-mount scan URL memory ref', printClient.includes('scanUrlRef = useRef<string | null>(null)'));
+check('print: in-flight issuance promise deduplicated', printClient.includes('issuePromiseRef') && printClient.includes('if (!issuePromiseRef.current)'));
+check('print: at most one issuance attempt after failure', printClient.includes('issuanceAttemptedRef') && printClient.includes('issuanceAttemptedRef.current = true'));
+check('print: later QR render retry reuses scan URL', printClient.includes('if (!scanUrl)') && printClient.includes('ownerContinuationQrDataUrl(scanUrl'));
+check('print: QR failure does not block base Notice', printClient.includes('Build the legal document first') && printClient.includes('html = baseHtml'));
+
+// Vercel Web Analytics/Speed Insights and GTM sensitive fresh routes are narrowly suppressed.
+check('analytics: Vercel beforeSend present twice', (layout.match(/beforeSend=/g) ?? []).length === 2);
+check('analytics: public scan filtered', layout.includes("pathname === '/owner-continuation'"));
+check('analytics: exact RiskPath filtered', layout.includes('/^\\/riskpath\\/[^/]+\\/?$/.test(pathname)'));
+check('analytics: generic RiskPath remains outside exact-record regex', !isSensitiveOwnerContinuationTelemetryUrl('/riskpath'));
+check('GTM: usePathname fresh-route suppression', gtm.includes('usePathname') && gtm.includes('sensitiveFreshRoute(pathname)'));
+check('GTM: public scan suppression present', gtm.includes("pathname === '/owner-continuation'"));
+check('GTM: exact RiskPath suppression present', gtm.includes('/^\\/riskpath\\/[^/]+\\/?$/.test(pathname)'));
 
 console.log(`ownerContinuation: ${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);
