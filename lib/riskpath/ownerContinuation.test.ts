@@ -175,7 +175,7 @@ check('analytics: components otherwise retain generic mounting', layout.includes
 check('analytics: generic RiskPath remains outside sensitive classifier', !isSensitiveOwnerContinuationTelemetryUrl('/riskpath'));
 check('GTM: usePathname fresh-route suppression', gtm.includes('usePathname') && gtm.includes('sensitiveFreshRoute(pathname)'));
 check('GTM: public scan suppression present', gtm.includes("pathname === '/owner-continuation'"));
-check('GTM: exact RiskPath suppression present', gtm.includes('/^\\/riskpath\\/[^/]+\\/?$/.test(pathname)'));
+check('GTM: exact RiskPath suppression present', gtm.includes('/^\\/riskpath\\/[^/]+(?:\\/.*)?$/.test(pathname)'));
 
 console.log(`ownerContinuation: ${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);
