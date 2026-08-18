@@ -43,6 +43,7 @@ export interface Pos010PackageResult {
   formVersion: typeof POS010_FORM_VERSION;
   sourceSha256: string;
   attachmentBindingSha256: string;
+  attachmentSha256: string;
   packageSha256: string;
   attachmentCount: number;
 }
@@ -67,6 +68,23 @@ export function pos010AttachmentBindingSha256(photos: Pos010PhotoAttachmentInput
     schemaVersion: POS010_ATTACHMENT_SCHEMA_VERSION,
     formVersion: POS010_FORM_VERSION,
     facts: canonicalFacts(photos),
+  });
+  return createHash('sha256').update(text, 'utf8').digest('hex');
+}
+
+function pos010PackageSha256(input: {
+  sourceSha256: string;
+  attachmentBindingSha256: string;
+  attachmentSha256: string;
+  attachmentCount: number;
+}): string {
+  const text = JSON.stringify({
+    schemaVersion: POS010_ATTACHMENT_SCHEMA_VERSION,
+    formVersion: POS010_FORM_VERSION,
+    sourceSha256: input.sourceSha256,
+    attachmentBindingSha256: input.attachmentBindingSha256,
+    attachmentSha256: input.attachmentSha256,
+    attachmentCount: input.attachmentCount,
   });
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
@@ -145,7 +163,7 @@ export async function generatePos010PhotographicEvidencePackage(input: {
   input.photos.forEach(validatePhotoAttachment);
   const sourceSha256 = sha256(input.officialPos010Bytes);
   const attachmentBindingSha256 = pos010AttachmentBindingSha256(input.photos);
-  const doc = await PDFDocument.load(input.officialPos010Bytes, { updateMetadata: false, ignoreEncryption: true });
+  const doc = await PDFDocument.create({ updateMetadata: false });
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const sorted = [...input.photos].sort((a, b) =>
@@ -190,12 +208,20 @@ export async function generatePos010PhotographicEvidencePackage(input: {
     addDefaultPage: false,
     updateFieldAppearances: false,
   });
+  const attachmentSha256 = sha256(bytes);
+  const packageSha256 = pos010PackageSha256({
+    sourceSha256,
+    attachmentBindingSha256,
+    attachmentSha256,
+    attachmentCount: sorted.length,
+  });
   return {
     bytes,
     formVersion: POS010_FORM_VERSION,
     sourceSha256,
     attachmentBindingSha256,
-    packageSha256: sha256(bytes),
+    attachmentSha256,
+    packageSha256,
     attachmentCount: sorted.length,
   };
 }
