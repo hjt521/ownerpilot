@@ -1,0 +1,528 @@
+name: PR394 Preview Evidence Diagnostic
+
+on:
+  push:
+    tags:
+      - 'diag-pr394-preview-evidence-r1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr394-preview-evidence-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  preview-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: ownerpilot-e2e-preview
+    env:
+      DIAGNOSTIC_TAG: diag-pr394-preview-evidence-r1
+      DIAGNOSTIC_PARENT: 6b0add7f920585c21b6be231b38afad16d816d31
+      AUTHORIZED_PATH: .github/workflows/pr394-preview-evidence-diagnostic.yml
+      PREVIEW_URL: https://ownerpilot-git-feature-spare-ready-servic-54dd00-jt-s-projects3.vercel.app
+      PREVIEW_DEPLOYMENT_ID: dpl_8YK6BqVLgoEhPDkzqMThVRAViZZD
+      PREVIEW_SOURCE_SHA: 6b0add7f920585c21b6be231b38afad16d816d31
+      E2E_RUN_ID: pr394-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+      TEST_SEED_SECRET: ${{ secrets.TEST_SEED_SECRET }}
+      E2E_TEST_USER_ID: ${{ secrets.E2E_TEST_USER_ID }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EXPECTED_SUPABASE_PROJECT_REF: jiedcuspqwrnrtwfkkdk
+
+    steps:
+      - name: Checkout diagnostic tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Enforce ARB diagnostic ceiling
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "refs/tags/$DIAGNOSTIC_TAG" ]] || {
+            echo "::error::Unexpected ref $GITHUB_REF"; exit 1;
+          }
+          parent="$(git rev-parse HEAD^)"
+          [[ "$parent" == "$DIAGNOSTIC_PARENT" ]] || {
+            echo "::error::Diagnostic parent mismatch: $parent"; exit 1;
+          }
+          count="$(git rev-list --count "$DIAGNOSTIC_PARENT..HEAD")"
+          [[ "$count" == "1" ]] || {
+            echo "::error::Diagnostic commit ceiling exceeded: $count"; exit 1;
+          }
+          mapfile -t changed < <(git diff --name-only "$DIAGNOSTIC_PARENT" HEAD)
+          [[ "${#changed[@]}" == "1" && "${changed[0]}" == "$AUTHORIZED_PATH" ]] || {
+            printf '::error::Unauthorized diagnostic paths:'; printf ' %s' "${changed[@]}"; printf '\n'; exit 1;
+          }
+          [[ "$PREVIEW_SOURCE_SHA" == "$DIAGNOSTIC_PARENT" ]] || {
+            echo "::error::Preview source pin mismatch"; exit 1;
+          }
+          echo "ARB diagnostic ceiling verified: one commit / one path / frozen source parent."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install repository dependencies
+        run: npm ci
+
+      - name: Install hosted Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Write bounded diagnostic operator
+        shell: bash
+        run: |
+          cat > "${GITHUB_WORKSPACE}/.pr394-preview-evidence.mjs" <<'NODE'
+          import { chromium } from '@playwright/test';
+          import { createClient } from '@supabase/supabase-js';
+          import { createHash } from 'node:crypto';
+          import { writeFileSync } from 'node:fs';
+
+          const BASE = process.env.PREVIEW_URL;
+          const RUN_ID = process.env.E2E_RUN_ID;
+          const SECRET = process.env.TEST_SEED_SECRET;
+          const SUPABASE_URL = process.env.SUPABASE_URL;
+          const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          const E2E_TEST_USER_ID = process.env.E2E_TEST_USER_ID;
+          const EXPECTED_SUPABASE_PROJECT_REF = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const BUCKET = 'ownerpilot-service-evidence-v1';
+          const SERVICE_DATE = '2026-08-18';
+          const GEO = { latitude: 36.7378, longitude: -119.7871, accuracy: 8 };
+          const REPORT_PATH = `${process.env.RUNNER_TEMP}/pr394-preview-evidence.json`;
+          const tinyJpeg = Buffer.from(
+            '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD6pooooA//2Q==',
+            'base64',
+          );
+
+          function must(condition, message) {
+            if (!condition) throw new Error(message);
+          }
+          function sha256(bytes) {
+            return createHash('sha256').update(bytes).digest('hex');
+          }
+          async function jsonFetch(path, { method = 'GET', cookie, body, seed = false } = {}) {
+            const headers = { 'x-e2e-run-id': RUN_ID };
+            if (cookie) headers.cookie = `op_chat_token=${cookie}`;
+            if (seed) headers.authorization = `Bearer ${SECRET}`;
+            if (body !== undefined) headers['content-type'] = 'application/json';
+            const response = await fetch(`${BASE}${path}`, {
+              method,
+              headers,
+              body: body === undefined ? undefined : JSON.stringify(body),
+              redirect: 'manual',
+            });
+            const text = await response.text();
+            let parsed = null;
+            try { parsed = text ? JSON.parse(text) : null; } catch {}
+            if (!response.ok) {
+              throw new Error(`${method} ${path} failed HTTP ${response.status}: ${text.slice(0, 1200)}`);
+            }
+            return { response, json: parsed };
+          }
+
+          const syntheticImageSha256 = sha256(tinyJpeg);
+          const report = {
+            diagnostic: {
+              tag: process.env.DIAGNOSTIC_TAG,
+              diagnosticCommit: process.env.GITHUB_SHA,
+              sourceParent: process.env.DIAGNOSTIC_PARENT,
+              previewUrl: BASE,
+              previewDeploymentId: process.env.PREVIEW_DEPLOYMENT_ID,
+              previewSourceSha: process.env.PREVIEW_SOURCE_SHA,
+              e2eRunId: RUN_ID,
+              syntheticImageSha256,
+              expectedSupabaseProjectRef: EXPECTED_SUPABASE_PROJECT_REF,
+            },
+            claims: {
+              cameraIntentBrowserPath: false,
+              browserGeolocationPath: false,
+              physicalCameraHardware: 'NOT_CLAIMED',
+              physicalGpsHardware: 'NOT_CLAIMED',
+              legalSufficiency: 'NOT_DETERMINED',
+              spareStatutoryCompliance: 'NOT_ACTIVATED',
+            },
+            cleanup: {
+              databaseRowsDeleted: false,
+              immutableHistoryMutationAttempted: false,
+              storagePathsRemoved: [],
+            },
+          };
+
+          let browser;
+          let cookie;
+          let riskpathId;
+          let createdNoticeArtifactId;
+          let serviceEventId;
+          let proofError = null;
+          const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+
+          async function exactRunRows() {
+            if (!riskpathId) return { evidence: [], provenance: [], derivatives: [] };
+            const [e, p, d] = await Promise.all([
+              sb.from('service_evidence_assets')
+                .select('id,service_event_id,storage_object_path,server_sha256,verified_mime_type,capture_source,geo_status,geo_source,latitude,longitude,accuracy_meters,geo_client_captured_at,device_class,platform_family,browser_family,admitted_at')
+                .eq('riskpath_record_id', riskpathId),
+              sb.from('service_evidence_capture_provenance')
+                .select('id,evidence_id,service_event_id,capture_classification,capture_client_at,server_registered_at')
+                .eq('riskpath_record_id', riskpathId),
+              sb.from('service_evidence_derivatives')
+                .select('id,evidence_id,service_event_id,storage_object_path,server_sha256,source_server_sha256,capture_classification,capture_client_at,stamp_schema_version,stamp_payload,server_created_at')
+                .eq('riskpath_record_id', riskpathId),
+            ]);
+            if (e.error) throw new Error(`evidence read failed: ${e.error.message}`);
+            if (p.error) throw new Error(`provenance read failed: ${p.error.message}`);
+            if (d.error) throw new Error(`derivative read failed: ${d.error.message}`);
+            return { evidence: e.data ?? [], provenance: p.data ?? [], derivatives: d.data ?? [] };
+          }
+
+          try {
+            must(BASE?.startsWith('https://'), 'PREVIEW_URL missing or not https');
+            must(SECRET, 'TEST_SEED_SECRET missing');
+            must(SUPABASE_URL, 'SUPABASE_URL missing');
+            must(SUPABASE_KEY, 'SUPABASE_SERVICE_ROLE_KEY missing');
+            must(E2E_TEST_USER_ID, 'E2E_TEST_USER_ID missing');
+            must(EXPECTED_SUPABASE_PROJECT_REF === 'jiedcuspqwrnrtwfkkdk', 'unexpected PR #394 Supabase project ref');
+            const supabaseHost = new URL(SUPABASE_URL).hostname;
+            must(
+              supabaseHost === `${EXPECTED_SUPABASE_PROJECT_REF}.supabase.co`,
+              `SUPABASE_URL is not the dedicated PR #394 Preview project: ${supabaseHost}`,
+            );
+
+            const seed = await jsonFetch('/api/test/seed-produced-session', {
+              method: 'POST',
+              seed: true,
+              body: {},
+            });
+            cookie = seed.json?.cookie;
+            must(typeof cookie === 'string' && cookie.length > 20, 'seed did not return synthetic session cookie');
+            must(seed.json?.e2eRunIdTag, 'seed did not return deterministic E2E tag');
+            report.seed = {
+              sessionId: seed.json.sessionId,
+              seededPriorRiskpathId: seed.json.riskpathId,
+              e2eRunIdTag: seed.json.e2eRunIdTag,
+              claimedTestUserConfigured: true,
+            };
+
+            const produced = await jsonFetch('/api/notice/produce/from-chat', {
+              method: 'POST',
+              cookie,
+              body: {
+                intendedServiceDate: SERVICE_DATE,
+                acknowledgedStaleness: true,
+              },
+            });
+            riskpathId = produced.json?.riskpathId;
+            createdNoticeArtifactId = produced.json?.createdNoticeArtifactId;
+            must(riskpathId && createdNoticeArtifactId, 'normal from-chat produce did not return exact pending identity');
+            report.produce = {
+              riskpathId,
+              createdNoticeArtifactId,
+              serviceDate: SERVICE_DATE,
+            };
+
+            const finalized = await jsonFetch(`/api/notices/${riskpathId}/created-notice/finalize`, {
+              method: 'POST',
+              cookie,
+              body: { createdNoticeArtifactId },
+            });
+            must(finalized.json?.finalized === true, 'normal Created Notice finalization did not complete');
+            report.finalize = { finalized: true };
+
+            const risk = await sb.from('riskpath_records')
+              .select('id,user_id,e2e_run_id,synthetic_source,created_notice_artifact_id,created_notice_service_date,created_notice_generation,created_notice_semantic_binding_id,created_notice_finalized_at')
+              .eq('id', riskpathId)
+              .single();
+            if (risk.error) throw new Error(`riskpath read failed: ${risk.error.message}`);
+            must(risk.data.user_id === E2E_TEST_USER_ID, 'RiskPath user is not the dedicated Preview E2E user');
+            must(risk.data.synthetic_source === 'e2e', 'RiskPath synthetic_source is not e2e');
+            must(risk.data.e2e_run_id === seed.json.e2eRunIdTag, 'RiskPath E2E tag differs from seed tag');
+            must(risk.data.created_notice_artifact_id === createdNoticeArtifactId, 'stored Created Notice artifact identity mismatch');
+            must(!!risk.data.created_notice_finalized_at, 'stored Created Notice identity is not finalized');
+            report.storedCreatedNotice = {
+              e2eRunIdTag: risk.data.e2e_run_id,
+              syntheticSource: risk.data.synthetic_source,
+              createdNoticeArtifactId: risk.data.created_notice_artifact_id,
+              createdNoticeServiceDate: risk.data.created_notice_service_date,
+              createdNoticeGeneration: risk.data.created_notice_generation,
+              createdNoticeSemanticBindingId: risk.data.created_notice_semantic_binding_id,
+              finalizedAt: risk.data.created_notice_finalized_at,
+            };
+
+            const serviceEvent = await jsonFetch(`/api/riskpath/${riskpathId}/service`, {
+              method: 'POST',
+              cookie,
+              body: {
+                action: 'record_service_event',
+                attemptDate: SERVICE_DATE,
+                method: 'personal',
+                outcome: 'SUCCESS',
+                mailingDate: null,
+                notes: 'PR #394 synthetic Preview diagnostic only',
+                serverName: 'OwnerPilot Synthetic Diagnostic Server',
+                serverAddress: '1 Synthetic Way, Fresno, CA 93701',
+                serverAge18Plus: true,
+                serverPartyToNotice: false,
+                clientRecordedAt: new Date().toISOString(),
+                timezoneOffsetMinutes: 0,
+                correctionOfServiceEventId: null,
+              },
+            });
+            serviceEventId = serviceEvent.json?.serviceEventId;
+            must(serviceEventId, 'normal service event write did not return an id');
+            report.serviceEvent = { serviceEventId, attemptDate: SERVICE_DATE, method: 'personal' };
+
+            browser = await chromium.launch();
+            const context = await browser.newContext({
+              baseURL: BASE,
+              geolocation: GEO,
+              permissions: ['geolocation'],
+            });
+            await context.addCookies([{ name: 'op_chat_token', value: cookie, url: BASE }]);
+            const page = await context.newPage();
+
+            let observedIntent = null;
+            page.on('request', (request) => {
+              if (
+                request.method() === 'POST' &&
+                request.url().endsWith(`/api/riskpath/${riskpathId}/service`)
+              ) {
+                try {
+                  const body = request.postDataJSON();
+                  if (body?.action === 'evidence_upload_intent') observedIntent = body;
+                } catch {}
+              }
+            });
+
+            await page.goto(`/riskpath/${riskpathId}/service`, { waitUntil: 'domcontentloaded' });
+            await page.getByRole('heading', { name: 'Record service and evidence' }).waitFor();
+            await page.getByText('Stamped photo + device location', { exact: true }).waitFor();
+
+            const eventSelect = page.getByLabel('Recorded service event');
+            await eventSelect.selectOption(serviceEventId);
+            const gps = page.getByText('Try device geolocation for this capture', { exact: true })
+              .locator('..')
+              .locator('input[type="checkbox"]');
+            must(await gps.isChecked(), 'browser geolocation control was not enabled');
+
+            const cameraInput = page.locator('input[type="file"][capture="environment"]');
+            must(await cameraInput.count() === 1, 'camera-intent file input not found');
+            must((await cameraInput.getAttribute('accept'))?.includes('image/jpeg'), 'camera-intent input does not accept JPEG');
+            await cameraInput.setInputFiles({
+              name: 'pr394-synthetic-camera.jpg',
+              mimeType: 'image/jpeg',
+              buffer: tinyJpeg,
+            });
+
+            await page.getByText(
+              'Original evidence stored unchanged and verified; separate stamped-photo derivative created.',
+              { exact: true },
+            ).waitFor({ timeout: 45000 });
+
+            must(observedIntent?.captureSource === 'CAMERA_INTENT', 'browser request did not carry CAMERA_INTENT');
+            must(observedIntent?.geoStatus === 'CAPTURED', 'browser request did not carry CAPTURED geolocation');
+            must(observedIntent?.latitude === GEO.latitude, 'browser latitude differs from fixed synthetic geolocation');
+            must(observedIntent?.longitude === GEO.longitude, 'browser longitude differs from fixed synthetic geolocation');
+            must(observedIntent?.accuracyMeters === GEO.accuracy, 'browser accuracy differs from fixed synthetic geolocation');
+            must(typeof observedIntent?.geoClientCapturedAt === 'string', 'browser geolocation timestamp missing');
+
+            report.browserIntent = {
+              captureAttribute: await cameraInput.getAttribute('capture'),
+              captureSource: observedIntent.captureSource,
+              geoStatus: observedIntent.geoStatus,
+              latitude: observedIntent.latitude,
+              longitude: observedIntent.longitude,
+              accuracyMeters: observedIntent.accuracyMeters,
+              geoClientCapturedAt: observedIntent.geoClientCapturedAt,
+              deviceClass: observedIntent.deviceClass,
+              platformFamily: observedIntent.platformFamily,
+              browserFamily: observedIntent.browserFamily,
+            };
+            report.claims.cameraIntentBrowserPath = true;
+            report.claims.browserGeolocationPath = true;
+
+            const rows = await exactRunRows();
+            must(rows.evidence.length === 1, `expected exactly one evidence row, got ${rows.evidence.length}`);
+            must(rows.provenance.length === 1, `expected exactly one provenance row, got ${rows.provenance.length}`);
+            must(rows.derivatives.length === 1, `expected exactly one derivative row, got ${rows.derivatives.length}`);
+
+            const evidence = rows.evidence[0];
+            const provenance = rows.provenance[0];
+            const derivative = rows.derivatives[0];
+            must(evidence.service_event_id === serviceEventId, 'stored evidence is not bound to exact service event');
+            must(evidence.capture_source === 'CAMERA_INTENT', 'stored original is not CAMERA_INTENT');
+            must(evidence.geo_status === 'CAPTURED', 'stored original geolocation is not CAPTURED');
+            must(evidence.geo_source === 'DEVICE_BROWSER_GEOLOCATION', 'stored geo source is not DEVICE_BROWSER_GEOLOCATION');
+            must(Number(evidence.latitude) === GEO.latitude, 'stored latitude mismatch');
+            must(Number(evidence.longitude) === GEO.longitude, 'stored longitude mismatch');
+            must(Number(evidence.accuracy_meters) === GEO.accuracy, 'stored accuracy mismatch');
+            must(!!evidence.server_sha256 && !!evidence.admitted_at, 'stored original missing verified hash/admission');
+            must(evidence.server_sha256 === syntheticImageSha256, 'stored original SHA does not match exact synthetic image bytes');
+            must(provenance.evidence_id === evidence.id, 'provenance evidence identity mismatch');
+            must(provenance.capture_classification === 'CONTEMPORANEOUS_CAMERA_INTENT', 'provenance classification mismatch');
+            must(derivative.evidence_id === evidence.id, 'derivative evidence identity mismatch');
+            must(derivative.source_server_sha256 === evidence.server_sha256, 'derivative source hash mismatch');
+            must(derivative.capture_classification === 'CONTEMPORANEOUS_CAMERA_INTENT', 'derivative classification mismatch');
+            must(derivative.capture_client_at === provenance.capture_client_at, 'derivative provenance time mismatch');
+            must(!!derivative.server_sha256, 'derivative hash missing');
+
+            report.storedEvidence = {
+              original: {
+                evidenceId: evidence.id,
+                serviceEventId: evidence.service_event_id,
+                serverSha256: evidence.server_sha256,
+                verifiedMimeType: evidence.verified_mime_type,
+                captureSource: evidence.capture_source,
+                geoStatus: evidence.geo_status,
+                geoSource: evidence.geo_source,
+                latitude: evidence.latitude,
+                longitude: evidence.longitude,
+                accuracyMeters: evidence.accuracy_meters,
+                geoClientCapturedAt: evidence.geo_client_captured_at,
+                admittedAt: evidence.admitted_at,
+                storageObjectPath: evidence.storage_object_path,
+              },
+              provenance: {
+                provenanceId: provenance.id,
+                captureClassification: provenance.capture_classification,
+                captureClientAt: provenance.capture_client_at,
+                serverRegisteredAt: provenance.server_registered_at,
+              },
+              derivative: {
+                derivativeId: derivative.id,
+                serverSha256: derivative.server_sha256,
+                sourceServerSha256: derivative.source_server_sha256,
+                captureClassification: derivative.capture_classification,
+                captureClientAt: derivative.capture_client_at,
+                stampSchemaVersion: derivative.stamp_schema_version,
+                storageObjectPath: derivative.storage_object_path,
+              },
+            };
+
+            async function browserPos010() {
+              return page.evaluate(async (path) => {
+                const response = await fetch(path, { cache: 'no-store' });
+                const bytes = new Uint8Array(await response.arrayBuffer());
+                const digest = await crypto.subtle.digest('SHA-256', bytes);
+                const bodySha256 = Array.from(new Uint8Array(digest))
+                  .map((v) => v.toString(16).padStart(2, '0'))
+                  .join('');
+                const header = (name) => response.headers.get(name);
+                return {
+                  ok: response.ok,
+                  status: response.status,
+                  contentType: header('content-type'),
+                  previewOnly: header('x-ownerpilot-preview-only'),
+                  formVersion: header('x-ownerpilot-pos010-form-version'),
+                  packageSha256: header('x-ownerpilot-pos010-package-sha256'),
+                  attachmentBinding: header('x-ownerpilot-pos010-attachment-binding'),
+                  sourceSha256: header('x-ownerpilot-pos010-source-sha256'),
+                  photoCount: header('x-ownerpilot-pos010-photo-count'),
+                  bodySha256,
+                  byteLength: bytes.byteLength,
+                  magic: String.fromCharCode(...bytes.slice(0, 5)),
+                };
+              }, `/api/riskpath/${riskpathId}/service/pos010-preview`);
+            }
+
+            const pos010a = await browserPos010();
+            const pos010b = await browserPos010();
+            must(pos010a.ok && pos010a.status === 200, `first POS-010 response failed: ${pos010a.status}`);
+            must(pos010b.ok && pos010b.status === 200, `second POS-010 response failed: ${pos010b.status}`);
+            must(pos010a.magic === '%PDF-', 'POS-010 supplemental body is not a PDF');
+            must(pos010a.previewOnly === 'true', 'POS-010 response is not marked Preview-only');
+            must(pos010a.formVersion === '2007-01-01', `unexpected POS-010 form version: ${pos010a.formVersion}`);
+            must(pos010a.photoCount === '1', `unexpected POS-010 photo count: ${pos010a.photoCount}`);
+            for (const key of ['bodySha256','packageSha256','attachmentBinding','sourceSha256','formVersion','photoCount','byteLength']) {
+              must(pos010a[key] === pos010b[key], `repeated unchanged POS-010 response differs at ${key}`);
+            }
+            for (const key of ['bodySha256','packageSha256','attachmentBinding','sourceSha256']) {
+              must(/^[0-9a-f]{64}$/.test(pos010a[key] ?? ''), `invalid ${key}`);
+            }
+            must(pos010a.packageSha256 !== pos010a.bodySha256, 'logical package SHA must not collapse to supplemental body SHA');
+            report.pos010 = {
+              first: pos010a,
+              second: pos010b,
+              stableUnchangedRepeat: true,
+            };
+
+            await context.close();
+          } catch (error) {
+            proofError = error;
+            report.failure = String(error?.stack ?? error);
+          } finally {
+            try {
+              if (browser) await browser.close();
+            } catch {}
+
+            try {
+              const rows = await exactRunRows();
+              const paths = [
+                ...rows.evidence.map((r) => r.storage_object_path),
+                ...rows.derivatives.map((r) => r.storage_object_path),
+              ].filter((v) => typeof v === 'string' && v.length > 0);
+              if (paths.length) {
+                const { error } = await sb.storage.from(BUCKET).remove(paths);
+                if (error) throw new Error(error.message);
+                report.cleanup.storagePathsRemoved = paths;
+              }
+              report.cleanup.storageOnly = true;
+              report.cleanup.databaseRowsDeleted = false;
+              report.cleanup.immutableHistoryMutationAttempted = false;
+            } catch (cleanupError) {
+              report.cleanup.error = String(cleanupError?.stack ?? cleanupError);
+              if (!proofError) proofError = cleanupError;
+            }
+
+            writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+            console.log('=== PR394 PREVIEW EVIDENCE ===');
+            console.log(JSON.stringify(report, null, 2));
+          }
+
+          if (proofError) throw proofError;
+          NODE
+
+      - name: Execute exact-head Preview evidence proof
+        id: proof
+        continue-on-error: true
+        run: node "${GITHUB_WORKSPACE}/.pr394-preview-evidence.mjs"
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr394-preview-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pr394-preview-evidence.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Write diagnostic summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### PR #394 Preview evidence diagnostic"
+            echo "- Diagnostic tag: \`$DIAGNOSTIC_TAG\`"
+            echo "- Diagnostic commit: \`$GITHUB_SHA\`"
+            echo "- Frozen PR #394 source parent: \`$DIAGNOSTIC_PARENT\`"
+            echo "- Preview deployment ID: \`$PREVIEW_DEPLOYMENT_ID\`"
+            echo "- Preview source SHA: \`$PREVIEW_SOURCE_SHA\`"
+            echo "- Proof step outcome: \`${{ steps.proof.outcome }}\`"
+            echo "- Source mutation: **NO**"
+            echo "- PR #394 branch head mutation: **NO**"
+            echo "- Production touch: **NO**"
+            echo "- Database history deletion: **NO**"
+            echo "- Physical camera hardware: **NOT CLAIMED**"
+            echo "- Physical GPS hardware: **NOT CLAIMED**"
+            echo "- Legal sufficiency: **NOT DETERMINED**"
+            echo "- SPARE statutory compliance: **NOT ACTIVATED**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail closed on diagnostic proof failure
+        if: steps.proof.outcome != 'success'
+        run: |
+          echo "::error::PR #394 Preview evidence diagnostic did not complete successfully."
+          exit 1
