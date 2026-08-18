@@ -145,7 +145,7 @@ export async function generatePos010PhotographicEvidencePackage(input: {
   input.photos.forEach(validatePhotoAttachment);
   const sourceSha256 = sha256(input.officialPos010Bytes);
   const attachmentBindingSha256 = pos010AttachmentBindingSha256(input.photos);
-  const doc = await PDFDocument.load(input.officialPos010Bytes, { updateMetadata: false });
+  const doc = await PDFDocument.load(input.officialPos010Bytes, { updateMetadata: false, ignoreEncryption: true });
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const sorted = [...input.photos].sort((a, b) =>
