@@ -304,6 +304,7 @@ async function main(): Promise<void> {
   ok(/alter table public\.filing_preparation_records force row level security;/i.test(sql), 'staged SQL forces RLS');
   ok(/grant select, insert on public\.filing_preparation_records to authenticated;/i.test(sql), 'authenticated customer role receives only SELECT/INSERT grant');
   ok(/revoke all on public\.filing_preparation_records from anon, authenticated;/i.test(sql), 'staged SQL starts from fail-closed grants');
+  ok(sql.includes('"schemaVersion": 1') && sql.includes('"recordClass": "FILING_PREPARATION_RECORD"'), 'staged SQL fails closed on schema v1 and canonical record class');
   ok(/riskpath_records[\s\S]*riskpath_record_id[\s\S]*auth\.uid\(\)/i.test(sql), 'RLS binds persistence ownership to exact owned RiskPath');
   ok(!/grant[^;]*\b(update|delete)\b[^;]*;/i.test(sql), 'staged SQL grants no UPDATE/DELETE customer authority');
   ok(!/create policy[^;]*(for update|for delete|for all)[^;]*;/i.test(sql), 'staged SQL creates no UPDATE/DELETE/all customer policy');

@@ -13,19 +13,24 @@ create table public.filing_preparation_records (
 
   constraint filing_preparation_records_payload_identity_check
     check (
-      record_payload ->> 'filingPreparationRecordId' = filing_preparation_record_id
-      and record_payload ->> 'recordClass' = 'FILING_PREPARATION_RECORD'
-      and record_payload ->> 'persistenceContract' = 'SATISFIED'
-      and record_payload ->> 'persistence' = 'NOT_PERFORMED'
-      and record_payload ->> 'stageF' = 'HELD'
-      and record_payload ->> 'signing' = 'NOT_PERFORMED'
-      and record_payload ->> 'filing' = 'NOT_PERFORMED'
-      and record_payload ->> 'courtSubmission' = 'NOT_PERFORMED'
-      and record_payload ->> 'courtAcceptance' = 'NOT_EVALUATED'
-      and record_payload ->> 'service' = 'NOT_PERFORMED'
-      and record_payload ->> 'packetComposition' = 'NOT_PERFORMED'
-      and record_payload ->> 'legalSufficiency' = 'NOT_EVALUATED'
-      and record_payload ->> 'autonomousExecution' = 'NOT_AUTHORIZED'
+      jsonb_typeof(record_payload) = 'object'
+      and record_payload ? 'filingPreparationRecordId'
+      and record_payload ->> 'filingPreparationRecordId' = filing_preparation_record_id
+      and record_payload @> '{
+        "schemaVersion": 1,
+        "recordClass": "FILING_PREPARATION_RECORD",
+        "persistenceContract": "SATISFIED",
+        "persistence": "NOT_PERFORMED",
+        "stageF": "HELD",
+        "signing": "NOT_PERFORMED",
+        "filing": "NOT_PERFORMED",
+        "courtSubmission": "NOT_PERFORMED",
+        "courtAcceptance": "NOT_EVALUATED",
+        "service": "NOT_PERFORMED",
+        "packetComposition": "NOT_PERFORMED",
+        "legalSufficiency": "NOT_EVALUATED",
+        "autonomousExecution": "NOT_AUTHORIZED"
+      }'::jsonb
     )
 );
 
