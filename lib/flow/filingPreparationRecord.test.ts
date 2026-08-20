@@ -180,7 +180,7 @@ const fabricatedAdmissionEnum = structuredClone(review) as unknown as { generate
 fabricatedAdmissionEnum.generatedDraft.sourceAdmissionStatus = 'SOURCE_ADMITTED_MAYBE';
 requireBlock(fabricatedAdmissionEnum, generated, current, 'INVALID_GENERATED_DRAFT_EVIDENCE', 'fabricated generated enum fails closed');
 
-const renderedMismatch = structuredClone(review);
+const renderedMismatch = structuredClone(review) as unknown as { renderedAcknowledgment: { renderedPdfSha256: string } };
 renderedMismatch.renderedAcknowledgment.renderedPdfSha256 = '0'.repeat(64);
 requireBlock(renderedMismatch, generated, current, 'RENDERED_DOCUMENT_BINDING_MISMATCH', 'mismatched rendered hash fails closed');
 
