@@ -41,6 +41,7 @@ const allCaptured = mk({
   property_address: '5537 La Mirada Ave, Los Angeles, CA 90038',
   tenant_names: ['Clifton Alexander'],
   landlord_or_owner_name: 'Maria Lopez',
+  landlord_phone: '(213) 555-0100',
   landlord_mailing_address: '123 Main St, Los Angeles, CA 90012',
   rent_period: 'monthly',
   rent_amount_due: 6000,

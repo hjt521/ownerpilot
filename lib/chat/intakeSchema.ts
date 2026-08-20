@@ -121,7 +121,7 @@ export type IntakeState = Partial<z.infer<typeof intakeStateSchema>>;
 /** Fields required before intake_complete may be honored (server-side completion gate, §E.4). */
 export const REQUIRED_FIELDS: IntakeField[] = [
   'property_address', 'tenant_names', 'landlord_or_owner_name',
-  'landlord_mailing_address', 'rent_period', 'rent_amount_due',
+  'landlord_phone', 'landlord_mailing_address', 'rent_period', 'rent_amount_due',
   'payment_methods_accepted', 'preferred_service_method', 'language_preference',
   // Lane 2E: required for produce-completeness (renderNotice + produce gate).
   'rent_periods', 'signer_capacity', 'preflight_dispute',

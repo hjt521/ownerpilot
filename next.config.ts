@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   // production and the gate fail-closes to ATTACHMENT_FAILED.
   outputFileTracingIncludes: {
     "/api/notice/produce/**": ["./lib/rtc/packet/**"],
+    "/api/riskpath/**/service/pos010-preview": [
+      "./docs/legal/official-forms/california/judicial-council/POS-010/2007-01-01/POS-010.pdf",
+    ],
   },
 };
 
