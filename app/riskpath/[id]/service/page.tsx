@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
 import { DurableServiceClient } from '@/components/riskpath/DurableServiceClient';
+import { StampedServiceEvidenceEnhancement } from '@/components/riskpath/StampedServiceEvidenceEnhancement';
 import { loadSession, serviceClient } from '@/lib/chat/session';
 import { hasFinalizedCreatedNoticeBinding } from '@/lib/riskpath/durableService';
 
@@ -43,7 +44,7 @@ export default async function DurableServicePage({ params }: { params: Promise<{
 
   const { data: record } = await sb
     .from('riskpath_records')
-    .select('id, user_id, soft_deleted_at, captured_payload, created_notice_artifact_id, created_notice_service_date, created_notice_generation, created_notice_semantic_binding_id, created_notice_finalized_at')
+    .select('id, user_id, soft_deleted_at, captured_payload, created_notice_artifact_id, created_notice_service_date, created_notice_generation, created_notice_semantic_binding_id, created_notice_finalized_at, e2e_run_id, synthetic_source')
     .eq('id', id)
     .eq('user_id', session.user_id)
     .is('soft_deleted_at', null)
@@ -52,6 +53,7 @@ export default async function DurableServicePage({ params }: { params: Promise<{
 
   const property = capturedValue(record.captured_payload, 'property_address');
   const tenants = capturedValue(record.captured_payload, 'tenant_names');
+  const previewMode = process.env.VERCEL_ENV === 'preview' && record.synthetic_source === 'e2e' && !!record.e2e_run_id;
 
   return (
     <div className="flex min-h-screen flex-col bg-ivory">
@@ -65,7 +67,10 @@ export default async function DurableServicePage({ params }: { params: Promise<{
           {property && <p><span className="font-semibold">Property:</span> {property}</p>}
           {tenants && <p className="mt-1"><span className="font-semibold">Tenant(s):</span> {tenants}</p>}
         </div>}
-        <div className="mt-7"><DurableServiceClient riskpathId={id} /></div>
+        <div className="mt-7 space-y-8">
+          <StampedServiceEvidenceEnhancement riskpathId={id} previewMode={previewMode} />
+          <DurableServiceClient riskpathId={id} />
+        </div>
       </main>
     </div>
   );
