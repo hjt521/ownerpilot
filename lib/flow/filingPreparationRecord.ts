@@ -243,7 +243,7 @@ function validateOwnerReviewEvidence(value: unknown):
   }
 
   const generated = value.generatedDraft;
-  const rendered = value.renderedAcknowledgment;
+  const rendered = value.renderedAcknowledgment as unknown as OwnerReviewedDocumentEvidence['renderedAcknowledgment'];
   if (rendered.renderedGeneratedDocumentId !== generated.generatedDocumentId
     || rendered.renderedPdfSha256 !== generated.generatedPdfSha256
     || rendered.renderedByteLength !== generated.generatedByteLength
