@@ -12,8 +12,6 @@ import { computeCompliancePeriod } from '@/lib/dates/computeCompliancePeriod';
 import { getVerifiedHolidaySet } from '@/lib/dates/holidays';
 import { validateIntendedServiceDate, MAX_LEAD_DAYS } from '@/lib/dates/intendedServiceDate';
 import { intendedServiceDateExplainer } from '@/lib/flow/intendedServiceDateCopy';
-// PR-A3 §5.2 core — client produce path (Fork B(ii) rail-caller + Fork A(iii) client verdict resolution).
-// Source: pr_a3_produce_handoff_fork_ruling_2026-07-01.md.
 import { planProduce, type ProducePlan } from '@/lib/chat/reviewProduce';
 import { renderNotice } from '@/lib/produce/renderNotice';
 import { buildNoticeDocumentHtml } from '@/lib/produce/buildNoticeHtml';
@@ -21,11 +19,9 @@ import { LaProducePanel } from '@/components/la-produce-panel';
 import { isLaProductionUnblocked } from '@/lib/jurisdiction/laRtcRules';
 import { boundFetch } from '@/lib/http/boundFetch';
 import { chatStalenessAckButton } from '@/lib/chat/stalenessCopy';
-// FF-3 Block C — owner-facing reconciliation / held / pause surfaces + resume.
 import { lockedProse } from '@/lib/compliance/lockedProse';
 import { parseReconciliationOptions, type ReconciliationOption } from '@/lib/chat/reconciliationCardOptions';
 import { LockedText } from '@/components/chat/LockedText';
-// Omnibus §3 row 1 — owner reply-to-broker widget (self-gates on FF3_REPLY_TO_BROKER_ENABLED; renders null when off).
 import { Ff3BrokerReply } from '@/components/chat/Ff3BrokerReply';
 
 interface ReviewField { field: string; label: string; display: string; sensitive: boolean; }
@@ -43,7 +39,6 @@ function formatLong(iso: string): string {
   });
 }
 
-/** Pure client-side recompute of the facial expiration for a candidate service date. */
 function computeExpiration(serviceDate: string): { expiration: string | null; error: string | null } {
   const v = validateIntendedServiceDate(serviceDate, isoDay(0));
   if (!v.ok) return { expiration: null, error: v.message ?? 'Invalid service date.' };
@@ -63,18 +58,12 @@ export function ReviewScreen() {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [err, setErr] = useState<string | null>(null);
-
-  // PR-A2: intended service date — default = today (a valid "generate-and-serve-same-day" value).
   const today = useMemo(() => isoDay(0), []);
   const maxDate = useMemo(() => isoDay(MAX_LEAD_DAYS), []);
   const [serviceDate, setServiceDate] = useState<string>(today);
   const [expiration, setExpiration] = useState<string | null>(null);
   const [dateErr, setDateErr] = useState<string | null>(null);
 
-  // PR-A3 §5.2 core — produce mode. idle → working → ready (LA overlay or stub) | error.
-  // PR-B Surface 1: a `stale` phase interposes when the face drifted since a prior produce (warn-then-require-
-  // new-row; the owner must acknowledge before a new row is produced). The produce rail is never called until
-  // the owner clicks Generate.
   interface StaleInfo { warning: string; reason: 'AMOUNT_CHANGED' | 'FACE_FIELD_CHANGED'; changedFields: string[]; priorRiskpathId: string; }
   interface ReconcileInfo { card: string; options: ReconciliationOption[]; }
   const [produce, setProduce] = useState<
@@ -95,21 +84,16 @@ export function ReviewScreen() {
       });
       if (r.status === 409) {
         const j = await r.json().catch(() => ({}));
-        // PR-B Surface 1: the face drifted since the prior produce — warn + require an explicit acknowledgment.
         if (j.error === 'stale_notice' && j.staleness?.warning) {
           setProduce({ phase: 'stale', stale: { warning: j.staleness.warning, reason: j.staleness.reason, changedFields: j.staleness.changedFields ?? [], priorRiskpathId: j.priorRiskpathId } });
           return;
         }
-        // FF-3 Block C §3.1 — reconciliation mismatch: render the entry-14 card verbatim + the three-way buttons.
         if (j.error === 'ff3_reconciliation_flag' && typeof j.card === 'string') {
           setProduce({ phase: 'reconcile', reconcile: { card: j.card, options: parseReconciliationOptions(j.card) } });
           return;
         }
-        // §3.2 held state (owner picked (3) / a defect); §Gap-B pause (owner picked (2)).
         if (j.error === 'ff3_awaiting_broker_review') { setProduce({ phase: 'held' }); return; }
         if (j.error === 'ff3_notice_wrong_pause') { setProduce({ phase: 'pause' }); return; }
-        // Resume authorization no longer matches live state (details changed since the broker reviewed) → the
-        // existing generic review-needed message (no new owner-facing prose, per Block C §3.5).
         setProduce({ phase: 'error', error: 'This notice needs review before it can be produced.' });
         return;
       }
@@ -119,8 +103,6 @@ export function ReviewScreen() {
         return;
       }
       const env = await r.json();
-      // Fork A(iii): resolve jurisdiction client-side reusing the wizard resolver; Fork B(ii): the rail is
-      // called client-side (inside LaProducePanel) for the confirmed_la branch.
       const plan = await planProduce(env, { isGateOpen: isLaProductionUnblocked, fetchImpl: boundFetch });
       setProduce({ phase: 'ready', plan });
     } catch {
@@ -128,7 +110,6 @@ export function ReviewScreen() {
     }
   }
 
-  // PR-B §5: record the staleness acknowledgment (compliance artifact) on the prior stale row before acting.
   async function recordStalenessAck(
     s: StaleInfo, action: 'proceed_to_reproduce' | 'cancel_at_generate',
   ) {
@@ -145,8 +126,6 @@ export function ReviewScreen() {
   }
   useEffect(() => { load(); }, []);
 
-  // FF-3 Block C §3.3 — arriving from the resume card (/chat/review?resume=1): mint a one-shot resume token and
-  // produce with it. Single attempt; on any failure, fall back to the normal review screen.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (new URLSearchParams(window.location.search).get('resume') !== '1') return;
@@ -160,7 +139,6 @@ export function ReviewScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // req 5 — real-time recompute: the displayed expiration updates in the same render cycle as the date edit.
   useEffect(() => {
     const { expiration: exp, error } = computeExpiration(serviceDate);
     setExpiration(exp);
@@ -213,140 +191,59 @@ export function ReviewScreen() {
         </section>
       ))}
 
-      {/* PR-A2 — intended service date + real-time facial-date recompute */}
       <section className="mt-6 rounded-lg border border-neutral-200 p-4">
         <h2 className="font-medium">Service date</h2>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <label htmlFor="intended-service-date" className="text-sm text-neutral-500">
-            Date you intend to serve
-          </label>
-          <input
-            id="intended-service-date"
-            type="date"
-            value={serviceDate}
-            min={today}
-            max={maxDate}
-            onChange={(e) => setServiceDate(e.target.value)}
-            className="min-h-[48px] rounded border border-neutral-300 px-3 py-2 text-right"
-          />
+          <label htmlFor="intended-service-date" className="text-sm text-neutral-500">Date you intend to serve</label>
+          <input id="intended-service-date" type="date" value={serviceDate} min={today} max={maxDate}
+            onChange={(e) => setServiceDate(e.target.value)} className="min-h-[48px] rounded border border-neutral-300 px-3 py-2 text-right" />
         </div>
-        <p className="mt-3 text-sm" data-testid="expiration-display">
-          <span className="text-neutral-500">3-day notice expires: </span>
-          <span className="font-medium">{expiration ? formatLong(expiration) : '—'}</span>
-        </p>
+        <p className="mt-3 text-sm" data-testid="expiration-display"><span className="text-neutral-500">3-day notice expires: </span><span className="font-medium">{expiration ? formatLong(expiration) : '—'}</span></p>
         {dateErr && <p className="mt-2 text-sm text-red-600">{dateErr}</p>}
         <p className="mt-3 text-xs leading-relaxed text-neutral-500">{intendedServiceDateExplainer}</p>
       </section>
 
       {err && <p className="mt-4 text-sm text-red-600">{err}</p>}
-      {missing.length > 0 && (
-        <p className="mt-4 text-sm text-amber-700">Still needed before generating: {missing.join(', ')}.</p>
-      )}
+      {missing.length > 0 && <p className="mt-4 text-sm text-amber-700">Still needed before generating: {missing.join(', ')}.</p>}
 
       <div className="mt-8 flex flex-col gap-3">
-        {/* PR-A3 §5.2 core — produce path. POSTs the from-chat envelope (§5.1), resolves the jurisdiction
-            verdict client-side (Fork A(iii)), then renders: LA overlay for confirmed_la (Fork B(ii) rail-caller
-            inside LaProducePanel), or a stub for the non-LA / manual-review / unresolved branches this pass. */}
-        <button disabled={!canGenerate || produce.phase === 'working'}
-          onClick={() => onGenerate()}
+        <button disabled={!canGenerate || produce.phase === 'working'} onClick={() => onGenerate()}
           className="min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white disabled:opacity-40">
           {produce.phase === 'working' ? 'Preparing your notice…' : 'Generate notice PDF'}
         </button>
-        {/* Group 3 — magic-link send-draft */}
-        <button onClick={() => { window.location.href = '/chat/review?send=1'; }}
-          className="min-h-[48px] rounded-md border border-neutral-300 px-5 py-3">
-          Send myself this draft
-        </button>
+        <button onClick={() => { window.location.href = '/chat/review?send=1'; }} className="min-h-[48px] rounded-md border border-neutral-300 px-5 py-3">Send myself this draft</button>
       </div>
 
-      {produce.phase === 'error' && (
-        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-700">{produce.error}</p>
-          <button onClick={() => onGenerate()} className="mt-2 min-h-[44px] text-sm underline">Try again</button>
-        </div>
-      )}
+      {produce.phase === 'error' && <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4"><p className="text-sm text-red-700">{produce.error}</p><button onClick={() => onGenerate()} className="mt-2 min-h-[44px] text-sm underline">Try again</button></div>}
 
-      {/* PR-B Surface 1: staleness warning — warn-then-require-new-row. The owner must acknowledge (a compliance
-          artifact) before a new notice is produced. Ratified copy (server-filled {{changedFields}}). */}
       {produce.phase === 'stale' && produce.stale && (
         <div className="mt-6 rounded-lg border border-amber-400 bg-amber-50 p-4" data-testid="staleness-warning">
           <p className="text-sm text-amber-900 leading-relaxed">{produce.stale.warning}</p>
           <div className="mt-4 flex flex-col gap-2">
-            <button
-              onClick={async () => { const s = produce.stale!; await recordStalenessAck(s, 'proceed_to_reproduce'); onGenerate({ acknowledged: true }); }}
-              className="min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white">
-              {chatStalenessAckButton}
-            </button>
-            <button
-              onClick={async () => { const s = produce.stale!; await recordStalenessAck(s, 'cancel_at_generate'); setProduce({ phase: 'idle' }); }}
-              className="min-h-[44px] text-sm underline text-neutral-600">
-              Cancel — let me review first
-            </button>
+            <button onClick={async () => { const s = produce.stale!; await recordStalenessAck(s, 'proceed_to_reproduce'); onGenerate({ acknowledged: true }); }} className="min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white">{chatStalenessAckButton}</button>
+            <button onClick={async () => { const s = produce.stale!; await recordStalenessAck(s, 'cancel_at_generate'); setProduce({ phase: 'idle' }); }} className="min-h-[44px] text-sm underline text-neutral-600">Cancel — let me review first</button>
           </div>
         </div>
       )}
 
-      {/* FF-3 Block C §3.1 — reconciliation mismatch: render the entry-14 card verbatim + three-way buttons (neutral, no
-          "recommended" highlight; labels parsed verbatim from the ratified card). */}
       {produce.phase === 'reconcile' && produce.reconcile && (
         <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4" data-testid="ff3-reconcile-card">
           <LockedText text={produce.reconcile.card} className="text-sm leading-relaxed text-neutral-900" />
-          <div className="mt-4 flex flex-col gap-2">
-            {produce.reconcile.options.map((o) => (
-              <button
-                key={o.ordinal}
-                type="button"
-                onClick={() => onGenerate({ reconciliationSelection: o.ordinal })}
-                className="min-h-[48px] rounded-md border border-neutral-400 bg-white px-4 py-3 text-left text-sm text-neutral-900 hover:border-neutral-700"
-                data-testid={`ff3-reconcile-option-${o.ordinal}`}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
+          <div className="mt-4 flex flex-col gap-2">{produce.reconcile.options.map((o) => <button key={o.ordinal} type="button" onClick={() => onGenerate({ reconciliationSelection: o.ordinal })} className="min-h-[48px] rounded-md border border-neutral-400 bg-white px-4 py-3 text-left text-sm text-neutral-900 hover:border-neutral-700" data-testid={`ff3-reconcile-option-${o.ordinal}`}>{o.label}</button>)}</div>
         </div>
       )}
 
-      {/* §3.2 held state — content only, no CTA (owner picked (3) or a defect). */}
-      {produce.phase === 'held' && (
-        <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid="ff3-held-card">
-          <LockedText text={lockedProse('chatFf3AwaitingBrokerReviewHeld')} className="text-sm leading-relaxed text-neutral-800" />
-          {/* Omnibus §3 row 1: reply-to-broker seam. Renders null unless FF3_REPLY_TO_BROKER_ENABLED is on, so the
-              locked held-state content above is unchanged when the flag is off. */}
-          <Ff3BrokerReply />
-        </div>
-      )}
+      {produce.phase === 'held' && <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid="ff3-held-card"><LockedText text={lockedProse('chatFf3AwaitingBrokerReviewHeld')} className="text-sm leading-relaxed text-neutral-800" /><Ff3BrokerReply /></div>}
+      {produce.phase === 'pause' && <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid="ff3-pause-card"><LockedText text={lockedProse('chatFf3NoticeWrongPause')} className="text-sm leading-relaxed text-neutral-800" /><button type="button" onClick={() => { window.location.href = '/chat'; }} className="mt-4 min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white" data-testid="ff3-pause-new-session">Start a new session</button></div>}
 
-      {/* §Gap-B pause — owner picked (2) notice-wrong: acknowledge + the one authorized action. */}
-      {produce.phase === 'pause' && (
-        <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid="ff3-pause-card">
-          <LockedText text={lockedProse('chatFf3NoticeWrongPause')} className="text-sm leading-relaxed text-neutral-800" />
-          <button
-            type="button"
-            onClick={() => { window.location.href = '/chat'; }}
-            className="mt-4 min-h-[48px] rounded-md bg-neutral-900 px-5 py-3 text-white"
-            data-testid="ff3-pause-new-session"
-          >
-            Start a new session
-          </button>
-        </div>
-      )}
-
-      {produce.phase === 'ready' && produce.plan && (
-        produce.plan.route.kind === 'la_overlay'
-          ? <LaProduceMount plan={produce.plan} />
-          : <ProduceStub reason={produce.plan.route.reason} />
-      )}
+      {produce.phase === 'ready' && produce.plan && (produce.plan.route.kind === 'la_overlay' ? <LaProduceMount plan={produce.plan} /> : <ProduceStub reason={produce.plan.route.reason} />)}
     </main>
   );
 }
 
-/**
- * LA green path (§5.2 core): render the notice from the chat-assembled NoticeFlowData (wizard parity — same
- * renderNotice) and mount the server-gated LaProducePanel (verify-la → la-packet → LAHD prompt → print).
- */
 function LaProduceMount({ plan }: { plan: ProducePlan }) {
   const [, setProduced] = useState(false);
+  const [continuationUnavailable, setContinuationUnavailable] = useState(false);
   let html: string | null = null;
   let model: ReturnType<typeof renderNotice>['model'] | null = null;
   let renderErr: string | null = null;
@@ -357,9 +254,8 @@ function LaProduceMount({ plan }: { plan: ProducePlan }) {
   } catch {
     renderErr = 'The notice could not be generated. Please review your entries.';
   }
-  if (renderErr || !model || !html) {
-    return <p className="mt-6 text-sm text-red-600">{renderErr ?? 'The notice could not be generated.'}</p>;
-  }
+  if (renderErr || !model || !html) return <p className="mt-6 text-sm text-red-600">{renderErr ?? 'The notice could not be generated.'}</p>;
+
   return (
     <section className="mt-8">
       <LaProducePanel
@@ -370,32 +266,24 @@ function LaProduceMount({ plan }: { plan: ProducePlan }) {
         verdictSource="live_resolver"
         riskpathId={plan.riskpathId}
         onProduced={() => setProduced(true)}
-        // §5.2 produce-audit fast-follow (pr_a3_5_2_core_countersign_and_open_items_broker_ruling_2026-07-01.md
-        // §2): persist the LA produce audit (RTC hashes + LAHD ack) onto the riskpath record — compliance
-        // parity with the wizard's flow-state persistence. Wizard onAudit is untouched.
         onAudit={(f) => {
           void fetch(`/api/notices/${plan.riskpathId}/produce-audit`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ laProduceAudit: f }),
           }).catch(() => {});
+          // onAudit fires only from the existing post-produce LAHD acknowledgment seam. Finalization failure is
+          // isolated from Notice printing; new continuation QR issuance independently fails closed server-side.
+          void fetch(`/api/notices/${plan.riskpathId}/created-notice/finalize`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+            body: JSON.stringify({ createdNoticeArtifactId: plan.createdNoticeArtifactId }),
+          }).then((r) => setContinuationUnavailable(!r.ok)).catch(() => setContinuationUnavailable(true));
         }}
       />
+      {continuationUnavailable && <p className="mt-3 rounded-lg border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">Owner continuation and durable service evidence are unavailable for this copy right now. You can still print the Notice.</p>}
     </section>
   );
 }
 
-/**
- * §5.2-core stub for the non-LA / manual-review / unresolved / gate-closed branches: WIRED and routed
- * correctly, intentionally minimal. Full branch UX + copy, non-LA production, broker-confirm (Decision B), and
- * the save-and-resume link (chatIntakeCaptureEscalation) are the fast-follow (fork ruling §5).
- */
 function ProduceStub({ reason }: { reason: string }) {
-  return (
-    <section className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid={`produce-stub-${reason}`}>
-      <p className="text-sm text-neutral-700">
-        We can’t finish producing this notice automatically in this version. We’ve saved your details — you can
-        come back and pick up where you left off.
-      </p>
-    </section>
-  );
+  return <section className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-4" data-testid={`produce-stub-${reason}`}><p className="text-sm text-neutral-700">We can’t finish producing this notice automatically in this version. We’ve saved your details — you can come back and pick up where you left off.</p></section>;
 }

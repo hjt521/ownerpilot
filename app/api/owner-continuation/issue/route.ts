@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { loadSession, serviceClient } from '@/lib/chat/session';
+import { hasFinalizedCreatedNoticeBinding } from '@/lib/riskpath/durableService';
 import {
   OWNER_CONTINUATION_PURPOSE,
   OWNER_CONTINUATION_VERSION,
@@ -28,21 +29,24 @@ export async function POST(req: NextRequest) {
   const session = await loadSession(sessionToken, sb);
   if (!session?.user_id) return NextResponse.json({ error: 'authentication required' }, { status: 401 });
 
-  // Service-role access is narrowed by explicit exact-current-user authorization.
   const { data: record } = await sb
     .from('riskpath_records')
-    .select('id, user_id, soft_deleted_at')
+    .select('id, user_id, soft_deleted_at, created_notice_artifact_id, created_notice_service_date, created_notice_generation, created_notice_semantic_binding_id, created_notice_finalized_at')
     .eq('id', parsed.data.riskpathId)
     .eq('user_id', session.user_id)
     .is('soft_deleted_at', null)
     .maybeSingle();
   if (!record) return NextResponse.json({ error: 'record unavailable' }, { status: 404 });
+  // New QR issuance is available only for a complete finalized exact Created Notice binding.
+  // Existing already-issued locator associations are not touched by this route or migration.
+  if (!hasFinalizedCreatedNoticeBinding(record)) {
+    return NextResponse.json({ error: 'continuation unavailable' }, { status: 409 });
+  }
 
   let origin: string;
   try {
     origin = canonicalOwnerPilotOrigin();
   } catch {
-    // Origin failure must not create an unusable durable association.
     return NextResponse.json({ error: 'continuation unavailable' }, { status: 503 });
   }
 
@@ -55,8 +59,6 @@ export async function POST(req: NextRequest) {
   });
   if (error) return NextResponse.json({ error: 'continuation unavailable' }, { status: 503 });
 
-  // Raw locator is returned only to this authorized browser so it can be printed.
-  // It is never logged or persisted by this route.
   return NextResponse.json(
     { ok: true, scanUrl: buildOwnerContinuationPublicUrl(rawLocator, origin) },
     { headers: { 'Cache-Control': 'no-store' } },

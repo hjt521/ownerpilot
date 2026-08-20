@@ -1,7 +1,4 @@
-// lib/chat/reviewProduce.test.ts — PR-A3 §5.2 core.
-// Proves: envelope → wizard-parity NoticeFlowData (renderNotice no-throw); facial dates computed; and the
-// jurisdiction verdict routes correctly — LA green path → la_overlay; non-LA / manual-review / unresolved /
-// gate-closed → the stubbed surface. Client verdict resolution is injected (no browser). Plain tsx suite.
+// lib/chat/reviewProduce.test.ts — PR-A3 §5.2 core + Durable Service Evidence V1 identity propagation.
 
 import {
   buildNoticeDataFromEnvelope, computeDatesForData, routeForVerdict, planProduce,
@@ -12,9 +9,10 @@ import type { BridgeRunResult } from '@/lib/flow/jurisdictionBridge';
 
 let passed = 0, failed = 0;
 const check = (n: string, c: boolean, d = '') => { c ? passed++ : (failed++, console.log(`  ✗ ${n}${d ? ` — ${d}` : ''}`)); if (c) console.log(`  ✓ ${n}`); };
+const artifactId = '8ee1f1ae-9112-4acf-a4f7-b790bd50ac73';
 
 const envelope = (): ProduceEnvelope => ({
-  ok: true, riskpathId: 'rp_1', lahdCopyVersion: 'v1', baseName: 'notice',
+  ok: true, riskpathId: 'rp_1', createdNoticeArtifactId: artifactId, lahdCopyVersion: 'v1', baseName: 'notice',
   payload: {
     property_address: '5537 La Mirada Ave, Los Angeles, CA 90038',
     tenant_names: ['Clifton Alexander'],
@@ -30,13 +28,11 @@ const envelope = (): ProduceEnvelope => ({
   },
 });
 
-/** A fetch stub that returns a geocode 200 with the given disposition. */
 const geocodeFetch = (disposition: string): typeof fetch =>
   (async () => ({ status: 200, json: async () => ({ disposition, reviewReason: null }) })) as unknown as typeof fetch;
 const openGate = () => true;
 const closedGate = () => false;
 
-// --- envelope → data + dates ------------------------------------------------
 {
   const data = buildNoticeDataFromEnvelope(envelope());
   check('envelope → NoticeFlowData (serviceDate carried)', data.serviceDate === '2026-06-30' && data.signingDate === '2026-06-30');
@@ -47,7 +43,6 @@ const closedGate = () => false;
   check('renderNotice does not throw on the chat-assembled model (wizard parity)', !threw);
 }
 
-// missing serviceDate throws
 {
   const env = envelope(); delete (env.payload as Record<string, unknown>).serviceDate;
   let threw = false;
@@ -55,7 +50,6 @@ const closedGate = () => false;
   check('missing serviceDate throws (no defaulting)', threw);
 }
 
-// --- routeForVerdict (pure) -------------------------------------------------
 const v = (verdict: string): BridgeRunResult => ({ kind: 'verdict', verdict: verdict as 'confirmed_la', addressKey: 'k' });
 check('route: confirmed_la → la_overlay', routeForVerdict(v('confirmed_la')).kind === 'la_overlay');
 check('route: not_la → stub/non_la', JSON.stringify(routeForVerdict(v('not_la'))) === JSON.stringify({ kind: 'stub', reason: 'non_la' }));
@@ -64,11 +58,11 @@ check('route: resolution_failed → stub/unresolved', JSON.stringify(routeForVer
 check('route: skipped_gate_closed → stub/gate_closed', (routeForVerdict({ kind: 'skipped_gate_closed' }) as { reason?: string }).reason === 'gate_closed');
 check('route: skipped_no_address → stub/unresolved', (routeForVerdict({ kind: 'skipped_no_address' }) as { reason?: string }).reason === 'unresolved');
 
-// --- planProduce (async, injected fetch + gate) -----------------------------
 async function main() {
   const laPlan = await planProduce(envelope(), { isGateOpen: openGate, fetchImpl: geocodeFetch('confirmed_la') });
   check('plan: confirmed_la → la_overlay green path', laPlan.route.kind === 'la_overlay' && laPlan.baseName === 'notice');
   check('plan: carries data + dates', laPlan.data.serviceDate === '2026-06-30' && laPlan.dates.compliancePeriodEndDate === '2026-07-06');
+  check('plan: carries exact opaque artifact id without deriving another id', laPlan.createdNoticeArtifactId === artifactId);
 
   const notLaPlan = await planProduce(envelope(), { isGateOpen: openGate, fetchImpl: geocodeFetch('not_la') });
   check('plan: not_la → stub/non_la', notLaPlan.route.kind === 'stub' && (notLaPlan.route as { reason: string }).reason === 'non_la');
