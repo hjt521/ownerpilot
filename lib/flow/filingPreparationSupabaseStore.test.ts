@@ -226,7 +226,7 @@ async function main(): Promise<void> {
   ok(!source.includes('createClient(') && !source.includes('process.env') && !/service[_-]?role/i.test(source), 'adapter contains no client creation, environment-key, service-role, or admin path');
   ok(!source.includes('persistFilingPreparationRecord('), 'adapter never invokes canonical persistence automatically');
   ok(!source.includes("from 'next/") && !source.includes('NextResponse') && !source.includes('route.ts'), 'adapter registers no route/action runtime call site');
-  equal((source.match(/client\.from\(TABLE\)/g) ?? []).length, 2, 'source contains only the intended insert and read table access seams');
+  equal((source.match(/client\s*\.from\(TABLE\)/g) ?? []).length, 2, 'source contains only the intended insert and read table access seams');
 
   const successRepresentation = JSON.stringify(await createFilingPreparationSupabaseStore(new FakeClient()).insert(ROW));
   for (const forbidden of ['stageF', 'packetReady', 'signed', 'filed', 'courtAccepted', 'serviceAuthorized', 'legalSufficiency', 'autonomousAuthority', 'tenantQr', 'packetAuthenticityQr']) {
