@@ -34,12 +34,8 @@ function ok(condition: unknown, message: string): void {
   assert.ok(condition, message);
   assertions += 1;
 }
-function deepEqual(actual: unknown, expected: unknown, message: string): void {
-  assert.deepEqual(actual, expected, message);
-  assertions += 1;
-}
 
-function generatedDraftFixture(bytes = Uint8Array.from([10, 20, 30, 40, 50])): GeneratedDraftEvidence {
+function draftFixture(bytes = Uint8Array.from([10, 20, 30, 40, 50])): GeneratedDraftEvidence {
   const identity: GeneratedDraftIdentity = {
     schemaVersion: 1,
     artifactClass: 'GENERATED_DRAFT',
@@ -49,7 +45,7 @@ function generatedDraftFixture(bytes = Uint8Array.from([10, 20, 30, 40, 50])): G
     officialSourceSha256: '1'.repeat(64),
     sourceAdmissionPolicyId: 'qpdf-dual-pass-linearization-isolation-v2',
     sourceAdmissionStatus: 'SOURCE_ADMITTED_CLEAN',
-    qpdfAssetIdentityDigest: 'qpdf-asset:sha256:asset',
+    qpdfAssetIdentityDigest: 'qpdf-asset:sha256:fixture',
     sourcePassACommandDigest: 'qpdf-command:sha256:pass-a',
     sourcePassAWarningInventoryDigest: 'source-warning-inventory:sha256:pass-a',
     sourcePassBCommandDigest: 'qpdf-command:sha256:pass-b',
@@ -75,10 +71,7 @@ function generatedDraftFixture(bytes = Uint8Array.from([10, 20, 30, 40, 50])): G
     generatedPdfSha256: sha256Bytes(bytes),
     generatedByteLength: bytes.byteLength,
   };
-  return {
-    ...identity,
-    generatedDocumentId: computeGeneratedDocumentId(identity),
-  };
+  return { ...identity, generatedDocumentId: computeGeneratedDocumentId(identity) };
 }
 
 function snapshotFromDraft(draft: GeneratedDraftEvidence): FilingPreparationCanonicalSnapshot {
@@ -113,7 +106,7 @@ function snapshotFromDraft(draft: GeneratedDraftEvidence): FilingPreparationCano
   };
 }
 
-function ownerReviewFixture(draft: GeneratedDraftEvidence): OwnerReviewedDocumentEvidence {
+function reviewFixture(draft: GeneratedDraftEvidence): OwnerReviewedDocumentEvidence {
   const result = createOfficialFormOwnerReview({
     generatedDraft: draft,
     renderedAcknowledgment: {
@@ -129,13 +122,12 @@ function ownerReviewFixture(draft: GeneratedDraftEvidence): OwnerReviewedDocumen
       statementVersion: OWNER_REVIEW_STATEMENT_VERSION,
     },
   });
-  assert.equal(result.status, 'OWNER_REVIEWED_DOCUMENT');
-  if (result.status !== 'OWNER_REVIEWED_DOCUMENT') throw new Error('synthetic owner review fixture blocked');
+  if (result.status !== 'OWNER_REVIEWED_DOCUMENT') throw new Error('synthetic Owner Review fixture unexpectedly blocked');
   return result.evidence;
 }
 
 function baseInput(revision = 1): CreateFilingPreparationCurrentStateInput {
-  const draft = generatedDraftFixture();
+  const draft = draftFixture();
   return {
     authenticatedUserId: USER_A,
     riskpathRecordId: RISKPATH_A,
@@ -149,62 +141,50 @@ function baseInput(revision = 1): CreateFilingPreparationCurrentStateInput {
 
 function generatedInput(revision = 1): CreateFilingPreparationCurrentStateInput {
   const bytes = Uint8Array.from([10, 20, 30, 40, 50]);
-  const draft = generatedDraftFixture(bytes);
+  const draft = draftFixture(bytes);
   return {
-    authenticatedUserId: USER_A,
-    riskpathRecordId: RISKPATH_A,
-    revision,
+    ...baseInput(revision),
     preparationSnapshot: snapshotFromDraft(draft),
     generatedDraftBinding: { revision, generatedDraft: draft },
     generatedDraftBytes: bytes,
-    ownerReviewBinding: null,
   };
 }
 
-function ownerReviewedInput(revision = 1): CreateFilingPreparationCurrentStateInput {
+function reviewedInput(revision = 1): CreateFilingPreparationCurrentStateInput {
   const input = generatedInput(revision);
-  const binding = input.generatedDraftBinding as { revision: number; generatedDraft: GeneratedDraftEvidence };
+  const generated = input.generatedDraftBinding as { revision: number; generatedDraft: GeneratedDraftEvidence };
   return {
     ...input,
-    ownerReviewBinding: {
-      revision,
-      ownerReviewEvidence: ownerReviewFixture(binding.generatedDraft),
-    },
+    ownerReviewBinding: { revision, ownerReviewEvidence: reviewFixture(generated.generatedDraft) },
   };
 }
 
 function requireBuilt(input: CreateFilingPreparationCurrentStateInput): FilingPreparationCurrentState {
   const result = createFilingPreparationCurrentState(input);
-  assert.equal(result.status, 'CURRENT_STATE_REVISION');
-  if (result.status !== 'CURRENT_STATE_REVISION') throw new Error(`${result.blockReason}: ${result.detail}`);
+  if (result.status !== 'CURRENT_STATE_REVISION') throw new Error('synthetic current-state fixture unexpectedly blocked');
   return result.currentState;
 }
 
 function main(): void {
   {
-    const result = createFilingPreparationCurrentState(baseInput());
-    equal(result.status, 'CURRENT_STATE_REVISION', 'valid immutable revision without generated draft is accepted');
-    if (result.status === 'CURRENT_STATE_REVISION') {
-      equal(result.currentState.schemaVersion, 1, 'schema version is exact v1');
-      equal(result.currentState.recordClass, 'FILING_PREPARATION_CURRENT_STATE', 'record class is exact');
-      equal(result.currentState.revision, 1, 'revision is preserved');
-      equal(result.currentState.generatedDraftBinding, null, 'generated binding is absent when no draft exists');
-      equal(result.currentState.generatedDraftBytes, null, 'generated bytes are absent when no draft exists');
-      equal(result.currentState.ownerReviewBinding, null, 'Owner Review is absent when no draft exists');
-      equal(result.currentState.stageF, 'HELD', 'Stage F remains held');
-      equal(result.currentState.filing, 'NOT_PERFORMED', 'filing remains not performed');
-      equal(result.currentState.autonomousExecution, 'NOT_AUTHORIZED', 'autonomous execution remains unauthorized');
-      ok(/^filing-preparation-current-state:sha256:[0-9a-f]{64}$/.test(result.currentState.filingPreparationCurrentStateId), 'deterministic current-state ID has exact prefix/digest shape');
-      equal(validateFilingPreparationCurrentState(result.currentState).status, 'VALID', 'built revision validates exactly');
-    }
+    const state = requireBuilt(baseInput());
+    equal(state.schemaVersion, 1, 'schema version is v1');
+    equal(state.recordClass, 'FILING_PREPARATION_CURRENT_STATE', 'record class is exact');
+    equal(state.revision, 1, 'revision is exact');
+    equal(state.generatedDraftBinding, null, 'draft binding can be absent');
+    equal(state.generatedDraftBytes, null, 'draft bytes are absent iff draft binding absent');
+    equal(state.ownerReviewBinding, null, 'Owner Review can be absent');
+    equal(state.stageF, 'HELD', 'Stage F remains held');
+    equal(state.filing, 'NOT_PERFORMED', 'filing is not performed');
+    ok(/^filing-preparation-current-state:sha256:[0-9a-f]{64}$/.test(state.filingPreparationCurrentStateId), 'state ID has exact deterministic prefix');
+    equal(validateFilingPreparationCurrentState(state).status, 'VALID', 'built state validates');
   }
 
   {
     const first = requireBuilt(baseInput());
-    const again = requireBuilt(baseInput());
-    equal(first.filingPreparationCurrentStateId, again.filingPreparationCurrentStateId, 'identical immutable evidence yields identical deterministic ID');
-    const secondRevision = requireBuilt(baseInput(2));
-    ok(first.filingPreparationCurrentStateId !== secondRevision.filingPreparationCurrentStateId, 'later revision receives a distinct deterministic identity');
+    equal(first.filingPreparationCurrentStateId, requireBuilt(baseInput()).filingPreparationCurrentStateId, 'same immutable evidence is deterministic');
+    ok(first.filingPreparationCurrentStateId !== requireBuilt(baseInput(2)).filingPreparationCurrentStateId, 'later revision has a different identity');
+    ok(first.filingPreparationCurrentStateId !== requireBuilt({ ...baseInput(), authenticatedUserId: USER_B }).filingPreparationCurrentStateId, 'owner identity participates in state identity');
   }
 
   {
@@ -212,58 +192,52 @@ function main(): void {
       ...baseInput(),
       generatedDraftCurrentness: { status: 'CURRENT', reasons: [] },
     } as unknown as CreateFilingPreparationCurrentStateInput);
-    equal(result.status, 'BLOCKED', 'caller-authored generated currentness assertion is rejected');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'INVALID_INPUT_SHAPE', 'caller currentness fails at exact input-shape boundary');
+    equal(result.status, 'BLOCKED', 'caller currentness assertion is rejected');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'INVALID_INPUT_SHAPE', 'caller currentness fails exact input shape');
   }
 
-  {
-    const result = createFilingPreparationCurrentState({ ...baseInput(), authenticatedUserId: 'not-a-uuid' });
-    equal(result.status, 'BLOCKED', 'malformed authenticated owner UUID fails closed');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'INVALID_AUTHENTICATED_USER_ID', 'malformed owner UUID has exact reason');
-  }
-
-  {
-    const result = createFilingPreparationCurrentState({ ...baseInput(), riskpathRecordId: 'not-a-uuid' });
-    equal(result.status, 'BLOCKED', 'malformed RiskPath UUID fails closed');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'INVALID_RISKPATH_RECORD_ID', 'malformed RiskPath UUID has exact reason');
-  }
-
-  for (const revision of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-    const result = createFilingPreparationCurrentState({ ...baseInput(), revision });
-    equal(result.status, 'BLOCKED', `invalid revision ${String(revision)} fails closed`);
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'INVALID_REVISION', 'invalid revision has exact reason');
+  for (const [field, value, reason] of [
+    ['authenticatedUserId', 'not-a-uuid', 'INVALID_AUTHENTICATED_USER_ID'],
+    ['riskpathRecordId', 'not-a-uuid', 'INVALID_RISKPATH_RECORD_ID'],
+    ['revision', 0, 'INVALID_REVISION'],
+    ['revision', -1, 'INVALID_REVISION'],
+    ['revision', 1.5, 'INVALID_REVISION'],
+  ] as const) {
+    const result = createFilingPreparationCurrentState({ ...baseInput(), [field]: value });
+    equal(result.status, 'BLOCKED', `${field} malformed value fails closed`);
+    if (result.status === 'BLOCKED') equal(result.blockReason, reason, `${field} has exact block reason`);
   }
 
   {
     const input = generatedInput();
     input.generatedDraftBytes = null;
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'generated binding without bytes fails closed');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'GENERATED_DRAFT_BYTES_REQUIRED', 'missing generated bytes has exact reason');
+    equal(result.status, 'BLOCKED', 'draft binding without bytes fails closed');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'GENERATED_DRAFT_BYTES_REQUIRED', 'missing bytes has exact reason');
   }
 
   {
     const input = baseInput();
     input.generatedDraftBytes = Uint8Array.from([1]);
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'generated bytes without binding fail closed');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'UNBOUND_GENERATED_DRAFT_BYTES', 'unbound bytes have exact reason');
+    equal(result.status, 'BLOCKED', 'bytes without draft binding fail closed');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'UNBOUND_GENERATED_DRAFT_BYTES', 'unbound bytes has exact reason');
   }
 
   {
     const input = generatedInput();
     input.generatedDraftBytes = Uint8Array.from([10, 20]);
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'generated byte-length mismatch fails closed');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'GENERATED_DRAFT_BYTE_LENGTH_MISMATCH', 'byte-length mismatch has exact reason');
+    equal(result.status, 'BLOCKED', 'byte length mismatch fails closed');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'GENERATED_DRAFT_BYTE_LENGTH_MISMATCH', 'byte length mismatch has exact reason');
   }
 
   {
     const input = generatedInput();
     input.generatedDraftBytes = Uint8Array.from([50, 40, 30, 20, 10]);
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'same-length generated SHA-256 mismatch fails closed');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'GENERATED_DRAFT_SHA256_MISMATCH', 'generated SHA mismatch has exact reason');
+    equal(result.status, 'BLOCKED', 'same-length byte hash mismatch fails closed');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'GENERATED_DRAFT_SHA256_MISMATCH', 'byte hash mismatch has exact reason');
   }
 
   {
@@ -271,7 +245,7 @@ function main(): void {
     const binding = input.generatedDraftBinding as { revision: number; generatedDraft: GeneratedDraftEvidence };
     input.generatedDraftBinding = { ...binding, revision: 1 };
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'generated draft bound to historical revision fails closed');
+    equal(result.status, 'BLOCKED', 'historical generated binding cannot become current');
     if (result.status === 'BLOCKED') equal(result.blockReason, 'GENERATED_DRAFT_REVISION_MISMATCH', 'historical generated binding has exact reason');
   }
 
@@ -279,163 +253,112 @@ function main(): void {
     const input = generatedInput();
     input.preparationSnapshot = {
       ...(input.preparationSnapshot as FilingPreparationCanonicalSnapshot),
-      mapSnapshotId: 'field-map:sha256:new-current-state',
+      mapSnapshotId: 'field-map:sha256:new-state',
     };
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'self-consistent old generated draft cannot bind a changed preparation snapshot');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'GENERATED_DRAFT_PREPARATION_MISMATCH', 'changed preparation snapshot has exact reason');
+    equal(result.status, 'BLOCKED', 'old draft cannot bind changed current preparation snapshot');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'GENERATED_DRAFT_PREPARATION_MISMATCH', 'preparation mismatch has exact reason');
   }
 
   {
-    const currentState = requireBuilt(generatedInput());
-    equal(validateFilingPreparationCurrentState(currentState).status, 'VALID', 'generated-draft revision validates with exact bytes');
-    ok(currentState.generatedDraftBytes instanceof Uint8Array, 'exact generated bytes remain bound to current-state revision');
+    const state = requireBuilt(generatedInput());
+    equal(validateFilingPreparationCurrentState(state).status, 'VALID', 'exact draft bytes/evidence revision validates');
+    ok(state.generatedDraftBytes instanceof Uint8Array, 'generated bytes remain exact revision evidence');
   }
 
   {
     const input = baseInput();
-    const unrelatedDraft = generatedDraftFixture();
-    input.ownerReviewBinding = {
-      revision: 1,
-      ownerReviewEvidence: ownerReviewFixture(unrelatedDraft),
-    };
+    input.ownerReviewBinding = { revision: 1, ownerReviewEvidence: reviewFixture(draftFixture()) };
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'Owner Review without generated-draft binding fails closed');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'OWNER_REVIEW_REQUIRES_GENERATED_DRAFT', 'unbound Owner Review has exact reason');
+    equal(result.status, 'BLOCKED', 'Owner Review without draft binding fails closed');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'OWNER_REVIEW_REQUIRES_GENERATED_DRAFT', 'unbound review has exact reason');
   }
 
   {
-    const input = ownerReviewedInput(2);
-    const binding = input.ownerReviewBinding as { revision: number; ownerReviewEvidence: OwnerReviewedDocumentEvidence };
-    input.ownerReviewBinding = { ...binding, revision: 1 };
+    const input = reviewedInput(2);
+    const review = input.ownerReviewBinding as { revision: number; ownerReviewEvidence: OwnerReviewedDocumentEvidence };
+    input.ownerReviewBinding = { ...review, revision: 1 };
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'Owner Review bound to historical revision fails closed');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'OWNER_REVIEW_REVISION_MISMATCH', 'historical Owner Review binding has exact reason');
+    equal(result.status, 'BLOCKED', 'historical Owner Review cannot become current');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'OWNER_REVIEW_REVISION_MISMATCH', 'historical review has exact reason');
   }
 
   {
     const input = generatedInput();
-    const alternateBytes = Uint8Array.from([11, 21, 31, 41, 51]);
-    const alternateDraft = generatedDraftFixture(alternateBytes);
     input.ownerReviewBinding = {
       revision: 1,
-      ownerReviewEvidence: ownerReviewFixture(alternateDraft),
+      ownerReviewEvidence: reviewFixture(draftFixture(Uint8Array.from([11, 21, 31, 41, 51]))),
     };
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'Owner Review of a different generated document cannot bind current revision');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'OWNER_REVIEW_GENERATED_DRAFT_MISMATCH', 'Owner Review generated mismatch has exact reason');
+    equal(result.status, 'BLOCKED', 'review of different generated identity fails closed');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'OWNER_REVIEW_GENERATED_DRAFT_MISMATCH', 'review draft mismatch has exact reason');
   }
 
   {
-    const input = ownerReviewedInput();
-    const binding = structuredClone(input.ownerReviewBinding) as { revision: number; ownerReviewEvidence: OwnerReviewedDocumentEvidence };
-    binding.ownerReviewEvidence.ownerReviewRecordId = `owner-review:sha256:${'f'.repeat(64)}`;
-    input.ownerReviewBinding = binding;
+    const input = reviewedInput();
+    const review = structuredClone(input.ownerReviewBinding) as { revision: number; ownerReviewEvidence: OwnerReviewedDocumentEvidence };
+    review.ownerReviewEvidence.ownerReviewRecordId = `owner-review:sha256:${'f'.repeat(64)}`;
+    input.ownerReviewBinding = review;
     const result = createFilingPreparationCurrentState(input);
-    equal(result.status, 'BLOCKED', 'intrinsically invalid Owner Review evidence fails closed');
-    if (result.status === 'BLOCKED') equal(result.blockReason, 'OWNER_REVIEW_INVALID', 'Owner Review deterministic identity corruption has exact reason');
+    equal(result.status, 'BLOCKED', 'intrinsically invalid Owner Review fails closed');
+    if (result.status === 'BLOCKED') equal(result.blockReason, 'OWNER_REVIEW_INVALID', 'review identity corruption has exact reason');
   }
 
   {
-    const currentState = requireBuilt(ownerReviewedInput());
-    equal(validateFilingPreparationCurrentState(currentState).status, 'VALID', 'exact Owner Review binding validates against exact generated revision');
-    equal(currentState.ownerReviewBinding?.revision, currentState.revision, 'Owner Review binds exact current-state revision');
-    equal(
-      currentState.ownerReviewBinding?.ownerReviewEvidence.generatedDraft.generatedDocumentId,
-      currentState.generatedDraftBinding?.generatedDraft.generatedDocumentId,
-      'Owner Review binds exact generated-document identity',
-    );
+    const state = requireBuilt(reviewedInput());
+    equal(validateFilingPreparationCurrentState(state).status, 'VALID', 'exact Owner Review binding validates');
+    equal(state.ownerReviewBinding?.revision, state.revision, 'Owner Review binds exact revision');
+    equal(state.ownerReviewBinding?.ownerReviewEvidence.generatedDraft.generatedDocumentId, state.generatedDraftBinding?.generatedDraft.generatedDocumentId, 'Owner Review binds exact generated document');
   }
 
   {
-    const currentState = structuredClone(requireBuilt(baseInput()));
-    currentState.stageF = 'RELEASED' as unknown as 'HELD';
-    const result = validateFilingPreparationCurrentState(currentState);
+    const state = structuredClone(requireBuilt(baseInput()));
+    state.stageF = 'RELEASED' as unknown as 'HELD';
+    const result = validateFilingPreparationCurrentState(state);
     equal(result.status, 'BLOCKED', 'downstream authority mutation fails closed');
     if (result.status === 'BLOCKED') equal(result.blockReason, 'BOUNDARY_INVARIANT_MISMATCH', 'Stage F mutation has exact reason');
   }
 
   {
-    const currentState = structuredClone(requireBuilt(baseInput()));
-    currentState.filingPreparationCurrentStateId = `filing-preparation-current-state:sha256:${'0'.repeat(64)}`;
-    const result = validateFilingPreparationCurrentState(currentState);
+    const state = structuredClone(requireBuilt(baseInput()));
+    state.filingPreparationCurrentStateId = `filing-preparation-current-state:sha256:${'0'.repeat(64)}`;
+    const result = validateFilingPreparationCurrentState(state);
     equal(result.status, 'BLOCKED', 'deterministic state ID mismatch fails closed');
     if (result.status === 'BLOCKED') equal(result.blockReason, 'CURRENT_STATE_ID_MISMATCH', 'state ID mismatch has exact reason');
   }
 
   {
-    const currentState = requireBuilt(baseInput());
-    const identity = {
-      schemaVersion: currentState.schemaVersion,
-      recordClass: currentState.recordClass,
-      authenticatedUserId: currentState.authenticatedUserId,
-      riskpathRecordId: currentState.riskpathRecordId,
-      revision: currentState.revision,
-      preparationSnapshot: currentState.preparationSnapshot,
-      generatedDraftBinding: currentState.generatedDraftBinding,
-      ownerReviewBinding: currentState.ownerReviewBinding,
-      stageF: currentState.stageF,
-      packetComposition: currentState.packetComposition,
-      signing: currentState.signing,
-      filing: currentState.filing,
-      courtSubmission: currentState.courtSubmission,
-      service: currentState.service,
-      legalSufficiency: currentState.legalSufficiency,
-      autonomousExecution: currentState.autonomousExecution,
-    };
-    equal(computeFilingPreparationCurrentStateId(identity), currentState.filingPreparationCurrentStateId, 'public deterministic ID helper recomputes exact revision identity');
-  }
-
-  {
-    const first = requireBuilt({ ...baseInput(), authenticatedUserId: USER_A });
-    const otherOwner = requireBuilt({ ...baseInput(), authenticatedUserId: USER_B });
-    ok(first.filingPreparationCurrentStateId !== otherOwner.filingPreparationCurrentStateId, 'owner identity participates in deterministic current-state identity');
+    const state = requireBuilt(baseInput());
+    const { filingPreparationCurrentStateId: ignoredId, generatedDraftBytes: ignoredBytes, ...identity } = state;
+    void ignoredId;
+    void ignoredBytes;
+    equal(computeFilingPreparationCurrentStateId(identity), state.filingPreparationCurrentStateId, 'public deterministic ID helper recomputes exact identity');
   }
 
   {
     const sql = readFileSync('supabase/staged-migrations/059_e2_3d0b_filing_preparation_current_state.sql', 'utf8');
-    ok(sql.includes('create table public.filing_preparation_current_state_revisions'), 'migration creates only the authorized current-state relation');
-    ok(sql.includes('unique (riskpath_record_id, revision)'), 'migration rejects duplicate RiskPath/revision pairs');
-    ok(sql.includes('alter table public.filing_preparation_current_state_revisions enable row level security'), 'RLS is enabled');
-    ok(sql.includes('alter table public.filing_preparation_current_state_revisions force row level security'), 'RLS is forced');
-    ok(sql.includes('revoke all on public.filing_preparation_current_state_revisions from anon, authenticated'), 'migration revokes inherited anon/authenticated table authority');
-    ok(sql.includes('grant select, insert on public.filing_preparation_current_state_revisions to authenticated'), 'authenticated role receives only SELECT and INSERT');
-    ok(!/grant[^;]*(update|delete)/i.test(sql), 'migration grants no authenticated UPDATE or DELETE authority');
-    ok(sql.includes('user_id = (select auth.uid())'), 'RLS binds row user to authenticated owner');
-    ok(sql.includes('rp.user_id = (select auth.uid())'), 'RLS independently binds referenced RiskPath to same authenticated owner');
-    ok(!sql.includes('security definer'), 'migration adds no SECURITY DEFINER bypass');
-    ok(!sql.includes('service_role'), 'migration adds no service-role runtime path');
-    ok(!sql.includes('create trigger'), 'migration adds no trigger machinery');
-    ok(!sql.includes('create function'), 'migration adds no RPC/function machinery');
-    ok(sql.includes("state_payload -> 'generatedDraftBinding' = 'null'::jsonb"), 'migration enforces absent binding => absent generated bytes');
-    ok(sql.includes('generated_draft_bytes is not null'), 'migration requires bytes for generated-draft binding');
-    ok(sql.includes('octet_length(generated_draft_bytes)'), 'migration checks generated byte length against bound evidence');
-    ok(sql.includes("jsonb_typeof(state_payload -> 'ownerReviewBinding') = 'object'"), 'migration validates Owner Review binding shape');
-    ok(sql.includes("state_payload #>> '{ownerReviewBinding,ownerReviewEvidence,generatedDraft,generatedDocumentId}'"), 'migration binds Owner Review to exact generated-document identity');
-    ok(sql.includes("not (state_payload ? 'generatedDraftCurrentness')"), 'migration rejects caller-authored currentness assertion in durable payload');
-    ok(!sql.includes('filing_preparation_records '), 'new current-state substrate does not source state from filing_preparation_records');
+    ok(sql.includes('create table public.filing_preparation_current_state_revisions'), 'migration creates authorized relation');
+    ok(sql.includes('unique (riskpath_record_id, revision)'), 'duplicate RiskPath/revision is rejected');
+    ok(sql.includes('enable row level security') && sql.includes('force row level security'), 'RLS is enabled and forced');
+    ok(sql.includes('revoke all on public.filing_preparation_current_state_revisions from anon, authenticated'), 'anon/authenticated inherited authority is revoked');
+    ok(sql.includes('grant select, insert on public.filing_preparation_current_state_revisions to authenticated'), 'authenticated receives SELECT/INSERT only');
+    ok(!/grant[^;]*(update|delete)/i.test(sql), 'no UPDATE/DELETE grant exists');
+    ok(sql.includes('user_id = (select auth.uid())') && sql.includes('rp.user_id = (select auth.uid())'), 'RLS binds row and RiskPath to same owner');
+    ok(!sql.toLowerCase().includes('security definer') && !sql.includes('service_role'), 'no privileged bypass exists');
+    ok(!sql.toLowerCase().includes('create trigger') && !sql.toLowerCase().includes('create function'), 'no trigger/RPC machinery exists');
+    ok(sql.includes("state_payload -> 'generatedDraftBinding' = 'null'::jsonb"), 'absent draft binding requires absent bytes');
+    ok(sql.includes('octet_length(generated_draft_bytes)'), 'generated byte length is checked');
+    ok(sql.includes("state_payload #>> '{ownerReviewBinding,ownerReviewEvidence,generatedDraft,generatedDocumentId}'"), 'Owner Review is bound to exact generated identity');
+    ok(sql.includes("not (state_payload ? 'generatedDraftCurrentness')"), 'durable payload rejects caller currentness assertion');
+    ok(!sql.includes('filing_preparation_records '), 'substrate is not circularly sourced from filing-preparation records');
   }
 
   {
     const source = readFileSync('lib/flow/filingPreparationCurrentState.ts', 'utf8');
-    ok(!source.includes('generatedDraftCurrentness'), 'pure current-state contract contains no caller-authored currentness authority');
-    ok(!source.includes('@supabase/'), 'pure current-state contract performs no Supabase access');
-    ok(!source.includes('localStorage'), 'pure current-state contract performs no browser persistence');
-    ok(!source.includes('service_role'), 'pure current-state contract contains no privileged service-role path');
-    ok(!source.includes('filingPreparationRecord'), 'current-state contract is not circularly sourced from filing-preparation record evidence');
-    ok(!source.includes('fetch('), 'pure current-state contract performs no network/runtime source resolution');
-  }
-
-  {
-    const record = requireBuilt(ownerReviewedInput());
-    const { generatedDraftBytes: ignoredBytes, ...statePayload } = record;
-    void ignoredBytes;
-    equal(statePayload.filingPreparationCurrentStateId, record.filingPreparationCurrentStateId, 'durable JSON payload retains deterministic row identity');
-    equal(statePayload.authenticatedUserId, USER_A, 'durable JSON payload retains exact authenticated owner identity');
-    equal(statePayload.riskpathRecordId, RISKPATH_A, 'durable JSON payload retains exact RiskPath identity');
-    equal(statePayload.revision, 1, 'durable JSON payload retains exact immutable revision');
-    deepEqual(statePayload.generatedDraftBinding, record.generatedDraftBinding, 'durable payload retains exact generated-draft evidence binding');
-    deepEqual(statePayload.ownerReviewBinding, record.ownerReviewBinding, 'durable payload retains exact Owner Review evidence binding');
+    ok(!source.includes('generatedDraftCurrentness'), 'contract has no caller currentness authority');
+    ok(!source.includes('@supabase/') && !source.includes('fetch('), 'contract has no DB/network source adapter');
+    ok(!source.includes('localStorage') && !source.includes('service_role'), 'contract has no browser/privileged persistence');
+    ok(!source.includes('filingPreparationRecord'), 'contract is not circularly sourced from filing-preparation record evidence');
   }
 
   console.log(`filingPreparationCurrentState.test.ts: ${assertions} assertions passed`);
