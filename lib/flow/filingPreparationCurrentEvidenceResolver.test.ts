@@ -445,7 +445,8 @@ async function main(): Promise<void> {
     if (result.status !== 'BLOCKED') throw new Error('changed bytes must block');
     equal(result.blockReason, 'CURRENT_EVIDENCE_OUT_OF_DATE', 'OUT_OF_DATE has exact resolver blocker');
     deepEqual(result.canonicalCurrentness, expected, 'resolver preserves the real canonical OUT_OF_DATE result');
-    if (result.canonicalCurrentness !== 'NOT_EVALUATED') {
+    if (result.canonicalCurrentness !== 'NOT_EVALUATED'
+      && result.canonicalCurrentness.status === 'OUT_OF_DATE') {
       ok(result.canonicalCurrentness.reasons.includes('GENERATED_BYTES_CHANGED'), 'material byte change preserves canonical reason');
     }
   }
