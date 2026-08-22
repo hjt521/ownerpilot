@@ -10,6 +10,14 @@ const RISKPATH_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 let assertions = 0;
 function equal<T>(actual: T, expected: T, message: string): void { assert.equal(actual, expected, message); assertions += 1; }
 function ok(condition: unknown, message: string): void { assert.ok(condition, message); assertions += 1; }
+function executableSqlWithoutComments(sql: string): string {
+  return sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\r\n]*/g, ' ');
+}
+function grantsServiceRole(sql: string): boolean {
+  return executableSqlWithoutComments(sql)
+    .split(';')
+    .some((statement) => /^\s*grant\b/i.test(statement) && /\bto\s+service_role\b/i.test(statement));
+}
 
 function draftFixture(bytes = Uint8Array.from([10, 20, 30, 40, 50])): GeneratedDraftEvidence {
   const identity: GeneratedDraftIdentity = {
@@ -89,7 +97,12 @@ function main(): void {
   ok(sql.includes('enable row level security')&&sql.includes('force row level security'),'RLS enabled/forced');
   ok(sql.includes('revoke all on public.filing_preparation_current_state_revisions from anon, authenticated, service_role'),'default application grants revoked');
   ok(sql.includes('grant select, insert on public.filing_preparation_current_state_revisions to authenticated'),'authenticated gets SELECT/INSERT only');
-  ok(!/grant[^;]*service_role/i.test(sql),'service role receives no grant');
+  ok(!grantsServiceRole(sql),'service role receives no executable grant');
+  ok(!grantsServiceRole('-- grant select on public.fixture to service_role;\nrevoke all on public.fixture from service_role;'),'line-comment grant and service-role revoke are not executable grants');
+  ok(!grantsServiceRole('/* grant select on public.fixture to service_role; */\nrevoke all on public.fixture from service_role;'),'block-comment grant and service-role revoke are not executable grants');
+  ok(!grantsServiceRole('revoke all on public.fixture from service_role;'),'service-role revoke is not a grant');
+  ok(!grantsServiceRole('grant select on public.fixture to authenticated;'),'authenticated grant is not service-role grant');
+  ok(grantsServiceRole('grant select on public.fixture to service_role;'),'executable service-role grant is detected');
   ok(!/grant[^;]*(update|delete)/i.test(sql),'no UPDATE/DELETE grant');
   ok(sql.includes('user_id = (select auth.uid())')&&sql.includes('rp.user_id = (select auth.uid())'),'RLS binds owner and RiskPath');
   ok(!sql.toLowerCase().includes('create trigger'),'no trigger path');
