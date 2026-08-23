@@ -18,6 +18,7 @@ const APPEND_INPUT_KEYS = [
   'generatedDraftBytes',
   'ownerReviewEvidence',
 ] as const;
+const EXPECTED_CURRENT_KEYS = ['status', 'filingPreparationCurrentStateId', 'revision'] as const;
 const DB_ROW_KEYS = [
   'filing_preparation_current_state_id',
   'user_id',
@@ -64,6 +65,14 @@ export interface AppendFilingPreparationCurrentStateInput {
   ownerReviewEvidence: Readonly<OwnerReviewedDocumentEvidence> | null;
 }
 
+export type ExpectedFilingPreparationCurrentState =
+  | { status: 'NONE' }
+  | {
+      status: 'CURRENT';
+      filingPreparationCurrentStateId: string;
+      revision: number;
+    };
+
 export type AppendFilingPreparationCurrentStateResult =
   | {
       status: 'INSERTED';
@@ -78,6 +87,10 @@ export type AppendFilingPreparationCurrentStateResult =
 export interface FilingPreparationCurrentStateSupabaseStore {
   readLatest(riskpathRecordId: string): Promise<FilingPreparationCurrentState | null>;
   appendNext(input: AppendFilingPreparationCurrentStateInput): Promise<AppendFilingPreparationCurrentStateResult>;
+  appendNextIfCurrent(
+    expectedCurrent: Readonly<ExpectedFilingPreparationCurrentState>,
+    input: AppendFilingPreparationCurrentStateInput,
+  ): Promise<AppendFilingPreparationCurrentStateResult>;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -258,6 +271,79 @@ function exactAppendInput(value: unknown): value is AppendFilingPreparationCurre
   return isPlainObject(value) && hasExactKeys(value, APPEND_INPUT_KEYS);
 }
 
+function exactExpectedCurrent(value: unknown): value is ExpectedFilingPreparationCurrentState {
+  if (!isPlainObject(value)) return false;
+  if (value.status === 'NONE') return hasExactKeys(value, ['status']);
+  if (value.status !== 'CURRENT' || !hasExactKeys(value, EXPECTED_CURRENT_KEYS)) return false;
+  return typeof value.filingPreparationCurrentStateId === 'string'
+    && CURRENT_STATE_ID_RE.test(value.filingPreparationCurrentStateId)
+    && Number.isSafeInteger(value.revision)
+    && Number(value.revision) > 0;
+}
+
+function expectedCurrentMatches(
+  expectedCurrent: ExpectedFilingPreparationCurrentState,
+  latest: FilingPreparationCurrentState | null,
+): boolean {
+  if (expectedCurrent.status === 'NONE') return latest === null;
+  return latest !== null
+    && latest.filingPreparationCurrentStateId === expectedCurrent.filingPreparationCurrentStateId
+    && latest.revision === expectedCurrent.revision;
+}
+
+async function appendFromLatest(
+  client: FilingPreparationCurrentStateSupabaseClient,
+  userId: string,
+  latest: FilingPreparationCurrentState | null,
+  input: AppendFilingPreparationCurrentStateInput,
+): Promise<AppendFilingPreparationCurrentStateResult> {
+  const revision = nextRevision(latest);
+  const built = createFilingPreparationCurrentState({
+    authenticatedUserId: userId,
+    riskpathRecordId: input.riskpathRecordId,
+    revision,
+    preparationSnapshot: input.preparationSnapshot,
+    generatedDraftBinding: input.generatedDraft === null
+      ? null
+      : { revision, generatedDraft: input.generatedDraft },
+    generatedDraftBytes: input.generatedDraftBytes,
+    ownerReviewBinding: input.ownerReviewEvidence === null
+      ? null
+      : { revision, ownerReviewEvidence: input.ownerReviewEvidence },
+  });
+  if (built.status !== 'CURRENT_STATE_REVISION') {
+    throw new Error(`Canonical current-state creation blocked: ${built.blockReason}.`);
+  }
+  const currentState = built.currentState;
+  const { generatedDraftBytes, ...statePayload } = currentState;
+  const databaseRow = {
+    filing_preparation_current_state_id: currentState.filingPreparationCurrentStateId,
+    user_id: currentState.authenticatedUserId,
+    riskpath_record_id: currentState.riskpathRecordId,
+    revision: currentState.revision,
+    state_payload: statePayload,
+    generated_draft_bytes: encodeBytea(generatedDraftBytes),
+  };
+
+  const raw = await client.from(TABLE).insert(databaseRow);
+  const response = requireQueryResponse(raw, 'insert');
+  if (response.error !== null) {
+    if (postgresErrorCode(response.error) === '23505') {
+      return { status: 'CONFLICT', reloadRequired: true, currentState: null };
+    }
+    throw new Error('Supabase current-state append failed closed.');
+  }
+
+  const readBack = await readExactForUser(
+    client,
+    userId,
+    input.riskpathRecordId,
+    revision,
+    currentState.filingPreparationCurrentStateId,
+  );
+  return { status: 'INSERTED', currentState: readBack };
+}
+
 export function createFilingPreparationCurrentStateSupabaseStore(
   client: FilingPreparationCurrentStateSupabaseClient,
 ): FilingPreparationCurrentStateSupabaseStore {
@@ -275,51 +361,26 @@ export function createFilingPreparationCurrentStateSupabaseStore(
       const riskpathRecordId = requireRiskPathId(input.riskpathRecordId);
       const userId = await requireAuthenticatedUserId(client);
       const latest = await readLatestForUser(client, userId, riskpathRecordId);
-      const revision = nextRevision(latest);
-      const built = createFilingPreparationCurrentState({
-        authenticatedUserId: userId,
-        riskpathRecordId,
-        revision,
-        preparationSnapshot: input.preparationSnapshot,
-        generatedDraftBinding: input.generatedDraft === null
-          ? null
-          : { revision, generatedDraft: input.generatedDraft },
-        generatedDraftBytes: input.generatedDraftBytes,
-        ownerReviewBinding: input.ownerReviewEvidence === null
-          ? null
-          : { revision, ownerReviewEvidence: input.ownerReviewEvidence },
-      });
-      if (built.status !== 'CURRENT_STATE_REVISION') {
-        throw new Error(`Canonical current-state creation blocked: ${built.blockReason}.`);
-      }
-      const currentState = built.currentState;
-      const { generatedDraftBytes, ...statePayload } = currentState;
-      const databaseRow = {
-        filing_preparation_current_state_id: currentState.filingPreparationCurrentStateId,
-        user_id: currentState.authenticatedUserId,
-        riskpath_record_id: currentState.riskpathRecordId,
-        revision: currentState.revision,
-        state_payload: statePayload,
-        generated_draft_bytes: encodeBytea(generatedDraftBytes),
-      };
+      return appendFromLatest(client, userId, latest, input);
+    },
 
-      const raw = await client.from(TABLE).insert(databaseRow);
-      const response = requireQueryResponse(raw, 'insert');
-      if (response.error !== null) {
-        if (postgresErrorCode(response.error) === '23505') {
-          return { status: 'CONFLICT', reloadRequired: true, currentState: null };
-        }
-        throw new Error('Supabase current-state append failed closed.');
+    async appendNextIfCurrent(
+      expectedCurrent: Readonly<ExpectedFilingPreparationCurrentState>,
+      input: AppendFilingPreparationCurrentStateInput,
+    ): Promise<AppendFilingPreparationCurrentStateResult> {
+      if (!exactExpectedCurrent(expectedCurrent)) {
+        throw new Error('Expected current-state identity must be explicit NONE or an exact current-state ID and revision.');
       }
-
-      const readBack = await readExactForUser(
-        client,
-        userId,
-        riskpathRecordId,
-        revision,
-        currentState.filingPreparationCurrentStateId,
-      );
-      return { status: 'INSERTED', currentState: readBack };
+      if (!exactAppendInput(input)) {
+        throw new Error('Current-state append input has an invalid shape or contains caller-authored authority fields.');
+      }
+      const riskpathRecordId = requireRiskPathId(input.riskpathRecordId);
+      const userId = await requireAuthenticatedUserId(client);
+      const latest = await readLatestForUser(client, userId, riskpathRecordId);
+      if (!expectedCurrentMatches(expectedCurrent, latest)) {
+        return { status: 'CONFLICT', reloadRequired: true, currentState: null };
+      }
+      return appendFromLatest(client, userId, latest, input);
     },
   };
 }
