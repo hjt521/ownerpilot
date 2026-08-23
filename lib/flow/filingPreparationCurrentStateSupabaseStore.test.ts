@@ -373,8 +373,11 @@ async function main(): Promise<void> {
   ok(!source.includes("from 'next/") && !source.includes('NextResponse') && !source.includes('route.ts'),'adapter registers no route/action call site');
   ok(!source.includes('D0B3') && !source.includes('checkpoint') && !source.includes('page-load') && !source.includes('background'),'adapter does not self-start checkpoint/background semantics');
 
-  const successRepresentation = JSON.stringify(await createFilingPreparationCurrentStateSupabaseStore(new FakeClient()).appendNext(appendInput()));
-  for (const forbidden of ['packetReady','signed','filed','courtAccepted','serviceAuthorized','legalSufficiency','autonomousAuthority']) {
+  const successResult = await createFilingPreparationCurrentStateSupabaseStore(new FakeClient()).appendNext(appendInput());
+  if (successResult.status !== 'INSERTED') throw new Error('successful authority-boundary append unexpectedly conflicted');
+  equal(successResult.currentState.legalSufficiency,'NOT_EVALUATED','store success preserves exact held legal sufficiency boundary');
+  const successRepresentation = JSON.stringify(successResult);
+  for (const forbidden of ['packetReady','signed','filed','courtAccepted','serviceAuthorized','autonomousAuthority']) {
     ok(!successRepresentation.includes(forbidden),`store success represents no ${forbidden} downstream authority`);
   }
 
