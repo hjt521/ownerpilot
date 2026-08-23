@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import {
   createFilingPreparationCurrentEvidenceCurrentStateSource,
+  type FilingPreparationCurrentnessMaterial,
   type FilingPreparationCurrentnessMaterialLoader,
   type FilingPreparationCurrentnessMaterialRequest,
 } from './filingPreparationCurrentEvidenceCurrentStateSource';
@@ -87,6 +88,17 @@ export interface InvokeFilingPreparationRuntimePersistenceInput {
   requestBody: unknown;
 }
 
+export type FilingPreparationRuntimeCurrentnessMaterialLoadResult =
+  | { status: 'UNAVAILABLE' }
+  | { status: 'AVAILABLE'; material: FilingPreparationCurrentnessMaterial };
+
+export interface FilingPreparationRuntimeCurrentnessMaterialLoader
+  extends FilingPreparationCurrentnessMaterialLoader {
+  loadCurrentnessMaterial(
+    request: Readonly<FilingPreparationCurrentnessMaterialRequest>,
+  ): Promise<FilingPreparationRuntimeCurrentnessMaterialLoadResult>;
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
@@ -139,7 +151,7 @@ function exactMaterialRequestMatchesState(
 
 export function createFilingPreparationRuntimeCurrentnessMaterialLoader(
   authoritativeCurrentState: FilingPreparationCurrentState,
-): FilingPreparationCurrentnessMaterialLoader {
+): FilingPreparationRuntimeCurrentnessMaterialLoader {
   const validated = validateFilingPreparationCurrentState(authoritativeCurrentState);
   if (validated.status !== 'VALID') {
     throw new Error(`Runtime current-state capture is invalid: ${validated.blockReason}.`);
@@ -149,11 +161,11 @@ export function createFilingPreparationRuntimeCurrentnessMaterialLoader(
   return {
     async loadCurrentnessMaterial(
       request: Readonly<FilingPreparationCurrentnessMaterialRequest>,
-    ) {
+    ): Promise<FilingPreparationRuntimeCurrentnessMaterialLoadResult> {
       if (!exactMaterialRequestMatchesState(captured, request)
         || captured.schemaVersion !== 2
         || captured.currentnessMaterialBinding === null) {
-        return { status: 'UNAVAILABLE' } as const;
+        return { status: 'UNAVAILABLE' };
       }
 
       let officialSourceBytes: Uint8Array;
@@ -166,7 +178,7 @@ export function createFilingPreparationRuntimeCurrentnessMaterialLoader(
           readFileSync(UD100_PREPARATION_RUNTIME_PATH),
         );
       } catch {
-        return { status: 'UNAVAILABLE' } as const;
+        return { status: 'UNAVAILABLE' };
       }
 
       const binding = structuredClone(captured.currentnessMaterialBinding);
@@ -192,7 +204,7 @@ export function createFilingPreparationRuntimeCurrentnessMaterialLoader(
             facts,
           ),
         },
-      } as const;
+      };
     },
   };
 }
