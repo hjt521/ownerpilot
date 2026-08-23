@@ -5,7 +5,6 @@ import {
 } from './officialFormGenerationBinding';
 import {
   computeFieldWritePlanDigest,
-  computeOwnerReviewRecordId as _unusedOwnerReviewRecordId,
   sha256Bytes,
   validateFormPreparationAuthorization,
   type FormPreparationAuthorization,
@@ -21,8 +20,6 @@ import {
 } from './officialFormOwnerReview';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 import { evaluateUd100GenerationBinding } from './ud100GenerationBinding';
-
-void _unusedOwnerReviewRecordId;
 
 export const LEGACY_FILING_PREPARATION_CURRENT_STATE_SCHEMA_VERSION = 1 as const;
 export const FILING_PREPARATION_CURRENT_STATE_SCHEMA_VERSION = 2 as const;
@@ -525,19 +522,43 @@ export function computeFilingPreparationCurrentStateId(identity: AnyFilingPrepar
     .digest('hex')}`;
 }
 
-function buildValidatedCore(input: LegacyCreateFilingPreparationCurrentStateInput) {
-  if (!nonempty(input.authenticatedUserId) || !UUID_RE.test(input.authenticatedUserId)) return blocked('INVALID_AUTHENTICATED_USER_ID', 'Authenticated owner identity must be an exact UUID.');
-  if (!nonempty(input.riskpathRecordId) || !UUID_RE.test(input.riskpathRecordId)) return blocked('INVALID_RISKPATH_RECORD_ID', 'RiskPath identity must be an exact UUID.');
-  if (!positiveIntegralRevision(input.revision)) return blocked('INVALID_REVISION', 'Current-state revision must be a positive safe integer.');
-  if (!preparationSnapshotShape(input.preparationSnapshot)) return blocked('INVALID_PREPARATION_SNAPSHOT', 'Canonical preparation snapshot is malformed or incomplete.');
+type ValidatedCore =
+  | {
+      status: 'BLOCKED';
+      blockReason: FilingPreparationCurrentStateBlockReason;
+      detail: string;
+      currentState: null;
+      stageF: 'HELD';
+    }
+  | {
+      status: 'VALIDATED_CORE';
+      preparationSnapshot: FilingPreparationCanonicalSnapshot;
+      generatedBinding: FilingPreparationGeneratedDraftBinding | null;
+      bytes: Uint8Array | null;
+      ownerReviewBinding: FilingPreparationOwnerReviewBinding | null;
+    };
+
+function coreBlocked(
+  blockReason: FilingPreparationCurrentStateBlockReason,
+  detail: string,
+): Extract<ValidatedCore, { status: 'BLOCKED' }> {
+  return { status: 'BLOCKED', blockReason, detail, currentState: null, stageF: 'HELD' };
+}
+
+function buildValidatedCore(input: LegacyCreateFilingPreparationCurrentStateInput): ValidatedCore {
+  if (!nonempty(input.authenticatedUserId) || !UUID_RE.test(input.authenticatedUserId)) return coreBlocked('INVALID_AUTHENTICATED_USER_ID', 'Authenticated owner identity must be an exact UUID.');
+  if (!nonempty(input.riskpathRecordId) || !UUID_RE.test(input.riskpathRecordId)) return coreBlocked('INVALID_RISKPATH_RECORD_ID', 'RiskPath identity must be an exact UUID.');
+  if (!positiveIntegralRevision(input.revision)) return coreBlocked('INVALID_REVISION', 'Current-state revision must be a positive safe integer.');
+  if (!preparationSnapshotShape(input.preparationSnapshot)) return coreBlocked('INVALID_PREPARATION_SNAPSHOT', 'Canonical preparation snapshot is malformed or incomplete.');
   const generated = generatedBindingValidation(input.generatedDraftBinding, input.revision, input.preparationSnapshot);
-  if (generated.status === 'BLOCKED') return blocked(generated.blockReason, generated.detail);
+  if (generated.status === 'BLOCKED') return coreBlocked(generated.blockReason, generated.detail);
   const generatedBinding = generated.status === 'VALID' ? generated.binding : null;
   const bytes = generatedBytesValidation(input.generatedDraftBytes, generatedBinding);
-  if (bytes.status === 'BLOCKED') return blocked(bytes.blockReason, bytes.detail);
+  if (bytes.status === 'BLOCKED') return coreBlocked(bytes.blockReason, bytes.detail);
   const review = ownerReviewBindingValidation(input.ownerReviewBinding, input.revision, generatedBinding);
-  if (review.status === 'BLOCKED') return blocked(review.blockReason, review.detail);
+  if (review.status === 'BLOCKED') return coreBlocked(review.blockReason, review.detail);
   return {
+    status: 'VALIDATED_CORE',
     preparationSnapshot: input.preparationSnapshot,
     generatedBinding,
     bytes: bytes.bytes,
@@ -551,7 +572,7 @@ export function createFilingPreparationCurrentState(input: CreateFilingPreparati
   const isV2 = hasExactKeys(input, V2_CREATE_INPUT_KEYS);
   if (!isLegacy && !isV2) return blocked('INVALID_INPUT_SHAPE', 'Current-state creation input has an invalid shape or contains unauthorized caller assertions.');
   const core = buildValidatedCore(input as unknown as LegacyCreateFilingPreparationCurrentStateInput);
-  if ('status' in core && core.status === 'BLOCKED') return core;
+  if (core.status === 'BLOCKED') return core;
 
   if (isLegacy) {
     const identity: LegacyFilingPreparationCurrentStateIdentity = {
