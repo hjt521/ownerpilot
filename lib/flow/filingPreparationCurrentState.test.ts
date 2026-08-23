@@ -152,7 +152,7 @@ const f = fixture();
 
 function migrationReferencedFactSnapshot(facts: any): { id: string; directRefs: string[] } {
   const migration = readFileSync('supabase/staged-migrations/060_e2_3d0b4_currentness_material_binding.sql', 'utf8');
-  const queueBlock = migration.match(/queue text\[\] := array\[(.*?)\];\n  seen text\[\]/s);
+  const queueBlock = migration.match(/queue text\[\] := array\[([\s\S]*?)\];\n  seen text\[\]/);
   if (!queueBlock) throw new Error('Migration 060 must expose the exact UD-100 direct fact dependency queue.');
   const directRefs = [...queueBlock[1].matchAll(/'([^']+)'/g)].map(match => match[1]);
   const queue = [...directRefs];
