@@ -1,4 +1,5 @@
 import { strict as assert } from 'node:assert';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { captureCreatedNoticeArtifact } from './createdNoticeArtifact';
 import {
@@ -26,6 +27,7 @@ import {
   type GeneratedDraftEvidence,
   type GeneratedDraftIdentity,
 } from './officialFormGeneratedDraft';
+import { canonicalizeGenerationIdentity } from './officialFormGenerationBinding';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 import { evaluateUd100GenerationBinding } from './ud100GenerationBinding';
 
@@ -148,6 +150,30 @@ function fixture() {
 
 const f = fixture();
 
+function migrationReferencedFactSnapshot(facts: any): { id: string; directRefs: string[] } {
+  const migration = readFileSync('supabase/staged-migrations/060_e2_3d0b4_currentness_material_binding.sql', 'utf8');
+  const queueBlock = migration.match(/queue text\[\] := array\[(.*?)\];\n  seen text\[\]/s);
+  if (!queueBlock) throw new Error('Migration 060 must expose the exact UD-100 direct fact dependency queue.');
+  const directRefs = [...queueBlock[1].matchAll(/'([^']+)'/g)].map(match => match[1]);
+  const queue = [...directRefs];
+  const seen = new Set<string>();
+  while (queue.length > 0) {
+    const ref = queue.shift()!;
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    const fact = facts.facts[ref];
+    if (fact === undefined) continue;
+    const dependencies = fact?.provenance?.dependencies;
+    if (!Array.isArray(dependencies) || dependencies.some((dependency: unknown) => typeof dependency !== 'string' || dependency.trim() === '')) {
+      throw new Error(`Migration-equivalent fact provenance is malformed at ${ref}.`);
+    }
+    queue.push(...dependencies);
+  }
+  const record = [...seen].sort().map(ref => ({ ref, fact: facts.facts[ref] ?? null }));
+  const id = `facts:sha256:${createHash('sha256').update(canonicalizeGenerationIdentity(record)).digest('hex')}`;
+  return { id, directRefs };
+}
+
 {
   const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:1, preparationSnapshot:f.snapshot, generatedDraftBinding:null, generatedDraftBytes:null, currentnessMaterialBinding:null, ownerReviewBinding:null });
   equal(result.status, 'CURRENT_STATE_REVISION', 'v2 preparation revision builds');
@@ -194,6 +220,24 @@ const f = fixture();
   const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:2, preparationSnapshot:f.snapshot, generatedDraftBinding:{revision:2,generatedDraft:f.draft}, generatedDraftBytes:f.bytes, currentnessMaterialBinding:changed, ownerReviewBinding:null });
   equal(result.status, 'BLOCKED', 'fact drift that changes generation identity blocks');
   if (result.status === 'BLOCKED') equal(result.blockReason, 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', 'fact drift has exact blocker');
+}
+
+{
+  const migration = readFileSync('supabase/staged-migrations/060_e2_3d0b4_currentness_material_binding.sql', 'utf8');
+  const exact = migrationReferencedFactSnapshot(f.material.facts);
+  equal(exact.directRefs.length, 39, 'migration 060 pins the exact 39 direct UD-100 generation/profile fact dependencies');
+  equal(exact.id, f.snapshot.referencedFactSnapshotId, 'migration 060 fact-snapshot algorithm reproduces canonical evaluator identity for valid R1 material');
+
+  const leafMutation = structuredClone(f.material.facts) as any;
+  leafMutation.facts[CANONICAL_FILING_FACT_REFS.rentDueAtService].value = 2449;
+  ok(migrationReferencedFactSnapshot(leafMutation).id !== exact.id, 'migration 060 fact-snapshot identity changes on material fact mutation');
+
+  const provenanceMutation = structuredClone(f.material.facts) as any;
+  provenanceMutation.facts[CANONICAL_FILING_FACT_REFS.plaintiffStandingControl].provenance.dependencies.push(CANONICAL_FILING_FACT_REFS.rentDemandTotal);
+  ok(migrationReferencedFactSnapshot(provenanceMutation).id !== exact.id, 'migration 060 fact-snapshot identity changes on relevant provenance dependency drift');
+
+  ok(migration.includes("expected_referenced_fact_snapshot_id <> prep ->> 'referencedFactSnapshotId'"), 'migration 060 compares recomputed facts identity to accepted preparation identity');
+  ok(migration.includes("'generation-input:sha256:'"), 'migration 060 independently recomputes generation-input identity after facts binding');
 }
 
 {
