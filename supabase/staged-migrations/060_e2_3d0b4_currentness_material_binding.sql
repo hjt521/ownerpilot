@@ -3,6 +3,149 @@
 -- STAGED ONLY. No Production application, migration/backfill, second table, RLS widening, or service-role path.
 -- Reuses the accepted append-only state_payload in filing_preparation_current_state_revisions.
 
+-- Reproduce the exact referenced-fact snapshot identity used by the accepted UD-100
+-- generation-binding evaluator. The direct dependency set is the immutable v1.2.0
+-- UD-100 map/profile dependency set; fact-declared provenance dependencies are then
+-- traversed transitively exactly like factSnapshotRecord(...) in TypeScript.
+create or replace function public.filing_preparation_current_state_ud100_referenced_fact_snapshot_id(
+  p_facts jsonb
+)
+returns text
+language plpgsql
+immutable
+security invoker
+set search_path = pg_catalog, public, extensions
+as $$
+declare
+  queue text[] := array[
+    'defendant.names',
+    'plaintiff.names',
+    'property.city',
+    'property.county',
+    'property.streetAddress',
+    'property.unitRepresentation',
+    'property.zip',
+    'ud100.control.captionFormValue',
+    'ud100.control.captionOptionalFields',
+    'ud100.control.captionRoute',
+    'ud100.control.civilClassification',
+    'ud100.control.jurisdictionSupport',
+    'ud100.control.leaseApplicability',
+    'ud100.control.localRentEviction',
+    'ud100.control.municipalClassification',
+    'ud100.control.noticeElectionConsistency',
+    'ud100.control.plaintiffStanding',
+    'ud100.control.rentalAssistance',
+    'ud100.control.serviceElectionConsistency',
+    'ud100.control.tpaClassification',
+    'ud100.control.udaDisclosure',
+    'ud100.election.doeDefendants',
+    'ud100.election.fixedTermExpiration',
+    'ud100.election.noticeComplaint',
+    'ud100.election.otherReliefSelections',
+    'ud100.election.pastDueRentRelief',
+    'ud100.election.serviceComplaint',
+    'ud100.fact.dbaUse',
+    'ud100.fact.filerContact',
+    'ud100.fact.leaseStatus',
+    'ud100.fact.otherNotices',
+    'ud100.fact.plaintiffRelationship',
+    'ud100.fact.plaintiffType',
+    'ud100.fact.premisesAge',
+    'ud100.fact.rentDueAtService',
+    'ud100.fact.rentalAssistance',
+    'ud100.lifecycle.initialComplaint',
+    'ud100.lifecycle.serviceFacts',
+    'ud100.selectedFilingCourt'
+  ];
+  seen text[] := array[]::text[];
+  current_ref text;
+  fact jsonb;
+  dependency jsonb;
+  snapshot_record jsonb;
+  queue_length integer;
+begin
+  if p_facts is null
+    or jsonb_typeof(p_facts) <> 'object'
+    or p_facts ->> 'status' <> 'READY'
+    or jsonb_typeof(p_facts -> 'facts') <> 'object' then
+    return null;
+  end if;
+
+  loop
+    queue_length := coalesce(array_length(queue, 1), 0);
+    exit when queue_length = 0;
+
+    current_ref := queue[1];
+    if queue_length = 1 then
+      queue := array[]::text[];
+    else
+      queue := queue[2:queue_length];
+    end if;
+
+    if current_ref = any(seen) then
+      continue;
+    end if;
+    seen := array_append(seen, current_ref);
+
+    fact := p_facts -> 'facts' -> current_ref;
+    if fact is null then
+      -- TypeScript snapshot identity represents a missing transitive fact as null.
+      -- Direct facts cannot reach generation readiness when missing, but retaining
+      -- null here keeps the digest algorithm byte-for-byte equivalent.
+      continue;
+    end if;
+    if jsonb_typeof(fact) <> 'object'
+      or jsonb_typeof(fact -> 'provenance') <> 'object'
+      or jsonb_typeof(fact -> 'provenance' -> 'dependencies') <> 'array' then
+      return null;
+    end if;
+
+    for dependency in
+      select value
+      from jsonb_array_elements(fact -> 'provenance' -> 'dependencies')
+    loop
+      if jsonb_typeof(dependency) <> 'string'
+        or btrim(dependency #>> '{}') = '' then
+        return null;
+      end if;
+      queue := array_append(queue, dependency #>> '{}');
+    end loop;
+  end loop;
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'ref', ref,
+        'fact', coalesce(p_facts -> 'facts' -> ref, 'null'::jsonb)
+      )
+      order by ref collate "C"
+    ),
+    '[]'::jsonb
+  )
+  into snapshot_record
+  from unnest(seen) as refs(ref);
+
+  return 'facts:sha256:' || encode(
+    extensions.digest(
+      convert_to(
+        public.filing_preparation_current_state_canonical_jsonb(snapshot_record),
+        'UTF8'
+      ),
+      'sha256'
+    ),
+    'hex'
+  );
+exception when others then
+  return null;
+end;
+$$;
+
+revoke execute on function public.filing_preparation_current_state_ud100_referenced_fact_snapshot_id(jsonb)
+  from public, anon, authenticated, service_role;
+grant execute on function public.filing_preparation_current_state_ud100_referenced_fact_snapshot_id(jsonb)
+  to authenticated;
+
 create or replace function public.filing_preparation_current_state_payload_v2_is_valid(
   p_state jsonb,
   p_generated_draft_bytes bytea,
@@ -28,6 +171,8 @@ declare
   legacy_state jsonb;
   legacy_id text;
   expected_id text;
+  expected_referenced_fact_snapshot_id text;
+  generation_input_identity jsonb;
   binding_keys constant text[] := array[
     'schemaVersion','officialSourceHealth','facts','preparationAuthorization'
   ];
@@ -211,6 +356,37 @@ begin
     'sha256'
   ), 'hex');
   if expected_id <> prep ->> 'preparationAuthorizationSnapshotId' then
+    return false;
+  end if;
+
+  -- Independently bind the raw dynamic facts/provenance to the exact referenced-fact
+  -- snapshot committed by preparation/generated-draft evidence. Recomputing the outer
+  -- current-state ID cannot repair a semantic mutation under currentness material.
+  expected_referenced_fact_snapshot_id :=
+    public.filing_preparation_current_state_ud100_referenced_fact_snapshot_id(facts);
+  if expected_referenced_fact_snapshot_id is null
+    or expected_referenced_fact_snapshot_id !~ '^facts:sha256:[0-9a-f]{64}$'
+    or expected_referenced_fact_snapshot_id <> prep ->> 'referencedFactSnapshotId' then
+    return false;
+  end if;
+
+  -- Reproduce computeGenerationInputId(...) from the already-bound canonical source/map/
+  -- fact/contract identities. This makes the durable generation input identity change
+  -- whenever the accepted fact snapshot changes; no caller-authored currentness verdict exists.
+  generation_input_identity := jsonb_build_object(
+    'sourceSnapshotId', prep ->> 'officialSourceSnapshotId',
+    'mapSnapshotId', prep ->> 'mapSnapshotId',
+    'referencedFactSnapshotId', expected_referenced_fact_snapshot_id,
+    'generatorContractVersion', prep ->> 'generatorContractVersion'
+  );
+  expected_id := 'generation-input:sha256:' || encode(extensions.digest(
+    convert_to(
+      public.filing_preparation_current_state_canonical_jsonb(generation_input_identity),
+      'UTF8'
+    ),
+    'sha256'
+  ), 'hex');
+  if expected_id <> prep ->> 'generationInputId' then
     return false;
   end if;
 
