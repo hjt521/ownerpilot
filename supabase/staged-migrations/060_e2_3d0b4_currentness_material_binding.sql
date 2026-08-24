@@ -163,7 +163,7 @@ as $$
 declare
   binding jsonb;
   facts jsonb;
-  authorization jsonb;
+  preparation_authorization jsonb;
   target jsonb;
   created_notice jsonb;
   prep jsonb;
@@ -307,30 +307,30 @@ begin
     return false;
   end if;
 
-  authorization := binding -> 'preparationAuthorization';
-  if jsonb_typeof(authorization) <> 'object'
-    or not (authorization ?& authorization_keys)
-    or authorization - authorization_keys <> '{}'::jsonb
-    or authorization ->> 'status' <> 'CURRENT'
-    or authorization ->> 'decision' <> 'FORM_RELEVANT_FOR_PREPARATION'
-    or authorization -> 'createdNoticeIdentity' <> created_notice then
+  preparation_authorization := binding -> 'preparationAuthorization';
+  if jsonb_typeof(preparation_authorization) <> 'object'
+    or not (preparation_authorization ?& authorization_keys)
+    or preparation_authorization - authorization_keys <> '{}'::jsonb
+    or preparation_authorization ->> 'status' <> 'CURRENT'
+    or preparation_authorization ->> 'decision' <> 'FORM_RELEVANT_FOR_PREPARATION'
+    or preparation_authorization -> 'createdNoticeIdentity' <> created_notice then
     return false;
   end if;
-  if jsonb_typeof(authorization -> 'createdNoticeIdentity') <> 'object'
-    or not ((authorization -> 'createdNoticeIdentity') ?& created_notice_keys)
-    or (authorization -> 'createdNoticeIdentity') - created_notice_keys <> '{}'::jsonb then
+  if jsonb_typeof(preparation_authorization -> 'createdNoticeIdentity') <> 'object'
+    or not ((preparation_authorization -> 'createdNoticeIdentity') ?& created_notice_keys)
+    or (preparation_authorization -> 'createdNoticeIdentity') - created_notice_keys <> '{}'::jsonb then
     return false;
   end if;
   if exists (
     select 1
     from unnest(array['authorizationId','resultId','controlId','controlVersion']) as required_key
-    where jsonb_typeof(authorization -> required_key) <> 'string'
-      or btrim(authorization ->> required_key) = ''
+    where jsonb_typeof(preparation_authorization -> required_key) <> 'string'
+      or btrim(preparation_authorization ->> required_key) = ''
   ) then
     return false;
   end if;
 
-  target := authorization -> 'target';
+  target := preparation_authorization -> 'target';
   if jsonb_typeof(target) <> 'object'
     or not (target ?& target_keys)
     or target - target_keys <> '{}'::jsonb then
@@ -352,7 +352,7 @@ begin
 
   -- The exact authorization object is itself a governed snapshot identity.
   expected_id := 'preparation-authorization:sha256:' || encode(extensions.digest(
-    convert_to(public.filing_preparation_current_state_canonical_jsonb(authorization), 'UTF8'),
+    convert_to(public.filing_preparation_current_state_canonical_jsonb(preparation_authorization), 'UTF8'),
     'sha256'
   ), 'hex');
   if expected_id <> prep ->> 'preparationAuthorizationSnapshotId' then
