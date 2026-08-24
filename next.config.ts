@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
     "/api/riskpath/**/service/pos010-preview": [
       "./docs/legal/official-forms/california/judicial-council/POS-010/2007-01-01/POS-010.pdf",
     ],
+    "/api/riskpath/**/filing-preparation/persist": [
+      "./docs/legal/official-forms/california/judicial-council/UD-100/2026-07-01/UD-100.pdf",
+      "./docs/legal/preparation-artifacts/california/judicial-council/UD-100/2026-07-01/qpdf-12.3.2/UD-100.preparation-runtime.pdf",
+    ],
   },
 };
 
