@@ -12,6 +12,7 @@ import {
 } from './filingPreparationSyntheticQualification';
 import { CANONICAL_FILING_FACT_REFS } from './filingCanonicalFacts';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
+import { runSyntheticBootstrapRouteTests } from '../../app/api/riskpath/filing-preparation/synthetic-qualification/bootstrap/route.test';
 
 const USER='11111111-1111-4111-8111-111111111111';
 const OTHER='22222222-2222-4222-8222-222222222222';
@@ -64,4 +65,7 @@ function fact(m:any,ref:string):any{const f=m.currentnessMaterialBinding.facts;i
 
   const source=readFileSync('lib/flow/filingPreparationSyntheticQualification.ts','utf8');ok(!source.includes("from('service_events')")&&!source.includes('service_evidence_assets'),'no ordinary service persistence');ok(!source.includes("from('riskpath_records')")&&!source.includes('.insert(')&&!source.includes('.upsert(')&&!source.includes('.delete('),'pure materializer has no DB writes');ok(!/service[_-]?role/i.test(source),'no service-role authority');
   console.log(`filingPreparationSyntheticQualification: ${passed} assertions passed`);
+
+  const routeAssertions=await runSyntheticBootstrapRouteTests();
+  assert.ok(routeAssertions>0,'bootstrap route adversarial suite must execute');
 })().catch(e=>{console.error(e);process.exitCode=1;});
