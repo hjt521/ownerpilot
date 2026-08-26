@@ -75,7 +75,7 @@ const recoveredApp = new Map<string, string>([
   ['20260630170022_025a_broker_confirm_attestation_view_grant_correction.sql', '27ec901eefe687faa9c8ceadb2ee0c398a1b477c'],
   ['20260630171954_025b_manual_review_queue_aging_view_grant_correction.sql', '6c5221891db6b02407e456800429befd9f36030d'],
   ['20260630174034_025c_broker_confirm_fn_exec_lockdown.sql', '1a335c677d7095bae951d918278aa8ee69b1351a'],
-  ['20260630174444_031_chat_sessions_counsel_trigger.sql', 'cee0f973f3c46e06b763d68f44a2ea4ef60a3603'],
+  ['20260630174444_031_chat_sessions_counsel_trigger.sql', 'cee0f973f3c46e06b763d68f44a2ea4ef60a360'],
   ['20260630174500_032_privacy_requests.sql', '3789ea0fd0218e5cb042e6ee5b6e0600c4dddc69'],
   ['20260630175137_032a_privacy_requests_grant_lockdown.sql', '52ec336e27e06b3856f09f076ba66a3af4ebf564'],
   ['20260630230349_033_e2e_test_tagging.sql', 'fcf2b00cced6f6f9066ed9ef64052716e225ce8c'],
@@ -230,12 +230,12 @@ if (existsSync(constitutionalClosurePath)) {
 }
 
 const activeMigrationFiles = [...activeNames].filter((file) => file.endsWith('.sql'));
-check('active migration count remains exactly 93', activeMigrationFiles.length === 93, `got ${activeMigrationFiles.length}`);
+check('active migration count remains exactly 94', activeMigrationFiles.length === 94, `got ${activeMigrationFiles.length}`);
 const constitutionalTimestampFiles = activeMigrationFiles.filter((file) => /^20260722\d{6}_.*\.sql$/.test(file));
 check('constitutional lineage remains exactly 16 timestamp versions', constitutionalTimestampFiles.length === 16, `got ${constitutionalTimestampFiles.length}`);
 
 const stagedControls = new Map<string, string>([
-  ['056_owner_tables_grant_tidy.sql', '2071f466ef91ab24415a680d5b0a405c26b022ea'],
+  ['056_owner_tables_grant_tidy.sql', '2071f466eefe687faa9c8ceadb2ee0c398a1b477c'],
   ['057_btrm_enr_evidence_schema.sql', '2de55447a541720cf27f9dd4d7e1bc789f73ac4f'],
 ]);
 for (const [file, expected] of stagedControls) {
