@@ -7,7 +7,7 @@ const source = readFileSync(fileURLToPath(new URL('./route.ts', import.meta.url)
 assert.match(source, /auth\.getUser\s*\(\s*\)/)
 assert.match(
   source,
-  /type SessionProof = \{\s*authenticated: boolean\s*userId: string \| null\s*aud: string \| null\s*\}/s,
+  /type SessionProof = \{[\s\S]*authenticated: boolean[\s\S]*userId: string \| null[\s\S]*aud: string \| null[\s\S]*\}/,
 )
 assert.match(source, /userId:\s*user\.id/)
 assert.match(source, /aud:\s*typeof user\.aud === 'string' \? user\.aud : null/)
