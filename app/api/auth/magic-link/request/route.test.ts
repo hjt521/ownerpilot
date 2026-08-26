@@ -24,7 +24,7 @@ const RAW_AUTHORITY = 'a'.repeat(64)
 const AUTHORIZATION = `OwnerPilot-Ceremony ${RAW_AUTHORITY}`
 const STORED_VERIFIER_HASH = createHash('sha256').update(RAW_AUTHORITY, 'utf8').digest('hex')
 
-process.env.NODE_ENV = 'test'
+;(process.env as Record<string, string | undefined>).NODE_ENV = 'test'
 
 type TestBindings = {
   verifierHash: string
