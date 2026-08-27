@@ -147,6 +147,11 @@ export interface PreparationRuntimeManifest {
   };
 }
 
+export interface GeneratedTextAppearancePolicy {
+  colorSpace: 'DeviceRGB';
+  rgb: readonly [number, number, number];
+}
+
 export interface OfficialGeneratedDraftDefinition {
   generatorImplementationId: string;
   generatorImplementationVersion: string;
@@ -157,6 +162,7 @@ export interface OfficialGeneratedDraftDefinition {
   expectedGeneratorContractVersion: string;
   expectedPageCount: 4;
   expectedFieldCount: 186;
+  generatedTextAppearance?: GeneratedTextAppearancePolicy;
 }
 
 export type GeneratedDraftBlockReason =
@@ -802,10 +808,40 @@ function sameSnapshotInvariant(before: FieldSnapshot, after: FieldSnapshot): boo
     && before.checkboxOnValue === after.checkboxOnValue;
 }
 
+function appearanceOperator(policy: GeneratedTextAppearancePolicy): string {
+  const [r, g, b] = policy.rgb;
+  if (policy.colorSpace !== 'DeviceRGB'
+    || ![r, g, b].every(component => Number.isFinite(component) && component >= 0 && component <= 1)) {
+    throw new Error('Generated text appearance must be a finite DeviceRGB triplet in the inclusive [0,1] range.');
+  }
+  return `${r} ${g} ${b} rg`;
+}
+
+function applyGeneratedTextAppearance(
+  field: PDFTextField,
+  policy: GeneratedTextAppearancePolicy | undefined,
+): void {
+  if (!policy) return;
+  const operator = appearanceOperator(policy);
+  field.acroField.setDefaultAppearance(operator);
+  for (const widget of field.acroField.getWidgets()) widget.setDefaultAppearance(operator);
+}
+
+function verifyGeneratedTextAppearance(
+  field: PDFTextField,
+  policy: GeneratedTextAppearancePolicy | undefined,
+): boolean {
+  if (!policy) return true;
+  const operator = appearanceOperator(policy);
+  if (!(field.acroField.getDefaultAppearance() ?? '').includes(operator)) return false;
+  return field.acroField.getWidgets().every(widget => (widget.getDefaultAppearance() ?? '').includes(operator));
+}
+
 function verifyPlanAfterReopen(
   plan: readonly GenerationWritePlanEntry[],
   before: Map<string, FieldSnapshot>,
   fields: Map<string, PDFField>,
+  generatedTextAppearance: GeneratedTextAppearancePolicy | undefined,
 ):
   | { status: 'VALID' }
   | { status: 'BLOCKED'; detail: string } {
@@ -821,6 +857,9 @@ function verifyPlanAfterReopen(
       if (entry.action === 'WRITE_TEXT') {
         if (!(field instanceof PDFTextField) || (field.getText() ?? null) !== entry.value) {
           return { status: 'BLOCKED', detail: `${entry.fieldId} text did not reopen with the exact governed value.` };
+        }
+        if (!verifyGeneratedTextAppearance(field, generatedTextAppearance)) {
+          return { status: 'BLOCKED', detail: `${entry.fieldId} did not reopen with the definition-scoped generated text appearance.` };
         }
       } else if (entry.action === 'SET_SELECTED') {
         if (!(field instanceof PDFCheckBox) || !field.isChecked()) {
@@ -955,6 +994,7 @@ export async function generateOfficialFormGeneratedDraft(
       if (entry.action === 'WRITE_TEXT') {
         const textField = field as PDFTextField;
         textField.setText(entry.value);
+        applyGeneratedTextAppearance(textField, inputs.definition.generatedTextAppearance);
         textField.updateAppearances(targetFont!);
       } else if (entry.action === 'SET_SELECTED') {
         const checkbox = field as PDFCheckBox;
@@ -984,7 +1024,12 @@ export async function generateOfficialFormGeneratedDraft(
   if (reopened.status === 'BLOCKED') {
     return blocked('GENERATED_VERIFICATION_FAILED', reopened.detail);
   }
-  const verification = verifyPlanAfterReopen(plan, preflight.before, reopened.fields);
+  const verification = verifyPlanAfterReopen(
+    plan,
+    preflight.before,
+    reopened.fields,
+    inputs.definition.generatedTextAppearance,
+  );
   if (verification.status === 'BLOCKED') {
     return blocked('GENERATED_VERIFICATION_FAILED', verification.detail);
   }
