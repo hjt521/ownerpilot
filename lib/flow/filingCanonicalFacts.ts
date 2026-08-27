@@ -38,6 +38,16 @@ export const CANONICAL_FILING_FACT_REFS = {
 
   civilClassificationControl: 'ud100.control.civilClassification',
   leaseStatus: 'ud100.fact.leaseStatus',
+  agreementTermDescription: 'ud100.fact.agreementTermDescription',
+  agreementRentAmount: 'ud100.fact.agreementRentAmount',
+  agreementRentFrequency: 'ud100.fact.agreementRentFrequency',
+  agreementRentFrequencyOther: 'ud100.fact.agreementRentFrequencyOther',
+  agreementRentDue: 'ud100.fact.agreementRentDue',
+  agreementRentDueOtherDay: 'ud100.fact.agreementRentDueOtherDay',
+  agreementForm: 'ud100.fact.agreementForm',
+  agreementParty: 'ud100.fact.agreementParty',
+  agreementPartyOther: 'ud100.fact.agreementPartyOther',
+  agreementDate: 'ud100.fact.agreementDate',
   leaseApplicabilityControl: 'ud100.control.leaseApplicability',
 
   noticeComplaintElection: 'ud100.election.noticeComplaint',
@@ -80,6 +90,11 @@ export interface LegalElectionConfirmationProvenance {
   confirmedAtISO: string;
 }
 
+export interface CustomerFactVerificationProvenance {
+  verificationId: string;
+  verifiedAtISO: string;
+}
+
 export interface GovernedControlProvenance {
   controlId: string;
   controlVersion: string;
@@ -99,6 +114,7 @@ export interface FilingFactProvenance {
   provenanceClass: FilingFactProvenanceClass;
   dependencies: readonly CanonicalFilingFactRef[];
   legalElectionConfirmation?: LegalElectionConfirmationProvenance;
+  customerVerification?: CustomerFactVerificationProvenance;
   governedControl?: GovernedControlProvenance;
   lifecycleEvent?: LifecycleEventProvenance;
 }
@@ -112,6 +128,18 @@ export type FilingFactState<T> =
 
 export type SupplementalFactInput<T> =
   | { state: 'KNOWN'; value: T }
+  | { state: 'UNANSWERED' }
+  | { state: 'UNKNOWN' }
+  | { state: 'REQUIRES_CONFIRMATION'; reason: string }
+  | { state: 'CONFLICT'; values: readonly T[]; reason: string };
+
+/**
+ * Factual customer verification is intentionally separate from legal-election
+ * confirmation. Agreement facts use this input so legal-election provenance can
+ * never be substituted merely because the values happen to match.
+ */
+export type CustomerVerifiedFactInput<T> =
+  | { state: 'KNOWN'; value: T; verification?: CustomerFactVerificationProvenance }
   | { state: 'UNANSWERED' }
   | { state: 'UNKNOWN' }
   | { state: 'REQUIRES_CONFIRMATION'; reason: string }
@@ -180,21 +208,20 @@ export interface FilerContact {
   zip: string;
   telephone: string;
   email: string;
-  /**
-   * Raw customer factual representation status. Optional only so historical
-   * D.1/E.1 fixture shapes remain structurally readable; the P1-v2 producer
-   * requires an affirmative supported value before any governed caption result.
-   */
   representationStatus?: RepresentationStatus;
-  /**
-   * Historical extra contact keys are structurally tolerated but have no
-   * canonical form authority. P1-v2 never consumes them as governed output.
-   */
   [legacyInputKey: string]: unknown;
 }
 
 export type TpaClassification = 'SUBJECT_AT_FAULT';
 export type CivilClassification = 'LIMITED_LE_10000' | 'LIMITED_GT_10000' | 'UNLIMITED';
+export type LeaseStatus = 'NO_AGREEMENT' | 'MONTH_TO_MONTH' | 'FIXED_TERM' | 'OTHER';
+export type AgreementRentFrequency = 'MONTHLY' | 'OTHER';
+export type AgreementRentDue = 'FIRST_DAY_OF_MONTH' | 'OTHER_DAY';
+export type AgreementForm = 'WRITTEN' | 'ORAL';
+export type AgreementParty = 'PLAINTIFF' | 'PLAINTIFF_AGENT' | 'PLAINTIFF_PREDECESSOR' | 'OTHER';
+export type LeaseApplicability =
+  | 'NO_AGREEMENT_FIELDS_NOT_APPLICABLE'
+  | 'AGREEMENT_FIELDS_APPLICABLE';
 export type ComplaintNoticeElection = 'PAY_RENT_OR_QUIT_3_DAY';
 export type ComplaintServiceElection = 'PERSONAL_HAND_DELIVERY';
 
@@ -252,8 +279,19 @@ export interface FilingCanonicalFactsSupplementalInput {
     tpaClassificationControl?: GovernedControlInput<TpaClassification>;
     localControl?: GovernedControlInput<'NOT_SUBJECT'>;
     civilClassificationControl?: GovernedControlInput<CivilClassification>;
-    leaseStatus?: SupplementalFactInput<'NO_AGREEMENT'>;
-    leaseApplicabilityControl?: GovernedControlInput<'NO_AGREEMENT_FIELDS_NOT_APPLICABLE'>;
+
+    leaseStatus?: CustomerVerifiedFactInput<LeaseStatus>;
+    agreementTermDescription?: CustomerVerifiedFactInput<string>;
+    agreementRentAmount?: CustomerVerifiedFactInput<number>;
+    agreementRentFrequency?: CustomerVerifiedFactInput<AgreementRentFrequency>;
+    agreementRentFrequencyOther?: CustomerVerifiedFactInput<string>;
+    agreementRentDue?: CustomerVerifiedFactInput<AgreementRentDue>;
+    agreementRentDueOtherDay?: CustomerVerifiedFactInput<string>;
+    agreementForm?: CustomerVerifiedFactInput<AgreementForm>;
+    agreementParty?: CustomerVerifiedFactInput<AgreementParty>;
+    agreementPartyOther?: CustomerVerifiedFactInput<string>;
+    agreementDate?: CustomerVerifiedFactInput<string>;
+    leaseApplicabilityControl?: GovernedControlInput<LeaseApplicability>;
 
     noticeComplaintElection?: CustomerConfirmedLegalElectionInput<ComplaintNoticeElection>;
     noticeElectionConsistencyControl?: GovernedControlInput<'CONSISTENT'>;
@@ -275,26 +313,20 @@ export interface FilingCanonicalFactsSupplementalInput {
 export type FilingCanonicalFactRecord = Record<string, FilingFactState<unknown>>;
 
 export type FilingCanonicalFactsProjection =
-  | {
-      status: 'READY';
-      createdNoticeIdentity: CreatedNoticeFactIdentity;
-      facts: FilingCanonicalFactRecord;
-    }
-  | {
-      status: 'BLOCKED';
-      reason: 'EXACT_CREATED_NOTICE_REQUIRED' | 'INVALID_CREATED_NOTICE_IDENTITY';
-      facts: null;
-    };
+  | { status: 'READY'; createdNoticeIdentity: CreatedNoticeFactIdentity; facts: FilingCanonicalFactRecord }
+  | { status: 'BLOCKED'; reason: 'EXACT_CREATED_NOTICE_REQUIRED' | 'INVALID_CREATED_NOTICE_IDENTITY'; facts: null };
+
+type ProvenanceAdditions = Pick<
+  FilingFactProvenance,
+  'legalElectionConfirmation' | 'customerVerification' | 'governedControl' | 'lifecycleEvent'
+>;
 
 function provenance(
   identity: CreatedNoticeFactIdentity,
   sourcePaths: readonly string[],
   provenanceClass: FilingFactProvenanceClass,
   dependencies: readonly CanonicalFilingFactRef[] = [],
-  additions: Pick<
-    FilingFactProvenance,
-    'legalElectionConfirmation' | 'governedControl' | 'lifecycleEvent'
-  > = {},
+  additions: ProvenanceAdditions = {},
 ): FilingFactProvenance {
   return { createdNotice: identity, sourcePaths, provenanceClass, dependencies, ...additions };
 }
@@ -317,13 +349,11 @@ function directArray<T>(
 ): FilingFactState<readonly T[]> {
   const p = provenance(identity, [sourcePath], 'FROZEN_CUSTOMER_CONFIRMED');
   if (value.length === 0) return { state: 'UNANSWERED', provenance: p };
-  if (!value.every(isComplete)) {
-    return {
-      state: 'REQUIRES_CONFIRMATION',
-      reason: `Frozen value at ${sourcePath} contains an incomplete member.`,
-      provenance: p,
-    };
-  }
+  if (!value.every(isComplete)) return {
+    state: 'REQUIRES_CONFIRMATION',
+    reason: `Frozen value at ${sourcePath} contains an incomplete member.`,
+    provenance: p,
+  };
   return { state: 'KNOWN', value: [...value], provenance: p };
 }
 
@@ -338,25 +368,20 @@ function plaintiffNames(
     [CANONICAL_FILING_FACT_REFS.landlordIdentity],
   );
   if (landlordIdentity.state !== 'KNOWN') {
-    return landlordIdentity.state === 'CONFLICT'
-      ? { state: 'CONFLICT', values: [], reason: landlordIdentity.reason, provenance: p }
-      : landlordIdentity.state === 'REQUIRES_CONFIRMATION'
-        ? { state: 'REQUIRES_CONFIRMATION', reason: landlordIdentity.reason, provenance: p }
-        : { state: landlordIdentity.state, provenance: p };
+    if (landlordIdentity.state === 'CONFLICT') return { state: 'CONFLICT', values: [], reason: landlordIdentity.reason, provenance: p };
+    if (landlordIdentity.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: landlordIdentity.reason, provenance: p };
+    return { state: landlordIdentity.state, provenance: p };
   }
   if (landlordIdentity.value.type === 'entity') {
     const name = landlordIdentity.value.entityLegalName;
-    if (name.trim() === '') return { state: 'UNANSWERED', provenance: p };
-    return { state: 'KNOWN', value: [name], provenance: p };
+    return name.trim() === '' ? { state: 'UNANSWERED', provenance: p } : { state: 'KNOWN', value: [name], provenance: p };
   }
   if (landlordIdentity.value.names.length === 0) return { state: 'UNANSWERED', provenance: p };
-  if (landlordIdentity.value.names.some(name => name.trim() === '')) {
-    return {
-      state: 'REQUIRES_CONFIRMATION',
-      reason: 'Frozen landlord identity contains an incomplete individual name.',
-      provenance: p,
-    };
-  }
+  if (landlordIdentity.value.names.some(name => name.trim() === '')) return {
+    state: 'REQUIRES_CONFIRMATION',
+    reason: 'Frozen landlord identity contains an incomplete individual name.',
+    provenance: p,
+  };
   return { state: 'KNOWN', value: [...landlordIdentity.value.names], provenance: p };
 }
 
@@ -371,20 +396,16 @@ function rentDemandTotal(
     [CANONICAL_FILING_FACT_REFS.rentPeriods],
   );
   if (rentPeriods.state !== 'KNOWN') {
-    return rentPeriods.state === 'CONFLICT'
-      ? { state: 'CONFLICT', values: [], reason: rentPeriods.reason, provenance: p }
-      : rentPeriods.state === 'REQUIRES_CONFIRMATION'
-        ? { state: 'REQUIRES_CONFIRMATION', reason: rentPeriods.reason, provenance: p }
-        : { state: rentPeriods.state, provenance: p };
+    if (rentPeriods.state === 'CONFLICT') return { state: 'CONFLICT', values: [], reason: rentPeriods.reason, provenance: p };
+    if (rentPeriods.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: rentPeriods.reason, provenance: p };
+    return { state: rentPeriods.state, provenance: p };
   }
   const amounts = rentPeriods.value.map(period => period.amount);
-  if (amounts.some(amount => !Number.isFinite(amount))) {
-    return {
-      state: 'REQUIRES_CONFIRMATION',
-      reason: 'Frozen rent-period amount is not a finite number.',
-      provenance: p,
-    };
-  }
+  if (amounts.some(amount => !Number.isFinite(amount))) return {
+    state: 'REQUIRES_CONFIRMATION',
+    reason: 'Frozen rent-period amount is not a finite number.',
+    provenance: p,
+  };
   return { state: 'KNOWN', value: amounts.reduce((sum, amount) => sum + amount, 0), provenance: p };
 }
 
@@ -398,13 +419,46 @@ function supplementalState<T>(
   if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
   if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
   if (input.state === 'CONFLICT') return { state: 'CONFLICT', values: [...input.values], reason: input.reason, provenance: p };
-  if (typeof input.value === 'string' && input.value.trim() === '') {
-    return {
-      state: 'REQUIRES_CONFIRMATION',
-      reason: `A confirmed supplemental value at ${sourcePath} cannot be blank.`,
-      provenance: p,
-    };
-  }
+  if (typeof input.value === 'string' && input.value.trim() === '') return {
+    state: 'REQUIRES_CONFIRMATION',
+    reason: `A confirmed supplemental value at ${sourcePath} cannot be blank.`,
+    provenance: p,
+  };
+  return { state: 'KNOWN', value: input.value, provenance: p };
+}
+
+function customerVerifiedState<T>(
+  identity: CreatedNoticeFactIdentity,
+  sourcePath: string,
+  input: CustomerVerifiedFactInput<T> | undefined,
+): FilingFactState<T> {
+  const verification = input?.state === 'KNOWN' ? input.verification : undefined;
+  const p = provenance(
+    identity,
+    [sourcePath],
+    'SUPPLEMENTAL_CUSTOMER_INPUT',
+    [],
+    { customerVerification: verification },
+  );
+  if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
+  if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
+  if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
+  if (input.state === 'CONFLICT') return { state: 'CONFLICT', values: [...input.values], reason: input.reason, provenance: p };
+  if (!verification || verification.verificationId.trim() === '' || verification.verifiedAtISO.trim() === '') return {
+    state: 'REQUIRES_CONFIRMATION',
+    reason: `Agreement fact at ${sourcePath} requires explicit customer verification provenance.`,
+    provenance: p,
+  };
+  if (typeof input.value === 'string' && input.value.trim() === '') return {
+    state: 'REQUIRES_CONFIRMATION',
+    reason: `A verified agreement value at ${sourcePath} cannot be blank.`,
+    provenance: p,
+  };
+  if (typeof input.value === 'number' && !Number.isFinite(input.value)) return {
+    state: 'REQUIRES_CONFIRMATION',
+    reason: `A verified agreement number at ${sourcePath} must be finite.`,
+    provenance: p,
+  };
   return { state: 'KNOWN', value: input.value, provenance: p };
 }
 
@@ -413,13 +467,9 @@ function electionState<T>(
   sourcePath: string,
   input: CustomerConfirmedLegalElectionInput<T> | undefined,
 ): FilingFactState<T> {
-  const p = provenance(
-    identity,
-    [sourcePath],
-    'CUSTOMER_CONFIRMED_LEGAL_ELECTION',
-    [],
-    { legalElectionConfirmation: input?.state === 'KNOWN' ? input.confirmation : undefined },
-  );
+  const p = provenance(identity, [sourcePath], 'CUSTOMER_CONFIRMED_LEGAL_ELECTION', [], {
+    legalElectionConfirmation: input?.state === 'KNOWN' ? input.confirmation : undefined,
+  });
   if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
   if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
   if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
@@ -451,13 +501,9 @@ function lifecycleState<T>(
   sourcePath: string,
   input: LifecycleEventInput<T> | undefined,
 ): FilingFactState<T> {
-  const p = provenance(
-    identity,
-    [sourcePath],
-    'LIFECYCLE_EXTERNAL_EVENT',
-    [],
-    { lifecycleEvent: input?.state === 'KNOWN' ? input.event : undefined },
-  );
+  const p = provenance(identity, [sourcePath], 'LIFECYCLE_EXTERNAL_EVENT', [], {
+    lifecycleEvent: input?.state === 'KNOWN' ? input.event : undefined,
+  });
   if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
   if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
   if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
@@ -470,26 +516,26 @@ function unitRepresentation(
   frozenUnit: FilingFactState<string>,
   explicitNoUnit: SupplementalFactInput<'NO_UNIT'> | undefined,
 ): FilingFactState<PropertyUnitRepresentation> {
-  if (frozenUnit.state === 'KNOWN') {
-    return {
-      state: 'KNOWN',
-      value: { kind: 'UNIT', value: frozenUnit.value },
-      provenance: provenance(
-        identity,
-        ['createData.propertyUnit'],
-        'DETERMINISTIC_DERIVATION',
-        [CANONICAL_FILING_FACT_REFS.propertyUnit],
-      ),
-    };
-  }
+  if (frozenUnit.state === 'KNOWN') return {
+    state: 'KNOWN',
+    value: { kind: 'UNIT', value: frozenUnit.value },
+    provenance: provenance(
+      identity,
+      ['createData.propertyUnit'],
+      'DETERMINISTIC_DERIVATION',
+      [CANONICAL_FILING_FACT_REFS.propertyUnit],
+    ),
+  };
   const p = provenance(identity, ['supplemental.propertyUnitConfirmation'], 'SUPPLEMENTAL_CUSTOMER_INPUT');
   if (!explicitNoUnit || explicitNoUnit.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
   if (explicitNoUnit.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
   if (explicitNoUnit.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: explicitNoUnit.reason, provenance: p };
   if (explicitNoUnit.state === 'CONFLICT') return { state: 'CONFLICT', values: [], reason: explicitNoUnit.reason, provenance: p };
-  if (explicitNoUnit.value !== 'NO_UNIT') {
-    return { state: 'REQUIRES_CONFIRMATION', reason: 'Explicit property-unit confirmation is outside the governed NO_UNIT domain.', provenance: p };
-  }
+  if (explicitNoUnit.value !== 'NO_UNIT') return {
+    state: 'REQUIRES_CONFIRMATION',
+    reason: 'Explicit property-unit confirmation is outside the governed NO_UNIT domain.',
+    provenance: p,
+  };
   return { state: 'KNOWN', value: { kind: 'NO_UNIT' }, provenance: p };
 }
 
@@ -497,32 +543,16 @@ export function projectFilingCanonicalFacts(
   data: NoticeFlowData | null,
   supplemental: FilingCanonicalFactsSupplementalInput = {},
 ): FilingCanonicalFactsProjection {
-  if (!data?.createdNoticeArtifact) {
-    return { status: 'BLOCKED', reason: 'EXACT_CREATED_NOTICE_REQUIRED', facts: null };
-  }
-
+  if (!data?.createdNoticeArtifact) return { status: 'BLOCKED', reason: 'EXACT_CREATED_NOTICE_REQUIRED', facts: null };
   const createdNotice = restoreCreatedNoticeArtifact(data);
-  if (!createdNotice) {
-    return { status: 'BLOCKED', reason: 'INVALID_CREATED_NOTICE_IDENTITY', facts: null };
-  }
+  if (!createdNotice) return { status: 'BLOCKED', reason: 'INVALID_CREATED_NOTICE_IDENTITY', facts: null };
 
   const createData = createdNotice.createData;
-  const identity = {
-    generation: createdNotice.generation,
-    createdAtISO: createdNotice.createdAtISO,
-  };
+  const identity = { generation: createdNotice.generation, createdAtISO: createdNotice.createdAtISO };
   const facts: FilingCanonicalFactRecord = {};
-
   const landlord = createData.landlordIdentity
-    ? ({
-        state: 'KNOWN',
-        value: createData.landlordIdentity,
-        provenance: provenance(identity, ['createData.landlordIdentity'], 'FROZEN_CUSTOMER_CONFIRMED'),
-      } satisfies FilingFactState<LandlordIdentity>)
-    : ({
-        state: 'UNANSWERED',
-        provenance: provenance(identity, ['createData.landlordIdentity'], 'FROZEN_CUSTOMER_CONFIRMED'),
-      } satisfies FilingFactState<LandlordIdentity>);
+    ? ({ state: 'KNOWN', value: createData.landlordIdentity, provenance: provenance(identity, ['createData.landlordIdentity'], 'FROZEN_CUSTOMER_CONFIRMED') } satisfies FilingFactState<LandlordIdentity>)
+    : ({ state: 'UNANSWERED', provenance: provenance(identity, ['createData.landlordIdentity'], 'FROZEN_CUSTOMER_CONFIRMED') } satisfies FilingFactState<LandlordIdentity>);
   const periods = directArray(
     identity,
     'createData.rentPeriods',
@@ -532,12 +562,7 @@ export function projectFilingCanonicalFacts(
 
   facts[CANONICAL_FILING_FACT_REFS.landlordIdentity] = landlord;
   facts[CANONICAL_FILING_FACT_REFS.plaintiffNames] = plaintiffNames(identity, landlord);
-  facts[CANONICAL_FILING_FACT_REFS.defendantNames] = directArray(
-    identity,
-    'createData.tenantNames',
-    createData.tenantNames,
-    (name: string) => name.trim() !== '',
-  );
+  facts[CANONICAL_FILING_FACT_REFS.defendantNames] = directArray(identity, 'createData.tenantNames', createData.tenantNames, name => name.trim() !== '');
   facts[CANONICAL_FILING_FACT_REFS.propertyStreetAddress] = directString(identity, 'createData.propertyAddress', createData.propertyAddress);
   const frozenUnit = directString(identity, 'createData.propertyUnit', createData.propertyUnit);
   facts[CANONICAL_FILING_FACT_REFS.propertyUnit] = frozenUnit;
@@ -565,11 +590,23 @@ export function projectFilingCanonicalFacts(
     [CANONICAL_FILING_FACT_REFS.rentDueAtService, 'supplemental.preparation.rentDueAtService', preparation?.rentDueAtService],
     [CANONICAL_FILING_FACT_REFS.rentalAssistanceFacts, 'supplemental.preparation.rentalAssistanceFacts', preparation?.rentalAssistanceFacts],
     [CANONICAL_FILING_FACT_REFS.otherNoticesFact, 'supplemental.preparation.otherNoticesFact', preparation?.otherNoticesFact],
-    [CANONICAL_FILING_FACT_REFS.leaseStatus, 'supplemental.preparation.leaseStatus', preparation?.leaseStatus],
   ];
-  for (const [ref, path, input] of supplementalFacts) {
-    facts[ref] = supplementalState(identity, path, input);
-  }
+  for (const [ref, path, input] of supplementalFacts) facts[ref] = supplementalState(identity, path, input);
+
+  const agreementFacts: readonly [FixedCanonicalFilingFactRef, string, CustomerVerifiedFactInput<unknown> | undefined][] = [
+    [CANONICAL_FILING_FACT_REFS.leaseStatus, 'supplemental.preparation.leaseStatus', preparation?.leaseStatus],
+    [CANONICAL_FILING_FACT_REFS.agreementTermDescription, 'supplemental.preparation.agreementTermDescription', preparation?.agreementTermDescription],
+    [CANONICAL_FILING_FACT_REFS.agreementRentAmount, 'supplemental.preparation.agreementRentAmount', preparation?.agreementRentAmount],
+    [CANONICAL_FILING_FACT_REFS.agreementRentFrequency, 'supplemental.preparation.agreementRentFrequency', preparation?.agreementRentFrequency],
+    [CANONICAL_FILING_FACT_REFS.agreementRentFrequencyOther, 'supplemental.preparation.agreementRentFrequencyOther', preparation?.agreementRentFrequencyOther],
+    [CANONICAL_FILING_FACT_REFS.agreementRentDue, 'supplemental.preparation.agreementRentDue', preparation?.agreementRentDue],
+    [CANONICAL_FILING_FACT_REFS.agreementRentDueOtherDay, 'supplemental.preparation.agreementRentDueOtherDay', preparation?.agreementRentDueOtherDay],
+    [CANONICAL_FILING_FACT_REFS.agreementForm, 'supplemental.preparation.agreementForm', preparation?.agreementForm],
+    [CANONICAL_FILING_FACT_REFS.agreementParty, 'supplemental.preparation.agreementParty', preparation?.agreementParty],
+    [CANONICAL_FILING_FACT_REFS.agreementPartyOther, 'supplemental.preparation.agreementPartyOther', preparation?.agreementPartyOther],
+    [CANONICAL_FILING_FACT_REFS.agreementDate, 'supplemental.preparation.agreementDate', preparation?.agreementDate],
+  ];
+  for (const [ref, path, input] of agreementFacts) facts[ref] = customerVerifiedState(identity, path, input);
 
   const electionFacts: readonly [FixedCanonicalFilingFactRef, string, CustomerConfirmedLegalElectionInput<unknown> | undefined][] = [
     [CANONICAL_FILING_FACT_REFS.doeElection, 'supplemental.preparation.doeElection', preparation?.doeElection],
@@ -579,9 +616,7 @@ export function projectFilingCanonicalFacts(
     [CANONICAL_FILING_FACT_REFS.pastDueRentRelief, 'supplemental.preparation.pastDueRentRelief', preparation?.pastDueRentRelief],
     [CANONICAL_FILING_FACT_REFS.otherReliefSelections, 'supplemental.preparation.otherReliefSelections', preparation?.otherReliefSelections],
   ];
-  for (const [ref, path, input] of electionFacts) {
-    facts[ref] = electionState(identity, path, input);
-  }
+  for (const [ref, path, input] of electionFacts) facts[ref] = electionState(identity, path, input);
 
   const controlFacts: readonly [FixedCanonicalFilingFactRef, string, GovernedControlInput<unknown> | undefined][] = [
     [CANONICAL_FILING_FACT_REFS.plaintiffStandingControl, 'supplemental.preparation.plaintiffStandingControl', preparation?.plaintiffStandingControl],
@@ -595,15 +630,9 @@ export function projectFilingCanonicalFacts(
     [CANONICAL_FILING_FACT_REFS.rentalAssistanceControl, 'supplemental.preparation.rentalAssistanceControl', preparation?.rentalAssistanceControl],
     [CANONICAL_FILING_FACT_REFS.udaDisclosureControl, 'supplemental.preparation.udaDisclosureControl', preparation?.udaDisclosureControl],
   ];
-  for (const [ref, path, input] of controlFacts) {
-    facts[ref] = controlState(identity, path, input);
-  }
+  for (const [ref, path, input] of controlFacts) facts[ref] = controlState(identity, path, input);
 
-  facts[CANONICAL_FILING_FACT_REFS.serviceFacts] = lifecycleState(
-    identity,
-    'supplemental.preparation.serviceFacts',
-    preparation?.serviceFacts,
-  );
+  facts[CANONICAL_FILING_FACT_REFS.serviceFacts] = lifecycleState(identity, 'supplemental.preparation.serviceFacts', preparation?.serviceFacts);
 
   const telephoneCount = Math.max(createData.tenantNames.length, supplemental.defendantTelephones?.length ?? 0);
   for (let index = 0; index < telephoneCount; index += 1) {
