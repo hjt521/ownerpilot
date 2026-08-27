@@ -14,7 +14,7 @@ import { evaluateUd100GeneratedDraftCurrentness, generateUd100GeneratedDraft, UD
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 
 export const SYNTHETIC_QUALIFICATION_NAMESPACE = 'ownerpilot.synthetic-qualification.e2-3d1' as const;
-export const SYNTHETIC_QUALIFICATION_PROFILE_VERSION = 'bootstrap-v2' as const;
+export const SYNTHETIC_QUALIFICATION_PROFILE_VERSION = 'bootstrap-v3' as const;
 export const SYNTHETIC_QUALIFICATION_PROFILE_ID = `${SYNTHETIC_QUALIFICATION_NAMESPACE}.${SYNTHETIC_QUALIFICATION_PROFILE_VERSION}` as const;
 export const SYNTHETIC_LEGAL_CONTROL_NAMES = Object.freeze([
   'municipal-city-limits','plaintiff-standing-capacity','jurisdiction-support','tpa-classification',
@@ -34,6 +34,7 @@ const PAYEE_CITY = 'Glendale' as const;
 const PAYEE_STATE = 'CA' as const;
 const PAYEE_ZIP = '91203' as const;
 const RENT = 2500 as const;
+const AGREEMENT_TERM_DESCRIPTION = 'ONE-YEAR CONTRACT' as const;
 const COURT = Object.freeze({county:'Los Angeles',streetAddress:'111 N Hill St',mailingAddress:'111 N Hill St',cityAndZip:'Los Angeles, CA 90012',branchName:'Stanley Mosk Courthouse'});
 const CONTACT = Object.freeze({name:OWNER,streetAddress:PAYEE_STREET_ADDRESS,city:PAYEE_CITY,state:PAYEE_STATE,zip:PAYEE_ZIP,telephone:'5555550100',email:'synthetic-qualification@example.test',representationStatus:'SELF_REPRESENTED'});
 const OTHER_RELIEF = Object.freeze({fairRentalValue:false,statutoryDamages:false,relocationDamages:false,forfeiture:false,attorneyFees:false,otherRelief:false,otherAllegations:false});
@@ -56,19 +57,21 @@ function noticeData(): any { return {...createFlowState().data,dispute:{tenantFi
 
 export function createSyntheticQualificationPreview(): any {
   const d=noticeData();
-  return {syntheticOnly:true,profileId:SYNTHETIC_QUALIFICATION_PROFILE_ID,profileVersion:SYNTHETIC_QUALIFICATION_PROFILE_VERSION,reviewApprovalGeneration:reviewApprovalGeneration(d),noticeReview:{propertyAddress:PROPERTY_ADDRESS,propertyUnit:PROPERTY_UNIT,propertyCity:PROPERTY_CITY,propertyCounty:PROPERTY_COUNTY,propertyState:PROPERTY_STATE,tenantNames:[...TENANTS],landlordName:OWNER,rentPeriod:{periodStartDate:'2026-08-01',periodEndDate:'2026-08-31',amount:RENT},serviceDate:SERVICE_DATE,paymentMethod:'MAIL_ONLY',payeeName:OWNER,payeePhone:'5555550100',payeeStreetAddress:PAYEE_STREET_ADDRESS,signerName:OWNER,signerCapacity:'OWNER'},fixedElectionProfileReview:{selectedFilingCourt:COURT,plaintiffRelationship:'OWNER',plaintiffType:'INDIVIDUAL_OVER_18',dbaUse:'NO_DBA',doeDefendantsIncluded:false,leaseStatus:'NO_AGREEMENT',noticeElection:'PAY_RENT_OR_QUIT_3_DAY',serviceElection:'PERSONAL_HAND_DELIVERY',fixedTermExpirationElection:'DO_NOT_SELECT',pastDueRentRelief:{selected:true,amount:RENT},otherReliefSelections:OTHER_RELIEF},humanConfirmationRequired:true,statement:'Synthetic qualification only. Confirm the fixed fictional Notice facts and filing-preparation election profile. No real matter, service, filing, or legal sufficiency is asserted.'};
+  return {syntheticOnly:true,profileId:SYNTHETIC_QUALIFICATION_PROFILE_ID,profileVersion:SYNTHETIC_QUALIFICATION_PROFILE_VERSION,reviewApprovalGeneration:reviewApprovalGeneration(d),noticeReview:{propertyAddress:PROPERTY_ADDRESS,propertyUnit:PROPERTY_UNIT,propertyCity:PROPERTY_CITY,propertyCounty:PROPERTY_COUNTY,propertyState:PROPERTY_STATE,tenantNames:[...TENANTS],landlordName:OWNER,rentPeriod:{periodStartDate:'2026-08-01',periodEndDate:'2026-08-31',amount:RENT},serviceDate:SERVICE_DATE,paymentMethod:'MAIL_ONLY',payeeName:OWNER,payeePhone:'5555550100',payeeStreetAddress:PAYEE_STREET_ADDRESS,signerName:OWNER,signerCapacity:'OWNER'},fixedElectionProfileReview:{selectedFilingCourt:COURT,plaintiffRelationship:'OWNER',plaintiffType:'INDIVIDUAL_OVER_18',dbaUse:'NO_DBA',doeDefendantsIncluded:false,leaseStatus:'OTHER',agreementTermDescription:AGREEMENT_TERM_DESCRIPTION,agreementRentAmount:RENT,agreementRentFrequency:'MONTHLY',agreementRentDue:'FIRST_DAY_OF_MONTH',agreementForm:'WRITTEN',agreementParty:'PLAINTIFF',agreementDateStatus:'UNRESOLVED',noticeElection:'PAY_RENT_OR_QUIT_3_DAY',serviceElection:'PERSONAL_HAND_DELIVERY',fixedTermExpirationElection:'DO_NOT_SELECT',pastDueRentRelief:{selected:true,amount:RENT},otherReliefSelections:OTHER_RELIEF},humanConfirmationRequired:true,statement:'Synthetic qualification only. Confirm the fixed fictional Notice facts and filing-preparation fact/election profile. Agreement date remains unresolved. No real matter, service, filing, or legal sufficiency is asserted.'};
 }
 export function deriveSyntheticBootstrapIdentities(userId: string, generation: string): any {
   const b={namespace:SYNTHETIC_QUALIFICATION_NAMESPACE,profileVersion:SYNTHETIC_QUALIFICATION_PROFILE_VERSION,userId,generation};
   return {riskpathRecordId:uuid({...b,purpose:'riskpath'}),e2eRunId:uuid({...b,purpose:'e2e'}),createdNoticeArtifactId:uuid({...b,purpose:'artifact'}),profileBindingId:`${SYNTHETIC_QUALIFICATION_NAMESPACE}.profile-binding:sha256:${digest(b)}`};
 }
 function conf(c:any,purpose:string): any { return {confirmationId:`${SYNTHETIC_QUALIFICATION_NAMESPACE}.confirmation.${purpose}:sha256:${digest({binding:c.binding,purpose})}`,confirmedAtISO:c.at}; }
+function verify(c:any,purpose:string): any { return {verificationId:`${SYNTHETIC_QUALIFICATION_NAMESPACE}.verification.${purpose}:sha256:${digest({binding:c.binding,purpose})}`,verifiedAtISO:c.at}; }
+function verified(c:any,purpose:string,value:any): any { return {state:'KNOWN',value,verification:verify(c,purpose)}; }
 function control(c:any,name:string,value:any,deps:string[]=[]): any { const controlId=`${SYNTHETIC_QUALIFICATION_NAMESPACE}.control.${name}`; return {state:'KNOWN',value,control:{controlId,controlVersion:SYNTHETIC_QUALIFICATION_PROFILE_VERSION,resultId:`${SYNTHETIC_QUALIFICATION_NAMESPACE}.result.${name}:sha256:${digest({binding:c.binding,controlId,value,deps})}`,status:'CURRENT'},dependencies:deps}; }
 function event(c:any,purpose:string,eventType:string,value:any): any { return {state:'KNOWN',value,event:{sourceId:`${SYNTHETIC_QUALIFICATION_NAMESPACE}.lifecycle.${purpose}`,eventId:`${SYNTHETIC_QUALIFICATION_NAMESPACE}.event.${purpose}:sha256:${digest({binding:c.binding,eventType,value})}`,eventType}}; }
 function supplemental(data:any,c:any): any {
   const relationship={state:'KNOWN',value:'OWNER'} as const; const ptype={state:'KNOWN',value:'INDIVIDUAL_OVER_18'} as const; const filer={state:'KNOWN',value:CONTACT} as const;
   const caption=produceCaptionRouteSupport({data,plaintiffRelationship:relationship,plaintiffType:ptype,filerContact:filer});
-  const lease={state:'KNOWN',value:'NO_AGREEMENT'} as const;
+  const lease=verified(c,'lease-status','OTHER');
   const noticeElection={state:'KNOWN',value:'PAY_RENT_OR_QUIT_3_DAY',confirmation:conf(c,'notice-election')} as const;
   const semantic=evaluateCreatedNoticeSemanticProvenance(data.createdNoticeArtifact); if(semantic.status!=='PROVEN') throw new Error('Created Notice semantics are not PROVEN.');
   const serviceFacts={defendantNames:[...TENANTS],serviceDate:SERVICE_DATE,noticeExpirationDate:data.createdNoticeArtifact.dates.compliancePeriodEndDate,serviceMethod:'PERSONAL_HAND_DELIVERY',noticeIncludedForfeiture:semantic.semantics.forfeitureElectionContentIncluded};
@@ -85,7 +88,15 @@ function supplemental(data:any,c:any): any {
     tpaClassificationControl:control(c,SYNTHETIC_LEGAL_CONTROL_NAMES[3],'SUBJECT_AT_FAULT',[CANONICAL_FILING_FACT_REFS.premisesAge]),
     localControl:control(c,SYNTHETIC_LEGAL_CONTROL_NAMES[4],'NOT_SUBJECT',[CANONICAL_FILING_FACT_REFS.municipalClassification]),
     civilClassificationControl:control(c,SYNTHETIC_LEGAL_CONTROL_NAMES[5],'LIMITED_LE_10000',[CANONICAL_FILING_FACT_REFS.pastDueRentRelief,CANONICAL_FILING_FACT_REFS.otherReliefSelections]),
-    leaseStatus:lease,leaseApplicabilityControl:produceLeaseApplicabilityControl(lease),noticeComplaintElection:noticeElection,
+    leaseStatus:lease,
+    agreementTermDescription:verified(c,'agreement-term',AGREEMENT_TERM_DESCRIPTION),
+    agreementRentAmount:verified(c,'agreement-rent',RENT),
+    agreementRentFrequency:verified(c,'agreement-frequency','MONTHLY'),
+    agreementRentDue:verified(c,'agreement-due','FIRST_DAY_OF_MONTH'),
+    agreementForm:verified(c,'agreement-form','WRITTEN'),
+    agreementParty:verified(c,'agreement-party','PLAINTIFF'),
+    agreementDate:{state:'UNKNOWN'},
+    leaseApplicabilityControl:produceLeaseApplicabilityControl(lease),noticeComplaintElection:noticeElection,
     noticeElectionConsistencyControl:produceNoticeElectionConsistencyControl({data,noticeComplaintElection:noticeElection}),
     serviceComplaintElection:{state:'KNOWN',value:'PERSONAL_HAND_DELIVERY',confirmation:conf(c,'service-election')},
     serviceElectionConsistencyControl:control(c,'service-election-consistency','CONSISTENT',[CANONICAL_FILING_FACT_REFS.serviceComplaintElection,CANONICAL_FILING_FACT_REFS.serviceFacts]),
