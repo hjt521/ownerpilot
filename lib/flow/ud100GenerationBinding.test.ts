@@ -438,7 +438,7 @@ ok(
   'Item 6 agreed-rent binding excludes Notice demand and rent-at-service semantic substitutes even when values overlap',
 );
 
-const agreementRentChanged = evaluate(supplement({
+const agreementRentChanged = evaluate(supplemental({
   preparation: {
     ...agreementInput.preparation,
     agreementRentAmount: { state: 'KNOWN', value: 2600, verification: verification('agreement-rent-2600') },
@@ -449,11 +449,11 @@ notEqual(agreementRentChanged.generationInputId, agreement.result.generationInpu
 const changedAgreementRentPlan = agreementRentChanged.fieldWritePlan.find(item => item.objectReference === '766 0 R');
 if (changedAgreementRentPlan?.action === 'WRITE_TEXT') equal(changedAgreementRentPlan.value, '2600', 'material agreement-rent change changes exact Item 6 output');
 
-const excludedTelephone = evaluate(supplement({ defendantTelephones: [{ state: 'KNOWN', value: '5555559999' }] })).result;
+const excludedTelephone = evaluate(supplemental({ defendantTelephones: [{ state: 'KNOWN', value: '5555559999' }] })).result;
 if (excludedTelephone.status !== 'GENERATION_BINDING_READY') throw new Error('excluded telephone fixture must resolve');
 equal(excludedTelephone.generationInputId, ready.result.generationInputId, 'unreferenced excluded fact does not create false generation diff');
 
-const unverifiedAgreement = evaluate(supplement({
+const unverifiedAgreement = evaluate(supplemental({
   preparation: {
     leaseStatus: { state: 'KNOWN', value: 'OTHER' },
     leaseApplicabilityControl: {
@@ -466,7 +466,7 @@ const unverifiedAgreement = evaluate(supplement({
 })).result;
 equal(unverifiedAgreement.status, 'BLOCKED', 'known agreement classification without customer verification cannot drive Item 6');
 equal(unverifiedAgreement.fieldWritePlan.length, 0, 'unverified agreement produces zero writes');
-const unresolvedLease = evaluate(supplement({ preparation: { leaseStatus: { state: 'UNKNOWN' } } })).result;
+const unresolvedLease = evaluate(supplemental({ preparation: { leaseStatus: { state: 'UNKNOWN' } } })).result;
 equal(unresolvedLease.status, 'BLOCKED', 'UNKNOWN lease status is not silently converted to NO_AGREEMENT');
 equal(unresolvedLease.fieldWritePlan.length, 0, 'unresolved lease status produces zero writes');
 
