@@ -230,7 +230,7 @@ if (existsSync(constitutionalClosurePath)) {
 }
 
 const activeMigrationFiles = [...activeNames].filter((file) => file.endsWith('.sql'));
-check('active migration count remains exactly 93', activeMigrationFiles.length === 93, `got ${activeMigrationFiles.length}`);
+check('active migration count remains exactly 94', activeMigrationFiles.length === 94, `got ${activeMigrationFiles.length}`);
 const constitutionalTimestampFiles = activeMigrationFiles.filter((file) => /^20260722\d{6}_.*\.sql$/.test(file));
 check('constitutional lineage remains exactly 16 timestamp versions', constitutionalTimestampFiles.length === 16, `got ${constitutionalTimestampFiles.length}`);
 
