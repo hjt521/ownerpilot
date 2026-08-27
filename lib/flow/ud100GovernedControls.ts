@@ -4,9 +4,12 @@ import {
   type ComplaintNoticeElection,
   type ComplaintServiceElection,
   type CustomerConfirmedLegalElectionInput,
+  type CustomerVerifiedFactInput,
   type FilerContact,
   type GovernedControlInput,
   type GovernedControlProvenance,
+  type LeaseApplicability,
+  type LeaseStatus,
   type LifecycleEventInput,
   type PlaintiffRelationship,
   type PlaintiffType,
@@ -23,7 +26,7 @@ import {
 import { evaluateStaleness } from './escalation';
 import { deriveResolveRecordContext } from './outcomeEvents';
 
-export const UD100_GOVERNED_CONTROL_VERSION = '1.0.0' as const;
+export const UD100_GOVERNED_CONTROL_VERSION = '1.1.0' as const;
 
 export const UD100_GOVERNED_CONTROL_IDS = Object.freeze({
   captionRoute: 'ud100.caption-route',
@@ -88,7 +91,7 @@ function unresolvedLifecycle<T>(reason: string): LifecycleEventInput<T> {
 }
 
 function fromFactState<TOut, TIn>(
-  input: SupplementalFactInput<TIn> | CustomerConfirmedLegalElectionInput<TIn> | undefined,
+  input: SupplementalFactInput<TIn> | CustomerConfirmedLegalElectionInput<TIn> | CustomerVerifiedFactInput<TIn> | undefined,
   label: string,
 ): GovernedControlInput<TOut> | null {
   if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED' };
@@ -126,6 +129,17 @@ function confirmationIsCurrent<T>(
     && input.confirmation.confirmedAtISO.trim() !== '';
 }
 
+function verificationIsCurrent<T>(
+  input: CustomerVerifiedFactInput<T>,
+): input is Extract<CustomerVerifiedFactInput<T>, { state: 'KNOWN' }> & {
+  verification: { verificationId: string; verifiedAtISO: string };
+} {
+  return input.state === 'KNOWN'
+    && !!input.verification
+    && input.verification.verificationId.trim() !== ''
+    && input.verification.verifiedAtISO.trim() !== '';
+}
+
 function nonblank(value: string): boolean {
   return value.trim() !== '';
 }
@@ -154,13 +168,6 @@ export interface CaptionRouteSupportProducerOutput {
   captionFormValueControl: GovernedControlInput<SelfRepresentedCaptionFormValue>;
 }
 
-/**
- * Bounded caption-route producer. It recognizes exactly one positive profile:
- * OWNER + INDIVIDUAL_OVER_18 + SELF_REPRESENTED, with a complete filer contact
- * whose name exactly matches the sole frozen Created Notice plaintiff identity.
- * The form-facing caption value is build-owned and emitted as a separate
- * governed result; customer input never authors ATTORNEY FOR (name:).
- */
 export function produceCaptionRouteSupport(
   input: CaptionRouteSupportProducerInput,
 ): CaptionRouteSupportProducerOutput {
@@ -311,7 +318,6 @@ export function produceCaptionRouteSupport(
   return { captionRouteControl, captionFormValueControl };
 }
 
-/** Produce SELF_REP_NO_BAR_FIRM_FAX only from the exact current supported route. */
 export function produceCaptionOptionalFieldsControl(
   captionRouteControl: GovernedControlInput<CaptionRouteControl>,
 ): GovernedControlInput<'SELF_REP_NO_BAR_FIRM_FAX'> {
@@ -332,31 +338,30 @@ export function produceCaptionOptionalFieldsControl(
   );
 }
 
-/** Explicit NO_AGREEMENT is the only positive lease-applicability input. */
+/**
+ * Only an explicitly customer-verified lease classification may resolve lease
+ * applicability. Unresolved or unverified state cannot become either positive
+ * applicability result.
+ */
 export function produceLeaseApplicabilityControl(
-  leaseStatus: SupplementalFactInput<'NO_AGREEMENT'> | undefined,
-): GovernedControlInput<'NO_AGREEMENT_FIELDS_NOT_APPLICABLE'> {
-  const unresolvedInput = fromFactState<'NO_AGREEMENT_FIELDS_NOT_APPLICABLE', 'NO_AGREEMENT'>(
-    leaseStatus,
-    'Lease status',
-  );
+  leaseStatus: CustomerVerifiedFactInput<LeaseStatus> | undefined,
+): GovernedControlInput<LeaseApplicability> {
+  const unresolvedInput = fromFactState<LeaseApplicability, LeaseStatus>(leaseStatus, 'Lease status');
   if (unresolvedInput) return unresolvedInput;
-  if (leaseStatus?.state !== 'KNOWN' || leaseStatus.value !== 'NO_AGREEMENT') {
-    return unresolved('Only explicit NO_AGREEMENT can make agreement fields not applicable.');
+  if (!leaseStatus || !verificationIsCurrent(leaseStatus)) {
+    return unresolved('Lease applicability requires explicit customer verification provenance for the agreement classification.');
   }
+  const value: LeaseApplicability = leaseStatus.value === 'NO_AGREEMENT'
+    ? 'NO_AGREEMENT_FIELDS_NOT_APPLICABLE'
+    : 'AGREEMENT_FIELDS_APPLICABLE';
   return currentControl(
     UD100_GOVERNED_CONTROL_IDS.leaseApplicability,
-    'lease-applicability:v1:NO_AGREEMENT_FIELDS_NOT_APPLICABLE',
-    'NO_AGREEMENT_FIELDS_NOT_APPLICABLE' as const,
+    `lease-applicability:v1.1:${leaseStatus.value}:${leaseStatus.verification.verificationId}`,
+    value,
     [CANONICAL_FILING_FACT_REFS.leaseStatus],
   );
 }
 
-/**
- * Compare separately confirmed complaint election to the exact PROVEN Created
- * Notice artifact semantics integrated by PR #387. Artifact type never chooses
- * the owner election, and owner election never supplies artifact semantics.
- */
 export function produceNoticeElectionConsistencyControl(input: {
   data: NoticeFlowData | null;
   noticeComplaintElection?: CustomerConfirmedLegalElectionInput<ComplaintNoticeElection>;
@@ -372,9 +377,7 @@ export function produceNoticeElectionConsistencyControl(input: {
   if (input.noticeComplaintElection.value !== 'PAY_RENT_OR_QUIT_3_DAY') {
     return unresolved('Complaint Notice election is outside the bounded pay-rent-or-quit profile.');
   }
-  if (!input.data?.createdNoticeArtifact) {
-    return { state: 'UNANSWERED' };
-  }
+  if (!input.data?.createdNoticeArtifact) return { state: 'UNANSWERED' };
 
   const rawSemantic = evaluateCreatedNoticeSemanticProvenance(input.data.createdNoticeArtifact);
   if (rawSemantic.status === 'UNPROVEN_LEGACY') {
@@ -385,9 +388,7 @@ export function produceNoticeElectionConsistencyControl(input: {
   }
 
   const restored = restoreCreatedNoticeArtifact(input.data);
-  if (!restored) {
-    return unresolved('Created Notice identity/generation is stale, mismatched, or invalid.');
-  }
+  if (!restored) return unresolved('Created Notice identity/generation is stale, mismatched, or invalid.');
   const semantic = evaluateCreatedNoticeSemanticProvenance(restored);
   if (semantic.status !== 'PROVEN') {
     return unresolved('Created Notice semantic provenance is not PROVEN after exact restore.');
@@ -421,12 +422,6 @@ function blockedService(reason: string): ServiceElectionConsistencyProducerOutpu
   };
 }
 
-/**
- * Consume the existing exact successful-service handoff without changing service
- * runtime. This single producer emits the lifecycle ServiceFacts projection and
- * the separate service-election consistency control for the bounded personal
- * hand-delivery profile.
- */
 export function produceServiceElectionConsistency(input: {
   data: NoticeFlowData | null;
   serviceComplaintElection?: CustomerConfirmedLegalElectionInput<ComplaintServiceElection>;
@@ -517,8 +512,5 @@ export function produceServiceElectionConsistency(input: {
     [CANONICAL_FILING_FACT_REFS.serviceComplaintElection, CANONICAL_FILING_FACT_REFS.serviceFacts],
   );
 
-  return {
-    serviceFacts: lifecycleInput,
-    serviceElectionConsistencyControl: consistencyControl,
-  };
+  return { serviceFacts: lifecycleInput, serviceElectionConsistencyControl: consistencyControl };
 }
