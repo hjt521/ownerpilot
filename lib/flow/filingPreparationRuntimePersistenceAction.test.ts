@@ -220,7 +220,14 @@ function supplemental(
           CANONICAL_FILING_FACT_REFS.otherReliefSelections,
         ],
       },
-      leaseStatus: { state: 'KNOWN', value: 'NO_AGREEMENT' },
+      leaseStatus: {
+        state: 'KNOWN',
+        value: 'NO_AGREEMENT',
+        verification: {
+          verificationId: 'runtime-lease-status-no-agreement-r1',
+          verifiedAtISO: '2026-08-23T10:02:00.000Z',
+        },
+      },
       leaseApplicabilityControl: {
         state: 'KNOWN',
         value: 'NO_AGREEMENT_FIELDS_NOT_APPLICABLE',
@@ -430,6 +437,13 @@ async function fixture(
   revision = 5,
 ): Promise<CanonicalFixture> {
   const facts = factsFor();
+  if (facts.status !== 'READY') throw new Error('runtime fixture requires READY facts before generation');
+  const leaseStatus = facts.facts[CANONICAL_FILING_FACT_REFS.leaseStatus];
+  equal(leaseStatus?.state, 'KNOWN', 'runtime fixture preserves verified NO_AGREEMENT lease status as KNOWN');
+  if (leaseStatus?.state !== 'KNOWN') throw new Error('runtime lease status fixture must be KNOWN');
+  equal(leaseStatus.value, 'NO_AGREEMENT', 'runtime fixture preserves NO_AGREEMENT value');
+  ok(leaseStatus.provenance.customerVerification !== undefined, 'runtime fixture preserves explicit lease-status customer verification before generation');
+  equal(leaseStatus.provenance.customerVerification?.verificationId, 'runtime-lease-status-no-agreement-r1', 'runtime fixture preserves deterministic lease-status verification identity');
   const authorization = authorizationFor(facts);
   const generated = await generateUd100GeneratedDraft({
     officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
