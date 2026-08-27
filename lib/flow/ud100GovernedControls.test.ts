@@ -137,8 +137,8 @@ function assertCurrentControl(
 }
 
 console.log('=== Stage D.1 P1-v2 governed-control producers ===');
+equal(UD100_GOVERNED_CONTROL_VERSION, '1.1.0', 'agreement remediation advances the governed control version to 1.1.0');
 
-// Caption route: exact positive profile.
 const caption = produceCaptionRouteSupport({
   data: persisted,
   plaintiffRelationship: { state: 'KNOWN', value: 'OWNER' },
@@ -163,7 +163,6 @@ if (caption.captionFormValueControl.state === 'KNOWN') {
   );
 }
 
-// Customer free text cannot author the governed form value because FilerContact has no caption field.
 const browserLikeContact = {
   ...filerContact('SELF_REPRESENTED'),
   captionForText: 'Customer-authored attorney role text',
@@ -271,13 +270,34 @@ for (const badRoute of [
   );
 }
 
-// Lease applicability.
-const lease = produceLeaseApplicabilityControl({ state: 'KNOWN', value: 'NO_AGREEMENT' });
-assertCurrentControl(lease, UD100_GOVERNED_CONTROL_IDS.leaseApplicability, 'lease applicability');
-if (lease.state === 'KNOWN') {
-  equal(lease.value, 'NO_AGREEMENT_FIELDS_NOT_APPLICABLE', 'explicit NO_AGREEMENT alone produces bounded applicability result');
-  equal(lease.dependencies?.[0], CANONICAL_FILING_FACT_REFS.leaseStatus, 'lease result retains exact lease-status dependency');
+const leaseVerification = { verificationId: 'lease-verification-1', verifiedAtISO: '2026-08-14T12:02:00.000Z' };
+const noAgreementLease = produceLeaseApplicabilityControl({
+  state: 'KNOWN',
+  value: 'NO_AGREEMENT',
+  verification: leaseVerification,
+});
+assertCurrentControl(noAgreementLease, UD100_GOVERNED_CONTROL_IDS.leaseApplicability, 'no-agreement lease applicability');
+if (noAgreementLease.state === 'KNOWN') {
+  equal(noAgreementLease.value, 'NO_AGREEMENT_FIELDS_NOT_APPLICABLE', 'verified NO_AGREEMENT produces exact no-agreement applicability');
+  equal(noAgreementLease.dependencies?.[0], CANONICAL_FILING_FACT_REFS.leaseStatus, 'lease result retains exact lease-status dependency');
 }
+const agreementLease = produceLeaseApplicabilityControl({
+  state: 'KNOWN',
+  value: 'OTHER',
+  verification: { verificationId: 'lease-verification-2', verifiedAtISO: '2026-08-14T12:03:00.000Z' },
+});
+assertCurrentControl(agreementLease, UD100_GOVERNED_CONTROL_IDS.leaseApplicability, 'agreement-applicable lease control');
+if (agreementLease.state === 'KNOWN') {
+  equal(agreementLease.value, 'AGREEMENT_FIELDS_APPLICABLE', 'verified OTHER classification enters exact agreement-applicable state');
+}
+ok(
+  produceLeaseApplicabilityControl({ state: 'KNOWN', value: 'NO_AGREEMENT' }).state !== 'KNOWN',
+  'unverified known NO_AGREEMENT cannot become a governed positive applicability result',
+);
+ok(
+  produceLeaseApplicabilityControl({ state: 'KNOWN', value: 'OTHER' }).state !== 'KNOWN',
+  'unverified known agreement classification cannot become agreement-applicable',
+);
 for (const leaseInput of [
   undefined,
   { state: 'UNANSWERED' } as const,
@@ -285,10 +305,9 @@ for (const leaseInput of [
   { state: 'REQUIRES_CONFIRMATION', reason: 'agreement unknown' } as const,
   { state: 'CONFLICT', values: ['NO_AGREEMENT'] as const, reason: 'agreement conflict' } as const,
 ]) {
-  ok(produceLeaseApplicabilityControl(leaseInput).state !== 'KNOWN', 'silence/unknown/conflict never becomes NO_AGREEMENT');
+  ok(produceLeaseApplicabilityControl(leaseInput).state !== 'KNOWN', 'silence/unknown/conflict never becomes either lease applicability positive state');
 }
 
-// Notice-election consistency from exact PR #387 semantics + separate owner election.
 const noticeConsistency = produceNoticeElectionConsistencyControl({
   data: persisted,
   noticeComplaintElection: noticeElection(),
@@ -363,7 +382,6 @@ ok(
   'cross-generation Notice identity cannot produce Notice consistency',
 );
 
-// Exact successful-service handoff + separate election.
 const served: NoticeFlowData = {
   ...persisted,
   serviceAttempts: [
@@ -492,7 +510,6 @@ ok(invalidServiceResult.serviceElectionConsistencyControl.state !== 'KNOWN', 'IN
 const noServiceElection = produceServiceElectionConsistency({ data: served });
 ok(noServiceElection.serviceElectionConsistencyControl.state !== 'KNOWN', 'service facts cannot choose the owner service election');
 
-// No broad control engine / no authority expansion.
 const controlIdValues = Object.values(UD100_GOVERNED_CONTROL_IDS).join('|');
 for (const outOfScope of [
   'municipal',
