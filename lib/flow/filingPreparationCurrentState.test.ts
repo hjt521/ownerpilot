@@ -85,7 +85,7 @@ function supplemental(): FilingCanonicalFactsSupplementalInput {
       tpaClassificationControl: { state: 'KNOWN', value: 'SUBJECT_AT_FAULT', control: control('tpa-classification', 'subject-at-fault') },
       localControl: { state: 'KNOWN', value: 'NOT_SUBJECT', control: control('local-rent-control', 'not-subject') },
       civilClassificationControl: { state: 'KNOWN', value: 'LIMITED_LE_10000', control: control('civil-classification', 'limited-le-10000'), dependencies: [CANONICAL_FILING_FACT_REFS.pastDueRentRelief, CANONICAL_FILING_FACT_REFS.otherReliefSelections] },
-      leaseStatus: { state: 'KNOWN', value: 'NO_AGREEMENT' },
+      leaseStatus: { state: 'KNOWN', value: 'NO_AGREEMENT', verification: { verificationId: 'lease-status-no-agreement-r1', verifiedAtISO: '2026-08-14T12:02:00.000Z' } },
       leaseApplicabilityControl: { state: 'KNOWN', value: 'NO_AGREEMENT_FIELDS_NOT_APPLICABLE', control: control('lease-applicability', 'not-applicable'), dependencies: [CANONICAL_FILING_FACT_REFS.leaseStatus] },
       noticeComplaintElection: { state: 'KNOWN', value: 'PAY_RENT_OR_QUIT_3_DAY', confirmation: confirmation('notice-election-pay-rent') },
       noticeElectionConsistencyControl: { state: 'KNOWN', value: 'CONSISTENT', control: control('notice-election-consistency', 'consistent'), dependencies: [CANONICAL_FILING_FACT_REFS.noticeComplaintElection] },
@@ -107,6 +107,12 @@ function supplemental(): FilingCanonicalFactsSupplementalInput {
 function fixture() {
   const facts = projectFilingCanonicalFacts(persisted, supplemental());
   if (facts.status !== 'READY') throw new Error('R1 facts fixture must be READY');
+  const leaseStatus = facts.facts[CANONICAL_FILING_FACT_REFS.leaseStatus];
+  equal(leaseStatus?.state, 'KNOWN', 'R1 fixture preserves verified NO_AGREEMENT lease status as KNOWN');
+  if (leaseStatus?.state !== 'KNOWN') throw new Error('R1 lease status fixture must be KNOWN');
+  equal(leaseStatus.value, 'NO_AGREEMENT', 'R1 fixture preserves NO_AGREEMENT value');
+  ok(leaseStatus.provenance.customerVerification !== undefined, 'R1 fixture preserves explicit lease-status customer verification before binding');
+  equal(leaseStatus.provenance.customerVerification?.verificationId, 'lease-status-no-agreement-r1', 'R1 fixture preserves deterministic lease-status verification identity');
   const evaluation = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts);
   if (evaluation.status !== 'GENERATION_BINDING_READY') throw new Error(`R1 binding fixture blocked: ${JSON.stringify(evaluation)}`);
   const authorization: FormPreparationAuthorization = {
