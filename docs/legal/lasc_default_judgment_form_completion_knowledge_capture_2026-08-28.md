@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Capture reusable document-generation lessons observed while preparing a private Los Angeles Superior Court unlawful-detainer default-judgment packet, without storing private matter PII or converting one case into a legal rule.
+Capture reusable document-generation lessons observed while preparing a private Los Angeles Superior Court unlawful-detainer matter, without storing private matter PII or converting one case into a legal rule. The learning scope begins with the tenancy source record and notice/service chain and continues through complaint filing, post-filing service, default/judgment preparation, writ issuance, enforcement, and eventual resolution.
 
 The governing boundary is:
 
@@ -22,8 +22,31 @@ OwnerPilot should keep these identities distinct:
 4. `GeneratedDocumentIdentity` — rendered output bound to the source artifact, field map, and fact snapshot.
 5. `FiledConformedIdentity` — court-filed/conformed artifact returned by the court.
 6. `CourtIssuedIdentity` — artifact created/issued by the court.
+7. `EvidenceArtifactIdentity` — source evidence such as lease, notice, service evidence, local-agency confirmation, ledger, photograph, or mailing proof.
+8. `PacketBindingIdentity` — exact composition/order of one filing or service packet.
 
-A later correction to a generated form must not silently rewrite historical filed/conformed or court-issued evidence.
+A later correction to a generated form must not silently rewrite historical source evidence, filed/conformed artifacts, or court-issued evidence.
+
+## End-to-end unlawful-detainer learning path
+
+The reusable workflow learned from the private pressure test is broader than default judgment:
+
+1. **Lease / tenancy evidence intake.** Parse the executed lease and addenda for party/capacity identity, premises, rent, term, payment schedule, and other facts used downstream. Preserve contradictions between source documents instead of silently normalizing them.
+2. **Notice generation.** Build the applicable notice only from current matter facts and current jurisdiction controls. Preserve the exact notice artifact used in the matter.
+3. **Notice service evidence.** Record the actual notice-service method and preserve its proof/evidence. Posting photographs, mailing certificates/envelopes, server declarations, or other service evidence are separate artifacts. Notice-service proof is not the same artifact or event as later service of the Summons/Complaint.
+4. **Local pre-filing compliance.** Preserve required local-agency filings/confirmations as independent evidence with their own dates and reference identities. Local compliance must not be inferred merely because a notice exists.
+5. **Complaint filing packet.** Generate the applicable statewide and local filing forms from one canonical fact snapshot and bind supporting exhibits to exact evidence identities. In the observed LASC workflow the form/exhibit classes included UD-100, CM-010, LASC CIV 109, SUM-130, LASC CIV 312, the lease/addenda, the notice, notice-service evidence, and a local housing-agency confirmation. CP10.5 remains a separate applicability/service decision and must never be represented as served unless that fact is proven.
+6. **Court filing and return intake.** Capture the actual filing event, assigned case identity, fee transaction, conformed forms, returned copies, and court-issued notices/orders as a new stage. Court-return artifacts can create downstream workflow facts but do not automatically create legal conclusions.
+7. **Post-filing service packet.** Compose the service packet from the filed/conformed Summons/Complaint plus the local/court-issued materials actually required for that matter. Preserve the exact documents actually served, service method, server, address, and time/date.
+8. **POS-010 completion and filing.** Generate proof of service from the completed service event, not from planned service. Preserve pre-service draft, signed proof, and filed/conformed proof as distinct states.
+9. **Response/default gate.** Start default preparation only after the applicable response period and a fresh docket check. Reconfirm current sworn facts such as military-status basis, rental-assistance state, payments/credits, occupancy, and other matter facts rather than carrying them forward as reusable defaults.
+10. **Default/judgment/writ preparation.** The downstream form classes observed include CIV-100, UD-110, UD-116, UD-120, MC-010/MC-011, and EJ-130. A route transition such as clerk/possession-only to court/money judgment must clear incompatible selections across all affected forms and deterministically reconcile amounts.
+11. **Court-issued judgment/writ and enforcement.** A generated judgment or writ is not an issued judgment or writ. Enforcement workflows must bind to the actual court-signed/issued artifact before sheriff or other execution steps.
+12. **Resolution capture.** Record possession, money recovery, settlement/dismissal if applicable, enforcement outcome, and final case status as later evidence. Do not infer closure from an earlier milestone.
+
+The lifecycle model is:
+
+`lease/source evidence -> notice -> notice service evidence -> local compliance -> complaint packet -> court filing/return -> post-filing service -> filed proof of service -> response/default gate -> judgment packet -> court-issued judgment/writ -> enforcement -> resolution`
 
 ## Reusable rendering/field-map rules
 
@@ -34,6 +57,7 @@ A later correction to a generated form must not silently rewrite historical file
 - Derived totals should be calculated deterministically from supported component amounts and fail closed on inconsistency.
 - Sworn facts must remain pending until a human with knowledge confirms the current fact immediately before signature.
 - Never copy a case number, party identity, military-status basis, rental-assistance fact, service fact, hearing date, court date, or dollar amount from a prior matter.
+- Packet generation must bind each exhibit to verified evidence identity; selection by upload recency is not sufficient.
 
 ## Observed field-map patterns
 
@@ -98,7 +122,10 @@ Treat cost forms as evidence-backed schedules. Amounts must derive from the curr
 4. Encode checkbox exclusivity and path transitions explicitly.
 5. Reconcile arithmetic fields deterministically before rendering.
 6. Require a human-confirmation gate for sworn declarations.
-7. Preserve live-case corrections as an observation stream; route any proposed legal/product rule through Product / Legal / Architecture governance before adoption.
+7. Add an evidence/attachment registry so every lease, notice, service proof, agency confirmation, and exhibit slot has stable identity and provenance.
+8. Add packet-binding identity so the exact filing set, service set, and later default set cannot be conflated.
+9. Treat court-return intake as a first-class lifecycle transition; court-issued documents may alter downstream document/service requirements.
+10. Preserve live-case corrections as an observation stream; route any proposed legal/product rule through Product / Legal / Architecture governance before adoption.
 
 ## Privacy boundary
 
@@ -106,4 +133,4 @@ No private live-case names, addresses, phone numbers, case numbers, or other cus
 
 ## Relationship to official-form registry
 
-The existing `docs/legal/official-forms/` registry stores pristine blank source artifacts only. This observation does **not** authorize placing completed/live-case PDFs into that registry. It instead informs the future `FieldMapIdentity` and generated-document layers described by the registry README.
+The existing `docs/legal/official-forms/` registry stores pristine blank source artifacts only. This observation does **not** authorize placing completed/live-case PDFs, leases, notices, service evidence, or other matter records into that registry. It instead informs future evidence identity, field-map, generated-document, packet-binding, court-return, and lifecycle layers described by the registry architecture.
