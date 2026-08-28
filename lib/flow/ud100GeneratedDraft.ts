@@ -20,8 +20,12 @@ import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 
 export const UD100_GENERATED_DRAFT_IMPLEMENTATION_ID =
   'ownerpilot-stage-e1-ud100-generated-draft' as const;
-export const UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION = '1.1.0' as const;
+export const UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION = '1.2.0' as const;
 export const UD100_GENERATED_DRAFT_ARTIFACT_ROLE = 'OWNER_GENERATED_PREPARATION' as const;
+export const UD100_GENERATED_TEXT_APPEARANCE = Object.freeze({
+  colorSpace: 'DeviceRGB' as const,
+  rgb: [0, 0, 1] as const,
+});
 
 if (UD100_GENERATION_BINDING.artifactRole !== UD100_GENERATED_DRAFT_ARTIFACT_ROLE) {
   throw new Error('Stage E.1 generated-draft artifact role drifted from the governed D.1 binding.');
@@ -48,6 +52,7 @@ const definition: OfficialGeneratedDraftDefinition = {
   expectedGeneratorContractVersion: UD100_GENERATOR_CONTRACT_VERSION,
   expectedPageCount: 4,
   expectedFieldCount: 186,
+  generatedTextAppearance: UD100_GENERATED_TEXT_APPEARANCE,
 };
 
 export interface GenerateUd100DraftInput {

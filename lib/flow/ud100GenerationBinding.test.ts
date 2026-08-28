@@ -63,6 +63,10 @@ const confirmation = (id: string) => ({
   confirmationId: id,
   confirmedAtISO: '2026-08-14T12:02:00.000Z',
 });
+const verification = (id: string) => ({
+  verificationId: id,
+  verifiedAtISO: '2026-08-14T12:02:00.000Z',
+});
 const selectedCourt = {
   county: 'Los Angeles',
   streetAddress: '111 N Hill St',
@@ -133,7 +137,6 @@ function supplemental(
         value: 'SUPPORTED_INITIAL_UD100',
         control: control('jurisdiction-support', 'supported'),
       },
-
       plaintiffRelationship: { state: 'KNOWN', value: 'OWNER' },
       plaintiffType: { state: 'KNOWN', value: 'INDIVIDUAL_OVER_18' },
       plaintiffStandingControl: {
@@ -167,7 +170,6 @@ function supplemental(
         control: control('caption-optional-fields', 'self-rep-optional'),
         dependencies: [CANONICAL_FILING_FACT_REFS.captionRouteControl],
       },
-
       premisesAge: { state: 'KNOWN', value: '1990' },
       tpaClassificationControl: {
         state: 'KNOWN',
@@ -185,14 +187,13 @@ function supplemental(
         control: control('civil-classification', 'limited-le-10000'),
         dependencies: [CANONICAL_FILING_FACT_REFS.pastDueRentRelief, CANONICAL_FILING_FACT_REFS.otherReliefSelections],
       },
-      leaseStatus: { state: 'KNOWN', value: 'NO_AGREEMENT' },
+      leaseStatus: { state: 'KNOWN', value: 'NO_AGREEMENT', verification: verification('no-agreement') },
       leaseApplicabilityControl: {
         state: 'KNOWN',
         value: 'NO_AGREEMENT_FIELDS_NOT_APPLICABLE',
-        control: control('lease-applicability', 'not-applicable'),
+        control: control('lease-applicability', 'not-applicable-v1.1'),
         dependencies: [CANONICAL_FILING_FACT_REFS.leaseStatus],
       },
-
       noticeComplaintElection: {
         state: 'KNOWN',
         value: 'PAY_RENT_OR_QUIT_3_DAY',
@@ -248,7 +249,6 @@ function supplemental(
         dependencies: [CANONICAL_FILING_FACT_REFS.rentalAssistanceFacts],
       },
       otherNoticesFact: { state: 'KNOWN', value: 'NO_OTHER_NOTICES' },
-
       pastDueRentRelief: {
         state: 'KNOWN',
         value: { selected: true, amount: 2400 },
@@ -259,7 +259,6 @@ function supplemental(
         value: allOptionalReliefFalse,
         confirmation: confirmation('other-relief-none'),
       },
-
       udaDisclosureControl: {
         state: 'KNOWN',
         value: 'NO_COMPENSATED_ASSISTANT',
@@ -304,6 +303,7 @@ equal(ready.result.pdfMutation, 'NOT_PERFORMED', 'GENERATION_BINDING_READY does 
 equal(ready.result.formApplicability, 'NOT_EVALUATED', 'D.1 does not decide applicability');
 equal(ready.result.formRequiredness, 'NOT_EVALUATED', 'D.1 does not decide requiredness');
 equal(UD100_GENERATION_BINDING.mapId, UD100_GENERATION_BINDING_MAP_ID, 'map id is explicit');
+equal(UD100_GENERATION_BINDING.mapVersion, '1.3.0', 'agreement remediation advances exact map version to 1.3.0');
 equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'remediation changes explicit map version');
 equal(UD100_GENERATION_BINDING.profileId, UD100_GENERATION_PROFILE_ID, 'bounded initial pre-filing profile remains explicit');
 ok(UD100_GENERATION_BINDING.mapSnapshotId.startsWith('map:sha256:'), 'map snapshot is content-addressed');
@@ -381,9 +381,94 @@ if (pastDueRent?.action === 'WRITE_TEXT') {
 
 const agreedRentField = 'UD-100[0].Page2[0].List6[0].SubList6[0].Lia[0].SubLista[0].Li2[0].dollar[0]';
 const agreedRent = ready.result.fieldWritePlan.find(item => item.fieldId === agreedRentField);
-equal(agreedRent?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'current no-agreement governed control leaves agreed-rent source blank without Notice-demand substitution');
+equal(agreedRent?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'verified NO_AGREEMENT keeps agreed-rent source blank without Notice-demand substitution');
 ok(UD100_PROHIBITED_SEMANTIC_SUBSTITUTIONS.some(item => 'fieldId' in item && item.fieldId === agreedRentField && item.prohibitedSourceRef === CANONICAL_FILING_FACT_REFS.rentDemandTotal), 'agreed-rent Notice-demand prohibition remains explicit');
 ok(!UD100_GENERATION_BINDING.fieldRules.some(rule => rule.disposition === 'WRITE' && rule.dependencies.some(dep => dep.ref === CANONICAL_FILING_FACT_REFS.rentDemandTotal)), 'Notice demand is not reused by any writable complaint field');
+
+const agreementInput = supplemental({
+  preparation: {
+    leaseStatus: { state: 'KNOWN', value: 'OTHER', verification: verification('lease-other') },
+    agreementTermDescription: { state: 'KNOWN', value: 'ONE-YEAR CONTRACT', verification: verification('agreement-term') },
+    agreementRentAmount: { state: 'KNOWN', value: 2500, verification: verification('agreement-rent') },
+    agreementRentFrequency: { state: 'KNOWN', value: 'MONTHLY', verification: verification('agreement-frequency') },
+    agreementRentDue: { state: 'KNOWN', value: 'FIRST_DAY_OF_MONTH', verification: verification('agreement-due') },
+    agreementForm: { state: 'KNOWN', value: 'WRITTEN', verification: verification('agreement-form') },
+    agreementParty: { state: 'KNOWN', value: 'PLAINTIFF', verification: verification('agreement-party') },
+    agreementDate: { state: 'UNKNOWN' },
+    leaseApplicabilityControl: {
+      state: 'KNOWN',
+      value: 'AGREEMENT_FIELDS_APPLICABLE',
+      control: control('lease-applicability', 'agreement-applicable-v1.1'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.leaseStatus],
+    },
+  },
+});
+const agreement = evaluate(agreementInput);
+equal(agreement.result.status, 'GENERATION_BINDING_READY', 'verified one-year agreement enters agreement-applicable binding');
+if (agreement.result.status !== 'GENERATION_BINDING_READY') throw new Error(`agreement fixture must resolve: ${JSON.stringify(agreement.result)}`);
+const planAt = (objectReference: string) => agreement.result.status === 'GENERATION_BINDING_READY'
+  ? agreement.result.fieldWritePlan.find(item => item.objectReference === objectReference)
+  : undefined;
+equal(planAt('771 0 R')?.action, 'SET_SELECTED', 'OTHER tenancy selects exact Item 6 other-tenancy checkbox');
+const tenancyDetail = planAt('772 0 R');
+equal(tenancyDetail?.action, 'WRITE_TEXT', 'OTHER tenancy writes exact Item 6 term description');
+if (tenancyDetail?.action === 'WRITE_TEXT') equal(tenancyDetail.value, 'ONE-YEAR CONTRACT', 'Item 6 term detail is exact Founder-supplied value');
+const defendants = planAt('758 0 R');
+equal(defendants?.action, 'WRITE_TEXT', 'Item 6 defendant family is written from canonical identities');
+if (defendants?.action === 'WRITE_TEXT') equal(defendants.value, 'Synthetic Tenant One; Synthetic Tenant Two', 'Item 6 defendant order matches canonical defendant order');
+const agreementRentPlan = planAt('766 0 R');
+equal(agreementRentPlan?.action, 'WRITE_TEXT', 'agreement-applicable profile writes exact Item 6 agreed rent');
+if (agreementRentPlan?.action === 'WRITE_TEXT') equal(agreementRentPlan.value, '2500', 'Item 6 agreed rent is exact verified agreement rent');
+equal(planAt('767 0 R')?.action, 'SET_SELECTED', 'monthly agreement selects monthly frequency');
+equal(planAt('763 0 R')?.action, 'SET_SELECTED', 'first-day agreement selects first of month');
+equal(planAt('745 0 R')?.action, 'SET_SELECTED', 'written agreement selects written form');
+equal(planAt('756 0 R')?.action, 'SET_SELECTED', 'plaintiff agreement party selects plaintiff');
+equal(planAt('757 0 R')?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'unresolved agreement date is never fabricated or derived');
+equal(planAt('603 0 R')?.action, 'SET_EXPLICIT_NONSELECTION', 'Item 14 fair-rental-value remains explicitly unselected');
+equal(planAt('604 0 R')?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'Item 14 daily amount remains blank and is not derived');
+const agreedRentRule = UD100_GENERATION_BINDING.fieldRules.find(rule => rule.evidence.objectReference === '766 0 R');
+ok(
+  agreedRentRule?.disposition === 'WRITE'
+    && agreedRentRule.dependencies[0]?.ref === CANONICAL_FILING_FACT_REFS.agreementRentAmount,
+  'Item 6 agreed-rent binding depends only on canonical agreementRentAmount',
+);
+ok(
+  agreedRentRule?.disposition !== 'WRITE'
+    || !agreedRentRule.dependencies.some(dep => dep.ref === CANONICAL_FILING_FACT_REFS.rentDemandTotal || dep.ref === CANONICAL_FILING_FACT_REFS.rentDueAtService),
+  'Item 6 agreed-rent binding excludes Notice demand and rent-at-service semantic substitutes even when values overlap',
+);
+
+const agreementRentChanged = evaluate(supplemental({
+  preparation: {
+    ...agreementInput.preparation,
+    agreementRentAmount: { state: 'KNOWN', value: 2600, verification: verification('agreement-rent-2600') },
+  },
+})).result;
+if (agreementRentChanged.status !== 'GENERATION_BINDING_READY') throw new Error('changed agreement rent fixture must resolve');
+notEqual(agreementRentChanged.generationInputId, agreement.result.generationInputId, 'material agreement-rent change changes generation identity');
+const changedAgreementRentPlan = agreementRentChanged.fieldWritePlan.find(item => item.objectReference === '766 0 R');
+if (changedAgreementRentPlan?.action === 'WRITE_TEXT') equal(changedAgreementRentPlan.value, '2600', 'material agreement-rent change changes exact Item 6 output');
+
+const excludedTelephone = evaluate(supplemental({ defendantTelephones: [{ state: 'KNOWN', value: '5555559999' }] })).result;
+if (excludedTelephone.status !== 'GENERATION_BINDING_READY') throw new Error('excluded telephone fixture must resolve');
+equal(excludedTelephone.generationInputId, ready.result.generationInputId, 'unreferenced excluded fact does not create false generation diff');
+
+const unverifiedAgreement = evaluate(supplemental({
+  preparation: {
+    leaseStatus: { state: 'KNOWN', value: 'OTHER' },
+    leaseApplicabilityControl: {
+      state: 'KNOWN',
+      value: 'AGREEMENT_FIELDS_APPLICABLE',
+      control: control('lease-applicability', 'forged-agreement-applicable'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.leaseStatus],
+    },
+  },
+})).result;
+equal(unverifiedAgreement.status, 'BLOCKED', 'known agreement classification without customer verification cannot drive Item 6');
+equal(unverifiedAgreement.fieldWritePlan.length, 0, 'unverified agreement produces zero writes');
+const unresolvedLease = evaluate(supplemental({ preparation: { leaseStatus: { state: 'UNKNOWN' } } })).result;
+equal(unresolvedLease.status, 'BLOCKED', 'UNKNOWN lease status is not silently converted to NO_AGREEMENT');
+equal(unresolvedLease.fieldWritePlan.length, 0, 'unresolved lease status produces zero writes');
 
 const spoofedCaptionText = supplemental({
   preparation: {

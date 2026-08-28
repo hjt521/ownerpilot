@@ -18,6 +18,18 @@ function equal<T>(actual: T, expected: T, message: string) {
   assert.equal(actual, expected, message);
   passed += 1;
 }
+function deepEqual<T>(actual: T, expected: T, message: string) {
+  assert.deepEqual(actual, expected, message);
+  passed += 1;
+}
+function containsUndefined(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (Array.isArray(value)) return value.some(containsUndefined);
+  if (value !== null && typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).some(containsUndefined);
+  }
+  return false;
+}
 
 const source: NoticeFlowData = {
   ...createFlowState().data,
@@ -176,6 +188,148 @@ const conflictProjection = projectFilingCanonicalFacts(persisted, {
 const conflict = readCanonicalFilingFact<string>(conflictProjection, 'defendant.0.telephone');
 equal(conflict?.state, 'CONFLICT', 'conflicting fact state is preserved');
 if (conflict?.state === 'CONFLICT') equal(conflict.values.length, 2, 'conflict retains both candidate values');
+
+const verification = { verificationId: 'agreement-verification-1', verifiedAtISO: '2026-08-14T12:00:00.000Z' };
+const agreementProjection = projectFilingCanonicalFacts(persisted, {
+  preparation: {
+    leaseStatus: { state: 'KNOWN', value: 'OTHER', verification },
+    agreementTermDescription: { state: 'KNOWN', value: 'ONE-YEAR CONTRACT', verification },
+    agreementRentAmount: { state: 'KNOWN', value: 2500, verification },
+    agreementRentFrequency: { state: 'KNOWN', value: 'MONTHLY', verification },
+    agreementRentDue: { state: 'KNOWN', value: 'FIRST_DAY_OF_MONTH', verification },
+    agreementForm: { state: 'KNOWN', value: 'WRITTEN', verification },
+    agreementParty: { state: 'KNOWN', value: 'PLAINTIFF', verification },
+    agreementDate: { state: 'UNKNOWN' },
+  },
+});
+for (const ref of [
+  CANONICAL_FILING_FACT_REFS.leaseStatus,
+  CANONICAL_FILING_FACT_REFS.agreementTermDescription,
+  CANONICAL_FILING_FACT_REFS.agreementRentAmount,
+  CANONICAL_FILING_FACT_REFS.agreementRentFrequency,
+  CANONICAL_FILING_FACT_REFS.agreementRentDue,
+  CANONICAL_FILING_FACT_REFS.agreementForm,
+  CANONICAL_FILING_FACT_REFS.agreementParty,
+] as const) {
+  const fact = readCanonicalFilingFact(agreementProjection, ref);
+  equal(fact?.state, 'KNOWN', `${ref} admits only as a verified known agreement fact`);
+  if (fact?.state === 'KNOWN') {
+    equal(fact.provenance.provenanceClass, 'SUPPLEMENTAL_CUSTOMER_INPUT', `${ref} retains customer-fact provenance`);
+    equal(fact.provenance.customerVerification?.verificationId, verification.verificationId, `${ref} retains explicit verification identity`);
+    equal(fact.provenance.legalElectionConfirmation, undefined, `${ref} does not reuse legal-election provenance`);
+  }
+}
+const agreementRent = readCanonicalFilingFact<number>(agreementProjection, CANONICAL_FILING_FACT_REFS.agreementRentAmount);
+equal(agreementRent?.state, 'KNOWN', 'verified agreement rent is known');
+if (agreementRent?.state === 'KNOWN') {
+  equal(agreementRent.value, 2500, 'verified agreement rent preserves exact $2,500 value');
+  equal(total.value, agreementRent.value, 'equal numeric value is allowed without merging semantic source identity');
+  ok(agreementRent.provenance.sourcePaths[0] !== total.provenance.sourcePaths[0], 'agreement rent source path remains distinct from Notice demand total source');
+  ok(!agreementRent.provenance.dependencies.includes(CANONICAL_FILING_FACT_REFS.rentDemandTotal), 'agreement rent never depends on rentDemandTotal');
+}
+equal(
+  readCanonicalFilingFact(agreementProjection, CANONICAL_FILING_FACT_REFS.agreementDate)?.state,
+  'UNKNOWN',
+  'explicitly unresolved agreement date remains UNKNOWN and is not fabricated',
+);
+
+const noAgreementVerification = {
+  verificationId: 'no-agreement-verification-1',
+  verifiedAtISO: '2026-08-27T20:00:00.000Z',
+};
+const noAgreementProjection = projectFilingCanonicalFacts(persisted, {
+  preparation: {
+    leaseStatus: { state: 'KNOWN', value: 'NO_AGREEMENT', verification: noAgreementVerification },
+  },
+});
+equal(noAgreementProjection.status, 'READY', 'verified NO_AGREEMENT projects without fabricating agreement-only facts');
+const noAgreementLeaseStatus = readCanonicalFilingFact(noAgreementProjection, CANONICAL_FILING_FACT_REFS.leaseStatus);
+equal(noAgreementLeaseStatus?.state, 'KNOWN', 'verified NO_AGREEMENT remains canonical KNOWN');
+if (noAgreementLeaseStatus?.state === 'KNOWN') {
+  equal(
+    noAgreementLeaseStatus.provenance.customerVerification?.verificationId,
+    noAgreementVerification.verificationId,
+    'verified NO_AGREEMENT retains exact factual verification identity',
+  );
+  equal(
+    noAgreementLeaseStatus.provenance.customerVerification?.verifiedAtISO,
+    noAgreementVerification.verifiedAtISO,
+    'verified NO_AGREEMENT retains exact factual verification timestamp',
+  );
+  equal(
+    noAgreementLeaseStatus.provenance.legalElectionConfirmation,
+    undefined,
+    'verified NO_AGREEMENT does not reuse legal-election confirmation',
+  );
+}
+const omittedNoAgreementRefs = [
+  CANONICAL_FILING_FACT_REFS.agreementTermDescription,
+  CANONICAL_FILING_FACT_REFS.agreementRentAmount,
+  CANONICAL_FILING_FACT_REFS.agreementRentFrequency,
+  CANONICAL_FILING_FACT_REFS.agreementRentFrequencyOther,
+  CANONICAL_FILING_FACT_REFS.agreementRentDue,
+  CANONICAL_FILING_FACT_REFS.agreementRentDueOtherDay,
+  CANONICAL_FILING_FACT_REFS.agreementForm,
+  CANONICAL_FILING_FACT_REFS.agreementParty,
+  CANONICAL_FILING_FACT_REFS.agreementPartyOther,
+  CANONICAL_FILING_FACT_REFS.agreementDate,
+] as const;
+for (const ref of omittedNoAgreementRefs) {
+  const fact = readCanonicalFilingFact(noAgreementProjection, ref);
+  equal(fact?.state, 'UNANSWERED', `${ref} remains UNANSWERED when agreement-only input is intentionally omitted`);
+  ok(
+    fact !== null && !Object.prototype.hasOwnProperty.call(fact.provenance, 'customerVerification'),
+    `${ref} omits optional customerVerification instead of materializing undefined provenance`,
+  );
+}
+const noAgreementFactRefs = [
+  CANONICAL_FILING_FACT_REFS.leaseStatus,
+  ...omittedNoAgreementRefs,
+] as const;
+const noAgreementCanonicalMaterial = Object.fromEntries(
+  noAgreementFactRefs.map(ref => [ref, readCanonicalFilingFact(noAgreementProjection, ref)]),
+);
+ok(
+  !containsUndefined(noAgreementCanonicalMaterial),
+  'verified NO_AGREEMENT agreement-family canonical material contains no undefined runtime material',
+);
+const noAgreementRoundTrip = JSON.parse(
+  JSON.stringify(noAgreementCanonicalMaterial),
+) as typeof noAgreementCanonicalMaterial;
+deepEqual(
+  noAgreementRoundTrip,
+  noAgreementCanonicalMaterial,
+  'verified NO_AGREEMENT agreement-family canonical material survives exact JSON serialization round-trip without semantic loss',
+);
+
+const unverifiedAgreementProjection = projectFilingCanonicalFacts(persisted, {
+  preparation: {
+    leaseStatus: { state: 'KNOWN', value: 'OTHER' },
+    agreementRentAmount: { state: 'KNOWN', value: 2500 },
+  },
+});
+equal(
+  readCanonicalFilingFact(unverifiedAgreementProjection, CANONICAL_FILING_FACT_REFS.leaseStatus)?.state,
+  'REQUIRES_CONFIRMATION',
+  'KNOWN agreement classification without customer verification cannot become canonical known',
+);
+equal(
+  readCanonicalFilingFact(unverifiedAgreementProjection, CANONICAL_FILING_FACT_REFS.agreementRentAmount)?.state,
+  'REQUIRES_CONFIRMATION',
+  'KNOWN agreement rent without customer verification cannot become canonical known',
+);
+for (const unresolvedState of [
+  { state: 'UNANSWERED' } as const,
+  { state: 'UNKNOWN' } as const,
+  { state: 'REQUIRES_CONFIRMATION', reason: 'verify agreement' } as const,
+]) {
+  const unresolvedProjection = projectFilingCanonicalFacts(persisted, { preparation: { leaseStatus: unresolvedState } });
+  equal(
+    readCanonicalFilingFact(unresolvedProjection, CANONICAL_FILING_FACT_REFS.leaseStatus)?.state,
+    unresolvedState.state,
+    `${unresolvedState.state} agreement status is not silently converted to NO_AGREEMENT`,
+  );
+}
 
 const confirmation = { confirmationId: 'election-1', confirmedAtISO: '2026-08-14T12:00:00.000Z' };
 const electionProjection = projectFilingCanonicalFacts(persisted, {
