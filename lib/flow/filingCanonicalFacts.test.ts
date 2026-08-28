@@ -18,6 +18,18 @@ function equal<T>(actual: T, expected: T, message: string) {
   assert.equal(actual, expected, message);
   passed += 1;
 }
+function deepEqual<T>(actual: T, expected: T, message: string) {
+  assert.deepEqual(actual, expected, message);
+  passed += 1;
+}
+function containsUndefined(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (Array.isArray(value)) return value.some(containsUndefined);
+  if (value !== null && typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).some(containsUndefined);
+  }
+  return false;
+}
 
 const source: NoticeFlowData = {
   ...createFlowState().data,
@@ -219,6 +231,75 @@ equal(
   readCanonicalFilingFact(agreementProjection, CANONICAL_FILING_FACT_REFS.agreementDate)?.state,
   'UNKNOWN',
   'explicitly unresolved agreement date remains UNKNOWN and is not fabricated',
+);
+
+const noAgreementVerification = {
+  verificationId: 'no-agreement-verification-1',
+  verifiedAtISO: '2026-08-27T20:00:00.000Z',
+};
+const noAgreementProjection = projectFilingCanonicalFacts(persisted, {
+  preparation: {
+    leaseStatus: { state: 'KNOWN', value: 'NO_AGREEMENT', verification: noAgreementVerification },
+  },
+});
+equal(noAgreementProjection.status, 'READY', 'verified NO_AGREEMENT projects without fabricating agreement-only facts');
+const noAgreementLeaseStatus = readCanonicalFilingFact(noAgreementProjection, CANONICAL_FILING_FACT_REFS.leaseStatus);
+equal(noAgreementLeaseStatus?.state, 'KNOWN', 'verified NO_AGREEMENT remains canonical KNOWN');
+if (noAgreementLeaseStatus?.state === 'KNOWN') {
+  equal(
+    noAgreementLeaseStatus.provenance.customerVerification?.verificationId,
+    noAgreementVerification.verificationId,
+    'verified NO_AGREEMENT retains exact factual verification identity',
+  );
+  equal(
+    noAgreementLeaseStatus.provenance.customerVerification?.verifiedAtISO,
+    noAgreementVerification.verifiedAtISO,
+    'verified NO_AGREEMENT retains exact factual verification timestamp',
+  );
+  equal(
+    noAgreementLeaseStatus.provenance.legalElectionConfirmation,
+    undefined,
+    'verified NO_AGREEMENT does not reuse legal-election confirmation',
+  );
+}
+const omittedNoAgreementRefs = [
+  CANONICAL_FILING_FACT_REFS.agreementTermDescription,
+  CANONICAL_FILING_FACT_REFS.agreementRentAmount,
+  CANONICAL_FILING_FACT_REFS.agreementRentFrequency,
+  CANONICAL_FILING_FACT_REFS.agreementRentFrequencyOther,
+  CANONICAL_FILING_FACT_REFS.agreementRentDue,
+  CANONICAL_FILING_FACT_REFS.agreementRentDueOtherDay,
+  CANONICAL_FILING_FACT_REFS.agreementForm,
+  CANONICAL_FILING_FACT_REFS.agreementParty,
+  CANONICAL_FILING_FACT_REFS.agreementPartyOther,
+  CANONICAL_FILING_FACT_REFS.agreementDate,
+] as const;
+for (const ref of omittedNoAgreementRefs) {
+  const fact = readCanonicalFilingFact(noAgreementProjection, ref);
+  equal(fact?.state, 'UNANSWERED', `${ref} remains UNANSWERED when agreement-only input is intentionally omitted`);
+  ok(
+    fact !== null && !Object.prototype.hasOwnProperty.call(fact.provenance, 'customerVerification'),
+    `${ref} omits optional customerVerification instead of materializing undefined provenance`,
+  );
+}
+const noAgreementFactRefs = [
+  CANONICAL_FILING_FACT_REFS.leaseStatus,
+  ...omittedNoAgreementRefs,
+] as const;
+const noAgreementCanonicalMaterial = Object.fromEntries(
+  noAgreementFactRefs.map(ref => [ref, readCanonicalFilingFact(noAgreementProjection, ref)]),
+);
+ok(
+  !containsUndefined(noAgreementCanonicalMaterial),
+  'verified NO_AGREEMENT agreement-family canonical material contains no undefined runtime material',
+);
+const noAgreementRoundTrip = JSON.parse(
+  JSON.stringify(noAgreementCanonicalMaterial),
+) as typeof noAgreementCanonicalMaterial;
+deepEqual(
+  noAgreementRoundTrip,
+  noAgreementCanonicalMaterial,
+  'verified NO_AGREEMENT agreement-family canonical material survives exact JSON serialization round-trip without semantic loss',
 );
 
 const unverifiedAgreementProjection = projectFilingCanonicalFacts(persisted, {

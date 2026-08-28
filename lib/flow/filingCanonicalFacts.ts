@@ -432,19 +432,26 @@ function customerVerifiedState<T>(
   sourcePath: string,
   input: CustomerVerifiedFactInput<T> | undefined,
 ): FilingFactState<T> {
-  const verification = input?.state === 'KNOWN' ? input.verification : undefined;
+  const suppliedVerification = input?.state === 'KNOWN' ? input.verification : undefined;
+  const verification = suppliedVerification
+    && typeof suppliedVerification.verificationId === 'string'
+    && suppliedVerification.verificationId.trim() !== ''
+    && typeof suppliedVerification.verifiedAtISO === 'string'
+    && suppliedVerification.verifiedAtISO.trim() !== ''
+    ? suppliedVerification
+    : undefined;
   const p = provenance(
     identity,
     [sourcePath],
     'SUPPLEMENTAL_CUSTOMER_INPUT',
     [],
-    { customerVerification: verification },
+    verification ? { customerVerification: verification } : {},
   );
   if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
   if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
   if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
   if (input.state === 'CONFLICT') return { state: 'CONFLICT', values: [...input.values], reason: input.reason, provenance: p };
-  if (!verification || verification.verificationId.trim() === '' || verification.verifiedAtISO.trim() === '') return {
+  if (!verification) return {
     state: 'REQUIRES_CONFIRMATION',
     reason: `Agreement fact at ${sourcePath} requires explicit customer verification provenance.`,
     provenance: p,
