@@ -48,6 +48,24 @@ The lifecycle model is:
 
 `lease/source evidence -> notice -> notice service evidence -> local compliance -> complaint packet -> court filing/return -> post-filing service -> filed proof of service -> response/default gate -> judgment packet -> court-issued judgment/writ -> enforcement -> resolution`
 
+## Evidence-to-form lineage learned from the complaint stage
+
+The filing pressure test demonstrated that the filing forms are downstream views of earlier evidence. OwnerPilot should preserve at least these provenance links:
+
+- `lease/addenda -> tenancy term, rent, party/capacity and premises facts`;
+- `notice -> demand amount, notice type/date and termination-path facts`;
+- `notice-service evidence -> UD-100 notice-service allegations`;
+- `local-agency confirmation -> local pre-filing compliance evidence`;
+- `canonical fact snapshot -> UD-100 + CM-010 + LASC CIV 109 + SUM-130 + LASC CIV 312`;
+- `evidence registry -> exact complaint exhibits and exhibit order`;
+- `court-filed/conformed return -> case number, filing date and later court-linked facts`;
+- `actual post-filing service -> POS-010`;
+- `docket/current declarations -> CIV-100 + UD-110 + UD-116 + UD-120`;
+- `actual cost evidence -> MC-010/MC-011 and any supported cost fields`;
+- `actual court-entered judgment -> later EJ-130 issuance/enforcement state`.
+
+No later form should silently become the source of truth for an earlier historical fact when the source evidence still exists.
+
 ## Reusable rendering/field-map rules
 
 - Preserve the official court form text as source content; case-specific values are an overlay.
