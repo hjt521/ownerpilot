@@ -1,4 +1,4 @@
-# LASC Default-Judgment Form Completion — Observational Knowledge Capture
+# LASC Unlawful-Detainer Lifecycle & Default-Judgment Form Completion — Observational Knowledge Capture
 
 **Status:** OBSERVATION — NONCANONICAL. Not a legal opinion, not adopted product control, not filing authority, and not a customer precedent.
 
@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Capture reusable document-generation lessons observed while preparing a private Los Angeles Superior Court unlawful-detainer matter, without storing private matter PII or converting one case into a legal rule. The learning scope begins with the tenancy source record and notice/service chain and continues through complaint filing, post-filing service, default/judgment preparation, writ issuance, enforcement, and eventual resolution.
+Capture reusable document-generation and lifecycle lessons observed in a private Los Angeles Superior Court unlawful-detainer pressure test, without storing private matter PII or converting one case into a legal rule. The learning path begins with the tenancy source record and notice/service chain and continues through complaint filing, post-filing service, default/judgment preparation, writ issuance, enforcement, and eventual resolution.
 
 The governing boundary is:
 
@@ -17,13 +17,13 @@ The governing boundary is:
 OwnerPilot should keep these identities distinct:
 
 1. `OfficialBlankSourceIdentity` — exact blank court form/revision.
-2. `FieldMapIdentity` — versioned map from canonical facts/selections to exact form fields and printable coordinates.
-3. `MatterFactSnapshotIdentity` — exact case facts and provenance used for one generation.
-4. `GeneratedDocumentIdentity` — rendered output bound to the source artifact, field map, and fact snapshot.
-5. `FiledConformedIdentity` — court-filed/conformed artifact returned by the court.
-6. `CourtIssuedIdentity` — artifact created/issued by the court.
-7. `EvidenceArtifactIdentity` — source evidence such as lease, notice, service evidence, local-agency confirmation, ledger, photograph, or mailing proof.
-8. `PacketBindingIdentity` — exact composition/order of one filing or service packet.
+2. `EvidenceArtifactIdentity` — source evidence such as lease, notice, service evidence, local-agency confirmation, ledger, photograph, or mailing proof.
+3. `FieldMapIdentity` — versioned map from canonical facts/selections to exact form fields and printable coordinates.
+4. `MatterFactSnapshotIdentity` — exact case facts and provenance used for one generation.
+5. `GeneratedDocumentIdentity` — rendered output bound to the source artifact, field map, and fact snapshot.
+6. `PacketBindingIdentity` — exact composition/order of one filing or service packet.
+7. `FiledConformedIdentity` — court-filed/conformed artifact returned by the court.
+8. `CourtIssuedIdentity` — artifact created/issued by the court.
 
 A later correction to a generated form must not silently rewrite historical source evidence, filed/conformed artifacts, or court-issued evidence.
 
@@ -62,6 +62,25 @@ The lifecycle model is:
 ## Observed field-map patterns
 
 These are **examples of field-map behavior**, not universal legal instructions.
+
+### Complaint-stage packet
+
+The observed LASC filing-pressure test required the generator to reason across the complete upstream chain, not only the UD-100:
+
+- lease/addenda as the tenancy source evidence;
+- 3-Day Notice as the demand/termination-path artifact;
+- notice-service evidence, including posting/mailing evidence where used;
+- local-agency filing confirmation where applicable;
+- UD-100 as complaint;
+- CM-010 as Civil Case Cover Sheet;
+- LASC CIV 109 as local cover-sheet addendum/location form;
+- SUM-130 as Summons—Eviction;
+- LASC CIV 312 as defendant cellular-information form;
+- exact exhibit ordering/binding;
+- post-filing court return artifacts;
+- later POS-010 based only on actual post-filing service.
+
+The field map must trace facts backward to their evidence source. For example, tenancy term belongs to the lease source; notice amount and date belong to the notice; notice service method belongs to service evidence; complaint filing date belongs to the conformed filing/court record; later Summons/Complaint service belongs to POS-010 evidence.
 
 ### CIV-100 — Request for Entry of Default
 
