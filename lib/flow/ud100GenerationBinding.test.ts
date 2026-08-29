@@ -20,6 +20,14 @@ import {
   UD100_GENERATION_PROFILE_ID,
   UD100_PROHIBITED_SEMANTIC_SUBSTITUTIONS,
 } from './ud100GenerationBinding';
+import {
+  evaluateUd100PacketAwareGenerationBinding,
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING,
+  UD100_PACKET_AWARE_GENERATION_BINDING,
+  UD100_PACKET_AWARE_GENERATION_BINDING_MAP_VERSION,
+  UD100_PACKET_AWARE_GENERATION_PROFILE_ID,
+  UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION,
+} from './ud100GeneratedDraft';
 
 let passed = 0;
 const ok = (condition: unknown, message: string) => { assert.ok(condition, message); passed += 1; };
@@ -842,7 +850,227 @@ const sourceText = readFileSync(new URL('./ud100GenerationBinding.ts', import.me
 ok(!/captionForText/.test(sourceText), 'official-form binding contains no customer caption free-text transform');
 ok(!/pdf-lib|writeFile|appendFile|fetch\(|XMLHttpRequest|supabase|database|localStorage|sessionStorage|FormData|model\.generate|signDocument|fileDocument|serveDocument/.test(sourceText), 'D.1 profile has no PDF mutation, network, persistence, provider/model, signing, filing, or service execution path');
 
+function packetControl(value: any, resultId: string, dependencies: readonly string[] = []): any {
+  return {
+    state: 'KNOWN',
+    value,
+    control: {
+      controlId: 'ud100.packet-composition',
+      controlVersion: '1.0.0',
+      resultId,
+      status: 'CURRENT',
+    },
+    dependencies: [...dependencies],
+  };
+}
+function packetArtifact(artifactRole: string, artifactId: string, hex: string): any {
+  return {
+    artifactId,
+    artifactRole,
+    sha256: hex.repeat(64),
+    byteLength: 2048,
+    createdNotice: {
+      generation: artifact.generation,
+      createdAtISO: artifact.createdAtISO,
+    },
+  };
+}
+function packetComposition(overrides: Record<string, unknown> = {}): any {
+  return {
+    agreement: packetControl(
+      { kind: 'NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT' },
+      'agreement-not-applicable',
+      [CANONICAL_FILING_FACT_REFS.leaseApplicabilityControl],
+    ),
+    notice: packetControl({
+      kind: 'EXHIBIT_2_ATTACHED',
+      requiredNoticeCount: 1,
+      artifacts: [packetArtifact('EXHIBIT_2_NOTICE', 'notice-artifact-a', 'a')],
+    }, 'notice-exhibit-2'),
+    proofOfService: packetControl({ kind: 'NOT_ATTACHED' }, 'proof-not-attached'),
+    attachment10c: packetControl({ kind: 'NOT_APPLICABLE' }, 'attachment10c-not-applicable'),
+    ...overrides,
+  };
+}
+function withPacket(
+  input: FilingCanonicalFactsSupplementalInput,
+  packet: any,
+): FilingCanonicalFactsSupplementalInput {
+  return {
+    ...input,
+    preparation: {
+      ...input.preparation,
+      packetComposition: packet,
+    },
+  };
+}
+function evaluatePacket(
+  input: FilingCanonicalFactsSupplementalInput = withPacket(supplemental(), packetComposition()),
+) {
+  const facts = projectFilingCanonicalFacts(persisted, input);
+  return {
+    facts,
+    result: evaluateUd100PacketAwareGenerationBinding(
+      UD100_OFFICIAL_SOURCE_IDENTITY,
+      'CURRENT',
+      facts,
+    ),
+  };
+}
+function packetPlanAction(result: ReturnType<typeof evaluatePacket>['result'], objectReference: string) {
+  return result.status === 'GENERATION_BINDING_READY'
+    ? result.fieldWritePlan.find(item => item.objectReference === objectReference)?.action
+    : undefined;
+}
+
+// B2 identity/versioning and B1 compatibility invariants.
+equal(validateGenerationBindingDefinition(UD100_PACKET_AWARE_GENERATION_BINDING).status, 'VALID', 'packet-aware D.1 definition independently validates');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.mapVersion, '1.4.0', 'packet-aware D.1 advances map version to 1.4.0');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.mapVersion, UD100_PACKET_AWARE_GENERATION_BINDING_MAP_VERSION, 'packet-aware map version export matches binding');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.generatorContractVersion, 'ud100-field-write-plan-v4', 'packet-aware generator contract advances to v4');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.generatorContractVersion, UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION, 'packet-aware generator contract export matches binding');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.profileId, 'ud100-initial-prefiling-owner-preparation-v2', 'packet-aware profile identity advances to v2');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.profileId, UD100_PACKET_AWARE_GENERATION_PROFILE_ID, 'packet-aware profile export matches binding');
+notEqual(UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'packet-aware semantics produce a distinct exact map snapshot');
+equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'bootstrap-v3 compatibility binding preserves exact B1 map snapshot');
+equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.generatorContractVersion, UD100_GENERATION_BINDING.generatorContractVersion, 'bootstrap-v3 compatibility binding preserves exact B1 generator contract');
+equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.profileId, UD100_GENERATION_BINDING.profileId, 'bootstrap-v3 compatibility binding preserves exact B1 profile identity');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.fieldRules.length, 186, 'packet-aware binding preserves exact 186-field classification count');
+equal(new Set(UD100_PACKET_AWARE_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.fieldId)).size, 186, 'packet-aware field IDs remain unique');
+equal(new Set(UD100_PACKET_AWARE_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.objectReference)).size, 186, 'packet-aware object references remain unique');
+
+const packetDefault = evaluatePacket();
+equal(packetDefault.facts.status, 'READY', 'exact B1 packet inputs project into canonical D.1 facts');
+equal(packetDefault.result.status, 'GENERATION_BINDING_READY', 'resolved packet-aware current profile admits deterministic write plan');
+if (packetDefault.result.status !== 'GENERATION_BINDING_READY') throw new Error(`packet default must resolve: ${JSON.stringify(packetDefault.result)}`);
+equal(packetDefault.result.fieldWritePlan.length, 186, 'packet-aware write plan still classifies exactly 186 fields');
+equal(packetDefault.result.formApplicability, 'NOT_EVALUATED', 'packet binding does not determine form applicability');
+equal(packetDefault.result.formRequiredness, 'NOT_EVALUATED', 'packet binding does not determine form requiredness or legal sufficiency');
+
+const packetRefs = new Set(['732 0 R','726 0 R','730 0 R','731 0 R','660 0 R','627 0 R','628 0 R']);
+const legacyNonPacketPlan = ready.result.fieldWritePlan.filter(item => !packetRefs.has(item.objectReference));
+const currentNonPacketPlan = packetDefault.result.fieldWritePlan.filter(item => !packetRefs.has(item.objectReference));
+equal(JSON.stringify(currentNonPacketPlan), JSON.stringify(legacyNonPacketPlan), 'same facts preserve every non-packet B1 field-write action exactly');
+equal(packetDefault.result.fieldWritePlan.find(item => item.objectReference === '712 0 R')?.action, ready.result.fieldWritePlan.find(item => item.objectReference === '712 0 R')?.action, 'TPA semantics remain unchanged by packet binding');
+
+// D. Agreement NOT_APPLICABLE path keeps all 6e/6f fields source-native blank and preserves dependency provenance.
+for (const objectReference of ['732 0 R','726 0 R','730 0 R','731 0 R']) {
+  equal(packetPlanAction(packetDefault.result, objectReference), 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', `${objectReference} remains official blank for exact no-agreement packet state`);
+}
+const packetAgreementFact = readCanonicalFilingFact<any>(packetDefault.facts, CANONICAL_FILING_FACT_REFS.packetAgreement);
+equal(packetAgreementFact?.state, 'KNOWN', 'packet agreement fact is exact governed KNOWN input');
+if (packetAgreementFact?.state === 'KNOWN') {
+  ok(packetAgreementFact.provenance.dependencies.includes(CANONICAL_FILING_FACT_REFS.leaseApplicabilityControl), 'no-agreement packet state remains provenance-bound to lease applicability control');
+}
+
+function agreementPacket(kind: string): any {
+  if (kind === 'EXHIBIT_1_ATTACHED') {
+    return packetControl({
+      kind,
+      artifacts: [packetArtifact('EXHIBIT_1_AGREEMENT', 'agreement-artifact-a', '1')],
+    }, 'agreement-exhibit-1');
+  }
+  return packetControl({ kind }, `agreement-${kind}`);
+}
+function evaluateAgreementPacket(kind: string) {
+  return evaluatePacket(withPacket(agreementInput, packetComposition({ agreement: agreementPacket(kind) })));
+}
+
+// A. Exhibit 1 attached.
+const exhibit1 = evaluateAgreementPacket('EXHIBIT_1_ATTACHED');
+equal(exhibit1.result.status, 'GENERATION_BINDING_READY', 'Exhibit 1 agreement packet is admitted');
+equal(packetPlanAction(exhibit1.result, '732 0 R'), 'SET_SELECTED', '6e selects for Exhibit 1 attached');
+equal(packetPlanAction(exhibit1.result, '726 0 R'), 'SET_EXPLICIT_NONSELECTION', '6f parent explicitly nonselects for Exhibit 1 attached');
+equal(packetPlanAction(exhibit1.result, '730 0 R'), 'SET_EXPLICIT_NONSELECTION', '6f solely-nonpayment explicitly nonselects for Exhibit 1 attached');
+equal(packetPlanAction(exhibit1.result, '731 0 R'), 'SET_EXPLICIT_NONSELECTION', '6f possession reason explicitly nonselects for Exhibit 1 attached');
+
+// B. Landlord lacks possession.
+const lacksPossession = evaluateAgreementPacket('NOT_ATTACHED_LANDLORD_LACKS_POSSESSION');
+equal(lacksPossession.result.status, 'GENERATION_BINDING_READY', 'approved lacks-possession agreement exception is admitted');
+equal(packetPlanAction(lacksPossession.result, '732 0 R'), 'SET_EXPLICIT_NONSELECTION', '6e explicitly nonselects for lacks-possession exception');
+equal(packetPlanAction(lacksPossession.result, '726 0 R'), 'SET_SELECTED', '6f parent selects for lacks-possession exception');
+equal(packetPlanAction(lacksPossession.result, '731 0 R'), 'SET_SELECTED', '6f lacks-possession reason selects exactly');
+equal(packetPlanAction(lacksPossession.result, '730 0 R'), 'SET_EXPLICIT_NONSELECTION', '6f solely-nonpayment reason explicitly nonselects for lacks-possession exception');
+
+// C. Solely nonpayment.
+const solelyNonpayment = evaluateAgreementPacket('NOT_ATTACHED_SOLELY_NONPAYMENT');
+equal(solelyNonpayment.result.status, 'GENERATION_BINDING_READY', 'approved solely-nonpayment agreement exception is admitted');
+equal(packetPlanAction(solelyNonpayment.result, '732 0 R'), 'SET_EXPLICIT_NONSELECTION', '6e explicitly nonselects for solely-nonpayment exception');
+equal(packetPlanAction(solelyNonpayment.result, '726 0 R'), 'SET_SELECTED', '6f parent selects for solely-nonpayment exception');
+equal(packetPlanAction(solelyNonpayment.result, '730 0 R'), 'SET_SELECTED', '6f solely-nonpayment reason selects exactly');
+equal(packetPlanAction(solelyNonpayment.result, '731 0 R'), 'SET_EXPLICIT_NONSELECTION', '6f lacks-possession reason explicitly nonselects for solely-nonpayment exception');
+
+// E/F/G. Notice packet exact one/two bindings and fail-closed incomplete/unresolved states.
+const twoNotice = evaluatePacket(withPacket(supplemental(), packetComposition({
+  notice: packetControl({
+    kind: 'EXHIBIT_2_ATTACHED',
+    requiredNoticeCount: 2,
+    artifacts: [
+      packetArtifact('EXHIBIT_2_NOTICE', 'notice-artifact-one', '2'),
+      packetArtifact('EXHIBIT_2_NOTICE', 'notice-artifact-two', '3'),
+    ],
+  }, 'notice-two-exact'),
+})));
+equal(twoNotice.result.status, 'GENERATION_BINDING_READY', 'two exact distinct Notice bindings are admitted');
+equal(packetPlanAction(packetDefault.result, '660 0 R'), 'SET_SELECTED', '9e selects for one exact Exhibit 2 Notice binding');
+equal(packetPlanAction(twoNotice.result, '660 0 R'), 'SET_SELECTED', '9e selects for two exact Exhibit 2 Notice bindings');
+for (const kind of ['REQUIRED_NOTICE_SET_INCOMPLETE','UNRESOLVED']) {
+  const result = evaluatePacket(withPacket(supplemental(), packetComposition({ notice: packetControl({ kind }, `notice-${kind}`) })));
+  equal(result.result.status, 'BLOCKED', `${kind} Notice packet state blocks D.1`);
+  equal(result.result.fieldWritePlan.length, 0, `${kind} Notice packet state produces zero writes`);
+}
+
+// H/I/J. Proof-of-service packet semantics.
+const proofAttached = evaluatePacket(withPacket(supplemental(), packetComposition({
+  proofOfService: packetControl({
+    kind: 'EXHIBIT_3_ATTACHED',
+    artifact: packetArtifact('EXHIBIT_3_PROOF_OF_SERVICE', 'proof-artifact-a', '4'),
+  }, 'proof-exhibit-3'),
+})));
+equal(proofAttached.result.status, 'GENERATION_BINDING_READY', 'exact Exhibit 3 proof binding is admitted');
+equal(packetPlanAction(proofAttached.result, '627 0 R'), 'SET_SELECTED', '10d selects for exact Exhibit 3 proof binding');
+equal(packetPlanAction(packetDefault.result, '627 0 R'), 'SET_EXPLICIT_NONSELECTION', '10d explicitly nonselects when proof packet is NOT_ATTACHED');
+const proofUnresolved = evaluatePacket(withPacket(supplemental(), packetComposition({ proofOfService: packetControl({ kind: 'UNRESOLVED' }, 'proof-unresolved') })));
+equal(proofUnresolved.result.status, 'BLOCKED', 'unresolved proof packet blocks D.1');
+equal(proofUnresolved.result.fieldWritePlan.length, 0, 'unresolved proof packet produces zero writes');
+
+// K/L. Attachment 10c remains a governed no-write and must be exactly NOT_APPLICABLE.
+equal(packetPlanAction(packetDefault.result, '628 0 R'), 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', '10c stays official blank/no-write for exact NOT_APPLICABLE state');
+for (const kind of ['REQUIRED_BUT_UNSUPPORTED','UNRESOLVED']) {
+  const result = evaluatePacket(withPacket(supplemental(), packetComposition({ attachment10c: packetControl({ kind }, `10c-${kind}`) })));
+  equal(result.result.status, 'BLOCKED', `${kind} Attachment 10c state blocks D.1`);
+  equal(result.result.fieldWritePlan.length, 0, `${kind} Attachment 10c state produces zero writes`);
+}
+
+// Missing packet inputs fail closed; they do not default to blank/nonselection.
+const missingPacketFacts = projectFilingCanonicalFacts(persisted, supplemental());
+const missingPacketResult = evaluateUd100PacketAwareGenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', missingPacketFacts);
+equal(missingPacketResult.status, 'BLOCKED', 'packet-aware D.1 fails closed when packet composition is absent');
+equal(missingPacketResult.fieldWritePlan.length, 0, 'missing packet composition produces zero writes');
+
+// Nested governed artifact identity is part of the referenced fact snapshot and generation identity.
+const noticeIdentityA = evaluatePacket(withPacket(supplemental(), packetComposition({
+  notice: packetControl({
+    kind: 'EXHIBIT_2_ATTACHED', requiredNoticeCount: 1,
+    artifacts: [packetArtifact('EXHIBIT_2_NOTICE', 'notice-identity-a', '5')],
+  }, 'notice-identity-a'),
+})));
+const noticeIdentityB = evaluatePacket(withPacket(supplemental(), packetComposition({
+  notice: packetControl({
+    kind: 'EXHIBIT_2_ATTACHED', requiredNoticeCount: 1,
+    artifacts: [packetArtifact('EXHIBIT_2_NOTICE', 'notice-identity-b', '6')],
+  }, 'notice-identity-b'),
+})));
+if (noticeIdentityA.result.status !== 'GENERATION_BINDING_READY' || noticeIdentityB.result.status !== 'GENERATION_BINDING_READY') {
+  throw new Error('packet artifact identity fixtures must both resolve');
+}
+notEqual(noticeIdentityA.result.referencedFactSnapshotId, noticeIdentityB.result.referencedFactSnapshotId, 'nested packet artifact identity changes referenced fact snapshot');
+notEqual(noticeIdentityA.result.generationInputId, noticeIdentityB.result.generationInputId, 'nested packet artifact identity changes generation input identity');
+ok(!JSON.stringify(noticeIdentityA.result.fieldWritePlan).includes('notice-identity-a'), 'packet artifact ID is never rendered into a form field');
+ok(!JSON.stringify(noticeIdentityA.result.fieldWritePlan).includes('EXHIBIT_2_NOTICE'), 'packet artifact role metadata is never rendered into a form field');
+
 console.log(`UD100_MAP_SNAPSHOT=${UD100_GENERATION_BINDING.mapSnapshotId}`);
+console.log(`UD100_PACKET_AWARE_MAP_SNAPSHOT=${UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId}`);
 console.log(`UD100_REFERENCED_FACT_SNAPSHOT=${ready.result.referencedFactSnapshotId}`);
 console.log(`UD100_GENERATION_INPUT=${ready.result.generationInputId}`);
 console.log(`UD100_FIELD_RULE_COUNT=${UD100_GENERATION_BINDING.fieldRules.length}`);

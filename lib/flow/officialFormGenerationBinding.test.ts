@@ -289,4 +289,85 @@ equal(
   'unsupported scenario hard-blocks rather than falling back',
 );
 
+const objectEnumSemantics: OfficialFormGenerationBindingSemantics = {
+  ...semantics,
+  fieldRules: [
+    {
+      disposition: 'WRITE',
+      evidence: { fieldId: 'TEST_OBJECT_ENUM', sourcePage: 1, fieldType: '/Btn', objectReference: '13 0 R', visibleLabelEvidence: 'Object enum choice' },
+      writeKind: 'CHECKBOX',
+      dependencies: [{ ref: 'ud100.control.municipalClassification', authorityClass: 'DETERMINISTIC_GOVERNED_CONTROL_REQUIRED' }],
+      transform: {
+        id: 'OBJECT_ENUM_CHECKBOX_V1',
+        version: '1',
+        args: { property: 'kind', allowedValues: 'A|B', selectedValues: 'A' },
+      },
+      unresolvedPolicy: 'BLOCK',
+    },
+  ],
+  fieldFamilyCoverage: [
+    { domainId: 'DOMAIN_2', familyId: 'object-enum', fieldIds: ['TEST_OBJECT_ENUM'], resolution: 'FIELD_RULES' },
+  ],
+};
+const objectEnumDefinition = { ...objectEnumSemantics, mapSnapshotId: computeGenerationMapSnapshotId(objectEnumSemantics) };
+equal(validateGenerationBindingDefinition(objectEnumDefinition).status, 'VALID', 'OBJECT_ENUM_CHECKBOX_V1 exact object-property choice domain validates');
+
+function objectEnumFacts(value: unknown): FilingCanonicalFactsProjection {
+  return {
+    status: 'READY',
+    createdNoticeIdentity: identity,
+    facts: {
+      ...facts.facts,
+      'ud100.control.municipalClassification': { state: 'KNOWN', value, provenance: controlProvenance },
+    },
+  };
+}
+
+const objectEnumSelected = evaluateOfficialFormGenerationBinding(objectEnumDefinition, source, 'CURRENT', objectEnumFacts({ kind: 'A' }), 'OWNER_GENERATED_PREPARATION');
+equal(objectEnumSelected.status, 'GENERATION_BINDING_READY', 'object enum selected case is admitted');
+if (objectEnumSelected.status !== 'GENERATION_BINDING_READY') throw new Error('object enum selected fixture must be ready');
+equal(objectEnumSelected.fieldWritePlan[0]?.action, 'SET_SELECTED', 'exact selected object-property value selects checkbox');
+
+const objectEnumNonselected = evaluateOfficialFormGenerationBinding(objectEnumDefinition, source, 'CURRENT', objectEnumFacts({ kind: 'B' }), 'OWNER_GENERATED_PREPARATION');
+equal(objectEnumNonselected.status, 'GENERATION_BINDING_READY', 'object enum nonselected case is admitted');
+if (objectEnumNonselected.status !== 'GENERATION_BINDING_READY') throw new Error('object enum nonselected fixture must be ready');
+equal(objectEnumNonselected.fieldWritePlan[0]?.action, 'SET_EXPLICIT_NONSELECTION', 'exact nonselected object-property value explicitly clears checkbox');
+
+for (const malformed of [
+  {},
+  { kind: 1 },
+  { kind: true },
+  { kind: 'C' },
+] as const) {
+  const result = evaluateOfficialFormGenerationBinding(objectEnumDefinition, source, 'CURRENT', objectEnumFacts(malformed), 'OWNER_GENERATED_PREPARATION');
+  equal(result.status, 'BLOCKED', 'missing, non-string, coerced, or out-of-domain object enum value blocks');
+  if (result.status !== 'BLOCKED') throw new Error('malformed object enum fixture must block');
+  equal(result.blockReason, 'INVALID_CHOICE_DOMAIN', 'malformed object enum value uses deterministic choice-domain blocker');
+  equal(result.fieldWritePlan.length, 0, 'malformed object enum value never defaults to selection/nonselection');
+}
+
+const missingPropertyObjectEnumSemantics: OfficialFormGenerationBindingSemantics = {
+  ...objectEnumSemantics,
+  fieldRules: objectEnumSemantics.fieldRules.map(rule => rule.disposition === 'WRITE'
+    ? { ...rule, transform: { ...rule.transform, args: { allowedValues: 'A|B', selectedValues: 'A' } } }
+    : rule),
+};
+const missingPropertyObjectEnumDefinition = {
+  ...missingPropertyObjectEnumSemantics,
+  mapSnapshotId: computeGenerationMapSnapshotId(missingPropertyObjectEnumSemantics),
+};
+equal(validateGenerationBindingDefinition(missingPropertyObjectEnumDefinition).status, 'BLOCKED', 'OBJECT_ENUM_CHECKBOX_V1 definition without nonempty property is rejected');
+
+const malformedObjectEnumDomainSemantics: OfficialFormGenerationBindingSemantics = {
+  ...objectEnumSemantics,
+  fieldRules: objectEnumSemantics.fieldRules.map(rule => rule.disposition === 'WRITE'
+    ? { ...rule, transform: { ...rule.transform, args: { property: 'kind', allowedValues: 'A', selectedValues: 'A' } } }
+    : rule),
+};
+const malformedObjectEnumDomainDefinition = {
+  ...malformedObjectEnumDomainSemantics,
+  mapSnapshotId: computeGenerationMapSnapshotId(malformedObjectEnumDomainSemantics),
+};
+equal(validateGenerationBindingDefinition(malformedObjectEnumDomainDefinition).status, 'BLOCKED', 'OBJECT_ENUM_CHECKBOX_V1 malformed exact choice domain is rejected');
+
 console.log(`officialFormGenerationBinding: ${passed} assertions passed`);
