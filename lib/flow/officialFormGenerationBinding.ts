@@ -57,7 +57,8 @@ export interface GenerationTransformIdentity {
     | 'OBJECT_STRING_ARRAY_SEMICOLON_V1'
     | 'ENUM_CHECKBOX_V1'
     | 'ENUM_SET_CHECKBOX_V1'
-    | 'OBJECT_BOOLEAN_CHECKBOX_V1';
+    | 'OBJECT_BOOLEAN_CHECKBOX_V1'
+    | 'OBJECT_ENUM_CHECKBOX_V1';
   version: string;
   args?: Readonly<Record<string, string>>;
 }
@@ -265,6 +266,14 @@ function enumDomain(transform: GenerationTransformIdentity): readonly string[] {
   return (transform.args?.allowedValues ?? '').split('|').filter(Boolean);
 }
 
+function selectedEnumValues(transform: GenerationTransformIdentity): readonly string[] {
+  return (transform.args?.selectedValues ?? transform.args?.selectedValue ?? '').split('|').filter(Boolean);
+}
+
+function distinctNonempty(values: readonly string[]): boolean {
+  return values.length > 0 && values.every(value => value.trim() !== '') && new Set(values).size === values.length;
+}
+
 export function validateGenerationBindingDefinition(value: unknown):
   | { status: 'VALID'; definition: OfficialFormGenerationBindingDefinition }
   | { status: 'BLOCKED'; reason: GenerationBindingBlockReason; detail: string } {
@@ -316,12 +325,31 @@ export function validateGenerationBindingDefinition(value: unknown):
       }
       if (rule.transform.id === 'ENUM_CHECKBOX_V1' || rule.transform.id === 'ENUM_SET_CHECKBOX_V1') {
         const domain = enumDomain(rule.transform);
-        const selectedValues = (rule.transform.args?.selectedValues ?? rule.transform.args?.selectedValue ?? '').split('|').filter(Boolean);
+        const selectedValues = selectedEnumValues(rule.transform);
         if (domain.length < 2 || selectedValues.length === 0 || selectedValues.some(item => !domain.includes(item))) {
           return {
             status: 'BLOCKED',
             reason: 'INVALID_CHOICE_DOMAIN',
             detail: `Checkbox ${rule.evidence.fieldId} lacks an exact runtime choice domain.`,
+          };
+        }
+      }
+      if (rule.transform.id === 'OBJECT_ENUM_CHECKBOX_V1') {
+        const domain = enumDomain(rule.transform);
+        const selectedValues = selectedEnumValues(rule.transform);
+        const property = rule.transform.args?.property;
+        if (rule.writeKind !== 'CHECKBOX'
+          || rule.evidence.fieldType !== '/Btn'
+          || rule.dependencies.length !== 1
+          || typeof property !== 'string'
+          || property.trim() === ''
+          || !distinctNonempty(domain)
+          || !distinctNonempty(selectedValues)
+          || selectedValues.some(item => !domain.includes(item))) {
+          return {
+            status: 'BLOCKED',
+            reason: 'INVALID_CHOICE_DOMAIN',
+            detail: `Object-enum checkbox ${rule.evidence.fieldId} lacks one exact object dependency, property, domain, or selected subset.`,
           };
         }
       }
@@ -573,7 +601,7 @@ function transformWrite(
     const raw = resolved[0]?.value;
     const domain = enumDomain(transform);
     if (typeof raw !== 'string' || !domain.includes(raw)) return null;
-    const selectedValues = (transform.args?.selectedValues ?? transform.args?.selectedValue ?? '').split('|').filter(Boolean);
+    const selectedValues = selectedEnumValues(transform);
     const selected = selectedValues.includes(raw);
     return selected
       ? { action: 'SET_SELECTED', fieldId: evidence.fieldId, selected: true, sourcePage: evidence.sourcePage, fieldType: '/Btn', objectReference: evidence.objectReference, transform, dependencies: dependencyRefs }
@@ -585,6 +613,19 @@ function transformWrite(
     if (typeof raw !== 'boolean') return null;
     const selectedValue = transform.args?.selectedValue === 'true';
     const selected = raw === selectedValue;
+    return selected
+      ? { action: 'SET_SELECTED', fieldId: evidence.fieldId, selected: true, sourcePage: evidence.sourcePage, fieldType: '/Btn', objectReference: evidence.objectReference, transform, dependencies: dependencyRefs }
+      : { action: 'SET_EXPLICIT_NONSELECTION', fieldId: evidence.fieldId, selected: false, sourcePage: evidence.sourcePage, fieldType: '/Btn', objectReference: evidence.objectReference, transform, dependencies: dependencyRefs };
+  }
+  if (transform.id === 'OBJECT_ENUM_CHECKBOX_V1') {
+    if (rule.writeKind !== 'CHECKBOX' || evidence.fieldType !== '/Btn' || resolved.length !== 1) return null;
+    const property = transform.args?.property;
+    const rawObject = resolved[0]?.value;
+    if (!plainObject(rawObject) || typeof property !== 'string' || property.trim() === '') return null;
+    const raw = rawObject[property];
+    const domain = enumDomain(transform);
+    if (typeof raw !== 'string' || !domain.includes(raw)) return null;
+    const selected = selectedEnumValues(transform).includes(raw);
     return selected
       ? { action: 'SET_SELECTED', fieldId: evidence.fieldId, selected: true, sourcePage: evidence.sourcePage, fieldType: '/Btn', objectReference: evidence.objectReference, transform, dependencies: dependencyRefs }
       : { action: 'SET_EXPLICIT_NONSELECTION', fieldId: evidence.fieldId, selected: false, sourcePage: evidence.sourcePage, fieldType: '/Btn', objectReference: evidence.objectReference, transform, dependencies: dependencyRefs };
@@ -671,7 +712,9 @@ export function evaluateOfficialFormGenerationBinding(
     }
     const entry = transformWrite(rule, resolvedValues);
     if (!entry) {
-      const domainTransform = rule.transform.id === 'ENUM_CHECKBOX_V1' || rule.transform.id === 'ENUM_SET_CHECKBOX_V1';
+      const domainTransform = rule.transform.id === 'ENUM_CHECKBOX_V1'
+        || rule.transform.id === 'ENUM_SET_CHECKBOX_V1'
+        || rule.transform.id === 'OBJECT_ENUM_CHECKBOX_V1';
       return blocked(
         domainTransform ? 'INVALID_CHOICE_DOMAIN' : 'INVALID_WRITE_VALUE',
         `${rule.evidence.fieldId} could not resolve an authorized deterministic field representation.`,
