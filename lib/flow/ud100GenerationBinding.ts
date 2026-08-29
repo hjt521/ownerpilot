@@ -88,7 +88,7 @@ const domain1PlaintiffType: GenerationFieldRule[] = [
   checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii5[0].TwoA[0]',1,'/Btn','811 0 R','a corporation.'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['CORPORATION']),
   checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii4[0].TwoA[0]',1,'/Btn','812 0 R','a partnership.'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['PARTNERSHIP']),
   checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii3[0].TwoA[0]',1,'/Btn','813 0 R','other'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['OTHER']),
-  governedNoWrite(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii3[0].FillText3[0]',1,'/Tx','814 0 R','(specify):'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),['INDIVIDUAL_OVER_18'],'Current supported plaintiff type is explicit individual-over-18; other-type detail remains source-native blank.'),
+  governedNoWrite(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii3[0].FillText3[0]',1,'/Tx','814 0 R','(specify):'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),['INDIVIDUAL_OVER_18'],'Current supported plaintiff type is explicit individual-over-18; other-type detail cannot be silently omitted.'),
   checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii2[0].TwoA[0]',1,'/Btn','815 0 R','a public agency.'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['PUBLIC_AGENCY']),
   checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii1[0].TwoA[0]',1,'/Btn','816 0 R','an individual over the age of 18 years.'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['INDIVIDUAL_OVER_18']),
 ];
@@ -138,7 +138,7 @@ const domain2Tpa: GenerationFieldRule[] = [
   checkboxEnumRule(evidence('UD-100[0].Page2[0].List8[0].SubList8[0].Lia[0].TwoAc[0]',2,'/Btn','712 0 R','The tenancy was terminated for at-fault just cause'),D(CANONICAL_FILING_FACT_REFS.tpaClassificationControl,CONTROL),['SUBJECT_AT_FAULT','SUBJECT_NO_FAULT','EXEMPT'],['SUBJECT_AT_FAULT']),
   checkboxEnumRule(evidence('UD-100[0].Page2[0].List7[0].Item7[0].Lib[0].CBChoice1_cb1[0]',2,'/Btn','716 0 R','is subject to the Tenant Protection Act of 2019.'),D(CANONICAL_FILING_FACT_REFS.tpaClassificationControl,CONTROL),['SUBJECT_AT_FAULT','SUBJECT_NO_FAULT','EXEMPT'],['SUBJECT_AT_FAULT','SUBJECT_NO_FAULT']),
   checkboxEnumRule(evidence('UD-100[0].Page2[0].List7[0].Item7[0].Lia[0].CBChoice1_cb1[0]',2,'/Btn','717 0 R','is not subject to the Tenant Protection Act of 2019'),D(CANONICAL_FILING_FACT_REFS.tpaClassificationControl,CONTROL),['SUBJECT_AT_FAULT','SUBJECT_NO_FAULT','EXEMPT'],['EXEMPT']),
-  governedNoWrite(evidence('UD-100[0].Page2[0].List7[0].Item7[0].Lia[0].FillText206[0]',2,'/Tx','718 0 R','(specify):'),D(CANONICAL_FILING_FACT_REFS.tpaClassificationControl,CONTROL),['SUBJECT_AT_FAULT'],'Current governed TPA result is subject/at-fault, so exemption detail is not applicable.'),
+  governedNoWrite(evidence('UD-100[0].Page2[0].List7[0].Item7[0].Lia[0].FillText206[0]',2,'/Tx','718 0 R','(specify):'),D(CANONICAL_FILING_FACT_REFS.tpaClassificationControl,CONTROL),['SUBJECT_AT_FAULT'],'Current governed TPA result is subject/at-fault, so exemption detail remains blank.'),
 ];
 const domain2Local: GenerationFieldRule[] = [
   checkboxEnumRule(evidence('UD-100[0].Page4[0].List17[0].Fourteen[0]',4,'/Btn','904 0 R',"Defendant's tenancy is subject to the local rent control or eviction control ordinance of"),D(CANONICAL_FILING_FACT_REFS.localControl,CONTROL),['NOT_SUBJECT','SUBJECT'],['SUBJECT']),
@@ -336,4 +336,103 @@ export function evaluateUd100GenerationBinding(suppliedSourceIdentity:OfficialSo
     }
   }
   return evaluateOfficialFormGenerationBinding(UD100_GENERATION_BINDING,suppliedSourceIdentity,suppliedSourceHealth,facts,'OWNER_GENERATED_PREPARATION',options);
+}
+
+// E2.3D1R2-B2 packet-aware current binding. The legacy export above is intentionally
+// source/semantic-identical to B1 so bootstrap-v3 can remain pinned to it.
+export const UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING = UD100_GENERATION_BINDING;
+export const UD100_PACKET_AWARE_GENERATION_BINDING_MAP_VERSION = '1.4.0' as const;
+export const UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v4' as const;
+export const UD100_PACKET_AWARE_GENERATION_PROFILE_ID = 'ud100-initial-prefiling-owner-preparation-v2' as const;
+
+const packetAgreementDep = D(CANONICAL_FILING_FACT_REFS.packetAgreement, CONTROL);
+const packetNoticeDep = D(CANONICAL_FILING_FACT_REFS.packetNotice, CONTROL);
+const packetProofDep = D(CANONICAL_FILING_FACT_REFS.packetProofOfService, CONTROL);
+const packetAttachment10cDep = D(CANONICAL_FILING_FACT_REFS.packetAttachment10c, CONTROL);
+const packetAgreementDomain = ['EXHIBIT_1_ATTACHED','NOT_ATTACHED_LANDLORD_LACKS_POSSESSION','NOT_ATTACHED_SOLELY_NONPAYMENT','NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT','UNRESOLVED'] as const;
+const packetAgreementWritableDomain = ['EXHIBIT_1_ATTACHED','NOT_ATTACHED_LANDLORD_LACKS_POSSESSION','NOT_ATTACHED_SOLELY_NONPAYMENT'] as const;
+const packetNoticeDomain = ['EXHIBIT_2_ATTACHED','REQUIRED_NOTICE_SET_INCOMPLETE','UNRESOLVED'] as const;
+const packetProofDomain = ['EXHIBIT_3_ATTACHED','NOT_ATTACHED','UNRESOLVED'] as const;
+
+function packetObjectEnumRule(
+  original: GenerationFieldRule,
+  dependency: GenerationFactDependency,
+  allowed: readonly string[],
+  selected: readonly string[],
+  applicable?: readonly string[],
+  noWriteReason = 'Current governed packet state requires official blank/no-write.',
+): GenerationFieldRule {
+  return {
+    disposition: 'WRITE',
+    evidence: original.evidence,
+    writeKind: 'CHECKBOX',
+    dependencies: [dependency],
+    transform: { id: 'OBJECT_ENUM_CHECKBOX_V1', version: '1', args: { property: 'kind', ...enumArgs(allowed, selected) } },
+    unresolvedPolicy: 'BLOCK',
+    ...(applicable ? { condition: condition(dependency, applicable, noWriteReason, 'kind') } : {}),
+  };
+}
+
+const packetAwareFieldRules: readonly GenerationFieldRule[] = fieldRules.map(rule => {
+  switch (rule.evidence.fieldId) {
+    case 'UD-100[0].Page2[0].List6[0].SubList6[0].Lie[0].SixE[0]':
+      return packetObjectEnumRule(rule, packetAgreementDep, packetAgreementDomain, ['EXHIBIT_1_ATTACHED'], packetAgreementWritableDomain, 'Oral/no-agreement packet state preserves Item 6e official blank.');
+    case 'UD-100[0].Page2[0].List6[0].SubList6[0].Lif[0].SixF[0]':
+      return packetObjectEnumRule(rule, packetAgreementDep, packetAgreementDomain, ['NOT_ATTACHED_LANDLORD_LACKS_POSSESSION','NOT_ATTACHED_SOLELY_NONPAYMENT'], packetAgreementWritableDomain, 'Oral/no-agreement packet state preserves Item 6f official blank.');
+    case 'UD-100[0].Page2[0].List6[0].SubList6[0].Lif[0].SubListf[0].Li2[0].SixF124[0]':
+      return packetObjectEnumRule(rule, packetAgreementDep, packetAgreementDomain, ['NOT_ATTACHED_SOLELY_NONPAYMENT'], packetAgreementWritableDomain, 'Oral/no-agreement packet state preserves Item 6f solely-nonpayment subreason official blank.');
+    case 'UD-100[0].Page2[0].List6[0].SubList6[0].Lif[0].SubListf[0].Li1[0].SixF123[0]':
+      return packetObjectEnumRule(rule, packetAgreementDep, packetAgreementDomain, ['NOT_ATTACHED_LANDLORD_LACKS_POSSESSION'], packetAgreementWritableDomain, 'Oral/no-agreement packet state preserves Item 6f possession subreason official blank.');
+    case 'UD-100[0].Page3[0].List9[0].Item9[0].Lie[0].SevenE[0]':
+      return packetObjectEnumRule(rule, packetNoticeDep, packetNoticeDomain, ['EXHIBIT_2_ATTACHED']);
+    case 'UD-100[0].Page3[0].List10[0].Item10[0].LI4[0].Eightd[0]':
+      return packetObjectEnumRule(rule, packetProofDep, packetProofDomain, ['EXHIBIT_3_ATTACHED']);
+    case 'UD-100[0].Page3[0].List10[0].Item10[0].LI3[0].Eightc[0]':
+      return governedNoWrite(rule.evidence, packetAttachment10cDep, ['NOT_APPLICABLE'], 'Attachment 10c remains unsupported/deferred in B2 and the current packet profile requires NOT_APPLICABLE.', 'kind');
+    default:
+      return rule;
+  }
+});
+
+const packetAwareSemantics: OfficialFormGenerationBindingSemantics = {
+  ...semantics,
+  mapVersion: UD100_PACKET_AWARE_GENERATION_BINDING_MAP_VERSION,
+  profileId: UD100_PACKET_AWARE_GENERATION_PROFILE_ID,
+  generatorContractVersion: UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION,
+  fieldRules: packetAwareFieldRules,
+  profileRequirements: [
+    ...semantics.profileRequirements,
+    { dependency: packetAgreementDep, allowedValues: ['EXHIBIT_1_ATTACHED','NOT_ATTACHED_LANDLORD_LACKS_POSSESSION','NOT_ATTACHED_SOLELY_NONPAYMENT','NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT'], property: 'kind', blockerCode: 'PACKET_AGREEMENT_PROFILE_UNRESOLVED' },
+    { dependency: packetNoticeDep, allowedValues: ['EXHIBIT_2_ATTACHED'], property: 'kind', blockerCode: 'PACKET_NOTICE_PROFILE_UNRESOLVED_OR_INCOMPLETE' },
+    { dependency: packetProofDep, allowedValues: ['EXHIBIT_3_ATTACHED','NOT_ATTACHED'], property: 'kind', blockerCode: 'PACKET_PROOF_OF_SERVICE_PROFILE_UNRESOLVED' },
+    { dependency: packetAttachment10cDep, allowedValues: ['NOT_APPLICABLE'], property: 'kind', blockerCode: 'PACKET_ATTACHMENT_10C_REQUIRED_OR_UNRESOLVED' },
+  ],
+};
+
+export const UD100_PACKET_AWARE_GENERATION_BINDING = Object.freeze({
+  ...packetAwareSemantics,
+  mapSnapshotId: computeGenerationMapSnapshotId(packetAwareSemantics),
+});
+
+export function evaluateUd100PacketAwareGenerationBinding(
+  suppliedSourceIdentity: OfficialSourceIdentity,
+  suppliedSourceHealth: OfficialSourceHealth | null | undefined,
+  facts: FilingCanonicalFactsProjection,
+  options: GenerationEvaluationOptions = {},
+): OfficialFormGenerationBindingEvaluation {
+  if (facts.status === 'READY') {
+    const status = facts.facts[CANONICAL_FILING_FACT_REFS.leaseStatus];
+    if (status?.state === 'KNOWN' && !status.provenance.customerVerification) {
+      return {status:'BLOCKED',blockReason:'PROVENANCE_AUTHORITY_MISMATCH',detail:'Agreement classification lacks explicit customer-verification provenance.',formApplicability:'NOT_EVALUATED',formRequiredness:'NOT_EVALUATED',documentGeneration:'NOT_PERFORMED',pdfMutation:'NOT_PERFORMED',fieldWritePlan:[]};
+    }
+    if (status?.state === 'KNOWN' && status.value !== 'NO_AGREEMENT') {
+      for (const ref of [CANONICAL_FILING_FACT_REFS.agreementTermDescription,CANONICAL_FILING_FACT_REFS.agreementRentAmount,CANONICAL_FILING_FACT_REFS.agreementRentFrequency,CANONICAL_FILING_FACT_REFS.agreementRentDue,CANONICAL_FILING_FACT_REFS.agreementForm,CANONICAL_FILING_FACT_REFS.agreementParty] as const) {
+        const fact=facts.facts[ref];
+        if (fact?.state === 'KNOWN' && !fact.provenance.customerVerification) {
+          return {status:'BLOCKED',blockReason:'PROVENANCE_AUTHORITY_MISMATCH',detail:`${ref} lacks explicit customer-verification provenance.`,formApplicability:'NOT_EVALUATED',formRequiredness:'NOT_EVALUATED',documentGeneration:'NOT_PERFORMED',pdfMutation:'NOT_PERFORMED',fieldWritePlan:[]};
+        }
+      }
+    }
+  }
+  return evaluateOfficialFormGenerationBinding(UD100_PACKET_AWARE_GENERATION_BINDING,suppliedSourceIdentity,suppliedSourceHealth,facts,'OWNER_GENERATED_PREPARATION',options);
 }
