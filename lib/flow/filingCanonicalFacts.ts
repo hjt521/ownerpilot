@@ -65,6 +65,11 @@ export const CANONICAL_FILING_FACT_REFS = {
   otherReliefSelections: 'ud100.election.otherReliefSelections',
 
   udaDisclosureControl: 'ud100.control.udaDisclosure',
+
+  packetAgreement: 'ud100.packet.agreement',
+  packetNotice: 'ud100.packet.notice',
+  packetProofOfService: 'ud100.packet.proofOfService',
+  packetAttachment10c: 'ud100.packet.attachment10c',
 } as const;
 
 export type FixedCanonicalFilingFactRef =
@@ -255,6 +260,48 @@ export interface OtherReliefSelections {
   otherAllegations: boolean;
 }
 
+export type PacketArtifactRole =
+  | 'EXHIBIT_1_AGREEMENT'
+  | 'EXHIBIT_2_NOTICE'
+  | 'EXHIBIT_3_PROOF_OF_SERVICE';
+
+export interface PacketArtifactBinding {
+  artifactId: string;
+  artifactRole: PacketArtifactRole;
+  sha256: string;
+  byteLength: number;
+  createdNotice: CreatedNoticeFactIdentity;
+}
+
+export type AgreementPacketState =
+  | { kind: 'EXHIBIT_1_ATTACHED'; artifacts: readonly PacketArtifactBinding[] }
+  | { kind: 'NOT_ATTACHED_LANDLORD_LACKS_POSSESSION' }
+  | { kind: 'NOT_ATTACHED_SOLELY_NONPAYMENT' }
+  | { kind: 'UNRESOLVED' }
+  | { kind: 'NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT' };
+
+export type NoticePacketState =
+  | { kind: 'EXHIBIT_2_ATTACHED'; requiredNoticeCount: 1 | 2; artifacts: readonly PacketArtifactBinding[] }
+  | { kind: 'REQUIRED_NOTICE_SET_INCOMPLETE' }
+  | { kind: 'UNRESOLVED' };
+
+export type ProofOfServicePacketState =
+  | { kind: 'EXHIBIT_3_ATTACHED'; artifact: PacketArtifactBinding }
+  | { kind: 'NOT_ATTACHED' }
+  | { kind: 'UNRESOLVED' };
+
+export type Attachment10cPacketState =
+  | { kind: 'NOT_APPLICABLE' }
+  | { kind: 'REQUIRED_BUT_UNSUPPORTED' }
+  | { kind: 'UNRESOLVED' };
+
+export interface FilingPacketCompositionInput {
+  agreement?: GovernedControlInput<AgreementPacketState>;
+  notice?: GovernedControlInput<NoticePacketState>;
+  proofOfService?: GovernedControlInput<ProofOfServicePacketState>;
+  attachment10c?: GovernedControlInput<Attachment10cPacketState>;
+}
+
 export interface FilingCanonicalFactsSupplementalInput {
   defendantTelephones?: readonly SupplementalFactInput<string>[];
   propertyZip?: SupplementalFactInput<string>;
@@ -307,6 +354,7 @@ export interface FilingCanonicalFactsSupplementalInput {
     otherReliefSelections?: CustomerConfirmedLegalElectionInput<OtherReliefSelections>;
 
     udaDisclosureControl?: GovernedControlInput<'NO_COMPENSATED_ASSISTANT'>;
+    packetComposition?: FilingPacketCompositionInput;
   };
 }
 
@@ -546,6 +594,153 @@ function unitRepresentation(
   return { state: 'KNOWN', value: { kind: 'NO_UNIT' }, provenance: p };
 }
 
+const LOWER_HEX_SHA256 = /^[0-9a-f]{64}$/;
+const FIXED_CANONICAL_REFS = new Set<string>(Object.values(CANONICAL_FILING_FACT_REFS));
+
+function isExactObject(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const actual = Object.keys(value as Record<string, unknown>).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function validPacketControl(
+  input: GovernedControlInput<unknown> & { state: 'KNOWN' },
+): boolean {
+  const control = input.control;
+  if (!control
+    || control.status !== 'CURRENT'
+    || typeof control.controlId !== 'string' || control.controlId.trim() === ''
+    || typeof control.controlVersion !== 'string' || control.controlVersion.trim() === ''
+    || typeof control.resultId !== 'string' || control.resultId.trim() === '') return false;
+  if (!Array.isArray(input.dependencies)) return false;
+  if (new Set(input.dependencies).size !== input.dependencies.length) return false;
+  return input.dependencies.every(ref =>
+    typeof ref === 'string'
+    && (FIXED_CANONICAL_REFS.has(ref) || /^defendant\.\d+\.telephone$/.test(ref))
+  );
+}
+
+function validArtifactBinding(
+  value: unknown,
+  expectedRole: PacketArtifactRole,
+  identity: CreatedNoticeFactIdentity,
+): value is PacketArtifactBinding {
+  if (!isExactObject(value, ['artifactId', 'artifactRole', 'sha256', 'byteLength', 'createdNotice'])) return false;
+  const candidate = value as unknown as PacketArtifactBinding;
+  return typeof candidate.artifactId === 'string'
+    && candidate.artifactId.trim() !== ''
+    && candidate.artifactRole === expectedRole
+    && typeof candidate.sha256 === 'string'
+    && LOWER_HEX_SHA256.test(candidate.sha256)
+    && Number.isInteger(candidate.byteLength)
+    && candidate.byteLength > 0
+    && isExactObject(candidate.createdNotice, ['generation', 'createdAtISO'])
+    && candidate.createdNotice.generation === identity.generation
+    && candidate.createdNotice.createdAtISO === identity.createdAtISO;
+}
+
+function uniqueArtifactBindings(bindings: readonly PacketArtifactBinding[]): boolean {
+  return new Set(bindings.map(binding => binding.artifactId)).size === bindings.length
+    && new Set(bindings.map(binding => binding.sha256)).size === bindings.length;
+}
+
+function validAgreementPacketState(
+  value: unknown,
+  identity: CreatedNoticeFactIdentity,
+  dependencies: readonly CanonicalFilingFactRef[],
+): value is AgreementPacketState {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const kind = (value as { kind?: unknown }).kind;
+  if (kind === 'EXHIBIT_1_ATTACHED') {
+    if (!isExactObject(value, ['kind', 'artifacts'])) return false;
+    const artifacts = (value as unknown as { artifacts: unknown }).artifacts;
+    return Array.isArray(artifacts)
+      && artifacts.length > 0
+      && artifacts.every(artifact => validArtifactBinding(artifact, 'EXHIBIT_1_AGREEMENT', identity))
+      && uniqueArtifactBindings(artifacts as readonly PacketArtifactBinding[]);
+  }
+  if (kind === 'NOT_ATTACHED_LANDLORD_LACKS_POSSESSION'
+    || kind === 'NOT_ATTACHED_SOLELY_NONPAYMENT'
+    || kind === 'UNRESOLVED') return isExactObject(value, ['kind']);
+  if (kind === 'NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT') {
+    return isExactObject(value, ['kind'])
+      && dependencies.length === 1
+      && dependencies[0] === CANONICAL_FILING_FACT_REFS.leaseApplicabilityControl;
+  }
+  return false;
+}
+
+function validNoticePacketState(
+  value: unknown,
+  identity: CreatedNoticeFactIdentity,
+): value is NoticePacketState {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const kind = (value as { kind?: unknown }).kind;
+  if (kind === 'EXHIBIT_2_ATTACHED') {
+    if (!isExactObject(value, ['kind', 'requiredNoticeCount', 'artifacts'])) return false;
+    const candidate = value as unknown as { requiredNoticeCount: unknown; artifacts: unknown };
+    if (candidate.requiredNoticeCount !== 1 && candidate.requiredNoticeCount !== 2) return false;
+    if (!Array.isArray(candidate.artifacts) || candidate.artifacts.length !== candidate.requiredNoticeCount) return false;
+    const artifacts = candidate.artifacts;
+    return artifacts.every(artifact => validArtifactBinding(artifact, 'EXHIBIT_2_NOTICE', identity))
+      && uniqueArtifactBindings(artifacts as readonly PacketArtifactBinding[]);
+  }
+  return (kind === 'REQUIRED_NOTICE_SET_INCOMPLETE' || kind === 'UNRESOLVED')
+    && isExactObject(value, ['kind']);
+}
+
+function validProofPacketState(
+  value: unknown,
+  identity: CreatedNoticeFactIdentity,
+): value is ProofOfServicePacketState {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const kind = (value as { kind?: unknown }).kind;
+  if (kind === 'EXHIBIT_3_ATTACHED') {
+    return isExactObject(value, ['kind', 'artifact'])
+      && validArtifactBinding((value as unknown as { artifact: unknown }).artifact, 'EXHIBIT_3_PROOF_OF_SERVICE', identity);
+  }
+  return (kind === 'NOT_ATTACHED' || kind === 'UNRESOLVED') && isExactObject(value, ['kind']);
+}
+
+function validAttachment10cPacketState(value: unknown): value is Attachment10cPacketState {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !isExactObject(value, ['kind'])) return false;
+  const kind = (value as { kind?: unknown }).kind;
+  return kind === 'NOT_APPLICABLE' || kind === 'REQUIRED_BUT_UNSUPPORTED' || kind === 'UNRESOLVED';
+}
+
+function packetControlState<T>(
+  identity: CreatedNoticeFactIdentity,
+  sourcePath: string,
+  input: GovernedControlInput<T> | undefined,
+  validate: (value: unknown, dependencies: readonly CanonicalFilingFactRef[]) => boolean,
+): FilingFactState<T> {
+  const dependencies = input?.state === 'KNOWN' && Array.isArray(input.dependencies)
+    ? [...input.dependencies]
+    : [];
+  const control = input?.state === 'KNOWN' ? input.control : undefined;
+  const p = provenance(
+    identity,
+    [sourcePath],
+    'GOVERNED_CONTROL_RESULT',
+    dependencies,
+    control ? { governedControl: control } : {},
+  );
+  if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
+  if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
+  if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
+  if (input.state === 'CONFLICT') return { state: 'CONFLICT', values: [...input.values], reason: input.reason, provenance: p };
+  if (!validPacketControl(input as GovernedControlInput<unknown> & { state: 'KNOWN' })
+    || !validate(input.value, dependencies)) {
+    return {
+      state: 'REQUIRES_CONFIRMATION',
+      reason: `Packet-composition control at ${sourcePath} is invalid, stale, unsupported, or not exactly bound to the current Created Notice.`,
+      provenance: p,
+    };
+  }
+  return { state: 'KNOWN', value: input.value, provenance: p };
+}
+
 export function projectFilingCanonicalFacts(
   data: NoticeFlowData | null,
   supplemental: FilingCanonicalFactsSupplementalInput = {},
@@ -640,6 +835,32 @@ export function projectFilingCanonicalFacts(
   for (const [ref, path, input] of controlFacts) facts[ref] = controlState(identity, path, input);
 
   facts[CANONICAL_FILING_FACT_REFS.serviceFacts] = lifecycleState(identity, 'supplemental.preparation.serviceFacts', preparation?.serviceFacts);
+
+  const packet = preparation?.packetComposition;
+  facts[CANONICAL_FILING_FACT_REFS.packetAgreement] = packetControlState(
+    identity,
+    'supplemental.preparation.packetComposition.agreement',
+    packet?.agreement,
+    (value, dependencies) => validAgreementPacketState(value, identity, dependencies),
+  );
+  facts[CANONICAL_FILING_FACT_REFS.packetNotice] = packetControlState(
+    identity,
+    'supplemental.preparation.packetComposition.notice',
+    packet?.notice,
+    value => validNoticePacketState(value, identity),
+  );
+  facts[CANONICAL_FILING_FACT_REFS.packetProofOfService] = packetControlState(
+    identity,
+    'supplemental.preparation.packetComposition.proofOfService',
+    packet?.proofOfService,
+    value => validProofPacketState(value, identity),
+  );
+  facts[CANONICAL_FILING_FACT_REFS.packetAttachment10c] = packetControlState(
+    identity,
+    'supplemental.preparation.packetComposition.attachment10c',
+    packet?.attachment10c,
+    value => validAttachment10cPacketState(value),
+  );
 
   const telephoneCount = Math.max(createData.tenantNames.length, supplemental.defendantTelephones?.length ?? 0);
   for (let index = 0; index < telephoneCount; index += 1) {
