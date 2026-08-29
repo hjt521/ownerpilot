@@ -293,7 +293,7 @@ const objectEnumRule = {
     version: '1',
     args: {
       property: 'kind',
-      allowedValues: 'EXHIBIT_1_ATTACHED|NOT_APPLICABLE_OR_NO_AGREEMENT',
+      allowedValues: 'EXHIBIT_1_ATTACHED|NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT',
       selectedValues: 'EXHIBIT_1_ATTACHED',
     },
   },
@@ -306,7 +306,7 @@ const objectEnumDefinition = { ...objectEnumSemantics, mapSnapshotId: computeGen
 equal(validateGenerationBindingDefinition(objectEnumDefinition).status, 'VALID', 'object-property enum checkbox definition validates with exact bounded domain');
 for (const [kind, expectedAction] of [
   ['EXHIBIT_1_ATTACHED', 'SET_SELECTED'],
-  ['NOT_APPLICABLE_OR_NO_AGREEMENT', 'SET_EXPLICIT_NONSELECTION'],
+  ['NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT', 'SET_EXPLICIT_NONSELECTION'],
 ] as const) {
   const objectFacts: FilingCanonicalFactsProjection = {
     status: 'READY',

@@ -40,7 +40,7 @@ import {
   type FilingPreparationRuntimeSupabaseClient,
 } from './filingPreparationRuntimePersistenceAction';
 import {
-  generateUd100GeneratedDraft,
+  generateUd100GeneratedDraftLegacyB1,
   UD100_PREPARATION_RUNTIME_PATH,
 } from './ud100GeneratedDraft';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
@@ -445,7 +445,7 @@ async function fixture(
   ok(leaseStatus.provenance.customerVerification !== undefined, 'runtime fixture preserves explicit lease-status customer verification before generation');
   equal(leaseStatus.provenance.customerVerification?.verificationId, 'runtime-lease-status-no-agreement-r1', 'runtime fixture preserves deterministic lease-status verification identity');
   const authorization = authorizationFor(facts);
-  const generated = await generateUd100GeneratedDraft({
+  const generated = await generateUd100GeneratedDraftLegacyB1({
     officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
     officialSourceHealth: 'CURRENT',
     officialSourceBytes,

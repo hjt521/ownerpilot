@@ -29,7 +29,7 @@ import {
 } from './officialFormGeneratedDraft';
 import { canonicalizeGenerationIdentity } from './officialFormGenerationBinding';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
-import { evaluateUd100GenerationBinding } from './ud100GenerationBinding';
+import { evaluateUd100LegacyB1GenerationBinding } from './ud100GenerationBinding';
 
 let passed = 0;
 const equal = <T>(actual: T, expected: T, message: string) => { assert.equal(actual, expected, message); passed += 1; };
@@ -113,7 +113,7 @@ function fixture() {
   equal(leaseStatus.value, 'NO_AGREEMENT', 'R1 fixture preserves NO_AGREEMENT value');
   ok(leaseStatus.provenance.customerVerification !== undefined, 'R1 fixture preserves explicit lease-status customer verification before binding');
   equal(leaseStatus.provenance.customerVerification?.verificationId, 'lease-status-no-agreement-r1', 'R1 fixture preserves deterministic lease-status verification identity');
-  const evaluation = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts);
+  const evaluation = evaluateUd100LegacyB1GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts);
   if (evaluation.status !== 'GENERATION_BINDING_READY') throw new Error(`R1 binding fixture blocked: ${JSON.stringify(evaluation)}`);
   const authorization: FormPreparationAuthorization = {
     authorizationId: 'prep-auth-r1', resultId: 'prep-result-r1', controlId: 'form-preparation-relevance', controlVersion: '1.0.0',
