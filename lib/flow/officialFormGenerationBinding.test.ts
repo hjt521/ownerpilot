@@ -283,16 +283,17 @@ const invalidDomainSemantics: OfficialFormGenerationBindingSemantics = {
 const invalidDomain = { ...invalidDomainSemantics, mapSnapshotId: computeGenerationMapSnapshotId(invalidDomainSemantics) };
 equal(validateGenerationBindingDefinition(invalidDomain).status, 'BLOCKED', 'checkbox definition without exact runtime domain is rejected');
 
+const objectEnumBaseRule = semantics.fieldRules[1];
+if (objectEnumBaseRule.disposition !== 'WRITE') throw new Error('object enum fixture requires a writable checkbox rule');
 const objectEnumRule = {
-  ...semantics.fieldRules[1],
-  disposition: 'WRITE' as const,
+  ...objectEnumBaseRule,
   writeKind: 'CHECKBOX' as const,
   transform: {
     id: 'OBJECT_ENUM_CHECKBOX_V1' as const,
     version: '1',
     args: {
       property: 'kind',
-      allowedValues: 'EXHIBIT_1_ATTACHED|NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT',
+      allowedValues: 'EXHIBIT_1_ATTACHED|NOT_APPLICABLE_OR_NO_AGREEMENT',
       selectedValues: 'EXHIBIT_1_ATTACHED',
     },
   },
@@ -305,7 +306,7 @@ const objectEnumDefinition = { ...objectEnumSemantics, mapSnapshotId: computeGen
 equal(validateGenerationBindingDefinition(objectEnumDefinition).status, 'VALID', 'object-property enum checkbox definition validates with exact bounded domain');
 for (const [kind, expectedAction] of [
   ['EXHIBIT_1_ATTACHED', 'SET_SELECTED'],
-  ['NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT', 'SET_EXPLICIT_NONSELECTION'],
+  ['NOT_APPLICABLE_OR_NO_AGREEMENT', 'SET_EXPLICIT_NONSELECTION'],
 ] as const) {
   const objectFacts: FilingCanonicalFactsProjection = {
     status: 'READY',
