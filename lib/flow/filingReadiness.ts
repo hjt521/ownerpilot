@@ -16,6 +16,16 @@ import {
   type NonpaymentLifecyclePresentation,
 } from './nonpaymentLifecyclePresentation';
 import { supersedeNeedsConfirmation } from './jurisdictionSupersession';
+import {
+  CANONICAL_FILING_FACT_REFS,
+  projectFilingCanonicalFacts,
+  readCanonicalFilingFact,
+  type AgreementPacketState,
+  type Attachment10cPacketState,
+  type FilingPacketCompositionInput,
+  type NoticePacketState,
+  type ProofOfServicePacketState,
+} from './filingCanonicalFacts';
 
 export type FilingReadinessAggregateState =
   | 'Needs information'
@@ -37,6 +47,7 @@ export type FilingReadinessChecklistKey =
   | 'POST_SERVICE_OUTCOME'
   | 'CORE_FACTS'
   | 'JURISDICTION_CONTROLS'
+  | 'PACKET_COMPOSITION'
   | 'OWNER_REVIEW';
 
 export interface FilingReadinessChecklistItem {
@@ -73,6 +84,7 @@ export interface FilingReadinessProjectionInput {
   data: NoticeFlowData | null;
   noticePageIndex: number | null;
   outcome: RestoredResolveOutcome;
+  packetComposition?: FilingPacketCompositionInput;
 }
 
 interface CoreFactsEvaluation {
@@ -82,6 +94,12 @@ interface CoreFactsEvaluation {
 }
 
 interface ControlEvaluation {
+  status: 'Complete' | 'Needs information' | 'Cannot continue';
+  known: string;
+  problem: string | null;
+}
+
+interface PacketCompositionEvaluation {
   status: 'Complete' | 'Needs information' | 'Cannot continue';
   known: string;
   problem: string | null;
@@ -221,6 +239,80 @@ function evaluateControlEvidence(data: NoticeFlowData): ControlEvaluation {
   };
 }
 
+function evaluatePacketComposition(
+  data: NoticeFlowData,
+  packetComposition: FilingPacketCompositionInput | undefined,
+): PacketCompositionEvaluation {
+  const projection = projectFilingCanonicalFacts(data, {
+    preparation: { packetComposition },
+  });
+  if (projection.status !== 'READY') {
+    return {
+      status: 'Cannot continue',
+      known: 'Packet composition must stay bound to the exact current created Notice.',
+      problem: 'OwnerPilot cannot validate packet-composition evidence against the exact current Notice.',
+    };
+  }
+
+  const agreement = readCanonicalFilingFact<AgreementPacketState>(projection, CANONICAL_FILING_FACT_REFS.packetAgreement);
+  const notice = readCanonicalFilingFact<NoticePacketState>(projection, CANONICAL_FILING_FACT_REFS.packetNotice);
+  const proof = readCanonicalFilingFact<ProofOfServicePacketState>(projection, CANONICAL_FILING_FACT_REFS.packetProofOfService);
+  const attachment10c = readCanonicalFilingFact<Attachment10cPacketState>(projection, CANONICAL_FILING_FACT_REFS.packetAttachment10c);
+  const facts = [agreement, notice, proof, attachment10c] as const;
+
+  if (facts.some(fact => !fact || fact.state === 'REQUIRES_CONFIRMATION' || fact.state === 'CONFLICT')) {
+    return {
+      status: 'Cannot continue',
+      known: 'OwnerPilot found packet-composition evidence for this Notice.',
+      problem: 'Packet-composition evidence is invalid, stale, unsupported, or does not match the exact current Notice.',
+    };
+  }
+  if (facts.some(fact => fact?.state === 'UNANSWERED' || fact?.state === 'UNKNOWN')) {
+    return {
+      status: 'Needs information',
+      known: 'Packet composition is evaluated only from governed evidence for this exact Notice.',
+      problem: 'One or more required packet-composition states have not been resolved yet.',
+    };
+  }
+  if (!agreement || !notice || !proof || !attachment10c
+    || agreement.state !== 'KNOWN'
+    || notice.state !== 'KNOWN'
+    || proof.state !== 'KNOWN'
+    || attachment10c.state !== 'KNOWN') {
+    return {
+      status: 'Cannot continue',
+      known: 'Packet composition must be deterministically resolved before packet review.',
+      problem: 'OwnerPilot cannot safely reduce the packet-composition record.',
+    };
+  }
+
+  if (attachment10c.value.kind === 'REQUIRED_BUT_UNSUPPORTED') {
+    return {
+      status: 'Cannot continue',
+      known: 'An additional attachment is required for this packet state.',
+      problem: 'That required attachment composition is not supported in this bounded preparation path.',
+    };
+  }
+
+  if (agreement.value.kind === 'UNRESOLVED'
+    || notice.value.kind === 'REQUIRED_NOTICE_SET_INCOMPLETE'
+    || notice.value.kind === 'UNRESOLVED'
+    || proof.value.kind === 'UNRESOLVED'
+    || attachment10c.value.kind === 'UNRESOLVED') {
+    return {
+      status: 'Needs information',
+      known: 'OwnerPilot preserved the current packet-composition state without inferring a missing attachment or answer.',
+      problem: 'One or more packet-composition decisions or evidence states are still unresolved.',
+    };
+  }
+
+  return {
+    status: 'Complete',
+    known: 'Agreement, Notice, proof-of-service, and additional-attachment composition states are deterministically resolved for this Notice.',
+    problem: null,
+  };
+}
+
 function describeService(attempt: ServiceAttempt): string {
   const date = clean(attempt.attemptDate);
   return date
@@ -275,6 +367,7 @@ function buildChecklist(input: {
   readinessReviewAvailable: boolean;
   core: CoreFactsEvaluation | null;
   controls: ControlEvaluation | null;
+  packet?: PacketCompositionEvaluation | null;
   ownerReviewProblem: string | null;
 }): readonly FilingReadinessChecklistItem[] {
   const artifact = input.data ? restoreCreatedNoticeArtifact(input.data) : null;
@@ -454,6 +547,28 @@ function buildChecklist(input: {
         null,
       );
 
+  const packetItem = input.readinessReviewAvailable && input.packet
+    ? item(
+        'PACKET_COMPOSITION',
+        'Packet composition',
+        input.packet.status,
+        'Packet review may proceed only when governed attachment/evidence states are deterministically resolved for this exact Notice.',
+        input.packet.known,
+        input.packet.problem,
+        input.packet.status === 'Complete'
+          ? null
+          : 'Resolve the packet-composition evidence before packet review can continue.',
+      )
+    : item(
+        'PACKET_COMPOSITION',
+        'Packet composition',
+        'Not yet applicable',
+        'Packet composition is checked only when the lifecycle reaches the final Filing Readiness review seam.',
+        'OwnerPilot is not using attachment-composition evidence to advance the lifecycle yet.',
+        null,
+        null,
+      );
+
   const ownerReviewItem = input.ownerReviewProblem
     ? item(
         'OWNER_REVIEW',
@@ -484,7 +599,7 @@ function buildChecklist(input: {
           null,
         );
 
-  return [noticeItem, serviceItem, outcomeItem, coreItem, controlItem, ownerReviewItem];
+  return [noticeItem, serviceItem, outcomeItem, coreItem, controlItem, packetItem, ownerReviewItem];
 }
 
 function project(
@@ -845,6 +960,7 @@ export function deriveFilingReadiness(
   const frozen = context.artifact.createData;
   const core = evaluateCoreFacts(frozen);
   const controls = evaluateControlEvidence(frozen);
+  const packet = evaluatePacketComposition(data, input.packetComposition);
   const checklist = buildChecklist({
     data,
     hasInvalidNoticeState: false,
@@ -854,6 +970,7 @@ export function deriveFilingReadiness(
     readinessReviewAvailable: true,
     core,
     controls,
+    packet,
     ownerReviewProblem: null,
   });
 
@@ -868,11 +985,22 @@ export function deriveFilingReadiness(
     );
   }
 
-  if (core.status === 'Needs information' || controls.status === 'Needs information') {
+  if (packet.status === 'Cannot continue') {
+    return project(
+      'Cannot continue',
+      'The lifecycle has reached Filing Readiness review, but packet-composition evidence cannot safely support packet review.',
+      { label: 'Review the packet-composition evidence before continuing.', href: null },
+      checklist,
+      lifecycle,
+      identity,
+    );
+  }
+
+  if (core.status === 'Needs information' || controls.status === 'Needs information' || packet.status === 'Needs information') {
     return project(
       'Needs information',
-      'The lifecycle has reached Filing Readiness review, but required information already expected from the created Notice is missing.',
-      { label: 'Review the saved Notice information.', href: '/notice/3-day' },
+      'The lifecycle has reached Filing Readiness review, but required governed information for packet review is still missing or unresolved.',
+      { label: 'Review the saved Notice and packet-composition information.', href: '/notice/3-day' },
       checklist,
       lifecycle,
       identity,
@@ -881,7 +1009,7 @@ export function deriveFilingReadiness(
 
   return project(
     'Ready for packet review',
-    'The currently governed Stage C prerequisites are satisfied for the next separately governed packet-preparation/review step. This is not a filing or legal-sufficiency determination.',
+    'The currently governed Stage C prerequisites and packet-composition states are satisfied for the next separately governed packet-preparation/review step. This is not a filing or legal-sufficiency determination.',
     { label: 'Packet preparation/review is a separately governed next step and is not available from this Stage C surface.', href: null },
     checklist,
     lifecycle,
