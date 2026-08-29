@@ -318,7 +318,25 @@ async function generateWithCustomDerivative(
 }
 
 const BLUE_OPERATOR = '0 0 1 rg';
-function hasBlueAppearance(field: PDFTextField): boolean {
+const FONT_SIZE_REGEX = /\/([^\0\t\n\f\r\ ]+)[\0\t\n\f\r\ ]+(\d*\.\d+|\d+)[\0\t\n\f\r\ ]+Tf/g;
+function lastFontSize(appearance: string | undefined): number | undefined {
+  if (!appearance) return undefined;
+  let size: number | undefined;
+  for (const match of appearance.matchAll(FONT_SIZE_REGEX)) {
+    const parsed = Number(match[2]);
+    if (Number.isFinite(parsed)) size = parsed;
+  }
+  return size;
+}
+function widgetFontSizes(field: PDFTextField): readonly number[] {
+  const fieldSize = lastFontSize(field.acroField.getDefaultAppearance());
+  return field.acroField.getWidgets().map((widget, index) => {
+    const size = lastFontSize(widget.getDefaultAppearance()) ?? fieldSize;
+    if (size === undefined || size <= 0) throw new Error(`${field.getName()} widget ${index} has no positive resolved font size`);
+    return size;
+  });
+}
+function hasBlueAppearance(field: PDFTextField | PDFCheckBox): boolean {
   return (field.acroField.getDefaultAppearance() ?? '').includes(BLUE_OPERATOR)
     && field.acroField.getWidgets().every(widget => (widget.getDefaultAppearance() ?? '').includes(BLUE_OPERATOR));
 }
@@ -336,11 +354,13 @@ function fieldForObjectReference(
 (async () => {
   equal(packageJson.dependencies?.['pdf-lib'], '1.17.1', 'pdf-lib remains pinned to exact 1.17.1');
   ok(!('@pdf-lib/fontkit' in (packageJson.dependencies ?? {})), 'fontkit is not a direct dependency');
-  equal(UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION, '1.2.0', 'UD-100 generated-draft implementation version is 1.2.0');
+  equal(UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION, '1.3.0', 'UD-100 generated-draft implementation version is 1.3.0');
   equal(UD100_GENERATED_TEXT_APPEARANCE.colorSpace, 'DeviceRGB', 'UD-100 generated text uses DeviceRGB');
   equal(UD100_GENERATED_TEXT_APPEARANCE.rgb[0], 0, 'UD-100 generated red component is 0');
   equal(UD100_GENERATED_TEXT_APPEARANCE.rgb[1], 0, 'UD-100 generated green component is 0');
   equal(UD100_GENERATED_TEXT_APPEARANCE.rgb[2], 1, 'UD-100 generated blue component is 1');
+  equal(UD100_GENERATED_TEXT_APPEARANCE.sizing, 'SHRINK_ONLY', 'UD-100 generated text sizing is shrink-only');
+  equal(UD100_GENERATED_TEXT_APPEARANCE.maxFontSize, 9, 'UD-100 generated text is capped at exactly 9pt');
   equal(computePreparationRuntimeManifestId(UD100_PREPARATION_RUNTIME_MANIFEST), UD100_PREPARATION_RUNTIME_MANIFEST_ID, 'committed preparation-runtime manifest identity is exact');
   equal(sha256Bytes(preparationDerivativeBytes), UD100_PREPARATION_RUNTIME_MANIFEST.preparationDerivative.sha256, 'preparation derivative matches manifest SHA-256');
   equal(UD100_PREPARATION_RUNTIME_MANIFEST.schemaVersion, 2, 'manifest uses dual-pass evidence schema');
@@ -383,6 +403,11 @@ function fieldForObjectReference(
   equal(first.evidence.preparationSourceId, UD100_PREPARATION_RUNTIME_MANIFEST.preparationSourceId, 'evidence binds XFA-free preparation source');
   equal(first.evidence.xfaPolicyId, 'acroform-fallback-xfa-disconnection-v1', 'evidence binds XFA policy');
   equal(first.evidence.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'evidence binds exact D.1 map');
+
+  const postGenerationBinding = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts);
+  equal(postGenerationBinding.status, 'GENERATION_BINDING_READY', 'presentation generation does not alter semantic binding readiness');
+  if (postGenerationBinding.status !== 'GENERATION_BINDING_READY') throw new Error('post-generation D.1 binding must remain READY');
+  equal(JSON.stringify(postGenerationBinding.fieldWritePlan), JSON.stringify(binding.fieldWritePlan), 'presentation generation leaves semantic field/election write plan byte-for-byte JSON identical');
 
   const second = await generateUd100GeneratedDraft({
     officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
@@ -439,15 +464,22 @@ function fieldForObjectReference(
       if (after instanceof PDFTextField) {
         equal(after.getText(), entry.value, `${entry.fieldId} reopens with exact D.1 text`);
         ok(hasBlueAppearance(after), `${entry.fieldId} reopens with exact DeviceRGB 0 0 1 generated-text appearance`);
+        for (const size of widgetFontSizes(after)) ok(size <= 9, `${entry.fieldId} generated text never exceeds 9pt`);
       }
     } else if (entry.action === 'SET_SELECTED') {
       selectedWrites += 1;
       ok(after instanceof PDFCheckBox, `${entry.fieldId} remains a checkbox`);
-      if (after instanceof PDFCheckBox) equal(after.isChecked(), true, `${entry.fieldId} reopens selected`);
+      if (after instanceof PDFCheckBox) {
+        equal(after.isChecked(), true, `${entry.fieldId} reopens selected`);
+        ok(hasBlueAppearance(after), `${entry.fieldId} selected mark is driven by exact DeviceRGB 0 0 1 appearance`);
+      }
     } else if (entry.action === 'SET_EXPLICIT_NONSELECTION') {
       nonselectedWrites += 1;
       ok(after instanceof PDFCheckBox, `${entry.fieldId} remains a checkbox`);
-      if (after instanceof PDFCheckBox) equal(after.isChecked(), false, `${entry.fieldId} reopens explicitly nonselected`);
+      if (after instanceof PDFCheckBox) {
+        equal(after.isChecked(), false, `${entry.fieldId} reopens explicitly nonselected`);
+        ok(hasBlueAppearance(after), `${entry.fieldId} generated checkbox appearance policy remains exact DeviceRGB 0 0 1`);
+      }
     } else {
       noWrites += 1;
       if (before instanceof PDFTextField && after instanceof PDFTextField) {
@@ -493,6 +525,53 @@ function fieldForObjectReference(
   const genericText = genericFields.get(firstTextEntry.fieldId);
   ok(genericText instanceof PDFTextField, 'generic no-policy output retains text field');
   if (genericText instanceof PDFTextField) ok(!hasBlueAppearance(genericText), 'generic definition without appearance policy is not silently recolored blue');
+
+  const uncappedAutoFit = await generateOfficialFormGeneratedDraft({
+    definition: {
+      ...canonicalDefinition(),
+      generatedTextAppearance: { ...UD100_GENERATED_TEXT_APPEARANCE, maxFontSize: 500 },
+    },
+    officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
+    officialSourceHealth: 'CURRENT',
+    officialSourceBytes,
+    preparationAuthorization: authorization,
+    preparationManifest: UD100_PREPARATION_RUNTIME_MANIFEST,
+    preparationDerivativeBytes,
+    facts,
+    preparedAtISO,
+    evaluateBinding: () => evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts),
+  });
+  equal(uncappedAutoFit.status, 'GENERATED_DRAFT', 'same semantic write plan generates an uncapped native auto-fit diagnostic');
+  if (uncappedAutoFit.status !== 'GENERATED_DRAFT') throw new Error('uncapped auto-fit diagnostic must generate');
+  const uncappedDoc = await PDFDocument.load(uncappedAutoFit.bytes, { updateMetadata: false });
+  const uncappedFields = new Map(uncappedDoc.getForm().getFields().map(field => [field.getName(), field]));
+  let exactNineCount = 0;
+  let shrinkCount = 0;
+  for (const entry of binding.fieldWritePlan) {
+    if (entry.action !== 'WRITE_TEXT') continue;
+    const capped = generatedFields.get(entry.fieldId);
+    const native = uncappedFields.get(entry.fieldId);
+    ok(capped instanceof PDFTextField && native instanceof PDFTextField, `${entry.fieldId} exists as text in capped and uncapped presentation diagnostics`);
+    if (!(capped instanceof PDFTextField) || !(native instanceof PDFTextField)) continue;
+    equal(capped.getText(), entry.value, `${entry.fieldId} capped presentation retains complete exact governed value`);
+    equal(native.getText(), entry.value, `${entry.fieldId} uncapped diagnostic retains same complete governed value`);
+    const cappedSizes = widgetFontSizes(capped);
+    const nativeSizes = widgetFontSizes(native);
+    equal(cappedSizes.length, nativeSizes.length, `${entry.fieldId} widget count is presentation-invariant`);
+    for (let index = 0; index < cappedSizes.length; index += 1) {
+      const expected = Math.min(nativeSizes[index], 9);
+      equal(cappedSizes[index], expected, `${entry.fieldId} widget ${index} is exactly min(native-fit, 9pt)`);
+      if (nativeSizes[index] >= 9) {
+        equal(cappedSizes[index], 9, `${entry.fieldId} widget ${index} uses the 9pt base size when shrink is unnecessary`);
+        exactNineCount += 1;
+      } else {
+        equal(cappedSizes[index], nativeSizes[index], `${entry.fieldId} widget ${index} shrinks only to the native necessary fit`);
+        shrinkCount += 1;
+      }
+    }
+  }
+  ok(exactNineCount > 0, 'fixture exercises normal populated values at exactly 9pt');
+  ok(shrinkCount > 0, 'fixture exercises deterministic shrink below 9pt only where native fit requires it');
 
   const agreementFacts = factsFor(agreementSupplemental());
   equal(agreementFacts.status, 'READY', 'verified one-year agreement projects canonical facts');
@@ -549,6 +628,7 @@ function fieldForObjectReference(
 
   equal(planAt('771 0 R')?.action, 'SET_SELECTED', 'Item 6 OTHER tenancy is selected');
   equal(checkAt('771 0 R').field.isChecked(), true, 'Item 6 OTHER tenancy reopens selected');
+  ok(hasBlueAppearance(checkAt('771 0 R').field), 'Item 6 selected tenancy mark uses exact DeviceRGB 0 0 1 appearance');
   equal(planAt('772 0 R')?.action, 'WRITE_TEXT', 'Item 6 tenancy term is written');
   equal(textAt('772 0 R').field.getText(), 'ONE-YEAR CONTRACT', 'Item 6 term reopens as ONE-YEAR CONTRACT');
   equal(textAt('758 0 R').field.getText(), 'Synthetic Tenant One; Synthetic Tenant Two', 'Item 6 defendant identities preserve canonical order');
@@ -564,6 +644,7 @@ function fieldForObjectReference(
   for (const ref of ['767 0 R', '763 0 R', '745 0 R', '756 0 R']) {
     equal(planAt(ref)?.action, 'SET_SELECTED', `${ref} exact agreement checkbox is selected`);
     equal(checkAt(ref).field.isChecked(), true, `${ref} exact agreement checkbox reopens selected`);
+    ok(hasBlueAppearance(checkAt(ref).field), `${ref} selected agreement mark uses exact DeviceRGB 0 0 1 appearance`);
   }
   equal(planAt('757 0 R')?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', 'unresolved agreement date remains no-write');
   const dateField = textAt('757 0 R').field;
@@ -582,7 +663,10 @@ function fieldForObjectReference(
     if (entry.action !== 'WRITE_TEXT') continue;
     const field = agreementFields.get(entry.fieldId);
     ok(field instanceof PDFTextField, `${entry.fieldId} agreement WRITE_TEXT remains a text field`);
-    if (field instanceof PDFTextField) ok(hasBlueAppearance(field), `${entry.fieldId} agreement WRITE_TEXT reopens with DeviceRGB 0 0 1`);
+    if (field instanceof PDFTextField) {
+      ok(hasBlueAppearance(field), `${entry.fieldId} agreement WRITE_TEXT reopens with DeviceRGB 0 0 1`);
+      for (const size of widgetFontSizes(field)) ok(size <= 9, `${entry.fieldId} agreement text never exceeds 9pt`);
+    }
   }
 
   const changedAgreementInput = agreementSupplemental();

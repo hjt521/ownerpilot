@@ -20,11 +20,13 @@ import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 
 export const UD100_GENERATED_DRAFT_IMPLEMENTATION_ID =
   'ownerpilot-stage-e1-ud100-generated-draft' as const;
-export const UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION = '1.2.0' as const;
+export const UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION = '1.3.0' as const;
 export const UD100_GENERATED_DRAFT_ARTIFACT_ROLE = 'OWNER_GENERATED_PREPARATION' as const;
 export const UD100_GENERATED_TEXT_APPEARANCE = Object.freeze({
   colorSpace: 'DeviceRGB' as const,
   rgb: [0, 0, 1] as const,
+  sizing: 'SHRINK_ONLY' as const,
+  maxFontSize: 9,
 });
 
 if (UD100_GENERATION_BINDING.artifactRole !== UD100_GENERATED_DRAFT_ARTIFACT_ROLE) {
