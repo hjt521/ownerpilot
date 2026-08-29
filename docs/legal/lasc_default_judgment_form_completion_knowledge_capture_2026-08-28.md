@@ -151,6 +151,26 @@ Do not treat substantive rental-assistance answers as reusable defaults. Require
 
 Treat cost forms as evidence-backed schedules. Amounts must derive from the current matter's documented costs rather than a prior packet.
 
+## Observed default-judgment counter / mail-return workflow
+
+This section records one stage-specific LASC operational observation and must not be generalized into a universal court rule.
+
+- At one Stanley Mosk default-judgment counter submission, staff requested only **CIV-100** and **UD-110** at that stage, despite a broader set of forms having been prepared upstream.
+- The observed submission quantity was **two copies of each form**.
+- The filer was required to provide a **large self-addressed stamped envelope** for the court's later response/return.
+- **No receipt or conformed submission receipt** was provided at the counter.
+- Staff gave an estimated turnaround of approximately **5–10 court days** for a mailed response.
+- Staff instructed that, after the mailed court response is received, the filer should return to the same counter/room with **EJ-130** for court processing/stamping, and only then proceed to the courthouse Sheriff's office for the reported lock-out workflow.
+
+Product implications from this observation:
+
+1. Add a state such as `DEFAULT_JUDGMENT_SUBMITTED_AWAITING_MAIL_RETURN` that can exist without a receipt.
+2. Preserve `PreparedDefaultPacketIdentity` separately from `SubmittedDefaultPacketIdentity`; stage-specific counter intake may accept only a subset of a broader prepared packet.
+3. Record exact submission date/location, accepted documents, copy counts, return-envelope provision, estimated turnaround, and whether a receipt/conformed copy was returned.
+4. Treat the returned envelope and enclosed court papers as a new `CourtReturnIdentity` and the authoritative trigger for the next state transition.
+5. Do not advance to issued-writ/enforcement state based on elapsed time, clerk estimate, or a prepared/unstamped EJ-130.
+6. A later court-stamped/processed EJ-130 must be preserved as its own court artifact before any sheriff workflow is represented as available.
+
 ## Product controls suggested by the observation
 
 1. Version field maps against exact official-form identities/revisions.
