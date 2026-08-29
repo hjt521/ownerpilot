@@ -13,8 +13,11 @@ import {
 } from './officialFormGeneratedDraft';
 import {
   evaluateUd100GenerationBinding,
+  evaluateUd100LegacyB1GenerationBinding,
   UD100_GENERATION_BINDING,
   UD100_GENERATOR_CONTRACT_VERSION,
+  UD100_LEGACY_B1_GENERATION_BINDING,
+  UD100_LEGACY_B1_GENERATOR_CONTRACT_VERSION,
 } from './ud100GenerationBinding';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 
@@ -29,8 +32,9 @@ export const UD100_GENERATED_TEXT_APPEARANCE = Object.freeze({
   maxFontSize: 9,
 });
 
-if (UD100_GENERATION_BINDING.artifactRole !== UD100_GENERATED_DRAFT_ARTIFACT_ROLE) {
-  throw new Error('Stage E.1 generated-draft artifact role drifted from the governed D.1 binding.');
+if (UD100_GENERATION_BINDING.artifactRole !== UD100_GENERATED_DRAFT_ARTIFACT_ROLE
+  || UD100_LEGACY_B1_GENERATION_BINDING.artifactRole !== UD100_GENERATED_DRAFT_ARTIFACT_ROLE) {
+  throw new Error('Stage E.1 generated-draft artifact role drifted from a governed D.1 binding.');
 }
 
 export const UD100_PREPARATION_RUNTIME_PATH =
@@ -57,6 +61,12 @@ const definition: OfficialGeneratedDraftDefinition = {
   generatedTextAppearance: UD100_GENERATED_TEXT_APPEARANCE,
 };
 
+const legacyB1Definition: OfficialGeneratedDraftDefinition = {
+  ...definition,
+  expectedMapSnapshotId: UD100_LEGACY_B1_GENERATION_BINDING.mapSnapshotId,
+  expectedGeneratorContractVersion: UD100_LEGACY_B1_GENERATOR_CONTRACT_VERSION,
+};
+
 export interface GenerateUd100DraftInput {
   officialSourceIdentity: OfficialSourceIdentity;
   officialSourceHealth: OfficialSourceHealth | null | undefined;
@@ -72,11 +82,13 @@ export interface EvaluateUd100DraftCurrentnessInput
   draftBytes: Uint8Array;
 }
 
-export function generateUd100GeneratedDraft(
+function generateWithBinding(
   input: GenerateUd100DraftInput,
+  governedDefinition: OfficialGeneratedDraftDefinition,
+  evaluateBinding: () => ReturnType<typeof evaluateUd100GenerationBinding>,
 ): Promise<OfficialFormGeneratedDraftResult> {
   return generateOfficialFormGeneratedDraft({
-    definition,
+    definition: governedDefinition,
     officialSourceIdentity: input.officialSourceIdentity,
     officialSourceHealth: input.officialSourceHealth,
     officialSourceBytes: input.officialSourceBytes,
@@ -85,20 +97,18 @@ export function generateUd100GeneratedDraft(
     preparationDerivativeBytes: input.preparationDerivativeBytes,
     facts: input.facts,
     preparedAtISO: input.preparedAtISO,
-    evaluateBinding: () => evaluateUd100GenerationBinding(
-      input.officialSourceIdentity,
-      input.officialSourceHealth,
-      input.facts,
-    ),
+    evaluateBinding,
   });
 }
 
-export function evaluateUd100GeneratedDraftCurrentness(
+function currentnessWithBinding(
   draft: GeneratedDraftEvidence,
   input: EvaluateUd100DraftCurrentnessInput,
+  governedDefinition: OfficialGeneratedDraftDefinition,
+  evaluateBinding: () => ReturnType<typeof evaluateUd100GenerationBinding>,
 ): GeneratedDraftCurrentness {
   return evaluateOfficialFormGeneratedDraftCurrentness(draft, {
-    definition,
+    definition: governedDefinition,
     officialSourceIdentity: input.officialSourceIdentity,
     officialSourceHealth: input.officialSourceHealth,
     officialSourceBytes: input.officialSourceBytes,
@@ -107,10 +117,48 @@ export function evaluateUd100GeneratedDraftCurrentness(
     preparationDerivativeBytes: input.preparationDerivativeBytes,
     facts: input.facts,
     draftBytes: input.draftBytes,
-    evaluateBinding: () => evaluateUd100GenerationBinding(
-      input.officialSourceIdentity,
-      input.officialSourceHealth,
-      input.facts,
-    ),
+    evaluateBinding,
   });
+}
+
+export function generateUd100GeneratedDraft(
+  input: GenerateUd100DraftInput,
+): Promise<OfficialFormGeneratedDraftResult> {
+  return generateWithBinding(input, definition, () => evaluateUd100GenerationBinding(
+    input.officialSourceIdentity,
+    input.officialSourceHealth,
+    input.facts,
+  ));
+}
+
+export function evaluateUd100GeneratedDraftCurrentness(
+  draft: GeneratedDraftEvidence,
+  input: EvaluateUd100DraftCurrentnessInput,
+): GeneratedDraftCurrentness {
+  return currentnessWithBinding(draft, input, definition, () => evaluateUd100GenerationBinding(
+    input.officialSourceIdentity,
+    input.officialSourceHealth,
+    input.facts,
+  ));
+}
+
+export function generateUd100GeneratedDraftLegacyB1(
+  input: GenerateUd100DraftInput,
+): Promise<OfficialFormGeneratedDraftResult> {
+  return generateWithBinding(input, legacyB1Definition, () => evaluateUd100LegacyB1GenerationBinding(
+    input.officialSourceIdentity,
+    input.officialSourceHealth,
+    input.facts,
+  ));
+}
+
+export function evaluateUd100GeneratedDraftLegacyB1Currentness(
+  draft: GeneratedDraftEvidence,
+  input: EvaluateUd100DraftCurrentnessInput,
+): GeneratedDraftCurrentness {
+  return currentnessWithBinding(draft, input, legacyB1Definition, () => evaluateUd100LegacyB1GenerationBinding(
+    input.officialSourceIdentity,
+    input.officialSourceHealth,
+    input.facts,
+  ));
 }
