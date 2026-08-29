@@ -108,10 +108,7 @@ export type Ud100Attachment10cReadinessEvaluation =
 const LOWER_HEX_SHA256 = /^[0-9a-f]{64}$/;
 const SERVICE_METHODS = new Set<ServiceMethod>(['personal', 'substituted', 'post_and_mail']);
 const SERVICE_OUTCOMES = new Set<ServiceAttemptOutcome>(['SUCCESS', 'FAILED']);
-const RECIPIENT_KINDS = new Set<Ud100Attachment10cRecipient['kind']>([
-  'NAMED_DEFENDANT',
-  'OTHER_PERSON',
-]);
+const RECIPIENT_KINDS = new Set<Ud100Attachment10cRecipient['kind']>(['NAMED_DEFENDANT', 'OTHER_PERSON']);
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -121,8 +118,7 @@ function exactKeys(value: unknown, keys: readonly string[]): boolean {
   if (!isObject(value)) return false;
   const actual = Object.keys(value).sort();
   const expected = [...keys].sort();
-  return actual.length === expected.length
-    && actual.every((key, index) => key === expected[index]);
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
 }
 
 function nonempty(value: unknown): value is string {
@@ -136,9 +132,10 @@ function validCreatedNoticeIdentity(
   if (!exactKeys(value, ['generation', 'createdAtISO'])) return false;
   const candidate = value as unknown as CreatedNoticeFactIdentity;
   if (!nonempty(candidate.generation) || !nonempty(candidate.createdAtISO)) return false;
-  return !expected
-    || (candidate.generation === expected.generation
-      && candidate.createdAtISO === expected.createdAtISO);
+  return !expected || (
+    candidate.generation === expected.generation
+    && candidate.createdAtISO === expected.createdAtISO
+  );
 }
 
 function validDate(value: unknown): value is string {
@@ -210,18 +207,17 @@ function validateServiceEvent(
   value: unknown,
   createdNotice: CreatedNoticeFactIdentity,
 ): string[] {
-  const reasons: string[] = [];
   if (!isObject(value)) return ['Attachment 10c service-event evidence must be an object.'];
   const hasMailingDate = Object.prototype.hasOwnProperty.call(value, 'mailingDate');
   const keys = hasMailingDate
     ? ['serviceEventId', 'createdNotice', 'serviceDate', 'method', 'outcome', 'mailingDate', 'recipient', 'provenance']
     : ['serviceEventId', 'createdNotice', 'serviceDate', 'method', 'outcome', 'recipient', 'provenance'];
   if (!exactKeys(value, keys)) {
-    reasons.push('Attachment 10c service-event evidence contains missing or unauthorized fields.');
-    return reasons;
+    return ['Attachment 10c service-event evidence contains missing or unauthorized fields.'];
   }
 
   const candidate = value as unknown as Ud100Attachment10cServiceEventEvidence;
+  const reasons: string[] = [];
   if (!nonempty(candidate.serviceEventId)) reasons.push('Attachment 10c service-event ID must be nonempty.');
   if (!validCreatedNoticeIdentity(candidate.createdNotice, createdNotice)) {
     reasons.push('Attachment 10c service-event evidence is stale or does not match the exact current Created Notice.');
@@ -233,7 +229,9 @@ function validateServiceEvent(
   if (hasMailingDate && !validDate(candidate.mailingDate)) {
     reasons.push('Attachment 10c mailing date must be a strict valid YYYY-MM-DD date when supplied.');
   }
-  if (!validRecipient(candidate.recipient)) reasons.push('Attachment 10c recipient evidence must have a supported kind and exact nonempty name.');
+  if (!validRecipient(candidate.recipient)) {
+    reasons.push('Attachment 10c recipient evidence must have a supported kind and exact nonempty name.');
+  }
   if (!nonempty(candidate.serviceEventId) || !validProvenance(candidate.provenance, candidate.serviceEventId)) {
     reasons.push('Attachment 10c lifecycle provenance is missing, malformed, or not bound to the service-event ID.');
   }
@@ -271,8 +269,7 @@ function canonicalNotices(artifacts: readonly PacketArtifactBinding[]): PacketAr
         createdAtISO: artifact.createdNotice.createdAtISO,
       },
     }))
-    .sort((a, b) => compareStrings(a.artifactId, b.artifactId)
-      || compareStrings(a.sha256, b.sha256));
+    .sort((a, b) => compareStrings(a.artifactId, b.artifactId) || compareStrings(a.sha256, b.sha256));
 }
 
 function canonicalServiceEvent(
@@ -288,10 +285,7 @@ function canonicalServiceEvent(
     method: event.method,
     outcome: 'SUCCESS',
     mailingDate: event.mailingDate ?? null,
-    recipient: {
-      kind: event.recipient.kind,
-      name: event.recipient.name,
-    },
+    recipient: { kind: event.recipient.kind, name: event.recipient.name },
     provenance: {
       sourceId: event.provenance.sourceId,
       eventId: event.provenance.eventId,
@@ -308,7 +302,6 @@ function rotateRight(value: number, bits: number): number {
   return (value >>> bits) | (value << (32 - bits));
 }
 
-/** Browser-safe deterministic SHA-256; no clock, randomness, network, or Node-only API. */
 function sha256Hex(input: string): string {
   const bytes = new TextEncoder().encode(input);
   const bitLength = bytes.length * 8;
@@ -316,12 +309,9 @@ function sha256Hex(input: string): string {
   const padded = new Uint8Array(paddedLength);
   padded.set(bytes);
   padded[bytes.length] = 0x80;
-
   const view = new DataView(padded.buffer);
-  const high = Math.floor(bitLength / 0x100000000);
-  const low = bitLength >>> 0;
-  view.setUint32(paddedLength - 8, high, false);
-  view.setUint32(paddedLength - 4, low, false);
+  view.setUint32(paddedLength - 8, Math.floor(bitLength / 0x100000000), false);
+  view.setUint32(paddedLength - 4, bitLength >>> 0, false);
 
   const h = new Uint32Array([
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
@@ -340,16 +330,10 @@ function sha256Hex(input: string): string {
   const w = new Uint32Array(64);
 
   for (let offset = 0; offset < padded.length; offset += 64) {
-    for (let index = 0; index < 16; index += 1) {
-      w[index] = view.getUint32(offset + index * 4, false);
-    }
+    for (let index = 0; index < 16; index += 1) w[index] = view.getUint32(offset + index * 4, false);
     for (let index = 16; index < 64; index += 1) {
-      const s0 = rotateRight(w[index - 15]!, 7)
-        ^ rotateRight(w[index - 15]!, 18)
-        ^ (w[index - 15]! >>> 3);
-      const s1 = rotateRight(w[index - 2]!, 17)
-        ^ rotateRight(w[index - 2]!, 19)
-        ^ (w[index - 2]! >>> 10);
+      const s0 = rotateRight(w[index - 15]!, 7) ^ rotateRight(w[index - 15]!, 18) ^ (w[index - 15]! >>> 3);
+      const s1 = rotateRight(w[index - 2]!, 17) ^ rotateRight(w[index - 2]!, 19) ^ (w[index - 2]! >>> 10);
       w[index] = (w[index - 16]! + s0 + w[index - 7]! + s1) >>> 0;
     }
 
@@ -361,7 +345,6 @@ function sha256Hex(input: string): string {
     let f = h[5]!;
     let g = h[6]!;
     let hh = h[7]!;
-
     for (let index = 0; index < 64; index += 1) {
       const s1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25);
       const choice = (e & f) ^ (~e & g);
@@ -378,7 +361,6 @@ function sha256Hex(input: string): string {
       b = a;
       a = (temp1 + temp2) >>> 0;
     }
-
     h[0] = (h[0]! + a) >>> 0;
     h[1] = (h[1]! + b) >>> 0;
     h[2] = (h[2]! + c) >>> 0;
@@ -388,10 +370,7 @@ function sha256Hex(input: string): string {
     h[6] = (h[6]! + g) >>> 0;
     h[7] = (h[7]! + hh) >>> 0;
   }
-
-  return Array.from(h)
-    .map(value => value.toString(16).padStart(8, '0'))
-    .join('');
+  return Array.from(h).map(value => value.toString(16).padStart(8, '0')).join('');
 }
 
 function buildPlanId(payload: Omit<Ud100Attachment10cCompositionPlan, 'planId'>): string {
@@ -409,16 +388,12 @@ export function buildUd100Attachment10cCompositionPlan(
   if (projection.status !== 'READY') {
     return blocked(['Attachment 10c composition requires an exact READY canonical filing-facts projection.']);
   }
-
   const createdNotice = projection.createdNoticeIdentity;
   if (!validCreatedNoticeIdentity(createdNotice)) {
     return blocked(['Attachment 10c composition requires a valid exact Created Notice identity.']);
   }
 
-  const defendantFact = readCanonicalFilingFact<readonly string[]>(
-    projection,
-    CANONICAL_FILING_FACT_REFS.defendantNames,
-  );
+  const defendantFact = readCanonicalFilingFact<readonly string[]>(projection, CANONICAL_FILING_FACT_REFS.defendantNames);
   if (!defendantFact || defendantFact.state !== 'KNOWN'
     || !Array.isArray(defendantFact.value)
     || defendantFact.value.length === 0
@@ -430,19 +405,14 @@ export function buildUd100Attachment10cCompositionPlan(
     return blocked(['Attachment 10c canonical defendant identities are duplicate or ambiguous.']);
   }
 
-  const noticeFact = readCanonicalFilingFact<NoticePacketState>(
-    projection,
-    CANONICAL_FILING_FACT_REFS.packetNotice,
-  );
+  const noticeFact = readCanonicalFilingFact<NoticePacketState>(projection, CANONICAL_FILING_FACT_REFS.packetNotice);
   if (!noticeFact || noticeFact.state !== 'KNOWN'
     || noticeFact.value.kind !== 'EXHIBIT_2_ATTACHED'
     || currentControlIdentity(noticeFact.provenance.governedControl) === null) {
     return blocked(['Attachment 10c composition requires exact current governed EXHIBIT_2_ATTACHED Notice evidence.']);
   }
   const noticeArtifacts = noticeFact.value.artifacts;
-  if ((noticeFact.value.requiredNoticeCount !== 1 && noticeFact.value.requiredNoticeCount !== 2)
-    || noticeArtifacts.length !== noticeFact.value.requiredNoticeCount
-    || noticeArtifacts.length === 0
+  if (noticeArtifacts.length !== noticeFact.value.requiredNoticeCount
     || noticeArtifacts.some(artifact => !validPacketArtifact(artifact, createdNotice))) {
     return blocked(['Attachment 10c Notice Exhibit evidence is incomplete, stale, malformed, or not bound to the exact Created Notice.']);
   }
@@ -451,10 +421,7 @@ export function buildUd100Attachment10cCompositionPlan(
     return blocked(['Attachment 10c Notice Exhibit identities are duplicate or ambiguous.']);
   }
 
-  const attachmentFact = readCanonicalFilingFact<Attachment10cPacketState>(
-    projection,
-    CANONICAL_FILING_FACT_REFS.packetAttachment10c,
-  );
+  const attachmentFact = readCanonicalFilingFact<Attachment10cPacketState>(projection, CANONICAL_FILING_FACT_REFS.packetAttachment10c);
   if (!attachmentFact || attachmentFact.state !== 'KNOWN') {
     return blocked(['Attachment 10c governed applicability is unresolved, malformed, stale, or unsupported.']);
   }
@@ -520,9 +487,7 @@ export function buildUd100Attachment10cCompositionPlan(
       reasons.push(`Attachment 10c linkage references unknown Notice artifact ${candidate.noticeArtifactId}.`);
     }
     const event = eventById.get(candidate.serviceEventId);
-    if (!event) {
-      reasons.push(`Attachment 10c linkage references unknown service event ${candidate.serviceEventId}.`);
-    }
+    if (!event) reasons.push(`Attachment 10c linkage references unknown service event ${candidate.serviceEventId}.`);
 
     const triple = `${candidate.defendantOrdinal}\u0000${candidate.noticeArtifactId}\u0000${candidate.serviceEventId}`;
     if (linkageTriples.has(triple)) {
@@ -569,21 +534,14 @@ export function buildUd100Attachment10cCompositionPlan(
   }
 
   for (let ordinal = 0; ordinal < defendantNames.length; ordinal += 1) {
-    if (!coveredDefendants.has(ordinal)) {
-      reasons.push(`Attachment 10c does not cover canonical defendant ordinal ${ordinal}.`);
-    }
+    if (!coveredDefendants.has(ordinal)) reasons.push(`Attachment 10c does not cover canonical defendant ordinal ${ordinal}.`);
   }
   for (const artifact of noticeArtifacts) {
-    if (!coveredNotices.has(artifact.artifactId)) {
-      reasons.push(`Attachment 10c does not cover exact Notice artifact ${artifact.artifactId}.`);
-    }
+    if (!coveredNotices.has(artifact.artifactId)) reasons.push(`Attachment 10c does not cover exact Notice artifact ${artifact.artifactId}.`);
   }
   for (const eventId of eventById.keys()) {
-    if (!referencedEvents.has(eventId)) {
-      reasons.push(`Attachment 10c contains orphan service event ${eventId}.`);
-    }
+    if (!referencedEvents.has(eventId)) reasons.push(`Attachment 10c contains orphan service event ${eventId}.`);
   }
-
   if (reasons.length > 0) return blocked(reasons);
 
   const canonicalEvents = [...eventById.values()]
@@ -596,10 +554,7 @@ export function buildUd100Attachment10cCompositionPlan(
   const payload: Omit<Ud100Attachment10cCompositionPlan, 'planId'> = {
     schemaVersion: 1,
     planVersion: UD100_ATTACHMENT_10C_PLAN_VERSION,
-    createdNotice: {
-      generation: createdNotice.generation,
-      createdAtISO: createdNotice.createdAtISO,
-    },
+    createdNotice: { ...createdNotice },
     applicability: 'REQUIRED_BUT_UNSUPPORTED',
     applicabilityControl,
     defendants: defendantNames.map((name, ordinal) => ({ ordinal, name })),
@@ -610,29 +565,8 @@ export function buildUd100Attachment10cCompositionPlan(
     legalSufficiency: 'NOT_EVALUATED',
     filingAuthority: 'NOT_AUTHORIZED',
   };
-  const plan: Ud100Attachment10cCompositionPlan = {
-    ...payload,
-    planId: buildPlanId(payload),
-  };
+  const plan: Ud100Attachment10cCompositionPlan = { ...payload, planId: buildPlanId(payload) };
   return { status: 'PLAN_READY', plan, reasons: [] };
-}
-
-function missingElection(
-  input: CustomerConfirmedLegalElectionInput<ComplaintServiceElection> | undefined,
-): boolean {
-  return !input
-    || input.state === 'UNANSWERED'
-    || input.state === 'UNKNOWN'
-    || input.state === 'REQUIRES_CONFIRMATION';
-}
-
-function missingConsistency(
-  input: GovernedControlInput<'CONSISTENT'> | undefined,
-): boolean {
-  return !input
-    || input.state === 'UNANSWERED'
-    || input.state === 'UNKNOWN'
-    || input.state === 'REQUIRES_CONFIRMATION';
 }
 
 export function evaluateUd100Attachment10cReadiness(
@@ -644,19 +578,18 @@ export function evaluateUd100Attachment10cReadiness(
     serviceEvents: evidence.serviceEvents,
     linkages: evidence.linkages,
   });
-  if (planResult.status === 'NOT_APPLICABLE') {
-    return { status: 'NOT_APPLICABLE', plan: null, reasons: [] };
-  }
+  if (planResult.status === 'NOT_APPLICABLE') return { status: 'NOT_APPLICABLE', plan: null, reasons: [] };
   if (planResult.status === 'NEEDS_INFORMATION') {
     return { status: 'NEEDS_INFORMATION', plan: null, reasons: planResult.reasons };
   }
-  if (planResult.status === 'BLOCKED') {
-    return { status: 'BLOCKED', plan: null, reasons: planResult.reasons };
-  }
+  if (planResult.status === 'BLOCKED') return { status: 'BLOCKED', plan: null, reasons: planResult.reasons };
 
   const plan = planResult.plan;
   const election = evidence.serviceElection;
-  if (missingElection(election)) {
+  if (!election
+    || election.state === 'UNANSWERED'
+    || election.state === 'UNKNOWN'
+    || election.state === 'REQUIRES_CONFIRMATION') {
     return {
       status: 'NEEDS_INFORMATION',
       plan,
@@ -670,7 +603,7 @@ export function evaluateUd100Attachment10cReadiness(
       reasons: ['The owner complaint-side service election is conflicting and cannot be inferred from factual service events.'],
     };
   }
-  if (election.state !== 'KNOWN' || election.value !== 'PERSONAL_HAND_DELIVERY') {
+  if (election.value !== 'PERSONAL_HAND_DELIVERY') {
     return {
       status: 'BLOCKED',
       plan,
@@ -679,7 +612,10 @@ export function evaluateUd100Attachment10cReadiness(
   }
 
   const consistency = evidence.serviceElectionConsistencyControl;
-  if (missingConsistency(consistency)) {
+  if (!consistency
+    || consistency.state === 'UNANSWERED'
+    || consistency.state === 'UNKNOWN'
+    || consistency.state === 'REQUIRES_CONFIRMATION') {
     return {
       status: 'NEEDS_INFORMATION',
       plan,
@@ -687,15 +623,9 @@ export function evaluateUd100Attachment10cReadiness(
     };
   }
   if (consistency.state === 'CONFLICT') {
-    return {
-      status: 'BLOCKED',
-      plan,
-      reasons: ['The existing service-election consistency control is conflicting.'],
-    };
+    return { status: 'BLOCKED', plan, reasons: ['The existing service-election consistency control is conflicting.'] };
   }
-  if (consistency.state !== 'KNOWN'
-    || consistency.value !== 'CONSISTENT'
-    || currentControlIdentity(consistency.control) === null) {
+  if (consistency.value !== 'CONSISTENT' || currentControlIdentity(consistency.control) === null) {
     return {
       status: 'BLOCKED',
       plan,
