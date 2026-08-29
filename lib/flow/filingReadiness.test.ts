@@ -606,7 +606,6 @@ function finalPacketProjection(packetComposition?: FilingPacketCompositionInput)
   });
 }
 
-// B1 canonical projection emits the four packet refs without inventing defaults.
 const omittedPacketFacts = projectFilingCanonicalFacts(created);
 equal(omittedPacketFacts.status, 'READY', 'B1 packet facts extend canonical projection without blocking unrelated projection');
 for (const ref of [
@@ -633,10 +632,8 @@ for (const ref of [
   }
 }
 
-// 1. Omitted packet composition cannot reach Ready at the final seam.
 equal(finalPacketProjection().state, 'Needs information', 'omitted packet composition cannot produce Ready for packet review');
 
-// 2. Every explicit UNRESOLVED packet state blocks final Ready without invention.
 for (const [key, value] of [
   ['agreement', { kind: 'UNRESOLVED' }],
   ['notice', { kind: 'UNRESOLVED' }],
@@ -648,10 +645,9 @@ for (const [key, value] of [
   equal(finalPacketProjection(packet).state, 'Needs information', `${key} UNRESOLVED blocks packet-review readiness`);
 }
 
-// 3. Missing, stale, or structurally incomplete control provenance fails closed.
 const staleControlPacket = resolvedPacketComposition(served);
 staleControlPacket.notice = {
-  ...staleControlPacket.notice!,
+  ...(staleControlPacket.notice as Extract<GovernedControlInput<NoticePacketState>, { state: 'KNOWN' }>),
   control: { controlId: 'ud100.packet-composition', controlVersion: '1.0.0', resultId: 'stale-notice', status: 'STALE' },
 };
 equal(finalPacketProjection(staleControlPacket).state, 'Cannot continue', 'stale packet control authority fails closed');
@@ -670,7 +666,6 @@ missingDependenciesPacket.notice = {
 };
 equal(finalPacketProjection(missingDependenciesPacket).state, 'Cannot continue', 'missing exact dependency vector fails closed');
 
-// 4-6. Artifact identity, CreatedNotice binding, digest/length, and role are exact.
 const wrongGenerationPacket = resolvedPacketComposition(served);
 const wrongGenerationArtifact = packetArtifact(served, 'EXHIBIT_2_NOTICE', 'wrong-generation', 'c');
 wrongGenerationArtifact.createdNotice = { ...wrongGenerationArtifact.createdNotice, generation: 'different-generation' };
@@ -703,7 +698,6 @@ wrongRolePacket.notice = currentControl<NoticePacketState>({
 }, 'wrong-role');
 equal(finalPacketProjection(wrongRolePacket).state, 'Cannot continue', 'wrong packet artifact role fails closed');
 
-// 7. Exact Exhibit 1 attachment passes.
 const exhibit1Packet = resolvedPacketComposition(served);
 exhibit1Packet.agreement = currentControl<AgreementPacketState>({
   kind: 'EXHIBIT_1_ATTACHED',
@@ -711,14 +705,12 @@ exhibit1Packet.agreement = currentControl<AgreementPacketState>({
 }, 'exhibit-1-attached');
 equal(finalPacketProjection(exhibit1Packet).state, 'Ready for packet review', 'exact Exhibit 1 attachment can satisfy agreement packet state');
 
-// 8. Both approved nonattachment reasons resolve without fabricating Exhibit 1.
 for (const kind of ['NOT_ATTACHED_LANDLORD_LACKS_POSSESSION', 'NOT_ATTACHED_SOLELY_NONPAYMENT'] as const) {
   const packet = resolvedPacketComposition(served);
   packet.agreement = currentControl<AgreementPacketState>({ kind }, `agreement-${kind}`);
   equal(finalPacketProjection(packet).state, 'Ready for packet review', `${kind} resolves agreement packet without fabricated artifact`);
 }
 
-// 9. Free-form/unrecognized 6f-style reasons are rejected, not normalized.
 const freeFormAgreementPacket = resolvedPacketComposition(served);
 freeFormAgreementPacket.agreement = currentControl(
   { kind: 'NOT_ATTACHED_OTHER_REASON', reason: 'Synthetic free-form reason' } as unknown as AgreementPacketState,
@@ -726,7 +718,6 @@ freeFormAgreementPacket.agreement = currentControl(
 );
 equal(finalPacketProjection(freeFormAgreementPacket).state, 'Cannot continue', 'unrecognized/free-form agreement nonattachment reason is rejected');
 
-// 10. Oral/no-agreement nonapplicability requires the exact governed applicability dependency.
 const noAgreementMissingDependency = resolvedPacketComposition(served);
 noAgreementMissingDependency.agreement = currentControl<AgreementPacketState>({ kind: 'NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT' }, 'not-applicable-missing-dep');
 equal(finalPacketProjection(noAgreementMissingDependency).state, 'Cannot continue', 'agreement nonapplicability cannot be inferred without lease-applicability dependency');
@@ -738,7 +729,6 @@ noAgreementExactDependency.agreement = currentControl<AgreementPacketState>(
 );
 equal(finalPacketProjection(noAgreementExactDependency).state, 'Ready for packet review', 'agreement nonapplicability passes with exact lease-applicability dependency');
 
-// 11-14. Notice-set count and identity are exact and duplicate-safe.
 equal(finalPacketProjection(resolvedPacketComposition(served)).state, 'Ready for packet review', 'one required exact Notice artifact passes');
 const twoNoticePacket = resolvedPacketComposition(served);
 twoNoticePacket.notice = currentControl<NoticePacketState>({
@@ -766,7 +756,6 @@ duplicateNoticePacket.notice = currentControl<NoticePacketState>({
 }, 'notice-duplicate');
 equal(finalPacketProjection(duplicateNoticePacket).state, 'Cannot continue', 'duplicate Notice artifact identity cannot satisfy count two');
 
-// 15-17. Proof-of-service attachment availability stays separate from service sufficiency.
 const exhibit3Packet = resolvedPacketComposition(served);
 exhibit3Packet.proofOfService = currentControl<ProofOfServicePacketState>({
   kind: 'EXHIBIT_3_ATTACHED',
@@ -778,7 +767,6 @@ const unresolvedProofPacket = resolvedPacketComposition(served);
 unresolvedProofPacket.proofOfService = currentControl<ProofOfServicePacketState>({ kind: 'UNRESOLVED' }, 'proof-unresolved');
 equal(finalPacketProjection(unresolvedProofPacket).state, 'Needs information', 'unresolved proof-of-service packet state blocks Ready');
 
-// 18-19. Attachment 10c has no attached/composed representation in B1.
 const unsupported10cPacket = resolvedPacketComposition(served);
 unsupported10cPacket.attachment10c = currentControl<Attachment10cPacketState>({ kind: 'REQUIRED_BUT_UNSUPPORTED' }, '10c-required-unsupported');
 equal(finalPacketProjection(unsupported10cPacket).state, 'Cannot continue', 'required-but-unsupported 10c fails closed');
@@ -786,7 +774,6 @@ const unresolved10cPacket = resolvedPacketComposition(served);
 unresolved10cPacket.attachment10c = currentControl<Attachment10cPacketState>({ kind: 'UNRESOLVED' }, '10c-unresolved');
 equal(finalPacketProjection(unresolved10cPacket).state, 'Needs information', 'unresolved 10c blocks Ready without fabrication');
 
-// 20. Packet evidence has no lifecycle authority before the final review seam.
 const preSeamInvalidPacket = resolvedPacketComposition(served);
 preSeamInvalidPacket.attachment10c = currentControl<Attachment10cPacketState>({ kind: 'REQUIRED_BUT_UNSUPPORTED' }, 'pre-seam-unsupported');
 const preSeamProjection = deriveFilingReadiness({
@@ -798,7 +785,6 @@ const preSeamProjection = deriveFilingReadiness({
 equal(preSeamProjection.state, 'Not yet applicable', 'packet composition cannot outrank missing post-service outcome');
 equal(preSeamProjection.checklist.find(item => item.key === 'PACKET_COMPOSITION')?.status, 'Not yet applicable', 'packet composition is explicitly not yet applicable before final seam');
 
-// 21. All resolved B1 packet states plus existing Stage C prerequisites produce exactly Ready for packet review.
 equal(finalPacketProjection(resolvedPacketComposition(served)).state, 'Ready for packet review', 'fully resolved packet composition plus existing Stage C prerequisites reaches exact Ready for packet review');
 
 const source = readFileSync('lib/flow/filingReadiness.ts', 'utf8');
@@ -830,7 +816,6 @@ ok(!d1Source.includes('ud100.packet.'), 'B1 packet refs remain unreferenced by u
 const generatedDraftSource = readFileSync('lib/flow/ud100GeneratedDraft.ts', 'utf8');
 ok(!generatedDraftSource.includes('ud100.packet.'), 'B1 packet refs remain unreferenced by untouched generated-draft implementation');
 
-// 22. B1 test/source mutation remains synthetic and contains no private audit artifact identity.
 const thisTestSource = readFileSync('lib/flow/filingReadiness.test.ts', 'utf8');
 ok(thisTestSource.includes('Synthetic Tenant') && thisTestSource.includes('Synthetic Owner'), 'B1 adversarial fixtures remain explicitly synthetic');
 ok(!thisTestSource.includes('db10b0a176c9d79f1510741af49491d403bc19e52b26d1359e4242ae68d8bd98'), 'historical private/bootstrap PDF identity is not copied into B1 tests');
