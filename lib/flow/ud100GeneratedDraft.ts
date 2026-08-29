@@ -65,7 +65,8 @@ const packetProofDep = D(CANONICAL_FILING_FACT_REFS.packetProofOfService);
 const packetAttachment10cDep = D(CANONICAL_FILING_FACT_REFS.packetAttachment10c);
 const agreementDomain = ['EXHIBIT_1_ATTACHED','NOT_ATTACHED_LANDLORD_LACKS_POSSESSION','NOT_ATTACHED_SOLELY_NONPAYMENT','NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT'] as const;
 const agreementWritableDomain = ['EXHIBIT_1_ATTACHED','NOT_ATTACHED_LANDLORD_LACKS_POSSESSION','NOT_ATTACHED_SOLELY_NONPAYMENT'] as const;
-const noticeDomain = ['EXHIBIT_2_ATTACHED'] as const;
+const noticeTransformDomain = ['EXHIBIT_2_ATTACHED','REQUIRED_NOTICE_SET_INCOMPLETE','UNRESOLVED'] as const;
+const noticeProfileDomain = ['EXHIBIT_2_ATTACHED'] as const;
 const proofDomain = ['EXHIBIT_3_ATTACHED','NOT_ATTACHED'] as const;
 const selectedArgs = (allowed: readonly string[], selected: readonly string[]) => ({ property: 'kind', allowedValues: allowed.join('|'), selectedValues: selected.join('|') });
 
@@ -107,7 +108,7 @@ const packetFieldRules: readonly GenerationFieldRule[] = UD100_GENERATION_BINDIN
     case 'UD-100[0].Page2[0].List6[0].SubList6[0].Lif[0].SubListf[0].Li1[0].SixF123[0]':
       return packetCheckbox(rule, packetAgreementDep, agreementDomain, ['NOT_ATTACHED_LANDLORD_LACKS_POSSESSION'], agreementWritableDomain, 'Oral/no-agreement packet state preserves Item 6f possession reason official blank.');
     case 'UD-100[0].Page3[0].List9[0].Item9[0].Lie[0].SevenE[0]':
-      return packetCheckbox(rule, packetNoticeDep, noticeDomain, ['EXHIBIT_2_ATTACHED']);
+      return packetCheckbox(rule, packetNoticeDep, noticeTransformDomain, ['EXHIBIT_2_ATTACHED']);
     case 'UD-100[0].Page3[0].List10[0].Item10[0].LI4[0].Eightd[0]':
       return packetCheckbox(rule, packetProofDep, proofDomain, ['EXHIBIT_3_ATTACHED']);
     case 'UD-100[0].Page3[0].List10[0].Item10[0].LI3[0].Eightc[0]':
@@ -136,7 +137,7 @@ const packetAwareSemantics: OfficialFormGenerationBindingSemantics = {
   profileRequirements: [
     ...UD100_GENERATION_BINDING.profileRequirements,
     { dependency: packetAgreementDep, property: 'kind', allowedValues: agreementDomain, blockerCode: 'PACKET_AGREEMENT_PROFILE_UNRESOLVED' },
-    { dependency: packetNoticeDep, property: 'kind', allowedValues: noticeDomain, blockerCode: 'PACKET_NOTICE_PROFILE_UNRESOLVED_OR_INCOMPLETE' },
+    { dependency: packetNoticeDep, property: 'kind', allowedValues: noticeProfileDomain, blockerCode: 'PACKET_NOTICE_PROFILE_UNRESOLVED_OR_INCOMPLETE' },
     { dependency: packetProofDep, property: 'kind', allowedValues: proofDomain, blockerCode: 'PACKET_PROOF_OF_SERVICE_PROFILE_UNRESOLVED' },
     { dependency: packetAttachment10cDep, property: 'kind', allowedValues: ['NOT_APPLICABLE'], blockerCode: 'PACKET_ATTACHMENT_10C_REQUIRED_OR_UNRESOLVED' },
   ],
@@ -194,7 +195,7 @@ const legacyDefinition: OfficialGeneratedDraftDefinition = {
   generatedTextAppearance: UD100_GENERATED_TEXT_APPEARANCE,
 };
 
-const definition: OfficialGeneratedDraftDefinition = {
+const packetAwareDefinition: OfficialGeneratedDraftDefinition = {
   ...legacyDefinition,
   expectedMapSnapshotId: UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId,
   expectedGeneratorContractVersion: UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION,
@@ -254,10 +255,12 @@ function currentnessWith(
   });
 }
 
+// Historical/default API remains source-equivalent to B1. B2 packet-aware generation is
+// explicit below; absence of packet facts never causes a fallback inside that B2 path.
 export function generateUd100GeneratedDraft(
   input: GenerateUd100DraftInput,
 ): Promise<OfficialFormGeneratedDraftResult> {
-  return generateWith(definition, () => evaluateUd100PacketAwareGenerationBinding(
+  return generateWith(legacyDefinition, () => evaluateUd100GenerationBinding(
     input.officialSourceIdentity,
     input.officialSourceHealth,
     input.facts,
@@ -268,7 +271,28 @@ export function evaluateUd100GeneratedDraftCurrentness(
   draft: GeneratedDraftEvidence,
   input: EvaluateUd100DraftCurrentnessInput,
 ): GeneratedDraftCurrentness {
-  return currentnessWith(definition, () => evaluateUd100PacketAwareGenerationBinding(
+  return currentnessWith(legacyDefinition, () => evaluateUd100GenerationBinding(
+    input.officialSourceIdentity,
+    input.officialSourceHealth,
+    input.facts,
+  ), draft, input);
+}
+
+export function generateUd100PacketAwareGeneratedDraft(
+  input: GenerateUd100DraftInput,
+): Promise<OfficialFormGeneratedDraftResult> {
+  return generateWith(packetAwareDefinition, () => evaluateUd100PacketAwareGenerationBinding(
+    input.officialSourceIdentity,
+    input.officialSourceHealth,
+    input.facts,
+  ), input);
+}
+
+export function evaluateUd100PacketAwareGeneratedDraftCurrentness(
+  draft: GeneratedDraftEvidence,
+  input: EvaluateUd100DraftCurrentnessInput,
+): GeneratedDraftCurrentness {
+  return currentnessWith(packetAwareDefinition, () => evaluateUd100PacketAwareGenerationBinding(
     input.officialSourceIdentity,
     input.officialSourceHealth,
     input.facts,
