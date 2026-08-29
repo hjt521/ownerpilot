@@ -818,7 +818,8 @@ ok(!generatedDraftSource.includes('ud100.packet.'), 'B1 packet refs remain unref
 
 const thisTestSource = readFileSync('lib/flow/filingReadiness.test.ts', 'utf8');
 ok(thisTestSource.includes('Synthetic Tenant') && thisTestSource.includes('Synthetic Owner'), 'B1 adversarial fixtures remain explicitly synthetic');
-ok(!thisTestSource.includes('db10b0a176c9d79f1510741af49491d403bc19e52b26d1359e4242ae68d8bd98'), 'historical private/bootstrap PDF identity is not copied into B1 tests');
+const literalArtifactIdentityPattern = /(?:['"`][0-9a-f]{64}['"`]|\bgeneratedDocumentId\s*[:=]\s*['"`][^'"`\r\n]+['"`])/;
+ok(!literalArtifactIdentityPattern.test(thisTestSource), 'B1 adversarial fixtures contain no literal retained-artifact identity');
 
 const allowedStates = new Set([
   'Needs information',
