@@ -19,7 +19,10 @@ import {
   type OwnerReviewedDocumentIdentity,
 } from './officialFormOwnerReview';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
-import { evaluateUd100GenerationBinding } from './ud100GenerationBinding';
+import {
+  evaluateUd100GenerationBinding,
+  evaluateUd100LegacyB1GenerationBinding,
+} from './ud100GenerationBinding';
 
 export const LEGACY_FILING_PREPARATION_CURRENT_STATE_SCHEMA_VERSION = 1 as const;
 export const FILING_PREPARATION_CURRENT_STATE_SCHEMA_VERSION = 2 as const;
@@ -481,11 +484,27 @@ function currentnessMaterialValidation(
       || authorization.snapshotId !== snapshot.preparationAuthorizationSnapshotId) {
       return { status: 'BLOCKED', blockReason: 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', detail: 'Preparation authorization does not reproduce the committed preparation-authorization snapshot.' };
     }
-    const evaluation = evaluateUd100GenerationBinding(
-      UD100_OFFICIAL_SOURCE_IDENTITY,
-      value.officialSourceHealth,
-      value.facts,
-    );
+    const evaluation = (() => {
+      switch (snapshot.generatorContractVersion) {
+        case 'ud100-field-write-plan-v3':
+          return evaluateUd100LegacyB1GenerationBinding(
+            UD100_OFFICIAL_SOURCE_IDENTITY,
+            value.officialSourceHealth,
+            value.facts,
+          );
+        case 'ud100-field-write-plan-v4':
+          return evaluateUd100GenerationBinding(
+            UD100_OFFICIAL_SOURCE_IDENTITY,
+            value.officialSourceHealth,
+            value.facts,
+          );
+        default:
+          return null;
+      }
+    })();
+    if (evaluation === null) {
+      return { status: 'BLOCKED', blockReason: 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', detail: 'Committed generator contract version is unknown or unsupported for exact currentness revalidation.' };
+    }
     if (evaluation.status !== 'GENERATION_BINDING_READY') {
       return { status: 'BLOCKED', blockReason: 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', detail: 'Canonical UD-100 generation binding is not ready for the supplied dynamic material.' };
     }

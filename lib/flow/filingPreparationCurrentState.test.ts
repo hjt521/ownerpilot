@@ -29,7 +29,10 @@ import {
 } from './officialFormGeneratedDraft';
 import { canonicalizeGenerationIdentity } from './officialFormGenerationBinding';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
-import { evaluateUd100LegacyB1GenerationBinding } from './ud100GenerationBinding';
+import {
+  evaluateUd100GenerationBinding,
+  evaluateUd100LegacyB1GenerationBinding,
+} from './ud100GenerationBinding';
 
 let passed = 0;
 const equal = <T>(actual: T, expected: T, message: string) => { assert.equal(actual, expected, message); passed += 1; };
@@ -63,6 +66,51 @@ const confirmation = (id: string) => ({ confirmationId: id, confirmedAtISO: '202
 const control = (controlId: string, resultId: string) => ({ controlId, controlVersion: '1.0.0', resultId, status: 'CURRENT' as const });
 const event = (eventType: string, eventId: string) => ({ sourceId: 'case-lifecycle', eventId, eventType });
 const selectedCourt = { county: 'Los Angeles', streetAddress: '111 N Hill St', mailingAddress: '111 N Hill St', cityAndZip: 'Los Angeles, CA 90012', branchName: 'Stanley Mosk Courthouse' };
+
+type PacketComposition = NonNullable<NonNullable<FilingCanonicalFactsSupplementalInput['preparation']>['packetComposition']>;
+const packetArtifact = (
+  artifactRole: 'EXHIBIT_1_AGREEMENT' | 'EXHIBIT_2_NOTICE' | 'EXHIBIT_3_PROOF_OF_SERVICE',
+  artifactId: string,
+  digestCharacter: string,
+) => ({
+  artifactId,
+  artifactRole,
+  sha256: digestCharacter.repeat(64),
+  byteLength: 1024,
+  createdNotice: { generation: artifact.generation, createdAtISO: artifact.createdAtISO },
+});
+function b2PacketComposition(): PacketComposition {
+  return {
+    agreement: {
+      state: 'KNOWN',
+      value: { kind: 'NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT' },
+      control: control('ud100.packet.agreement', 'packet-agreement-not-applicable'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.leaseApplicabilityControl],
+    },
+    notice: {
+      state: 'KNOWN',
+      value: {
+        kind: 'EXHIBIT_2_ATTACHED',
+        requiredNoticeCount: 1,
+        artifacts: [packetArtifact('EXHIBIT_2_NOTICE', 'synthetic-currentness-exhibit-2-notice', '2')],
+      },
+      control: control('ud100.packet.notice', 'packet-notice-attached'),
+      dependencies: [],
+    },
+    proofOfService: {
+      state: 'KNOWN',
+      value: { kind: 'NOT_ATTACHED' },
+      control: control('ud100.packet.proof-of-service', 'packet-proof-not-attached'),
+      dependencies: [],
+    },
+    attachment10c: {
+      state: 'KNOWN',
+      value: { kind: 'NOT_APPLICABLE' },
+      control: control('ud100.packet.attachment-10c', 'packet-10c-not-applicable'),
+      dependencies: [],
+    },
+  };
+}
 
 function supplemental(): FilingCanonicalFactsSupplementalInput {
   return {
@@ -100,6 +148,17 @@ function supplemental(): FilingCanonicalFactsSupplementalInput {
       pastDueRentRelief: { state: 'KNOWN', value: { selected: true, amount: 2400 }, confirmation: confirmation('past-due-rent-relief') },
       otherReliefSelections: { state: 'KNOWN', value: { fairRentalValue:false, statutoryDamages:false, relocationDamages:false, forfeiture:false, attorneyFees:false, otherRelief:false, otherAllegations:false }, confirmation: confirmation('other-relief-none') },
       udaDisclosureControl: { state: 'KNOWN', value: 'NO_COMPENSATED_ASSISTANT', control: control('uda-disclosure', 'no-compensated-assistant') },
+    },
+  };
+}
+
+function b2Supplemental(): FilingCanonicalFactsSupplementalInput {
+  const legacy = supplemental();
+  return {
+    ...legacy,
+    preparation: {
+      ...legacy.preparation!,
+      packetComposition: b2PacketComposition(),
     },
   };
 }
@@ -156,6 +215,41 @@ function fixture() {
 
 const f = fixture();
 
+function draftForSnapshot(snapshot: FilingPreparationCanonicalSnapshot, bytes: Uint8Array): GeneratedDraftEvidence {
+  const identity: GeneratedDraftIdentity = {
+    schemaVersion:1, artifactClass:'GENERATED_DRAFT', artifactRole:'OWNER_GENERATED_PREPARATION',
+    ...snapshot,
+    preparedAtISO:'2026-08-14T12:03:00.000Z', generatedPdfSha256:sha256Bytes(bytes), generatedByteLength:bytes.byteLength,
+  };
+  return { ...identity, generatedDocumentId: computeGeneratedDocumentId(identity) };
+}
+
+function b2Fixture() {
+  const facts = projectFilingCanonicalFacts(persisted, b2Supplemental());
+  if (facts.status !== 'READY') throw new Error(`B2 facts fixture must be READY: ${JSON.stringify(facts)}`);
+  const evaluation = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts);
+  if (evaluation.status !== 'GENERATION_BINDING_READY') throw new Error(`B2 binding fixture blocked: ${JSON.stringify(evaluation)}`);
+  const authorization: FormPreparationAuthorization = {
+    ...f.authorization,
+    createdNoticeIdentity: facts.createdNoticeIdentity,
+  };
+  const snapshot: FilingPreparationCanonicalSnapshot = {
+    ...f.snapshot,
+    preparationAuthorizationSnapshotId: computePreparationAuthorizationSnapshotId(authorization),
+    mapSnapshotId: evaluation.mapSnapshotId,
+    referencedFactSnapshotId: evaluation.referencedFactSnapshotId,
+    generationInputId: evaluation.generationInputId,
+    generatorContractVersion: evaluation.generatorContractVersion,
+    fieldWritePlanDigest: computeFieldWritePlanDigest(evaluation.fieldWritePlan),
+  };
+  const bytes = new Uint8Array(f.bytes);
+  const draft = draftForSnapshot(snapshot, bytes);
+  const material: FilingPreparationCurrentnessMaterialBinding = { schemaVersion:1, officialSourceHealth:'CURRENT', facts, preparationAuthorization:authorization };
+  return { facts, evaluation, authorization, snapshot, bytes, draft, material };
+}
+
+const b2 = b2Fixture();
+
 function migrationReferencedFactSnapshot(facts: any): { id: string; directRefs: string[] } {
   const migration = readFileSync('supabase/staged-migrations/060_e2_3d0b4_currentness_material_binding.sql', 'utf8');
   const queueBlock = migration.match(/queue text\[\] := array\[([\s\S]*?)\];\n  seen text\[\]/);
@@ -192,11 +286,19 @@ function migrationReferencedFactSnapshot(facts: any): { id: string; directRefs: 
 
 {
   const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:2, preparationSnapshot:f.snapshot, generatedDraftBinding:{revision:2,generatedDraft:f.draft}, generatedDraftBytes:f.bytes, currentnessMaterialBinding:f.material, ownerReviewBinding:null });
-  equal(result.status, 'CURRENT_STATE_REVISION', 'exact generated revision with trusted material builds');
+  equal(result.status, 'CURRENT_STATE_REVISION', 'exact B1/v3 generated revision with trusted material builds');
   if (result.status === 'CURRENT_STATE_REVISION') {
-    equal(result.currentState.schemaVersion, 2, 'generated durable candidate is v2');
-    ok(getFilingPreparationCurrentnessMaterialBinding(result.currentState) !== null, 'generated revision retains trusted dynamic material');
-    equal(validateFilingPreparationCurrentState(result.currentState).status, 'VALID', 'generated v2 round-trips canonical validation');
+    equal(result.currentState.schemaVersion, 2, 'B1/v3 generated durable candidate is v2');
+    ok(getFilingPreparationCurrentnessMaterialBinding(result.currentState) !== null, 'B1/v3 generated revision retains trusted dynamic material');
+    equal(validateFilingPreparationCurrentState(result.currentState).status, 'VALID', 'B1/v3 generated v2 round-trips canonical validation');
+  }
+}
+
+{
+  const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:4, preparationSnapshot:b2.snapshot, generatedDraftBinding:{revision:4,generatedDraft:b2.draft}, generatedDraftBytes:b2.bytes, currentnessMaterialBinding:b2.material, ownerReviewBinding:null });
+  equal(result.status, 'CURRENT_STATE_REVISION', 'exact B2/v4 generated revision with packet-aware material builds');
+  if (result.status === 'CURRENT_STATE_REVISION') {
+    equal(validateFilingPreparationCurrentState(result.currentState).status, 'VALID', 'B2/v4 generated v2 round-trips canonical validation');
   }
 }
 
@@ -226,6 +328,36 @@ function migrationReferencedFactSnapshot(facts: any): { id: string; directRefs: 
   const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:2, preparationSnapshot:f.snapshot, generatedDraftBinding:{revision:2,generatedDraft:f.draft}, generatedDraftBytes:f.bytes, currentnessMaterialBinding:changed, ownerReviewBinding:null });
   equal(result.status, 'BLOCKED', 'fact drift that changes generation identity blocks');
   if (result.status === 'BLOCKED') equal(result.blockReason, 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', 'fact drift has exact blocker');
+}
+
+{
+  const snapshot = { ...b2.snapshot, generatorContractVersion: 'ud100-field-write-plan-v999' };
+  const draft = draftForSnapshot(snapshot, b2.bytes);
+  const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:5, preparationSnapshot:snapshot, generatedDraftBinding:{revision:5,generatedDraft:draft}, generatedDraftBytes:b2.bytes, currentnessMaterialBinding:b2.material, ownerReviewBinding:null });
+  equal(result.status, 'BLOCKED', 'unknown committed generator contract fails closed');
+  if (result.status === 'BLOCKED') equal(result.blockReason, 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', 'unknown contract has exact currentness mismatch blocker');
+}
+
+{
+  const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:6, preparationSnapshot:b2.snapshot, generatedDraftBinding:{revision:6,generatedDraft:b2.draft}, generatedDraftBytes:b2.bytes, currentnessMaterialBinding:f.material, ownerReviewBinding:null });
+  equal(result.status, 'BLOCKED', 'v4 selector blocks packet-unaware B1 material instead of falling back to v3');
+  if (result.status === 'BLOCKED') equal(result.blockReason, 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', 'v4 missing-packet evaluator failure has exact blocker and no fallback');
+}
+
+{
+  const snapshot = { ...b2.snapshot, generatorContractVersion: 'ud100-field-write-plan-v3' };
+  const draft = draftForSnapshot(snapshot, b2.bytes);
+  const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:7, preparationSnapshot:snapshot, generatedDraftBinding:{revision:7,generatedDraft:draft}, generatedDraftBytes:b2.bytes, currentnessMaterialBinding:b2.material, ownerReviewBinding:null });
+  equal(result.status, 'BLOCKED', 'v3 selector cannot accept a v4 map/fact/generation/write-plan identity');
+  if (result.status === 'BLOCKED') equal(result.blockReason, 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', 'v3 selector plus v4 identity has exact blocker');
+}
+
+{
+  const snapshot = { ...f.snapshot, generatorContractVersion: 'ud100-field-write-plan-v4' };
+  const draft = draftForSnapshot(snapshot, f.bytes);
+  const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:8, preparationSnapshot:snapshot, generatedDraftBinding:{revision:8,generatedDraft:draft}, generatedDraftBytes:f.bytes, currentnessMaterialBinding:b2.material, ownerReviewBinding:null });
+  equal(result.status, 'BLOCKED', 'v4 selector cannot accept a B1 map/fact/generation/write-plan identity');
+  if (result.status === 'BLOCKED') equal(result.blockReason, 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', 'v4 selector plus B1 identity has exact blocker');
 }
 
 {
@@ -265,7 +397,11 @@ function migrationReferencedFactSnapshot(facts: any): { id: string; directRefs: 
 
 {
   const source = readFileSync('lib/flow/filingPreparationCurrentState.ts','utf8');
-  ok(source.includes('evaluateUd100GenerationBinding('), 'core reuses canonical UD-100 generation evaluator');
+  ok(source.includes("case 'ud100-field-write-plan-v3':"), 'currentness dispatch recognizes only the exact preserved v3 contract');
+  ok(source.includes("case 'ud100-field-write-plan-v4':"), 'currentness dispatch recognizes only the exact packet-aware v4 contract');
+  ok(source.includes('evaluateUd100LegacyB1GenerationBinding('), 'v3 currentness dispatch reuses the preserved legacy B1 evaluator');
+  ok(source.includes('evaluateUd100GenerationBinding('), 'v4 currentness dispatch reuses the current packet-aware evaluator');
+  ok(source.includes('default:\n          return null;'), 'unknown contract dispatch has no evaluator fallback');
   ok(source.includes('validateFormPreparationAuthorization('), 'core reuses canonical preparation authorization validation');
   for (const prohibited of ['generatedDraftCurrentness', 'OUT_OF_DATE', 'service_role', 'createClient(', '.from(', 'Date.now(', 'Math.random(']) {
     ok(!source.includes(prohibited), `core excludes prohibited runtime/currentness authority token: ${prohibited}`);
