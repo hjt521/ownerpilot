@@ -11,15 +11,19 @@ import {
   type GenerationFieldRule,
   type GenerationInputAuthorityClass,
   type GenerationRuleCondition,
+  type OfficialFormGenerationBindingDefinition,
   type OfficialFormGenerationBindingEvaluation,
   type OfficialFormGenerationBindingSemantics,
 } from './officialFormGenerationBinding';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 
 export const UD100_GENERATION_BINDING_MAP_ID = 'ud100-2026-07-01-initial-prefiling-generation-binding' as const;
-export const UD100_GENERATION_BINDING_MAP_VERSION = '1.3.0' as const;
-export const UD100_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v3' as const;
-export const UD100_GENERATION_PROFILE_ID = 'ud100-initial-prefiling-owner-preparation-v1' as const;
+export const UD100_GENERATION_BINDING_MAP_VERSION = '1.4.0' as const;
+export const UD100_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v4' as const;
+export const UD100_GENERATION_PROFILE_ID = 'ud100-initial-prefiling-owner-preparation-v2' as const;
+export const UD100_LEGACY_B1_GENERATION_BINDING_MAP_VERSION = '1.3.0' as const;
+export const UD100_LEGACY_B1_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v3' as const;
+export const UD100_LEGACY_B1_GENERATION_PROFILE_ID = 'ud100-initial-prefiling-owner-preparation-v1' as const;
 
 function evidence(fieldId: string, sourcePage: number, fieldType: '/Tx' | '/Btn', objectReference: string, visibleLabelEvidence: string): GenerationFieldEvidence {
   return { fieldId, sourcePage, fieldType, objectReference, visibleLabelEvidence };
@@ -31,6 +35,9 @@ function textRule(ev: GenerationFieldEvidence, dep: GenerationFactDependency, tr
 }
 function checkboxEnumRule(ev: GenerationFieldEvidence, dep: GenerationFactDependency, allowed: readonly string[], selected: readonly string[], ruleCondition?: GenerationRuleCondition): GenerationFieldRule {
   return { disposition: 'WRITE', evidence: ev, writeKind: 'CHECKBOX', dependencies: [dep], transform: { id: 'ENUM_SET_CHECKBOX_V1', version: '1', args: enumArgs(allowed, selected) }, unresolvedPolicy: 'BLOCK', ...(ruleCondition ? { condition: ruleCondition } : {}) };
+}
+function objectEnumRule(ev: GenerationFieldEvidence, dep: GenerationFactDependency, property: string, allowed: readonly string[], selected: readonly string[], ruleCondition?: GenerationRuleCondition): GenerationFieldRule {
+  return { disposition: 'WRITE', evidence: ev, writeKind: 'CHECKBOX', dependencies: [dep], transform: { id: 'OBJECT_ENUM_CHECKBOX_V1', version: '1', args: { property, ...enumArgs(allowed, selected) } }, unresolvedPolicy: 'BLOCK', ...(ruleCondition ? { condition: ruleCondition } : {}) };
 }
 function objectBooleanRule(ev: GenerationFieldEvidence, dep: GenerationFactDependency, property: string, selectedValue = true): GenerationFieldRule {
   return { disposition: 'WRITE', evidence: ev, writeKind: 'CHECKBOX', dependencies: [dep], transform: { id: 'OBJECT_BOOLEAN_CHECKBOX_V1', version: '1', args: { property, selectedValue: String(selectedValue) } }, unresolvedPolicy: 'BLOCK' };
@@ -89,8 +96,8 @@ const domain1PlaintiffType: GenerationFieldRule[] = [
   checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii4[0].TwoA[0]',1,'/Btn','812 0 R','a partnership.'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['PARTNERSHIP']),
   checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii3[0].TwoA[0]',1,'/Btn','813 0 R','other'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['OTHER']),
   governedNoWrite(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii3[0].FillText3[0]',1,'/Tx','814 0 R','(specify):'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),['INDIVIDUAL_OVER_18'],'Current supported plaintiff type is explicit individual-over-18; other-type detail remains source-native blank.'),
-  checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii2[0].TwoA[0]',1,'/Btn','815 0 R','a public agency.'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['PUBLIC_AGENCY']),
-  checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii1[0].TwoA[0]',1,'/Btn','816 0 R','an individual over the age of 18 years.'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['INDIVIDUAL_OVER_18']),
+  checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii2[0].TwoA1[0]',1,'/Btn','815 0 R','a public agency.'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['PUBLIC_AGENCY']),
+  checkboxEnumRule(evidence('UD-100[0].Page1[0].List2[0].Item2[0].Lia[0].SubLista[0].Lii1[0].TwoA1[0]',1,'/Btn','816 0 R','an individual over the age of 18 years.'),D(CANONICAL_FILING_FACT_REFS.plaintiffType,CUSTOMER),plaintiffTypeDomain,['INDIVIDUAL_OVER_18']),
 ];
 const partyEvidence = [
   evidence('UD-100[0].Page1[0].P1Caption[0].TitlePartyName[0].Party1_ft[0]',1,'/Tx','836 0 R','PLAINTIFF:'),evidence('UD-100[0].Page1[0].List1[0].FillText1[0]',1,'/Tx','817 0 R','PLAINTIFF (name each):'),evidence('UD-100[0].Page2[0].Header[0].TitlePartyName[0].Party1_ft[0]',2,'/Tx','776 0 R','PLAINTIFF:'),evidence('UD-100[0].Page3[0].Header[0].TitlePartyName[0].Party1_ft[0]',3,'/Tx','668 0 R','PLAINTIFF:'),evidence('UD-100[0].Page4[0].Header[0].TitlePartyName[0].Party1_ft[0]',4,'/Tx','910 0 R','PLAINTIFF:'),
@@ -283,10 +290,10 @@ const nondataRules: GenerationFieldRule[] = [nondata(evidence('UD-100[0].#pageSe
 const groups = [
   ['DOMAIN_1','plaintiff-relationship',domain1Relationship],['DOMAIN_1','plaintiff-type',domain1PlaintiffType],['DOMAIN_1','plaintiff-dba',domain1Dba],['DOMAIN_1','party-identities',domain1Parties],['DOMAIN_1','doe-election',domain1Does],['DOMAIN_1','caption-contact',domain1CaptionContact],['DOMAIN_2','premises-court',domain2Premises],['DOMAIN_2','tpa-just-cause',domain2Tpa],['DOMAIN_2','local-control',domain2Local],['DOMAIN_3','civil-lifecycle',domain3Civil],['DOMAIN_4','lease-agreement',domain4Lease],['DOMAIN_4','notice-election',domain4Notice],['DOMAIN_4','service-election',domain4Service],['DOMAIN_4','rental-assistance',domain4RentalAssistance],['DOMAIN_5','claims-relief',domain5Relief],['DOMAIN_6','later-stage',domain6Deferred],['DOMAIN_6','uda-disclosure',domain6Uda],['NONDATA','official-pdf-action-controls',nondataRules],
 ] as const;
-const fieldRules=groups.flatMap(([, , rules])=>[...rules]);
-const fieldFamilyCoverage:GenerationFieldFamilyCoverage[]=groups.map(([domainId,familyId,rules])=>({domainId,familyId,fieldIds:rules.map(rule=>rule.evidence.fieldId),resolution:'FIELD_RULES'}));
+const legacyB1FieldRules=groups.flatMap(([, , rules])=>[...rules]);
+const legacyB1FieldFamilyCoverage:GenerationFieldFamilyCoverage[]=groups.map(([domainId,familyId,rules])=>({domainId,familyId,fieldIds:rules.map(rule=>rule.evidence.fieldId),resolution:'FIELD_RULES'}));
 const allOptionalReliefFalse={fairRentalValue:false,statutoryDamages:false,relocationDamages:false,forfeiture:false,attorneyFees:false,otherRelief:false,otherAllegations:false} as const;
-const semantics:OfficialFormGenerationBindingSemantics={generationSchemaVersion:2,mapId:UD100_GENERATION_BINDING_MAP_ID,mapVersion:UD100_GENERATION_BINDING_MAP_VERSION,profileId:UD100_GENERATION_PROFILE_ID,generatorContractVersion:UD100_GENERATOR_CONTRACT_VERSION,sourceIdentity:UD100_OFFICIAL_SOURCE_IDENTITY,artifactRole:'OWNER_GENERATED_PREPARATION',fieldRules,profileRequirements:[
+const legacyB1ProfileRequirements: OfficialFormGenerationBindingSemantics['profileRequirements'] = [
   {dependency:lifecycleDep,allowedValues:['INITIAL_PREFILING'],blockerCode:'AMENDED_OR_PRIOR_COMPLAINT_UNSUPPORTED'},
   {dependency:D(CANONICAL_FILING_FACT_REFS.captionRouteControl,CONTROL),allowedValues:['SELF_REPRESENTED_SUPPORTED'],blockerCode:'OUTSIDE_ATTORNEY_OR_UNRESOLVED_CAPTION_ROUTE_UNSUPPORTED'},
   {dependency:D(CANONICAL_FILING_FACT_REFS.captionFormValueControl,CONTROL),allowedValues:['Self-represented'],blockerCode:'SELF_REPRESENTED_CAPTION_FORM_VALUE_UNRESOLVED',requiredProvenanceDependencies:[CANONICAL_FILING_FACT_REFS.captionRouteControl]},
@@ -311,7 +318,34 @@ const semantics:OfficialFormGenerationBindingSemantics={generationSchemaVersion:
   {dependency:D(CANONICAL_FILING_FACT_REFS.fixedTermExpirationElection,ELECTION),allowedValues:['DO_NOT_SELECT'],blockerCode:'FIXED_TERM_EXPIRATION_ALLEGATION_REQUIRES_SEPARATE_BINDING'},
   {dependency:otherReliefDep,allowedValues:[allOptionalReliefFalse],blockerCode:'SELECTED_OPTIONAL_RELIEF_REQUIRES_EXACT_AMOUNT_TEXT_PREDICATE_BINDING'},
   {dependency:udaDep,allowedValues:['NO_COMPENSATED_ASSISTANT'],blockerCode:'PAID_UDA_LDA_PATH_UNSUPPORTED'},
-],fieldFamilyCoverage};
+];
+const legacyB1Semantics:OfficialFormGenerationBindingSemantics={generationSchemaVersion:2,mapId:UD100_GENERATION_BINDING_MAP_ID,mapVersion:UD100_LEGACY_B1_GENERATION_BINDING_MAP_VERSION,profileId:UD100_LEGACY_B1_GENERATION_PROFILE_ID,generatorContractVersion:UD100_LEGACY_B1_GENERATOR_CONTRACT_VERSION,sourceIdentity:UD100_OFFICIAL_SOURCE_IDENTITY,artifactRole:'OWNER_GENERATED_PREPARATION',fieldRules:legacyB1FieldRules,profileRequirements:legacyB1ProfileRequirements,fieldFamilyCoverage:legacyB1FieldFamilyCoverage};
+export const UD100_LEGACY_B1_GENERATION_BINDING=Object.freeze({...legacyB1Semantics,mapSnapshotId:computeGenerationMapSnapshotId(legacyB1Semantics)});
+
+const packetAgreementDep=D(CANONICAL_FILING_FACT_REFS.packetAgreement,CONTROL);
+const packetNoticeDep=D(CANONICAL_FILING_FACT_REFS.packetNotice,CONTROL);
+const packetProofDep=D(CANONICAL_FILING_FACT_REFS.packetProofOfService,CONTROL);
+const packet10cDep=D(CANONICAL_FILING_FACT_REFS.packetAttachment10c,CONTROL);
+const agreementPacketWritableDomain=['EXHIBIT_1_ATTACHED','NOT_ATTACHED_LANDLORD_LACKS_POSSESSION','NOT_ATTACHED_SOLELY_NONPAYMENT'] as const;
+const agreementPacketProfileDomain=[...agreementPacketWritableDomain,'NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT'] as const;
+const agreementPacketWriteCondition=condition(packetAgreementDep,agreementPacketWritableDomain,'Agreement packet state is not applicable; Items 6e/6f remain source-native blank.','kind');
+const b2ReplacementRules = new Map<string, GenerationFieldRule>();
+function installB2(rule: GenerationFieldRule): void { b2ReplacementRules.set(rule.evidence.fieldId,rule); }
+installB2(objectEnumRule(evidence('UD-100[0].Page2[0].List6[0].SubList6[0].Lif[0].SixF[0]',2,'/Btn','726 0 R','A copy of the written agreement is not attached because'),packetAgreementDep,'kind',agreementPacketWritableDomain,['NOT_ATTACHED_LANDLORD_LACKS_POSSESSION','NOT_ATTACHED_SOLELY_NONPAYMENT'],agreementPacketWriteCondition));
+installB2(objectEnumRule(evidence('UD-100[0].Page2[0].List6[0].SubList6[0].Lif[0].SubListf[0].Li2[0].SixF124[0]',2,'/Btn','730 0 R','this action is solely for nonpayment of rent'),packetAgreementDep,'kind',agreementPacketWritableDomain,['NOT_ATTACHED_SOLELY_NONPAYMENT'],agreementPacketWriteCondition));
+installB2(objectEnumRule(evidence('UD-100[0].Page2[0].List6[0].SubList6[0].Lif[0].SubListf[0].Li1[0].SixF123[0]',2,'/Btn','731 0 R','the written agreement is not in the possession of the landlord'),packetAgreementDep,'kind',agreementPacketWritableDomain,['NOT_ATTACHED_LANDLORD_LACKS_POSSESSION'],agreementPacketWriteCondition));
+installB2(objectEnumRule(evidence('UD-100[0].Page2[0].List6[0].SubList6[0].Lie[0].SixE[0]',2,'/Btn','732 0 R','A copy of the written agreement is attached and labeled Exhibit 1.'),packetAgreementDep,'kind',agreementPacketWritableDomain,['EXHIBIT_1_ATTACHED'],agreementPacketWriteCondition));
+installB2(objectEnumRule(evidence('UD-100[0].Page3[0].List9[0].Item9[0].Lie[0].SevenE[0]',3,'/Btn','660 0 R','A copy of the notice is attached and labeled Exhibit 2.'),packetNoticeDep,'kind',['EXHIBIT_2_ATTACHED'],['EXHIBIT_2_ATTACHED']));
+installB2(objectEnumRule(evidence('UD-100[0].Page3[0].List10[0].Item10[0].LI4[0].Eightd[0]',3,'/Btn','627 0 R','Proof of service of the notice in item 9a is attached and labeled Exhibit 3.'),packetProofDep,'kind',['EXHIBIT_3_ATTACHED','NOT_ATTACHED'],['EXHIBIT_3_ATTACHED']));
+const currentFieldRules=legacyB1FieldRules.map(rule=>b2ReplacementRules.get(rule.evidence.fieldId)??rule);
+if(b2ReplacementRules.size!==6 || currentFieldRules.length!==legacyB1FieldRules.length) throw new Error('B2 packet-binding replacement coverage drifted.');
+const currentProfileRequirements:OfficialFormGenerationBindingSemantics['profileRequirements']=[...legacyB1ProfileRequirements,
+  {dependency:packetAgreementDep,allowedValues:agreementPacketProfileDomain,property:'kind',blockerCode:'AGREEMENT_PACKET_STATE_UNRESOLVED'},
+  {dependency:packetNoticeDep,allowedValues:['EXHIBIT_2_ATTACHED'],property:'kind',blockerCode:'NOTICE_PACKET_STATE_UNRESOLVED_OR_INCOMPLETE'},
+  {dependency:packetProofDep,allowedValues:['EXHIBIT_3_ATTACHED','NOT_ATTACHED'],property:'kind',blockerCode:'PROOF_OF_SERVICE_PACKET_STATE_UNRESOLVED'},
+  {dependency:packet10cDep,allowedValues:['NOT_APPLICABLE'],property:'kind',blockerCode:'ATTACHMENT_10C_UNRESOLVED_OR_REQUIRED_BUT_UNSUPPORTED'},
+];
+const semantics:OfficialFormGenerationBindingSemantics={generationSchemaVersion:2,mapId:UD100_GENERATION_BINDING_MAP_ID,mapVersion:UD100_GENERATION_BINDING_MAP_VERSION,profileId:UD100_GENERATION_PROFILE_ID,generatorContractVersion:UD100_GENERATOR_CONTRACT_VERSION,sourceIdentity:UD100_OFFICIAL_SOURCE_IDENTITY,artifactRole:'OWNER_GENERATED_PREPARATION',fieldRules:currentFieldRules,profileRequirements:currentProfileRequirements,fieldFamilyCoverage:legacyB1FieldFamilyCoverage};
 export const UD100_GENERATION_BINDING=Object.freeze({...semantics,mapSnapshotId:computeGenerationMapSnapshotId(semantics)});
 export const UD100_PROHIBITED_SEMANTIC_SUBSTITUTIONS=Object.freeze([
   {fieldId:'UD-100[0].Page2[0].List6[0].SubList6[0].Lia[0].SubLista[0].Li2[0].dollar[0]',sourcePage:2,fieldType:'/Tx' as const,objectReference:'766 0 R',visibleLabelEvidence:'agreed to pay rent of Dollar amount',prohibitedSourceRef:CANONICAL_FILING_FACT_REFS.rentDemandTotal,reason:'Notice demand is not the underlying agreed rent.'},
@@ -320,7 +354,7 @@ export const UD100_PROHIBITED_SEMANTIC_SUBSTITUTIONS=Object.freeze([
   {semanticTarget:'RENT_DUE_AT_SERVICE',prohibitedSourceRef:CANONICAL_FILING_FACT_REFS.rentDemandTotal,reason:'Notice demand is not automatically rent actually due at service time.'},
 ] as const);
 
-export function evaluateUd100GenerationBinding(suppliedSourceIdentity:OfficialSourceIdentity,suppliedSourceHealth:OfficialSourceHealth|null|undefined,facts:FilingCanonicalFactsProjection,options:GenerationEvaluationOptions={}):OfficialFormGenerationBindingEvaluation {
+function evaluateUd100Binding(definition:OfficialFormGenerationBindingDefinition,suppliedSourceIdentity:OfficialSourceIdentity,suppliedSourceHealth:OfficialSourceHealth|null|undefined,facts:FilingCanonicalFactsProjection,options:GenerationEvaluationOptions={}):OfficialFormGenerationBindingEvaluation {
   if (facts.status === 'READY') {
     const status = facts.facts[CANONICAL_FILING_FACT_REFS.leaseStatus];
     if (status?.state === 'KNOWN' && !status.provenance.customerVerification) {
@@ -335,5 +369,13 @@ export function evaluateUd100GenerationBinding(suppliedSourceIdentity:OfficialSo
       }
     }
   }
-  return evaluateOfficialFormGenerationBinding(UD100_GENERATION_BINDING,suppliedSourceIdentity,suppliedSourceHealth,facts,'OWNER_GENERATED_PREPARATION',options);
+  return evaluateOfficialFormGenerationBinding(definition,suppliedSourceIdentity,suppliedSourceHealth,facts,'OWNER_GENERATED_PREPARATION',options);
+}
+
+export function evaluateUd100GenerationBinding(suppliedSourceIdentity:OfficialSourceIdentity,suppliedSourceHealth:OfficialSourceHealth|null|undefined,facts:FilingCanonicalFactsProjection,options:GenerationEvaluationOptions={}):OfficialFormGenerationBindingEvaluation {
+  return evaluateUd100Binding(UD100_GENERATION_BINDING,suppliedSourceIdentity,suppliedSourceHealth,facts,options);
+}
+
+export function evaluateUd100LegacyB1GenerationBinding(suppliedSourceIdentity:OfficialSourceIdentity,suppliedSourceHealth:OfficialSourceHealth|null|undefined,facts:FilingCanonicalFactsProjection,options:GenerationEvaluationOptions={}):OfficialFormGenerationBindingEvaluation {
+  return evaluateUd100Binding(UD100_LEGACY_B1_GENERATION_BINDING,suppliedSourceIdentity,suppliedSourceHealth,facts,options);
 }
