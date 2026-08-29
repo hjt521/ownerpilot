@@ -171,6 +171,16 @@ Product implications from this observation:
 5. Do not advance to issued-writ/enforcement state based on elapsed time, clerk estimate, or a prepared/unstamped EJ-130.
 6. A later court-stamped/processed EJ-130 must be preserved as its own court artifact before any sheriff workflow is represented as available.
 
+## Filed-party / printed-signer identity rule
+
+This rule captures reusable document-identity behavior, not a universal substantive legal rule.
+
+- The exact filed party/capacity identity should be the authoritative source for downstream party-name fields and, when the declarant is that same party, the applicable `TYPE OR PRINT NAME` / declarant-name fields.
+- Do not silently substitute a nickname, informal name, shortened caption, or convenience label for the filed identity.
+- Signature execution is a separate state from printed-name completion. A generator may prefill a verified printed name but must not fabricate or imply a handwritten/electronic signature before actual execution.
+- If a form specifically requires a natural-person signer, officer, authorized representative, attorney, agent, or another role distinct from the filed caption, capture that signer identity and capacity separately and populate according to the form instructions rather than forcing the caption string into the field.
+- Suggested invariant: `filed party/capacity identity -> applicable downstream party-name + printed-signer-name fields`, with an explicit role/capacity override only when supported by current matter evidence and the exact form instructions.
+
 ## Product controls suggested by the observation
 
 1. Version field maps against exact official-form identities/revisions.
