@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
 import {
+  defaultTextFieldAppearanceProvider,
   PDFButton,
   PDFCheckBox,
   PDFDocument,
   PDFField,
   PDFName,
   PDFTextField,
+  setFontAndSize,
   StandardFonts,
 } from 'pdf-lib';
 import type { CreatedNoticeFactIdentity, FilingCanonicalFactsProjection } from './filingCanonicalFacts';
@@ -150,6 +152,8 @@ export interface PreparationRuntimeManifest {
 export interface GeneratedTextAppearancePolicy {
   colorSpace: 'DeviceRGB';
   rgb: readonly [number, number, number];
+  sizing: 'SHRINK_ONLY';
+  maxFontSize: number;
 }
 
 export interface OfficialGeneratedDraftDefinition {
@@ -811,10 +815,33 @@ function sameSnapshotInvariant(before: FieldSnapshot, after: FieldSnapshot): boo
 function appearanceOperator(policy: GeneratedTextAppearancePolicy): string {
   const [r, g, b] = policy.rgb;
   if (policy.colorSpace !== 'DeviceRGB'
-    || ![r, g, b].every(component => Number.isFinite(component) && component >= 0 && component <= 1)) {
-    throw new Error('Generated text appearance must be a finite DeviceRGB triplet in the inclusive [0,1] range.');
+    || ![r, g, b].every(component => Number.isFinite(component) && component >= 0 && component <= 1)
+    || policy.sizing !== 'SHRINK_ONLY'
+    || !Number.isFinite(policy.maxFontSize)
+    || policy.maxFontSize <= 0) {
+    throw new Error('Generated appearance must be finite DeviceRGB with SHRINK_ONLY positive maxFontSize.');
   }
   return `${r} ${g} ${b} rg`;
+}
+
+const DEFAULT_FONT_SIZE_REGEX = /\/([^\0\t\n\f\r\ ]+)[\0\t\n\f\r\ ]+(\d*\.\d+|\d+)[\0\t\n\f\r\ ]+Tf/g;
+
+function lastDefaultFontSize(appearance: string | undefined): number | undefined {
+  if (!appearance) return undefined;
+  let size: number | undefined;
+  for (const match of appearance.matchAll(DEFAULT_FONT_SIZE_REGEX)) {
+    const parsed = Number(match[2]);
+    if (Number.isFinite(parsed)) size = parsed;
+  }
+  return size;
+}
+
+function appearanceWithFont(
+  policy: GeneratedTextAppearancePolicy,
+  fontName: string,
+  fontSize: number,
+): string {
+  return [appearanceOperator(policy), setFontAndSize(fontName, fontSize).toString()].join('\n');
 }
 
 function applyGeneratedTextAppearance(
@@ -827,8 +854,58 @@ function applyGeneratedTextAppearance(
   for (const widget of field.acroField.getWidgets()) widget.setDefaultAppearance(operator);
 }
 
+function updateGeneratedTextAppearance(
+  field: PDFTextField,
+  font: Parameters<PDFTextField['updateAppearances']>[0],
+  policy: GeneratedTextAppearancePolicy | undefined,
+): void {
+  if (!policy) {
+    field.updateAppearances(font);
+    return;
+  }
+  applyGeneratedTextAppearance(field, policy);
+  field.updateAppearances(font, (textField, widget, targetFont) => {
+    const automaticallyFitted = defaultTextFieldAppearanceProvider(textField, widget, targetFont);
+    const automaticFontSize = lastDefaultFontSize(widget.getDefaultAppearance())
+      ?? lastDefaultFontSize(textField.acroField.getDefaultAppearance());
+    if (automaticFontSize === undefined || automaticFontSize <= 0) {
+      throw new Error(`Generated text appearance did not resolve a positive font size for ${textField.getName()}.`);
+    }
+    if (automaticFontSize <= policy.maxFontSize) return automaticallyFitted;
+    widget.setDefaultAppearance(appearanceWithFont(policy, targetFont.name, policy.maxFontSize));
+    return defaultTextFieldAppearanceProvider(textField, widget, targetFont);
+  });
+}
+
+function applyGeneratedSelectionAppearance(
+  field: PDFCheckBox,
+  policy: GeneratedTextAppearancePolicy | undefined,
+): void {
+  if (!policy) return;
+  const operator = appearanceOperator(policy);
+  field.acroField.setDefaultAppearance(operator);
+  for (const widget of field.acroField.getWidgets()) widget.setDefaultAppearance(operator);
+}
+
 function verifyGeneratedTextAppearance(
   field: PDFTextField,
+  policy: GeneratedTextAppearancePolicy | undefined,
+): boolean {
+  if (!policy) return true;
+  const operator = appearanceOperator(policy);
+  if (!(field.acroField.getDefaultAppearance() ?? '').includes(operator)) return false;
+  return field.acroField.getWidgets().every(widget => {
+    const appearance = widget.getDefaultAppearance() ?? '';
+    const fontSize = lastDefaultFontSize(appearance);
+    return appearance.includes(operator)
+      && fontSize !== undefined
+      && fontSize > 0
+      && fontSize <= policy.maxFontSize;
+  });
+}
+
+function verifyGeneratedSelectionAppearance(
+  field: PDFCheckBox,
   policy: GeneratedTextAppearancePolicy | undefined,
 ): boolean {
   if (!policy) return true;
@@ -865,9 +942,15 @@ function verifyPlanAfterReopen(
         if (!(field instanceof PDFCheckBox) || !field.isChecked()) {
           return { status: 'BLOCKED', detail: `${entry.fieldId} did not reopen selected.` };
         }
+        if (!verifyGeneratedSelectionAppearance(field, generatedTextAppearance)) {
+          return { status: 'BLOCKED', detail: `${entry.fieldId} did not reopen with the definition-scoped generated selection appearance.` };
+        }
       } else if (entry.action === 'SET_EXPLICIT_NONSELECTION') {
         if (!(field instanceof PDFCheckBox) || field.isChecked()) {
           return { status: 'BLOCKED', detail: `${entry.fieldId} did not reopen explicitly nonselected.` };
+        }
+        if (!verifyGeneratedSelectionAppearance(field, generatedTextAppearance)) {
+          return { status: 'BLOCKED', detail: `${entry.fieldId} did not reopen with the definition-scoped generated selection appearance.` };
         }
       } else if (
         initial.fullFieldDictionary !== after.fullFieldDictionary
@@ -994,14 +1077,15 @@ export async function generateOfficialFormGeneratedDraft(
       if (entry.action === 'WRITE_TEXT') {
         const textField = field as PDFTextField;
         textField.setText(entry.value);
-        applyGeneratedTextAppearance(textField, inputs.definition.generatedTextAppearance);
-        textField.updateAppearances(targetFont!);
+        updateGeneratedTextAppearance(textField, targetFont!, inputs.definition.generatedTextAppearance);
       } else if (entry.action === 'SET_SELECTED') {
         const checkbox = field as PDFCheckBox;
+        applyGeneratedSelectionAppearance(checkbox, inputs.definition.generatedTextAppearance);
         checkbox.check();
         checkbox.updateAppearances();
       } else if (entry.action === 'SET_EXPLICIT_NONSELECTION') {
         const checkbox = field as PDFCheckBox;
+        applyGeneratedSelectionAppearance(checkbox, inputs.definition.generatedTextAppearance);
         checkbox.uncheck();
         checkbox.updateAppearances();
       }
