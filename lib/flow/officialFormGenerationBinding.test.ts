@@ -283,6 +283,86 @@ const invalidDomainSemantics: OfficialFormGenerationBindingSemantics = {
 const invalidDomain = { ...invalidDomainSemantics, mapSnapshotId: computeGenerationMapSnapshotId(invalidDomainSemantics) };
 equal(validateGenerationBindingDefinition(invalidDomain).status, 'BLOCKED', 'checkbox definition without exact runtime domain is rejected');
 
+const objectEnumRule = {
+  ...semantics.fieldRules[1],
+  disposition: 'WRITE' as const,
+  writeKind: 'CHECKBOX' as const,
+  transform: {
+    id: 'OBJECT_ENUM_CHECKBOX_V1' as const,
+    version: '1',
+    args: {
+      property: 'kind',
+      allowedValues: 'EXHIBIT_1_ATTACHED|NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT',
+      selectedValues: 'EXHIBIT_1_ATTACHED',
+    },
+  },
+};
+const objectEnumSemantics: OfficialFormGenerationBindingSemantics = {
+  ...semantics,
+  fieldRules: [semantics.fieldRules[0], objectEnumRule, semantics.fieldRules[2]],
+};
+const objectEnumDefinition = { ...objectEnumSemantics, mapSnapshotId: computeGenerationMapSnapshotId(objectEnumSemantics) };
+equal(validateGenerationBindingDefinition(objectEnumDefinition).status, 'VALID', 'object-property enum checkbox definition validates with exact bounded domain');
+for (const [kind, expectedAction] of [
+  ['EXHIBIT_1_ATTACHED', 'SET_SELECTED'],
+  ['NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT', 'SET_EXPLICIT_NONSELECTION'],
+] as const) {
+  const objectFacts: FilingCanonicalFactsProjection = {
+    status: 'READY',
+    createdNoticeIdentity: identity,
+    facts: {
+      ...facts.facts,
+      'ud100.control.municipalClassification': { state: 'KNOWN', value: { kind }, provenance: controlProvenance },
+    },
+  };
+  const result = evaluateOfficialFormGenerationBinding(objectEnumDefinition, source, 'CURRENT', objectFacts, 'OWNER_GENERATED_PREPARATION');
+  equal(result.status, 'GENERATION_BINDING_READY', `${kind} object-property enum resolves`);
+  if (result.status === 'GENERATION_BINDING_READY') {
+    equal(result.fieldWritePlan.find(item => item.fieldId === 'TEST[1]')?.action, expectedAction, `${kind} maps to exact checkbox action`);
+  }
+}
+for (const malformedValue of [
+  null,
+  'EXHIBIT_1_ATTACHED',
+  {},
+  { kind: 'OUTSIDE_DOMAIN' },
+] as const) {
+  const malformedObjectFacts: FilingCanonicalFactsProjection = {
+    status: 'READY',
+    createdNoticeIdentity: identity,
+    facts: {
+      ...facts.facts,
+      'ud100.control.municipalClassification': { state: 'KNOWN', value: malformedValue, provenance: controlProvenance },
+    },
+  };
+  const result = evaluateOfficialFormGenerationBinding(objectEnumDefinition, source, 'CURRENT', malformedObjectFacts, 'OWNER_GENERATED_PREPARATION');
+  equal(result.status, 'BLOCKED', 'missing/wrong/out-of-domain object property fails closed');
+  equal(result.fieldWritePlan.length, 0, 'invalid object-property enum emits zero writes');
+}
+for (const badArgs of [
+  { allowedValues: 'A|B', selectedValues: 'A' },
+  { property: 'kind', allowedValues: 'A|A', selectedValues: 'A' },
+  { property: 'kind', allowedValues: 'A|B', selectedValues: 'C' },
+  { property: 'kind', allowedValues: '', selectedValues: 'A' },
+] as const) {
+  const badObjectSemantics: OfficialFormGenerationBindingSemantics = {
+    ...objectEnumSemantics,
+    fieldRules: objectEnumSemantics.fieldRules.map(rule => rule.evidence.fieldId === 'TEST[1]' && rule.disposition === 'WRITE'
+      ? { ...rule, transform: { id: 'OBJECT_ENUM_CHECKBOX_V1', version: '1', args: badArgs as Record<string, string> } }
+      : rule),
+  };
+  const badObjectDefinition = { ...badObjectSemantics, mapSnapshotId: computeGenerationMapSnapshotId(badObjectSemantics) };
+  equal(validateGenerationBindingDefinition(badObjectDefinition).status, 'BLOCKED', 'malformed object-property enum definition is rejected');
+}
+const multiDependencyObjectSemantics: OfficialFormGenerationBindingSemantics = {
+  ...objectEnumSemantics,
+  fieldRules: objectEnumSemantics.fieldRules.map(rule => rule.evidence.fieldId === 'TEST[1]' && rule.disposition === 'WRITE'
+    ? { ...rule, dependencies: [...rule.dependencies, { ref: 'property.streetAddress', authorityClass: 'CUSTOMER_CONFIRMED_FACT' as const }] }
+    : rule),
+};
+const multiDependencyObjectDefinition = { ...multiDependencyObjectSemantics, mapSnapshotId: computeGenerationMapSnapshotId(multiDependencyObjectSemantics) };
+equal(validateGenerationBindingDefinition(multiDependencyObjectDefinition).status, 'BLOCKED', 'object-property enum requires exactly one dependency');
+
 equal(
   evaluateOfficialFormGenerationBinding(definition, source, 'CURRENT', facts, 'OWNER_GENERATED_PREPARATION', { unsupportedScenarios: ['MODEL_DRAFTED_OPEN_ENDED_ALLEGATION'] }).status,
   'BLOCKED',

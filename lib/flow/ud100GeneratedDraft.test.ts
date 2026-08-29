@@ -111,6 +111,65 @@ const allOptionalReliefFalse = {
   otherAllegations: false,
 };
 
+type PacketComposition = NonNullable<NonNullable<FilingCanonicalFactsSupplementalInput['preparation']>['packetComposition']>;
+const packetArtifact = (
+  artifactRole: 'EXHIBIT_1_AGREEMENT' | 'EXHIBIT_2_NOTICE' | 'EXHIBIT_3_PROOF_OF_SERVICE',
+  artifactId: string,
+  digestCharacter: string,
+) => ({
+  artifactId,
+  artifactRole,
+  sha256: digestCharacter.repeat(64),
+  byteLength: 1024,
+  createdNotice: { generation: artifact.generation, createdAtISO: artifact.createdAtISO },
+});
+function noAgreementPacketComposition(): PacketComposition {
+  return {
+    agreement: {
+      state: 'KNOWN',
+      value: { kind: 'NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT' },
+      control: control('ud100.packet.agreement', 'packet-agreement-not-applicable'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.leaseApplicabilityControl],
+    },
+    notice: {
+      state: 'KNOWN',
+      value: {
+        kind: 'EXHIBIT_2_ATTACHED',
+        requiredNoticeCount: 1,
+        artifacts: [packetArtifact('EXHIBIT_2_NOTICE', 'synthetic-exhibit-2-notice', '2')],
+      },
+      control: control('ud100.packet.notice', 'packet-notice-attached'),
+      dependencies: [],
+    },
+    proofOfService: {
+      state: 'KNOWN',
+      value: { kind: 'NOT_ATTACHED' },
+      control: control('ud100.packet.proof-of-service', 'packet-proof-not-attached'),
+      dependencies: [],
+    },
+    attachment10c: {
+      state: 'KNOWN',
+      value: { kind: 'NOT_APPLICABLE' },
+      control: control('ud100.packet.attachment-10c', 'packet-10c-not-applicable'),
+      dependencies: [],
+    },
+  };
+}
+function writtenAgreementPacketComposition(): PacketComposition {
+  return {
+    ...noAgreementPacketComposition(),
+    agreement: {
+      state: 'KNOWN',
+      value: {
+        kind: 'EXHIBIT_1_ATTACHED',
+        artifacts: [packetArtifact('EXHIBIT_1_AGREEMENT', 'synthetic-exhibit-1-agreement', '1')],
+      },
+      control: control('ud100.packet.agreement', 'packet-agreement-attached'),
+      dependencies: [],
+    },
+  };
+}
+
 function supplemental(
   overrides: Partial<FilingCanonicalFactsSupplementalInput> = {},
 ): FilingCanonicalFactsSupplementalInput {
@@ -211,6 +270,7 @@ function supplemental(
       udaDisclosureControl: {
         state: 'KNOWN', value: 'NO_COMPENSATED_ASSISTANT', control: control('uda-disclosure', 'no-compensated-assistant'),
       },
+      packetComposition: noAgreementPacketComposition(),
     },
   };
   return {
@@ -236,6 +296,7 @@ function agreementSupplemental(): FilingCanonicalFactsSupplementalInput {
         control: control('ud100.lease-applicability', 'agreement-applicable-v1.1', 'CURRENT', '1.1.0'),
         dependencies: [CANONICAL_FILING_FACT_REFS.leaseStatus],
       },
+      packetComposition: writtenAgreementPacketComposition(),
     },
   });
 }
@@ -380,6 +441,10 @@ function fieldForObjectReference(
   equal(binding.status, 'GENERATION_BINDING_READY', 'baseline D.1 evaluation is READY');
   if (binding.status !== 'GENERATION_BINDING_READY') throw new Error('ready D.1 fixture required');
   equal(binding.fieldWritePlan.length, 186, 'D.1 plan still classifies all 186 governed widgets');
+  const missingPacketFacts = factsFor(supplemental({ preparation: { packetComposition: undefined } }));
+  const missingPacketBinding = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', missingPacketFacts);
+  equal(missingPacketBinding.status, 'BLOCKED', 'current packet-aware D.1 rejects absent packet composition');
+  if (missingPacketBinding.status === 'BLOCKED') equal(missingPacketBinding.fieldWritePlan.length, 0, 'absent packet composition produces zero writes');
   const authorization = authorizationFor(facts);
   const preparedAtISO = '2026-08-15T05:00:00.000Z';
 

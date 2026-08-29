@@ -18,6 +18,11 @@ import {
   UD100_GENERATION_BINDING_MAP_ID,
   UD100_GENERATION_BINDING_MAP_VERSION,
   UD100_GENERATION_PROFILE_ID,
+  UD100_GENERATOR_CONTRACT_VERSION,
+  UD100_LEGACY_B1_GENERATION_BINDING,
+  UD100_LEGACY_B1_GENERATION_BINDING_MAP_VERSION,
+  UD100_LEGACY_B1_GENERATION_PROFILE_ID,
+  UD100_LEGACY_B1_GENERATOR_CONTRACT_VERSION,
   UD100_PROHIBITED_SEMANTIC_SUBSTITUTIONS,
 } from './ud100GenerationBinding';
 
@@ -99,6 +104,67 @@ const allOptionalReliefFalse = {
   otherRelief: false,
   otherAllegations: false,
 };
+
+type PacketComposition = NonNullable<NonNullable<FilingCanonicalFactsSupplementalInput['preparation']>['packetComposition']>;
+type CreatedNoticeIdentity = { generation: string; createdAtISO: string };
+const packetArtifact = (
+  identity: CreatedNoticeIdentity,
+  artifactRole: 'EXHIBIT_1_AGREEMENT' | 'EXHIBIT_2_NOTICE' | 'EXHIBIT_3_PROOF_OF_SERVICE',
+  artifactId: string,
+  digestCharacter: string,
+) => ({
+  artifactId,
+  artifactRole,
+  sha256: digestCharacter.repeat(64),
+  byteLength: 1024,
+  createdNotice: { generation: identity.generation, createdAtISO: identity.createdAtISO },
+});
+function noAgreementPacketComposition(identity: CreatedNoticeIdentity = artifact): PacketComposition {
+  return {
+    agreement: {
+      state: 'KNOWN',
+      value: { kind: 'NOT_APPLICABLE_ORAL_OR_NO_AGREEMENT' },
+      control: control('ud100.packet.agreement', 'packet-agreement-not-applicable'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.leaseApplicabilityControl],
+    },
+    notice: {
+      state: 'KNOWN',
+      value: {
+        kind: 'EXHIBIT_2_ATTACHED',
+        requiredNoticeCount: 1,
+        artifacts: [packetArtifact(identity, 'EXHIBIT_2_NOTICE', 'synthetic-exhibit-2-notice', '2')],
+      },
+      control: control('ud100.packet.notice', 'packet-notice-attached'),
+      dependencies: [],
+    },
+    proofOfService: {
+      state: 'KNOWN',
+      value: { kind: 'NOT_ATTACHED' },
+      control: control('ud100.packet.proof-of-service', 'packet-proof-not-attached'),
+      dependencies: [],
+    },
+    attachment10c: {
+      state: 'KNOWN',
+      value: { kind: 'NOT_APPLICABLE' },
+      control: control('ud100.packet.attachment-10c', 'packet-10c-not-applicable'),
+      dependencies: [],
+    },
+  };
+}
+function writtenAgreementPacketComposition(identity: CreatedNoticeIdentity = artifact): PacketComposition {
+  return {
+    ...noAgreementPacketComposition(identity),
+    agreement: {
+      state: 'KNOWN',
+      value: {
+        kind: 'EXHIBIT_1_ATTACHED',
+        artifacts: [packetArtifact(identity, 'EXHIBIT_1_AGREEMENT', 'synthetic-exhibit-1-agreement', '1')],
+      },
+      control: control('ud100.packet.agreement', 'packet-agreement-attached'),
+      dependencies: [],
+    },
+  };
+}
 
 function supplemental(
   overrides: Partial<FilingCanonicalFactsSupplementalInput> = {},
@@ -264,6 +330,7 @@ function supplemental(
         value: 'NO_COMPENSATED_ASSISTANT',
         control: control('uda-disclosure', 'no-compensated-assistant'),
       },
+      packetComposition: noAgreementPacketComposition(),
     },
   };
 
@@ -303,12 +370,20 @@ equal(ready.result.pdfMutation, 'NOT_PERFORMED', 'GENERATION_BINDING_READY does 
 equal(ready.result.formApplicability, 'NOT_EVALUATED', 'D.1 does not decide applicability');
 equal(ready.result.formRequiredness, 'NOT_EVALUATED', 'D.1 does not decide requiredness');
 equal(UD100_GENERATION_BINDING.mapId, UD100_GENERATION_BINDING_MAP_ID, 'map id is explicit');
-equal(UD100_GENERATION_BINDING.mapVersion, '1.3.0', 'agreement remediation advances exact map version to 1.3.0');
-equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'remediation changes explicit map version');
-equal(UD100_GENERATION_BINDING.profileId, UD100_GENERATION_PROFILE_ID, 'bounded initial pre-filing profile remains explicit');
+equal(UD100_GENERATION_BINDING.mapVersion, '1.4.0', 'packet-aware B2 advances exact map version to 1.4.0');
+equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'current map version constant remains exact');
+equal(UD100_GENERATION_BINDING.profileId, 'ud100-initial-prefiling-owner-preparation-v2', 'current packet-aware profile identity is v2');
+equal(UD100_GENERATION_BINDING.profileId, UD100_GENERATION_PROFILE_ID, 'bounded current profile identity remains explicit');
+equal(UD100_GENERATION_BINDING.generatorContractVersion, 'ud100-field-write-plan-v4', 'current generator contract is v4');
+equal(UD100_GENERATION_BINDING.generatorContractVersion, UD100_GENERATOR_CONTRACT_VERSION, 'current generator contract constant remains exact');
+equal(UD100_LEGACY_B1_GENERATION_BINDING.mapVersion, UD100_LEGACY_B1_GENERATION_BINDING_MAP_VERSION, 'legacy B1 map remains version 1.3.0');
+equal(UD100_LEGACY_B1_GENERATION_BINDING.profileId, UD100_LEGACY_B1_GENERATION_PROFILE_ID, 'legacy B1 profile remains v1');
+equal(UD100_LEGACY_B1_GENERATION_BINDING.generatorContractVersion, UD100_LEGACY_B1_GENERATOR_CONTRACT_VERSION, 'legacy B1 generator contract remains v3');
 ok(UD100_GENERATION_BINDING.mapSnapshotId.startsWith('map:sha256:'), 'map snapshot is content-addressed');
+ok(UD100_LEGACY_B1_GENERATION_BINDING.mapSnapshotId.startsWith('map:sha256:'), 'legacy B1 map snapshot is content-addressed');
 equal(validateGenerationBindingDefinition(UD100_FIELD_MAP_FOUNDATION).status, 'BLOCKED', 'six-field Stage D foundation remains not generation-capable');
-equal(validateGenerationBindingDefinition(UD100_GENERATION_BINDING).status, 'VALID', 'remediated D.1 definition independently validates');
+equal(validateGenerationBindingDefinition(UD100_GENERATION_BINDING).status, 'VALID', 'current packet-aware D.1 definition independently validates');
+equal(validateGenerationBindingDefinition(UD100_LEGACY_B1_GENERATION_BINDING).status, 'VALID', 'legacy B1 compatibility binding independently validates');
 
 equal(UD100_GENERATION_BINDING.fieldRules.length, 186, 'all 186 exact-binary widgets receive executable classification');
 const fieldIds = new Set(UD100_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.fieldId));
@@ -401,6 +476,7 @@ const agreementInput = supplemental({
       control: control('lease-applicability', 'agreement-applicable-v1.1'),
       dependencies: [CANONICAL_FILING_FACT_REFS.leaseStatus],
     },
+    packetComposition: writtenAgreementPacketComposition(),
   },
 });
 const agreement = evaluate(agreementInput);
@@ -532,13 +608,14 @@ const noUnitPersisted: NoticeFlowData = {
   productionSnapshot: { ...persisted.productionSnapshot!, producedAtISO: '2026-08-14T12:11:00.000Z' },
   createdNoticeArtifact: noUnitArtifact,
 };
+const noUnitPacket = noAgreementPacketComposition(noUnitArtifact);
 
-const unansweredUnit = evaluate(supplemental(), noUnitPersisted);
+const unansweredUnit = evaluate(supplemental({ preparation: { packetComposition: noUnitPacket } }), noUnitPersisted);
 equal(unansweredUnit.result.status, 'BLOCKED', 'UNANSWERED property unit blocks rather than authorizing omission');
 equal(unansweredUnit.result.fieldWritePlan.length, 0, 'UNANSWERED unit blocker returns zero writes');
 
 const explicitNoUnit = evaluate(
-  supplemental({ propertyUnitConfirmation: { state: 'KNOWN', value: 'NO_UNIT' } }),
+  supplemental({ propertyUnitConfirmation: { state: 'KNOWN', value: 'NO_UNIT' }, preparation: { packetComposition: noUnitPacket } }),
   noUnitPersisted,
 );
 equal(explicitNoUnit.result.status, 'GENERATION_BINDING_READY', 'identity-bearing explicit NO_UNIT can resolve premises composition');
@@ -562,7 +639,7 @@ for (const propertyUnitConfirmation of [
   { state: 'REQUIRES_CONFIRMATION', reason: 'confirm unit' } as const,
   { state: 'CONFLICT', values: ['NO_UNIT'] as const, reason: 'unit conflict' } as const,
 ]) {
-  const result = evaluate(supplemental({ propertyUnitConfirmation }), noUnitPersisted).result;
+  const result = evaluate(supplemental({ propertyUnitConfirmation, preparation: { packetComposition: noUnitPacket } }), noUnitPersisted).result;
   equal(result.status, 'BLOCKED', `${propertyUnitConfirmation.state} unit state cannot authorize omission`);
   equal(result.fieldWritePlan.length, 0, `${propertyUnitConfirmation.state} unit state yields zero writes`);
 }
@@ -838,11 +915,89 @@ const wrongBytes = {
 };
 equal(evaluateUd100GenerationBinding(wrongBytes, 'CURRENT', ready.facts).status, 'BLOCKED', 'same revision with different exact bytes blocks');
 
+const matrixPlan = (result: ReturnType<typeof evaluateUd100GenerationBinding>, objectReference: string) =>
+  result.status === 'GENERATION_BINDING_READY'
+    ? result.fieldWritePlan.find(item => item.objectReference === objectReference)?.action
+    : undefined;
+equal(matrixPlan(ready.result, '732 0 R'), 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', '6e no-agreement packet state is no-write');
+equal(matrixPlan(ready.result, '726 0 R'), 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', '6f parent no-agreement packet state is no-write');
+equal(matrixPlan(ready.result, '730 0 R'), 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', '6f solely-nonpayment no-agreement packet state is no-write');
+equal(matrixPlan(ready.result, '731 0 R'), 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', '6f lacks-possession no-agreement packet state is no-write');
+equal(matrixPlan(ready.result, '660 0 R'), 'SET_SELECTED', '9e EXHIBIT_2_ATTACHED is selected');
+equal(matrixPlan(ready.result, '627 0 R'), 'SET_EXPLICIT_NONSELECTION', '10d NOT_ATTACHED is explicit nonselection');
+equal(matrixPlan(agreement.result, '732 0 R'), 'SET_SELECTED', '6e EXHIBIT_1_ATTACHED is selected');
+equal(matrixPlan(agreement.result, '726 0 R'), 'SET_EXPLICIT_NONSELECTION', '6f parent EXHIBIT_1_ATTACHED is explicit nonselection');
+equal(matrixPlan(agreement.result, '730 0 R'), 'SET_EXPLICIT_NONSELECTION', '6f solely-nonpayment EXHIBIT_1_ATTACHED is explicit nonselection');
+equal(matrixPlan(agreement.result, '731 0 R'), 'SET_EXPLICIT_NONSELECTION', '6f lacks-possession EXHIBIT_1_ATTACHED is explicit nonselection');
+
+const packetAgreementState = (kind: 'NOT_ATTACHED_LANDLORD_LACKS_POSSESSION' | 'NOT_ATTACHED_SOLELY_NONPAYMENT') => ({
+  state: 'KNOWN' as const,
+  value: { kind },
+  control: control('ud100.packet.agreement', `packet-agreement-${kind.toLowerCase()}`),
+  dependencies: [] as const,
+});
+for (const [kind, parentAction, soleAction, lacksAction] of [
+  ['NOT_ATTACHED_SOLELY_NONPAYMENT', 'SET_SELECTED', 'SET_SELECTED', 'SET_EXPLICIT_NONSELECTION'],
+  ['NOT_ATTACHED_LANDLORD_LACKS_POSSESSION', 'SET_SELECTED', 'SET_EXPLICIT_NONSELECTION', 'SET_SELECTED'],
+] as const) {
+  const packet = writtenAgreementPacketComposition();
+  packet.agreement = packetAgreementState(kind);
+  const result = evaluate(supplemental({ preparation: { ...agreementInput.preparation, packetComposition: packet } })).result;
+  equal(result.status, 'GENERATION_BINDING_READY', `${kind} is admitted as an approved 6f packet exception`);
+  equal(matrixPlan(result, '732 0 R'), 'SET_EXPLICIT_NONSELECTION', `${kind} explicitly nonselects 6e`);
+  equal(matrixPlan(result, '726 0 R'), parentAction, `${kind} maps 6f parent exactly`);
+  equal(matrixPlan(result, '730 0 R'), soleAction, `${kind} maps 6f solely-nonpayment exactly`);
+  equal(matrixPlan(result, '731 0 R'), lacksAction, `${kind} maps 6f lacks-possession exactly`);
+}
+
+const proofAttachedPacket = noAgreementPacketComposition();
+proofAttachedPacket.proofOfService = {
+  state: 'KNOWN',
+  value: { kind: 'EXHIBIT_3_ATTACHED', artifact: packetArtifact(artifact, 'EXHIBIT_3_PROOF_OF_SERVICE', 'synthetic-exhibit-3-proof', '3') },
+  control: control('ud100.packet.proof-of-service', 'packet-proof-attached'),
+  dependencies: [],
+};
+const proofAttached = evaluate(supplemental({ preparation: { packetComposition: proofAttachedPacket } })).result;
+equal(proofAttached.status, 'GENERATION_BINDING_READY', 'EXHIBIT_3_ATTACHED proof packet state is admitted');
+equal(matrixPlan(proofAttached, '627 0 R'), 'SET_SELECTED', '10d EXHIBIT_3_ATTACHED is selected');
+
+const packetBlockScenarios: readonly [string, keyof PacketComposition, PacketComposition[keyof PacketComposition]][] = [
+  ['agreement UNRESOLVED', 'agreement', {
+    state: 'KNOWN', value: { kind: 'UNRESOLVED' }, control: control('ud100.packet.agreement', 'packet-agreement-unresolved'), dependencies: [],
+  }],
+  ['notice UNRESOLVED', 'notice', {
+    state: 'KNOWN', value: { kind: 'UNRESOLVED' }, control: control('ud100.packet.notice', 'packet-notice-unresolved'), dependencies: [],
+  }],
+  ['notice REQUIRED_NOTICE_SET_INCOMPLETE', 'notice', {
+    state: 'KNOWN', value: { kind: 'REQUIRED_NOTICE_SET_INCOMPLETE' }, control: control('ud100.packet.notice', 'packet-notice-incomplete'), dependencies: [],
+  }],
+  ['proof UNRESOLVED', 'proofOfService', {
+    state: 'KNOWN', value: { kind: 'UNRESOLVED' }, control: control('ud100.packet.proof-of-service', 'packet-proof-unresolved'), dependencies: [],
+  }],
+  ['10c UNRESOLVED', 'attachment10c', {
+    state: 'KNOWN', value: { kind: 'UNRESOLVED' }, control: control('ud100.packet.attachment-10c', 'packet-10c-unresolved'), dependencies: [],
+  }],
+  ['10c REQUIRED_BUT_UNSUPPORTED', 'attachment10c', {
+    state: 'KNOWN', value: { kind: 'REQUIRED_BUT_UNSUPPORTED' }, control: control('ud100.packet.attachment-10c', 'packet-10c-unsupported'), dependencies: [],
+  }],
+];
+for (const [label, key, value] of packetBlockScenarios) {
+  const packet = noAgreementPacketComposition();
+  (packet as Record<string, unknown>)[key] = value;
+  const result = evaluate(supplemental({ preparation: { packetComposition: packet } })).result;
+  equal(result.status, 'BLOCKED', `${label} fails closed before write plan`);
+  equal(result.fieldWritePlan.length, 0, `${label} produces zero writes`);
+}
+const missingPacket = evaluate(supplemental({ preparation: { packetComposition: undefined } })).result;
+equal(missingPacket.status, 'BLOCKED', 'missing packet composition fails closed in current v2 profile');
+equal(missingPacket.fieldWritePlan.length, 0, 'missing packet composition produces zero writes');
+
 const sourceText = readFileSync(new URL('./ud100GenerationBinding.ts', import.meta.url), 'utf8');
 ok(!/captionForText/.test(sourceText), 'official-form binding contains no customer caption free-text transform');
 ok(!/pdf-lib|writeFile|appendFile|fetch\(|XMLHttpRequest|supabase|database|localStorage|sessionStorage|FormData|model\.generate|signDocument|fileDocument|serveDocument/.test(sourceText), 'D.1 profile has no PDF mutation, network, persistence, provider/model, signing, filing, or service execution path');
 
 console.log(`UD100_MAP_SNAPSHOT=${UD100_GENERATION_BINDING.mapSnapshotId}`);
+console.log(`UD100_LEGACY_B1_MAP_SNAPSHOT=${UD100_LEGACY_B1_GENERATION_BINDING.mapSnapshotId}`);
 console.log(`UD100_REFERENCED_FACT_SNAPSHOT=${ready.result.referencedFactSnapshotId}`);
 console.log(`UD100_GENERATION_INPUT=${ready.result.generationInputId}`);
 console.log(`UD100_FIELD_RULE_COUNT=${UD100_GENERATION_BINDING.fieldRules.length}`);
