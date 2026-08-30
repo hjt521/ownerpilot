@@ -25,34 +25,52 @@ import {
 } from './filingPreparationSupabaseStore';
 import type { OfficialGeneratedDraftDefinition } from './officialFormGeneratedDraft';
 import {
+  evaluateUd100BootstrapV3CompatibilityBinding,
+  evaluateUd100PacketAwareGenerationBinding,
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING,
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION,
   UD100_GENERATED_DRAFT_ARTIFACT_ROLE,
   UD100_GENERATED_DRAFT_IMPLEMENTATION_ID,
   UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION,
+  UD100_GENERATED_TEXT_APPEARANCE,
+  UD100_PACKET_AWARE_GENERATION_BINDING,
+  UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION,
   UD100_PREPARATION_RUNTIME_MANIFEST,
   UD100_PREPARATION_RUNTIME_MANIFEST_ID,
   UD100_PREPARATION_RUNTIME_PATH,
 } from './ud100GeneratedDraft';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
-import {
-  evaluateUd100GenerationBinding,
-  UD100_GENERATION_BINDING,
-  UD100_GENERATOR_CONTRACT_VERSION,
-} from './ud100GenerationBinding';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REQUEST_KEYS = ['record'] as const;
 
-const UD100_CURRENTNESS_DEFINITION: OfficialGeneratedDraftDefinition = Object.freeze({
-  generatorImplementationId: UD100_GENERATED_DRAFT_IMPLEMENTATION_ID,
-  generatorImplementationVersion: UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION,
-  expectedSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
-  expectedArtifactRole: UD100_GENERATED_DRAFT_ARTIFACT_ROLE,
-  expectedPreparationManifestId: UD100_PREPARATION_RUNTIME_MANIFEST_ID,
-  expectedMapSnapshotId: UD100_GENERATION_BINDING.mapSnapshotId,
-  expectedGeneratorContractVersion: UD100_GENERATOR_CONTRACT_VERSION,
-  expectedPageCount: 4,
-  expectedFieldCount: 186,
-});
+function currentnessDefinition(
+  expectedMapSnapshotId: string,
+  expectedGeneratorContractVersion: string,
+): OfficialGeneratedDraftDefinition {
+  return {
+    generatorImplementationId: UD100_GENERATED_DRAFT_IMPLEMENTATION_ID,
+    generatorImplementationVersion: UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION,
+    expectedSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
+    expectedArtifactRole: UD100_GENERATED_DRAFT_ARTIFACT_ROLE,
+    expectedPreparationManifestId: UD100_PREPARATION_RUNTIME_MANIFEST_ID,
+    expectedMapSnapshotId,
+    expectedGeneratorContractVersion,
+    expectedPageCount: 4,
+    expectedFieldCount: 186,
+    generatedTextAppearance: UD100_GENERATED_TEXT_APPEARANCE,
+  };
+}
+
+const UD100_B1_CURRENTNESS_DEFINITION = Object.freeze(currentnessDefinition(
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId,
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION,
+));
+
+const UD100_B2_CURRENTNESS_DEFINITION = Object.freeze(currentnessDefinition(
+  UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId,
+  UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION,
+));
 
 export interface FilingPreparationRuntimeSupabaseClient {
   auth: {
@@ -186,11 +204,36 @@ export function createFilingPreparationRuntimeCurrentnessMaterialLoader(
       const facts = structuredClone(binding.facts);
       const preparationAuthorization = structuredClone(binding.preparationAuthorization);
       const officialSourceHealth = binding.officialSourceHealth;
+      const snapshot = captured.preparationSnapshot;
+
+      const selectedFamily = snapshot.mapSnapshotId === UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId
+        && snapshot.generatorContractVersion === UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION
+        ? {
+            definition: UD100_B1_CURRENTNESS_DEFINITION,
+            evaluateBinding: () => evaluateUd100BootstrapV3CompatibilityBinding(
+              officialSourceIdentity,
+              officialSourceHealth,
+              facts,
+            ),
+          }
+        : snapshot.mapSnapshotId === UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId
+          && snapshot.generatorContractVersion === UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION
+          ? {
+              definition: UD100_B2_CURRENTNESS_DEFINITION,
+              evaluateBinding: () => evaluateUd100PacketAwareGenerationBinding(
+                officialSourceIdentity,
+                officialSourceHealth,
+                facts,
+              ),
+            }
+          : null;
+
+      if (selectedFamily === null) return { status: 'UNAVAILABLE' };
 
       return {
         status: 'AVAILABLE',
         material: {
-          definition: structuredClone(UD100_CURRENTNESS_DEFINITION),
+          definition: structuredClone(selectedFamily.definition),
           officialSourceIdentity,
           officialSourceHealth,
           officialSourceBytes,
@@ -198,11 +241,7 @@ export function createFilingPreparationRuntimeCurrentnessMaterialLoader(
           preparationManifest: structuredClone(UD100_PREPARATION_RUNTIME_MANIFEST),
           preparationDerivativeBytes,
           facts,
-          evaluateBinding: () => evaluateUd100GenerationBinding(
-            officialSourceIdentity,
-            officialSourceHealth,
-            facts,
-          ),
+          evaluateBinding: selectedFamily.evaluateBinding,
         },
       };
     },
