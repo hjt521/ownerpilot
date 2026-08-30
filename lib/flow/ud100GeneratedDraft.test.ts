@@ -37,11 +37,15 @@ import {
 } from './ud100GenerationBinding';
 import {
   evaluateUd100GeneratedDraftCurrentness,
+  generateUd100BootstrapV3CompatibleDraft,
   generateUd100GeneratedDraft,
+  generateUd100PacketAwareGeneratedDraft,
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING,
   UD100_GENERATED_DRAFT_ARTIFACT_ROLE,
   UD100_GENERATED_DRAFT_IMPLEMENTATION_ID,
   UD100_GENERATED_DRAFT_IMPLEMENTATION_VERSION,
   UD100_GENERATED_TEXT_APPEARANCE,
+  UD100_PACKET_AWARE_GENERATION_BINDING,
   UD100_PREPARATION_RUNTIME_MANIFEST,
   UD100_PREPARATION_RUNTIME_MANIFEST_ID,
   UD100_PREPARATION_RUNTIME_PATH,
@@ -373,6 +377,10 @@ function fieldForObjectReference(
   equal(UD100_PREPARATION_RUNTIME_MANIFEST.qpdfNormalization.intermediateSha256, '5c74c92fdc6eba9ae5d5018ce89be5c0f1f298e90e0cf83a362aa202b81c4058', 'qpdf intermediate identity is unchanged');
   equal(UD100_PREPARATION_RUNTIME_MANIFEST.xfaDisconnection.xfaDigest, 'xfa:sha256:eace8ea17d6efbf0b7064bf46eeea714670afd0dc67254870ddc06ad566441c3', 'XFA digest is unchanged');
   equal(UD100_PREPARATION_RUNTIME_MANIFEST.preparationDerivative.fieldEquivalenceDigest, 'field-equivalence:sha256:f863ba9ae890f57f7a00e25c26276a55d04f69e1e509b5a7df1916d47f52e13f', '186-widget field-equivalence digest is unchanged');
+  equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, 'map:sha256:50bd844d22bfd419ecea4131e17b9e5d681edbc2f7726881a4cc55bc06db287d', 'historical/default compatibility map remains exact released B1 snapshot');
+  equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.generatorContractVersion, 'ud100-field-write-plan-v3', 'historical/default compatibility contract remains exact B1 v3');
+  equal(UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId, 'map:sha256:715355e568143d4edc5edff7624b80128639c5195959bd984b828f685fde0223', 'packet-aware compatibility map remains exact released B2 snapshot');
+  notEqual(UD100_GENERATION_BINDING.mapSnapshotId, UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, 'live R2-D D.1 map advances independently from frozen generated-draft compatibility');
 
   const facts = factsFor();
   equal(facts.status, 'READY', 'verified NO_AGREEMENT baseline projects');
@@ -392,7 +400,7 @@ function fieldForObjectReference(
     facts,
     preparedAtISO,
   });
-  equal(first.status, 'GENERATED_DRAFT', 'exact CURRENT source/auth/facts/derivative generates a draft');
+  equal(first.status, 'GENERATED_DRAFT', 'exact CURRENT source/auth/facts/derivative generates a frozen-B1 historical draft');
   if (first.status !== 'GENERATED_DRAFT') throw new Error(`generation failed: ${JSON.stringify(first)}`);
   equal(first.evidence.artifactClass, 'GENERATED_DRAFT', 'generated evidence remains GENERATED_DRAFT');
   equal(first.evidence.artifactRole, 'OWNER_GENERATED_PREPARATION', 'artifact role remains OWNER_GENERATED_PREPARATION');
@@ -402,12 +410,79 @@ function fieldForObjectReference(
   equal(first.evidence.preparedAtISO, preparedAtISO, 'preparedAtISO is retained');
   equal(first.evidence.preparationSourceId, UD100_PREPARATION_RUNTIME_MANIFEST.preparationSourceId, 'evidence binds XFA-free preparation source');
   equal(first.evidence.xfaPolicyId, 'acroform-fallback-xfa-disconnection-v1', 'evidence binds XFA policy');
-  equal(first.evidence.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'evidence binds exact D.1 map');
+  equal(first.evidence.mapSnapshotId, UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, 'historical/default evidence remains bound to exact frozen B1 map');
+
+  const bootstrapBaseline = await generateUd100BootstrapV3CompatibleDraft({
+    officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
+    officialSourceHealth: 'CURRENT',
+    officialSourceBytes,
+    preparationAuthorization: authorization,
+    preparationDerivativeBytes,
+    facts,
+    preparedAtISO,
+  });
+  equal(bootstrapBaseline.status, 'GENERATED_DRAFT', 'bootstrap-v3-compatible baseline still generates');
+  if (bootstrapBaseline.status !== 'GENERATED_DRAFT') throw new Error('bootstrap-v3-compatible baseline failed');
+  equal(Buffer.compare(Buffer.from(bootstrapBaseline.bytes), Buffer.from(first.bytes)), 0, 'historical/default and bootstrap-v3-compatible baseline bytes are exact-identical');
+  equal(bootstrapBaseline.evidence.generatedPdfSha256, first.evidence.generatedPdfSha256, 'historical/default and bootstrap baseline PDF hashes remain identical');
+  equal(bootstrapBaseline.evidence.generatedDocumentId, first.evidence.generatedDocumentId, 'historical/default and bootstrap baseline generatedDocumentIds remain identical');
 
   const postGenerationBinding = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts);
   equal(postGenerationBinding.status, 'GENERATION_BINDING_READY', 'presentation generation does not alter semantic binding readiness');
   if (postGenerationBinding.status !== 'GENERATION_BINDING_READY') throw new Error('post-generation D.1 binding must remain READY');
   equal(JSON.stringify(postGenerationBinding.fieldWritePlan), JSON.stringify(binding.fieldWritePlan), 'presentation generation leaves semantic field/election write plan byte-for-byte JSON identical');
+
+  const r2dPositiveFacts = factsFor(supplemental({
+    preparation: {
+      otherReliefSelections: {
+        state: 'KNOWN',
+        value: {
+          ...allOptionalReliefFalse,
+          fairRentalValue: true,
+          fairRentalValuePerDay: '85.50',
+          fairRentalValueDamagesFromDate: '2026-08-20',
+        },
+        confirmation: { confirmationId: 'r2d-frv-positive', confirmedAtISO: '2026-08-14T12:03:00.000Z' },
+      },
+    },
+  }));
+  const r2dLiveBinding = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', r2dPositiveFacts);
+  equal(r2dLiveBinding.status, 'GENERATION_BINDING_READY', 'live R2-D D.1 accepts exact positive Item-14 election');
+  if (r2dLiveBinding.status !== 'GENERATION_BINDING_READY') throw new Error('R2-D live positive fixture must be READY');
+  const r2dAuthorization = authorizationFor(r2dPositiveFacts);
+  const r2dHistorical = await generateUd100GeneratedDraft({
+    officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
+    officialSourceHealth: 'CURRENT',
+    officialSourceBytes,
+    preparationAuthorization: r2dAuthorization,
+    preparationDerivativeBytes,
+    facts: r2dPositiveFacts,
+    preparedAtISO,
+  });
+  equal(r2dHistorical.status, 'BLOCKED', 'historical/default generated-draft path does not consume live R2-D Item-14 positive plan');
+  if (r2dHistorical.status === 'BLOCKED') equal(r2dHistorical.bytes, null, 'historical/default path produces no Item-14 PDF bytes');
+  const r2dBootstrap = await generateUd100BootstrapV3CompatibleDraft({
+    officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
+    officialSourceHealth: 'CURRENT',
+    officialSourceBytes,
+    preparationAuthorization: r2dAuthorization,
+    preparationDerivativeBytes,
+    facts: r2dPositiveFacts,
+    preparedAtISO,
+  });
+  equal(r2dBootstrap.status, 'BLOCKED', 'bootstrap-v3-compatible generated-draft path does not consume live R2-D Item-14 positive plan');
+  if (r2dBootstrap.status === 'BLOCKED') equal(r2dBootstrap.bytes, null, 'bootstrap-v3-compatible path produces no Item-14 PDF bytes');
+  const r2dPacketAware = await generateUd100PacketAwareGeneratedDraft({
+    officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
+    officialSourceHealth: 'CURRENT',
+    officialSourceBytes,
+    preparationAuthorization: r2dAuthorization,
+    preparationDerivativeBytes,
+    facts: r2dPositiveFacts,
+    preparedAtISO,
+  });
+  equal(r2dPacketAware.status, 'BLOCKED', 'existing B2 packet-aware generated-draft path does not consume live R2-D Item-14 positive plan');
+  if (r2dPacketAware.status === 'BLOCKED') equal(r2dPacketAware.bytes, null, 'packet-aware compatibility path produces no Item-14 PDF bytes');
 
   const second = await generateUd100GeneratedDraft({
     officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY,
@@ -589,7 +664,7 @@ function fieldForObjectReference(
     facts: agreementFacts,
     preparedAtISO,
   });
-  equal(agreementDraft.status, 'GENERATED_DRAFT', 'verified agreement generates reviewable UD-100 bytes');
+  equal(agreementDraft.status, 'GENERATED_DRAFT', 'verified agreement generates reviewable UD-100 bytes under frozen B1 compatibility');
   if (agreementDraft.status !== 'GENERATED_DRAFT') throw new Error(`agreement draft failed: ${JSON.stringify(agreementDraft)}`);
   notEqual(agreementDraft.evidence.generatedDocumentId, first.evidence.generatedDocumentId, 'agreement material changes generated identity from NO_AGREEMENT baseline');
 
@@ -763,7 +838,7 @@ function fieldForObjectReference(
     officialSourceIdentity: UD100_OFFICIAL_SOURCE_IDENTITY, officialSourceHealth: 'CURRENT', officialSourceBytes,
     preparationAuthorization: authorization, preparationDerivativeBytes, facts, draftBytes: first.bytes,
   });
-  equal(current.status, 'CURRENT', 'unchanged exact source/auth/manifest/facts/generator remains CURRENT');
+  equal(current.status, 'CURRENT', 'unchanged exact frozen-B1 source/auth/manifest/facts/generator remains CURRENT after R2-D compatibility decoupling');
 
   const wrongRoleSeed = { ...first.evidence, artifactRole: 'FILING_PACKET' } as unknown as typeof first.evidence;
   const { generatedDocumentId: _discardedRoleId, ...wrongRoleIdentity } = wrongRoleSeed;
@@ -887,6 +962,10 @@ function fieldForObjectReference(
   const pushResult = await generateWithCustomDerivative(pushBytes, manifestForDerivative(pushBytes), facts, authorization);
   equal(pushResult.status, 'BLOCKED', 'unsupported button subtype blocks rather than applying checkbox semantics');
 
+  console.log(`UD100_COMPATIBILITY_MAP_SNAPSHOT=${UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId}`);
+  console.log(`UD100_PACKET_AWARE_COMPATIBILITY_MAP_SNAPSHOT=${UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId}`);
+  console.log(`UD100_COMPATIBILITY_BASELINE_PDF_SHA256=${first.evidence.generatedPdfSha256}`);
+  console.log(`UD100_COMPATIBILITY_BASELINE_DOCUMENT_ID=${first.evidence.generatedDocumentId}`);
   console.log(`ud100GeneratedDraft tests passed: ${passed}`);
 })().catch(error => {
   console.error(error);

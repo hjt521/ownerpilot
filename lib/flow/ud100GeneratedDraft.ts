@@ -19,11 +19,7 @@ import {
   type OfficialGeneratedDraftDefinition,
   type PreparationRuntimeManifest,
 } from './officialFormGeneratedDraft';
-import {
-  evaluateUd100GenerationBinding,
-  UD100_GENERATION_BINDING,
-  UD100_GENERATOR_CONTRACT_VERSION,
-} from './ud100GenerationBinding';
+import { UD100_GENERATION_BINDING } from './ud100GenerationBinding';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 
 export const UD100_GENERATED_DRAFT_IMPLEMENTATION_ID =
@@ -55,10 +51,13 @@ export const UD100_PREPARATION_RUNTIME_MANIFEST =
 export const UD100_PACKET_AWARE_GENERATION_BINDING_MAP_VERSION = '1.4.0' as const;
 export const UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v4' as const;
 export const UD100_PACKET_AWARE_GENERATION_PROFILE_ID = 'ud100-initial-prefiling-owner-preparation-v2' as const;
-export const UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING = UD100_GENERATION_BINDING;
+export const UD100_BOOTSTRAP_V3_COMPATIBILITY_MAP_VERSION = '1.3.0' as const;
+export const UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v3' as const;
 
 const CONTROL = 'DETERMINISTIC_GOVERNED_CONTROL_REQUIRED' as const;
+const ELECTION = 'CUSTOMER_CONFIRMED_LEGAL_ELECTION' as const;
 const D = (ref: GenerationFactDependency['ref']): GenerationFactDependency => ({ ref, authorityClass: CONTROL });
+const otherReliefDep: GenerationFactDependency = { ref: CANONICAL_FILING_FACT_REFS.otherReliefSelections, authorityClass: ELECTION };
 const packetAgreementDep = D(CANONICAL_FILING_FACT_REFS.packetAgreement);
 const packetNoticeDep = D(CANONICAL_FILING_FACT_REFS.packetNotice);
 const packetProofDep = D(CANONICAL_FILING_FACT_REFS.packetProofOfService);
@@ -69,6 +68,93 @@ const noticeTransformDomain = ['EXHIBIT_2_ATTACHED','REQUIRED_NOTICE_SET_INCOMPL
 const noticeProfileDomain = ['EXHIBIT_2_ATTACHED'] as const;
 const proofDomain = ['EXHIBIT_3_ATTACHED','NOT_ATTACHED'] as const;
 const selectedArgs = (allowed: readonly string[], selected: readonly string[]) => ({ property: 'kind', allowedValues: allowed.join('|'), selectedValues: selected.join('|') });
+
+const b1AllOptionalReliefFalse = {
+  fairRentalValue: false,
+  statutoryDamages: false,
+  relocationDamages: false,
+  forfeiture: false,
+  attorneyFees: false,
+  otherRelief: false,
+  otherAllegations: false,
+} as const;
+const r2dHeldReliefProperties = new Set([
+  'statutoryDamages',
+  'relocationDamages',
+  'forfeiture',
+  'attorneyFees',
+  'otherRelief',
+  'otherAllegations',
+]);
+
+const b1CompatibilityFieldRules: readonly GenerationFieldRule[] = UD100_GENERATION_BINDING.fieldRules.map(rule => {
+  if (rule.evidence.objectReference === '604 0 R') {
+    return {
+      disposition: 'GOVERNED_PRESERVE_OFFICIAL_BLANK_NO_WRITE',
+      evidence: rule.evidence,
+      dependency: otherReliefDep,
+      allowedValues: [false],
+      reason: 'Explicit owner nonselection of fair-rental-value relief authorizes no amount write.',
+      property: 'fairRentalValue',
+    };
+  }
+  if (rule.evidence.objectReference === '896 0 R') {
+    return {
+      disposition: 'GOVERNED_PRESERVE_OFFICIAL_BLANK_NO_WRITE',
+      evidence: rule.evidence,
+      dependency: otherReliefDep,
+      allowedValues: [false],
+      reason: 'Explicit owner nonselection of fair-rental-value relief authorizes no damages-from date.',
+      property: 'fairRentalValue',
+    };
+  }
+  return rule;
+});
+
+const b1CompatibilityProfileRequirements = (() => {
+  const frozen: OfficialFormGenerationBindingSemantics['profileRequirements'][number][] = [];
+  let insertedLegacyReliefRequirement = false;
+  for (const requirement of UD100_GENERATION_BINDING.profileRequirements) {
+    if (
+      requirement.dependency.ref === CANONICAL_FILING_FACT_REFS.otherReliefSelections
+      && requirement.property
+      && r2dHeldReliefProperties.has(requirement.property)
+    ) {
+      if (!insertedLegacyReliefRequirement) {
+        frozen.push({
+          dependency: otherReliefDep,
+          allowedValues: [b1AllOptionalReliefFalse],
+          blockerCode: 'SELECTED_OPTIONAL_RELIEF_REQUIRES_EXACT_AMOUNT_TEXT_PREDICATE_BINDING',
+        });
+        insertedLegacyReliefRequirement = true;
+      }
+      continue;
+    }
+    frozen.push(requirement);
+  }
+  if (!insertedLegacyReliefRequirement) {
+    throw new Error('R2-D compatibility decoupling could not locate the six held-relief profile requirements.');
+  }
+  return frozen;
+})();
+
+const b1CompatibilitySemantics: OfficialFormGenerationBindingSemantics = {
+  generationSchemaVersion: UD100_GENERATION_BINDING.generationSchemaVersion,
+  mapId: UD100_GENERATION_BINDING.mapId,
+  mapVersion: UD100_BOOTSTRAP_V3_COMPATIBILITY_MAP_VERSION,
+  profileId: UD100_GENERATION_BINDING.profileId,
+  generatorContractVersion: UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION,
+  sourceIdentity: UD100_GENERATION_BINDING.sourceIdentity,
+  artifactRole: UD100_GENERATION_BINDING.artifactRole,
+  fieldRules: b1CompatibilityFieldRules,
+  profileRequirements: b1CompatibilityProfileRequirements,
+  fieldFamilyCoverage: UD100_GENERATION_BINDING.fieldFamilyCoverage,
+};
+
+export const UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING = Object.freeze({
+  ...b1CompatibilitySemantics,
+  mapSnapshotId: computeGenerationMapSnapshotId(b1CompatibilitySemantics),
+});
 
 function packetCheckbox(
   original: GenerationFieldRule,
@@ -97,7 +183,7 @@ function packetCheckbox(
   };
 }
 
-const packetFieldRules: readonly GenerationFieldRule[] = UD100_GENERATION_BINDING.fieldRules.map(rule => {
+const packetFieldRules: readonly GenerationFieldRule[] = UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.fieldRules.map(rule => {
   switch (rule.evidence.fieldId) {
     case 'UD-100[0].Page2[0].List6[0].SubList6[0].Lie[0].SixE[0]':
       return packetCheckbox(rule, packetAgreementDep, agreementDomain, ['EXHIBIT_1_ATTACHED'], agreementWritableDomain, 'Oral/no-agreement packet state preserves Item 6e official blank.');
@@ -126,22 +212,22 @@ const packetFieldRules: readonly GenerationFieldRule[] = UD100_GENERATION_BINDIN
 });
 
 const packetAwareSemantics: OfficialFormGenerationBindingSemantics = {
-  generationSchemaVersion: UD100_GENERATION_BINDING.generationSchemaVersion,
-  mapId: UD100_GENERATION_BINDING.mapId,
+  generationSchemaVersion: UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.generationSchemaVersion,
+  mapId: UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapId,
   mapVersion: UD100_PACKET_AWARE_GENERATION_BINDING_MAP_VERSION,
   profileId: UD100_PACKET_AWARE_GENERATION_PROFILE_ID,
   generatorContractVersion: UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION,
-  sourceIdentity: UD100_GENERATION_BINDING.sourceIdentity,
-  artifactRole: UD100_GENERATION_BINDING.artifactRole,
+  sourceIdentity: UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.sourceIdentity,
+  artifactRole: UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.artifactRole,
   fieldRules: packetFieldRules,
   profileRequirements: [
-    ...UD100_GENERATION_BINDING.profileRequirements,
+    ...UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.profileRequirements,
     { dependency: packetAgreementDep, property: 'kind', allowedValues: agreementDomain, blockerCode: 'PACKET_AGREEMENT_PROFILE_UNRESOLVED' },
     { dependency: packetNoticeDep, property: 'kind', allowedValues: noticeProfileDomain, blockerCode: 'PACKET_NOTICE_PROFILE_UNRESOLVED_OR_INCOMPLETE' },
     { dependency: packetProofDep, property: 'kind', allowedValues: proofDomain, blockerCode: 'PACKET_PROOF_OF_SERVICE_PROFILE_UNRESOLVED' },
     { dependency: packetAttachment10cDep, property: 'kind', allowedValues: ['NOT_APPLICABLE'], blockerCode: 'PACKET_ATTACHMENT_10C_REQUIRED_OR_UNRESOLVED' },
   ],
-  fieldFamilyCoverage: UD100_GENERATION_BINDING.fieldFamilyCoverage,
+  fieldFamilyCoverage: UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.fieldFamilyCoverage,
 };
 
 export const UD100_PACKET_AWARE_GENERATION_BINDING = Object.freeze({
@@ -164,6 +250,22 @@ function agreementVerificationBlock(facts: FilingCanonicalFactsProjection): Offi
     }
   }
   return null;
+}
+
+export function evaluateUd100BootstrapV3CompatibilityBinding(
+  suppliedSourceIdentity: OfficialSourceIdentity,
+  suppliedSourceHealth: OfficialSourceHealth | null | undefined,
+  facts: FilingCanonicalFactsProjection,
+): OfficialFormGenerationBindingEvaluation {
+  const block = agreementVerificationBlock(facts);
+  if (block) return block;
+  return evaluateOfficialFormGenerationBinding(
+    UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING,
+    suppliedSourceIdentity,
+    suppliedSourceHealth,
+    facts,
+    UD100_GENERATED_DRAFT_ARTIFACT_ROLE,
+  );
 }
 
 export function evaluateUd100PacketAwareGenerationBinding(
@@ -189,7 +291,7 @@ const legacyDefinition: OfficialGeneratedDraftDefinition = {
   expectedArtifactRole: UD100_GENERATED_DRAFT_ARTIFACT_ROLE,
   expectedPreparationManifestId: UD100_PREPARATION_RUNTIME_MANIFEST_ID,
   expectedMapSnapshotId: UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId,
-  expectedGeneratorContractVersion: UD100_GENERATOR_CONTRACT_VERSION,
+  expectedGeneratorContractVersion: UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION,
   expectedPageCount: 4,
   expectedFieldCount: 186,
   generatedTextAppearance: UD100_GENERATED_TEXT_APPEARANCE,
@@ -255,12 +357,12 @@ function currentnessWith(
   });
 }
 
-// Historical/default API remains source-equivalent to B1. B2 packet-aware generation is
-// explicit below; absence of packet facts never causes a fallback inside that B2 path.
+// Historical/default and bootstrap-v3-compatible APIs remain frozen to B1.
+// Existing B2 packet-aware generation remains frozen to its released B1-derived semantics.
 export function generateUd100GeneratedDraft(
   input: GenerateUd100DraftInput,
 ): Promise<OfficialFormGeneratedDraftResult> {
-  return generateWith(legacyDefinition, () => evaluateUd100GenerationBinding(
+  return generateWith(legacyDefinition, () => evaluateUd100BootstrapV3CompatibilityBinding(
     input.officialSourceIdentity,
     input.officialSourceHealth,
     input.facts,
@@ -271,7 +373,7 @@ export function evaluateUd100GeneratedDraftCurrentness(
   draft: GeneratedDraftEvidence,
   input: EvaluateUd100DraftCurrentnessInput,
 ): GeneratedDraftCurrentness {
-  return currentnessWith(legacyDefinition, () => evaluateUd100GenerationBinding(
+  return currentnessWith(legacyDefinition, () => evaluateUd100BootstrapV3CompatibilityBinding(
     input.officialSourceIdentity,
     input.officialSourceHealth,
     input.facts,
@@ -302,7 +404,7 @@ export function evaluateUd100PacketAwareGeneratedDraftCurrentness(
 export function generateUd100BootstrapV3CompatibleDraft(
   input: GenerateUd100DraftInput,
 ): Promise<OfficialFormGeneratedDraftResult> {
-  return generateWith(legacyDefinition, () => evaluateUd100GenerationBinding(
+  return generateWith(legacyDefinition, () => evaluateUd100BootstrapV3CompatibilityBinding(
     input.officialSourceIdentity,
     input.officialSourceHealth,
     input.facts,
@@ -313,7 +415,7 @@ export function evaluateUd100BootstrapV3CompatibleDraftCurrentness(
   draft: GeneratedDraftEvidence,
   input: EvaluateUd100DraftCurrentnessInput,
 ): GeneratedDraftCurrentness {
-  return currentnessWith(legacyDefinition, () => evaluateUd100GenerationBinding(
+  return currentnessWith(legacyDefinition, () => evaluateUd100BootstrapV3CompatibilityBinding(
     input.officialSourceIdentity,
     input.officialSourceHealth,
     input.facts,

@@ -252,6 +252,8 @@ export interface PastDueRentRelief {
 
 export interface OtherReliefSelections {
   fairRentalValue: boolean;
+  fairRentalValuePerDay?: string;
+  fairRentalValueDamagesFromDate?: string;
   statutoryDamages: boolean;
   relocationDamages: boolean;
   forfeiture: boolean;
@@ -595,6 +597,8 @@ function unitRepresentation(
 }
 
 const LOWER_HEX_SHA256 = /^[0-9a-f]{64}$/;
+const FAIR_RENTAL_VALUE_PER_DAY = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
+const STRICT_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const FIXED_CANONICAL_REFS = new Set<string>(Object.values(CANONICAL_FILING_FACT_REFS));
 
 function isExactObject(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
@@ -602,6 +606,82 @@ function isExactObject(value: unknown, keys: readonly string[]): value is Record
   const actual = Object.keys(value as Record<string, unknown>).sort();
   const expected = [...keys].sort();
   return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function validExactTimestamp(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
+}
+
+function validGregorianDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !STRICT_DATE.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+}
+
+function validOtherReliefSelections(value: unknown): value is OtherReliefSelections {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  const required = [
+    'fairRentalValue',
+    'statutoryDamages',
+    'relocationDamages',
+    'forfeiture',
+    'attorneyFees',
+    'otherRelief',
+    'otherAllegations',
+  ] as const;
+  const optional = ['fairRentalValuePerDay', 'fairRentalValueDamagesFromDate'] as const;
+  const allowed = new Set<string>([...required, ...optional]);
+  if (Object.keys(candidate).some(key => !allowed.has(key))) return false;
+  if (required.some(key => typeof candidate[key] !== 'boolean')) return false;
+  if ('fairRentalValuePerDay' in candidate && typeof candidate.fairRentalValuePerDay !== 'string') return false;
+  if ('fairRentalValueDamagesFromDate' in candidate && typeof candidate.fairRentalValueDamagesFromDate !== 'string') return false;
+  if (candidate.fairRentalValue === false) {
+    return !('fairRentalValuePerDay' in candidate) && !('fairRentalValueDamagesFromDate' in candidate);
+  }
+  return typeof candidate.fairRentalValuePerDay === 'string'
+    && FAIR_RENTAL_VALUE_PER_DAY.test(candidate.fairRentalValuePerDay)
+    && validGregorianDate(candidate.fairRentalValueDamagesFromDate);
+}
+
+function otherReliefSelectionsState(
+  identity: CreatedNoticeFactIdentity,
+  sourcePath: string,
+  input: CustomerConfirmedLegalElectionInput<OtherReliefSelections> | undefined,
+): FilingFactState<OtherReliefSelections> {
+  const suppliedConfirmation = input?.state === 'KNOWN' ? input.confirmation : undefined;
+  const p = provenance(identity, [sourcePath], 'CUSTOMER_CONFIRMED_LEGAL_ELECTION', [], {
+    legalElectionConfirmation: suppliedConfirmation,
+  });
+  if (!input || input.state === 'UNANSWERED') return { state: 'UNANSWERED', provenance: p };
+  if (input.state === 'UNKNOWN') return { state: 'UNKNOWN', provenance: p };
+  if (input.state === 'REQUIRES_CONFIRMATION') return { state: 'REQUIRES_CONFIRMATION', reason: input.reason, provenance: p };
+  if (input.state === 'CONFLICT') return { state: 'CONFLICT', values: [...input.values], reason: input.reason, provenance: p };
+  if (!suppliedConfirmation
+    || typeof suppliedConfirmation.confirmationId !== 'string'
+    || suppliedConfirmation.confirmationId.trim() === ''
+    || !validExactTimestamp(suppliedConfirmation.confirmedAtISO)
+    || !validExactTimestamp(identity.createdAtISO)
+    || Date.parse(suppliedConfirmation.confirmedAtISO) < Date.parse(identity.createdAtISO)) {
+    return {
+      state: 'REQUIRES_CONFIRMATION',
+      reason: `Fair-rental-value election at ${sourcePath} requires exact current post-Notice legal-election confirmation.`,
+      provenance: p,
+    };
+  }
+  if (!validOtherReliefSelections(input.value)) {
+    return {
+      state: 'REQUIRES_CONFIRMATION',
+      reason: `Fair-rental-value election at ${sourcePath} has malformed, contradictory, or unauthorized runtime shape.`,
+      provenance: p,
+    };
+  }
+  return { state: 'KNOWN', value: input.value, provenance: p };
 }
 
 function validPacketControl(
@@ -816,9 +896,13 @@ export function projectFilingCanonicalFacts(
     [CANONICAL_FILING_FACT_REFS.serviceComplaintElection, 'supplemental.preparation.serviceComplaintElection', preparation?.serviceComplaintElection],
     [CANONICAL_FILING_FACT_REFS.fixedTermExpirationElection, 'supplemental.preparation.fixedTermExpirationElection', preparation?.fixedTermExpirationElection],
     [CANONICAL_FILING_FACT_REFS.pastDueRentRelief, 'supplemental.preparation.pastDueRentRelief', preparation?.pastDueRentRelief],
-    [CANONICAL_FILING_FACT_REFS.otherReliefSelections, 'supplemental.preparation.otherReliefSelections', preparation?.otherReliefSelections],
   ];
   for (const [ref, path, input] of electionFacts) facts[ref] = electionState(identity, path, input);
+  facts[CANONICAL_FILING_FACT_REFS.otherReliefSelections] = otherReliefSelectionsState(
+    identity,
+    'supplemental.preparation.otherReliefSelections',
+    preparation?.otherReliefSelections,
+  );
 
   const controlFacts: readonly [FixedCanonicalFilingFactRef, string, GovernedControlInput<unknown> | undefined][] = [
     [CANONICAL_FILING_FACT_REFS.plaintiffStandingControl, 'supplemental.preparation.plaintiffStandingControl', preparation?.plaintiffStandingControl],

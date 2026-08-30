@@ -21,6 +21,7 @@ import {
   UD100_PROHIBITED_SEMANTIC_SUBSTITUTIONS,
 } from './ud100GenerationBinding';
 import {
+  evaluateUd100BootstrapV3CompatibilityBinding,
   evaluateUd100PacketAwareGenerationBinding,
   UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING,
   UD100_PACKET_AWARE_GENERATION_BINDING,
@@ -106,6 +107,12 @@ const allOptionalReliefFalse = {
   attorneyFees: false,
   otherRelief: false,
   otherAllegations: false,
+};
+const fairRentalValuePositive = {
+  ...allOptionalReliefFalse,
+  fairRentalValue: true,
+  fairRentalValuePerDay: '85.50',
+  fairRentalValueDamagesFromDate: '2026-08-20',
 };
 
 function supplemental(
@@ -311,12 +318,13 @@ equal(ready.result.pdfMutation, 'NOT_PERFORMED', 'GENERATION_BINDING_READY does 
 equal(ready.result.formApplicability, 'NOT_EVALUATED', 'D.1 does not decide applicability');
 equal(ready.result.formRequiredness, 'NOT_EVALUATED', 'D.1 does not decide requiredness');
 equal(UD100_GENERATION_BINDING.mapId, UD100_GENERATION_BINDING_MAP_ID, 'map id is explicit');
-equal(UD100_GENERATION_BINDING.mapVersion, '1.3.0', 'agreement remediation advances exact map version to 1.3.0');
-equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'remediation changes explicit map version');
+equal(UD100_GENERATION_BINDING.mapVersion, '1.4.0', 'R2-D advances exact live D.1 map version to 1.4.0');
+equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'R2-D map-version export matches definition');
+equal(UD100_GENERATION_BINDING.generatorContractVersion, 'ud100-field-write-plan-v4', 'R2-D advances live generator contract to v4');
 equal(UD100_GENERATION_BINDING.profileId, UD100_GENERATION_PROFILE_ID, 'bounded initial pre-filing profile remains explicit');
 ok(UD100_GENERATION_BINDING.mapSnapshotId.startsWith('map:sha256:'), 'map snapshot is content-addressed');
 equal(validateGenerationBindingDefinition(UD100_FIELD_MAP_FOUNDATION).status, 'BLOCKED', 'six-field Stage D foundation remains not generation-capable');
-equal(validateGenerationBindingDefinition(UD100_GENERATION_BINDING).status, 'VALID', 'remediated D.1 definition independently validates');
+equal(validateGenerationBindingDefinition(UD100_GENERATION_BINDING).status, 'VALID', 'R2-D D.1 definition independently validates');
 
 equal(UD100_GENERATION_BINDING.fieldRules.length, 186, 'all 186 exact-binary widgets receive executable classification');
 const fieldIds = new Set(UD100_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.fieldId));
@@ -339,6 +347,14 @@ for (const rule of UD100_GENERATION_BINDING.fieldRules) {
 const uniquePlanFields = new Set(ready.result.fieldWritePlan.map(item => item.fieldId));
 equal(uniquePlanFields.size, ready.result.fieldWritePlan.length, 'successful whitelist contains no duplicate/conflicting actions');
 equal(ready.result.fieldWritePlan.length, 186, 'successful bounded profile explicitly classifies every widget as write or authorized no-write');
+for (const [objectReference, action] of [
+  ['603 0 R', 'SET_EXPLICIT_NONSELECTION'],
+  ['604 0 R', 'PRESERVE_OFFICIAL_BLANK_NO_WRITE'],
+  ['895 0 R', 'SET_EXPLICIT_NONSELECTION'],
+  ['896 0 R', 'PRESERVE_OFFICIAL_BLANK_NO_WRITE'],
+] as const) {
+  equal(ready.result.fieldWritePlan.find(item => item.objectReference === objectReference)?.action, action, `negative Item-14 route preserves exact ${objectReference} action`);
+}
 
 const attorneyFor = ready.result.fieldWritePlan.find(item => item.objectReference === '855 0 R');
 equal(attorneyFor?.action, 'WRITE_TEXT', 'ATTORNEY FOR is an explicit controlled write in the supported route');
@@ -726,17 +742,160 @@ const selectedPastDueWithoutAmount = evaluate(supplemental({
 equal(selectedPastDueWithoutAmount.status, 'BLOCKED', 'selected complaint relief requires every selected amount prerequisite');
 equal(selectedPastDueWithoutAmount.fieldWritePlan.length, 0, 'missing selected relief amount yields zero writes');
 
+const fairRentalPositive = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: fairRentalValuePositive,
+      confirmation: { confirmationId: 'fair-rental-positive', confirmedAtISO: '2026-08-14T12:03:00.000Z' },
+    },
+  },
+})).result;
+equal(fairRentalPositive.status, 'GENERATION_BINDING_READY', 'exact current owner Item-14 election with exact rate/date is admitted');
+if (fairRentalPositive.status !== 'GENERATION_BINDING_READY') throw new Error(`fair-rental positive fixture must resolve: ${JSON.stringify(fairRentalPositive)}`);
+const fairRentalPlan = (objectReference: string) => fairRentalPositive.fieldWritePlan.find(item => item.objectReference === objectReference);
+equal(fairRentalPlan('603 0 R')?.action, 'SET_SELECTED', 'positive Item 14 selects 603');
+equal(fairRentalPlan('895 0 R')?.action, 'SET_SELECTED', 'positive Item 17f selects 895');
+const fairRentalRate = fairRentalPlan('604 0 R');
+equal(fairRentalRate?.action, 'WRITE_TEXT', 'positive Item 14 writes exact per-day rate');
+if (fairRentalRate?.action === 'WRITE_TEXT') equal(fairRentalRate.value, '85.50', 'per-day rate preserves exact owner-supplied decimal text');
+const fairRentalDate = fairRentalPlan('896 0 R');
+equal(fairRentalDate?.action, 'WRITE_TEXT', 'positive Item 17f writes exact damages-from date');
+if (fairRentalDate?.action === 'WRITE_TEXT') equal(fairRentalDate.value, '2026-08-20', 'damages-from date preserves exact owner-supplied YYYY-MM-DD');
+for (const objectReference of ['604 0 R', '896 0 R']) {
+  const rule = UD100_GENERATION_BINDING.fieldRules.find(item => item.evidence.objectReference === objectReference);
+  ok(rule?.disposition === 'WRITE' && rule.dependencies.length === 1 && rule.dependencies[0].ref === CANONICAL_FILING_FACT_REFS.otherReliefSelections, `${objectReference} depends only on exact otherReliefSelections election`);
+  ok(rule?.disposition !== 'WRITE' || (rule.condition?.dependency.ref === CANONICAL_FILING_FACT_REFS.otherReliefSelections && rule.condition.property === 'fairRentalValue'), `${objectReference} is conditioned only on fairRentalValue from the same election`);
+}
+notEqual(fairRentalPositive.generationInputId, ready.result.generationInputId, 'positive Item-14 election changes generation identity');
+
+const fairRentalRateChanged = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...fairRentalValuePositive, fairRentalValuePerDay: '86' },
+      confirmation: { confirmationId: 'fair-rental-rate-changed', confirmedAtISO: '2026-08-14T12:03:00.000Z' },
+    },
+  },
+})).result;
+if (fairRentalRateChanged.status !== 'GENERATION_BINDING_READY') throw new Error('changed fair-rental rate fixture must resolve');
+notEqual(fairRentalRateChanged.generationInputId, fairRentalPositive.generationInputId, 'exact per-day rate change changes generation identity');
+const changedRatePlan = fairRentalRateChanged.fieldWritePlan.find(item => item.objectReference === '604 0 R');
+if (changedRatePlan?.action === 'WRITE_TEXT') equal(changedRatePlan.value, '86', 'changed exact per-day rate changes only authorized output value');
+
+const fairRentalDateChanged = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...fairRentalValuePositive, fairRentalValueDamagesFromDate: '2026-08-21' },
+      confirmation: { confirmationId: 'fair-rental-date-changed', confirmedAtISO: '2026-08-14T12:03:00.000Z' },
+    },
+  },
+})).result;
+if (fairRentalDateChanged.status !== 'GENERATION_BINDING_READY') throw new Error('changed fair-rental date fixture must resolve');
+notEqual(fairRentalDateChanged.generationInputId, fairRentalPositive.generationInputId, 'exact damages-from date change changes generation identity');
+
+const fairRentalNegativeWithDetails = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...allOptionalReliefFalse, fairRentalValuePerDay: '85.50', fairRentalValueDamagesFromDate: '2026-08-20' } as any,
+      confirmation: confirmation('fair-rental-negative-contradiction'),
+    },
+  },
+})).result;
+equal(fairRentalNegativeWithDetails.status, 'BLOCKED', 'fairRentalValue=false with supplied rate/date is contradictory and blocks');
+equal(fairRentalNegativeWithDetails.fieldWritePlan.length, 0, 'contradictory negative route produces zero writes');
+
+for (const value of [
+  { ...fairRentalValuePositive, fairRentalValuePerDay: undefined },
+  { ...fairRentalValuePositive, fairRentalValueDamagesFromDate: undefined },
+] as any[]) {
+  const result = evaluate(supplemental({ preparation: { otherReliefSelections: { state: 'KNOWN', value, confirmation: confirmation('fair-rental-missing-detail') } } })).result;
+  equal(result.status, 'BLOCKED', 'positive fair-rental election missing either exact detail blocks');
+}
+for (const badRate of ['$85', '85.', '85.500', '1e2', '-1', '+85', ' 85', '85 ', '1,000', '', NaN, Infinity, { value: '85' }, ['85']] as any[]) {
+  const result = evaluate(supplemental({
+    preparation: {
+      otherReliefSelections: {
+        state: 'KNOWN',
+        value: { ...fairRentalValuePositive, fairRentalValuePerDay: badRate } as any,
+        confirmation: confirmation('fair-rental-bad-rate'),
+      },
+    },
+  })).result;
+  equal(result.status, 'BLOCKED', `malformed fair-rental rate ${JSON.stringify(badRate)} blocks`);
+}
+for (const badDate of ['2026-02-30', '2026-2-20', '08/20/2026', '2026-08-20T00:00:00.000Z', ' 2026-08-20', '2026-08-20 ', '', '2026-13-01']) {
+  const result = evaluate(supplemental({
+    preparation: {
+      otherReliefSelections: {
+        state: 'KNOWN',
+        value: { ...fairRentalValuePositive, fairRentalValueDamagesFromDate: badDate },
+        confirmation: confirmation('fair-rental-bad-date'),
+      },
+    },
+  })).result;
+  equal(result.status, 'BLOCKED', `malformed fair-rental date ${JSON.stringify(badDate)} blocks`);
+}
+for (const malformedValue of [
+  { ...allOptionalReliefFalse, unexpectedKey: true },
+  { fairRentalValue: false, statutoryDamages: false, relocationDamages: false, forfeiture: false, attorneyFees: false, otherRelief: false },
+  { ...allOptionalReliefFalse, statutoryDamages: 'false' },
+] as any[]) {
+  const result = evaluate(supplemental({ preparation: { otherReliefSelections: { state: 'KNOWN', value: malformedValue, confirmation: confirmation('fair-rental-bad-shape') } } })).result;
+  equal(result.status, 'BLOCKED', 'unknown key, missing required boolean, or nonboolean election flag blocks');
+}
+const missingFairRentalConfirmation = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: { state: 'KNOWN', value: fairRentalValuePositive },
+  },
+})).result;
+equal(missingFairRentalConfirmation.status, 'BLOCKED', 'missing Item-14 legal-election confirmation blocks');
+const malformedFairRentalConfirmation = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: fairRentalValuePositive,
+      confirmation: { confirmationId: '', confirmedAtISO: 'not-a-timestamp' },
+    },
+  },
+})).result;
+equal(malformedFairRentalConfirmation.status, 'BLOCKED', 'malformed Item-14 legal-election confirmation blocks');
+const preNoticeFairRentalConfirmation = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: fairRentalValuePositive,
+      confirmation: { confirmationId: 'pre-notice', confirmedAtISO: '2026-08-14T12:00:00.000Z' },
+    },
+  },
+})).result;
+equal(preNoticeFairRentalConfirmation.status, 'BLOCKED', 'pre-Created-Notice Item-14 confirmation is not current and blocks');
+for (const heldRelief of ['statutoryDamages','relocationDamages','forfeiture','attorneyFees','otherRelief','otherAllegations'] as const) {
+  const result = evaluate(supplemental({
+    preparation: {
+      otherReliefSelections: {
+        state: 'KNOWN',
+        value: { ...allOptionalReliefFalse, [heldRelief]: true },
+        confirmation: confirmation(`held-${heldRelief}`),
+      },
+    },
+  })).result;
+  equal(result.status, 'BLOCKED', `${heldRelief} remains held under property-level profile ceiling`);
+}
+
 const selectedFairRentalUnsupported = evaluate(supplemental({
   preparation: {
     otherReliefSelections: {
       state: 'KNOWN',
       value: { ...allOptionalReliefFalse, fairRentalValue: true },
-      confirmation: confirmation('fair-rental-selected'),
+      confirmation: confirmation('fair-rental-selected-without-details'),
     },
   },
 })).result;
-equal(selectedFairRentalUnsupported.status, 'BLOCKED', 'selected optional relief outside current exact amount/text binding hard-blocks rather than leaving fields blank');
-equal(selectedFairRentalUnsupported.fieldWritePlan.length, 0, 'unsupported selected relief returns zero writes');
+equal(selectedFairRentalUnsupported.status, 'BLOCKED', 'selected fair-rental relief without exact rate/date blocks rather than leaving fields blank');
+equal(selectedFairRentalUnsupported.fieldWritePlan.length, 0, 'incomplete selected fair-rental relief returns zero writes');
 
 const missingReliefReview = evaluate(supplemental({
   preparation: {
@@ -923,18 +1082,32 @@ function packetPlanAction(result: ReturnType<typeof evaluatePacket>['result'], o
     : undefined;
 }
 
-// B2 identity/versioning and B1 compatibility invariants.
+// B2 identity/versioning and frozen B1 compatibility invariants.
+equal(validateGenerationBindingDefinition(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING).status, 'VALID', 'frozen B1 compatibility definition independently validates');
+equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, 'map:sha256:50bd844d22bfd419ecea4131e17b9e5d681edbc2f7726881a4cc55bc06db287d', 'bootstrap-v3 compatibility binding preserves exact released B1 map snapshot');
+equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapVersion, '1.3.0', 'bootstrap-v3 compatibility map version remains B1 1.3.0');
+equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.generatorContractVersion, 'ud100-field-write-plan-v3', 'bootstrap-v3 compatibility generator contract remains B1 v3');
+equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.profileId, UD100_GENERATION_BINDING.profileId, 'bootstrap-v3 compatibility profile identity remains exact B1 profile');
+notEqual(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'live R2-D map is decoupled from frozen B1 compatibility');
+const b1Baseline = evaluateUd100BootstrapV3CompatibilityBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', ready.facts);
+equal(b1Baseline.status, 'GENERATION_BINDING_READY', 'frozen B1 evaluator still admits exact released baseline');
+if (b1Baseline.status !== 'GENERATION_BINDING_READY') throw new Error('frozen B1 baseline must remain ready');
+equal(b1Baseline.referencedFactSnapshotId, 'facts:sha256:4eb3d2c5ce8b0f5ea383121589d40c00d48fdfbbd18257daacdc4d1e0496d3af', 'frozen B1 referenced-fact snapshot remains exact released baseline');
+equal(b1Baseline.generationInputId, 'generation-input:sha256:1590fa08d313e2367e2e50d39d471e2badd32b6cfaf5ce77030a7926bd3dff20', 'frozen B1 generation-input identity remains exact released baseline');
+equal(JSON.stringify(b1Baseline.fieldWritePlan), JSON.stringify(ready.result.fieldWritePlan), 'negative baseline live R2-D and frozen B1 preserve byte-for-byte JSON-equivalent field plan');
+const b1PositiveBlock = evaluateUd100BootstrapV3CompatibilityBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', projectFilingCanonicalFacts(persisted, supplemental({ preparation: { otherReliefSelections: { state: 'KNOWN', value: fairRentalValuePositive, confirmation: confirmation('b1-positive-block') } } })));
+equal(b1PositiveBlock.status, 'BLOCKED', 'frozen B1 compatibility evaluator does not consume R2-D Item-14 positive election');
+equal(b1PositiveBlock.fieldWritePlan.length, 0, 'frozen B1 positive Item-14 scenario yields zero writes');
+
 equal(validateGenerationBindingDefinition(UD100_PACKET_AWARE_GENERATION_BINDING).status, 'VALID', 'packet-aware D.1 definition independently validates');
-equal(UD100_PACKET_AWARE_GENERATION_BINDING.mapVersion, '1.4.0', 'packet-aware D.1 advances map version to 1.4.0');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.mapVersion, '1.4.0', 'packet-aware B2 map version remains 1.4.0');
 equal(UD100_PACKET_AWARE_GENERATION_BINDING.mapVersion, UD100_PACKET_AWARE_GENERATION_BINDING_MAP_VERSION, 'packet-aware map version export matches binding');
-equal(UD100_PACKET_AWARE_GENERATION_BINDING.generatorContractVersion, 'ud100-field-write-plan-v4', 'packet-aware generator contract advances to v4');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.generatorContractVersion, 'ud100-field-write-plan-v4', 'packet-aware B2 generator contract remains v4');
 equal(UD100_PACKET_AWARE_GENERATION_BINDING.generatorContractVersion, UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION, 'packet-aware generator contract export matches binding');
-equal(UD100_PACKET_AWARE_GENERATION_BINDING.profileId, 'ud100-initial-prefiling-owner-preparation-v2', 'packet-aware profile identity advances to v2');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.profileId, 'ud100-initial-prefiling-owner-preparation-v2', 'packet-aware B2 profile identity remains v2');
 equal(UD100_PACKET_AWARE_GENERATION_BINDING.profileId, UD100_PACKET_AWARE_GENERATION_PROFILE_ID, 'packet-aware profile export matches binding');
-notEqual(UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'packet-aware semantics produce a distinct exact map snapshot');
-equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'bootstrap-v3 compatibility binding preserves exact B1 map snapshot');
-equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.generatorContractVersion, UD100_GENERATION_BINDING.generatorContractVersion, 'bootstrap-v3 compatibility binding preserves exact B1 generator contract');
-equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.profileId, UD100_GENERATION_BINDING.profileId, 'bootstrap-v3 compatibility binding preserves exact B1 profile identity');
+equal(UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId, 'map:sha256:715355e568143d4edc5edff7624b80128639c5195959bd984b828f685fde0223', 'packet-aware B2 map snapshot remains exact released baseline');
+notEqual(UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'packet-aware compatibility remains distinct from live R2-D map');
 equal(UD100_PACKET_AWARE_GENERATION_BINDING.fieldRules.length, 186, 'packet-aware binding preserves exact 186-field classification count');
 equal(new Set(UD100_PACKET_AWARE_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.fieldId)).size, 186, 'packet-aware field IDs remain unique');
 equal(new Set(UD100_PACKET_AWARE_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.objectReference)).size, 186, 'packet-aware object references remain unique');
@@ -948,10 +1121,22 @@ equal(packetDefault.result.formApplicability, 'NOT_EVALUATED', 'packet binding d
 equal(packetDefault.result.formRequiredness, 'NOT_EVALUATED', 'packet binding does not determine form requiredness or legal sufficiency');
 
 const packetRefs = new Set(['732 0 R','726 0 R','730 0 R','731 0 R','660 0 R','627 0 R','628 0 R']);
-const legacyNonPacketPlan = ready.result.fieldWritePlan.filter(item => !packetRefs.has(item.objectReference));
+const legacyNonPacketPlan = b1Baseline.fieldWritePlan.filter(item => !packetRefs.has(item.objectReference));
 const currentNonPacketPlan = packetDefault.result.fieldWritePlan.filter(item => !packetRefs.has(item.objectReference));
-equal(JSON.stringify(currentNonPacketPlan), JSON.stringify(legacyNonPacketPlan), 'same facts preserve every non-packet B1 field-write action exactly');
-equal(packetDefault.result.fieldWritePlan.find(item => item.objectReference === '712 0 R')?.action, ready.result.fieldWritePlan.find(item => item.objectReference === '712 0 R')?.action, 'TPA semantics remain unchanged by packet binding');
+equal(JSON.stringify(currentNonPacketPlan), JSON.stringify(legacyNonPacketPlan), 'same facts preserve every non-packet frozen-B1 field-write action exactly in B2');
+equal(packetDefault.result.fieldWritePlan.find(item => item.objectReference === '712 0 R')?.action, b1Baseline.fieldWritePlan.find(item => item.objectReference === '712 0 R')?.action, 'TPA semantics remain unchanged by packet binding');
+
+const packetPositive = evaluatePacket(withPacket(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: fairRentalValuePositive,
+      confirmation: confirmation('packet-positive-block'),
+    },
+  },
+}), packetComposition()));
+equal(packetPositive.result.status, 'BLOCKED', 'existing B2 packet-aware evaluator does not consume R2-D Item-14 positive election');
+equal(packetPositive.result.fieldWritePlan.length, 0, 'B2 positive Item-14 scenario yields zero writes');
 
 // D. Agreement NOT_APPLICABLE path keeps all 6e/6f fields source-native blank and preserves dependency provenance.
 for (const objectReference of ['732 0 R','726 0 R','730 0 R','731 0 R']) {
@@ -1070,6 +1255,7 @@ ok(!JSON.stringify(noticeIdentityA.result.fieldWritePlan).includes('notice-ident
 ok(!JSON.stringify(noticeIdentityA.result.fieldWritePlan).includes('EXHIBIT_2_NOTICE'), 'packet artifact role metadata is never rendered into a form field');
 
 console.log(`UD100_MAP_SNAPSHOT=${UD100_GENERATION_BINDING.mapSnapshotId}`);
+console.log(`UD100_BOOTSTRAP_V3_COMPATIBILITY_MAP_SNAPSHOT=${UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId}`);
 console.log(`UD100_PACKET_AWARE_MAP_SNAPSHOT=${UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId}`);
 console.log(`UD100_REFERENCED_FACT_SNAPSHOT=${ready.result.referencedFactSnapshotId}`);
 console.log(`UD100_GENERATION_INPUT=${ready.result.generationInputId}`);
