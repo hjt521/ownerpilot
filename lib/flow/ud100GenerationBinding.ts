@@ -17,8 +17,8 @@ import {
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 
 export const UD100_GENERATION_BINDING_MAP_ID = 'ud100-2026-07-01-initial-prefiling-generation-binding' as const;
-export const UD100_GENERATION_BINDING_MAP_VERSION = '1.3.0' as const;
-export const UD100_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v3' as const;
+export const UD100_GENERATION_BINDING_MAP_VERSION = '1.4.0' as const;
+export const UD100_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v4' as const;
 export const UD100_GENERATION_PROFILE_ID = 'ud100-initial-prefiling-owner-preparation-v1' as const;
 
 function evidence(fieldId: string, sourcePage: number, fieldType: '/Tx' | '/Btn', objectReference: string, visibleLabelEvidence: string): GenerationFieldEvidence {
@@ -250,12 +250,12 @@ const domain5Relief: GenerationFieldRule[] = [
   objectBooleanRule(evidence('UD-100[0].Page2[0].List8[0].SubList8[0].Lic[0].TwoA[0]',2,'/Btn','702 0 R','Because defendant failed to vacate, plaintiff is seeking to recover the total amount in 8b as damages in this action.'),otherReliefDep,'relocationDamages',true),
   objectBooleanRule(evidence('UD-100[0].Page3[0].List15[0].Twelve[0]',3,'/Btn','602 0 R',"Defendant's continued possession is malicious, and plaintiff is entitled to statutory damages"),otherReliefDep,'statutoryDamages',true),
   objectBooleanRule(evidence('UD-100[0].Page3[0].List14[0].Eleven[0]',3,'/Btn','603 0 R','The fair rental value of the premises is'),otherReliefDep,'fairRentalValue',true),
-  governedNoWrite(evidence('UD-100[0].Page3[0].List14[0].FillText208[0]',3,'/Tx','604 0 R','Dollar Amount'),otherReliefDep,[false],'Explicit owner nonselection of fair-rental-value relief authorizes no amount write.','fairRentalValue'),
+  textRule(evidence('UD-100[0].Page3[0].List14[0].FillText208[0]',3,'/Tx','604 0 R','Dollar Amount'),otherReliefDep,{id:'OBJECT_PROPERTY_TEXT_V1',version:'1',args:{property:'fairRentalValuePerDay'}},condition(otherReliefDep,[true],'Explicit owner nonselection of fair-rental-value relief authorizes no amount write.','fairRentalValue')),
   objectBooleanRule(evidence('UD-100[0].Page4[0].List20[0].Item20[0].Lii[0].Seventeenh[0]',4,'/Btn','893 0 R','Other'),otherReliefDep,'otherRelief',true),
   governedNoWrite(evidence('UD-100[0].Page4[0].List20[0].Item20[0].Lii[0].text124[0]',4,'/Tx','892 0 R','specify'),otherReliefDep,[false],'Explicit owner nonselection of other relief authorizes no free-text write.','otherRelief'),
   objectBooleanRule(evidence('UD-100[0].Page4[0].List20[0].Item20[0].Lih[0].Seventeeng[0]',4,'/Btn','894 0 R','Statutory damages up to $600 for the conduct alleged in item 15.'),otherReliefDep,'statutoryDamages',true),
   objectBooleanRule(evidence('UD-100[0].Page4[0].List20[0].Item20[0].Lig[0].Seventeenf[0]',4,'/Btn','895 0 R','Damages at the rate stated in item 14 from'),otherReliefDep,'fairRentalValue',true),
-  governedNoWrite(evidence('UD-100[0].Page4[0].List20[0].Item20[0].Lig[0].DateField51[0]',4,'/Tx','896 0 R','date:'),otherReliefDep,[false],'Explicit owner nonselection of fair-rental-value relief authorizes no damages-from date.','fairRentalValue'),
+  textRule(evidence('UD-100[0].Page4[0].List20[0].Item20[0].Lig[0].DateField51[0]',4,'/Tx','896 0 R','date:'),otherReliefDep,{id:'OBJECT_PROPERTY_TEXT_V1',version:'1',args:{property:'fairRentalValueDamagesFromDate'}},condition(otherReliefDep,[true],'Explicit owner nonselection of fair-rental-value relief authorizes no damages-from date.','fairRentalValue')),
   objectBooleanRule(evidence('UD-100[0].Page4[0].List20[0].Item20[0].Lif[0].Seventeenc1[0]',4,'/Btn','897 0 R','Damages in the amount of waived rent or relocation assistance'),otherReliefDep,'relocationDamages',true),
   governedNoWrite(evidence('UD-100[0].Page4[0].List20[0].Item20[0].Lif[0].FillText37[0]',4,'/Tx','898 0 R','Dollar Amount'),otherReliefDep,[false],'Explicit owner nonselection of relocation damages authorizes no amount write.','relocationDamages'),
   objectBooleanRule(evidence('UD-100[0].Page4[0].List20[0].Item20[0].Lie[0].Seventeene[0]',4,'/Btn','899 0 R','Forfeiture of the agreement.'),otherReliefDep,'forfeiture',true),
@@ -285,7 +285,6 @@ const groups = [
 ] as const;
 const fieldRules=groups.flatMap(([, , rules])=>[...rules]);
 const fieldFamilyCoverage:GenerationFieldFamilyCoverage[]=groups.map(([domainId,familyId,rules])=>({domainId,familyId,fieldIds:rules.map(rule=>rule.evidence.fieldId),resolution:'FIELD_RULES'}));
-const allOptionalReliefFalse={fairRentalValue:false,statutoryDamages:false,relocationDamages:false,forfeiture:false,attorneyFees:false,otherRelief:false,otherAllegations:false} as const;
 const semantics:OfficialFormGenerationBindingSemantics={generationSchemaVersion:2,mapId:UD100_GENERATION_BINDING_MAP_ID,mapVersion:UD100_GENERATION_BINDING_MAP_VERSION,profileId:UD100_GENERATION_PROFILE_ID,generatorContractVersion:UD100_GENERATOR_CONTRACT_VERSION,sourceIdentity:UD100_OFFICIAL_SOURCE_IDENTITY,artifactRole:'OWNER_GENERATED_PREPARATION',fieldRules,profileRequirements:[
   {dependency:lifecycleDep,allowedValues:['INITIAL_PREFILING'],blockerCode:'AMENDED_OR_PRIOR_COMPLAINT_UNSUPPORTED'},
   {dependency:D(CANONICAL_FILING_FACT_REFS.captionRouteControl,CONTROL),allowedValues:['SELF_REPRESENTED_SUPPORTED'],blockerCode:'OUTSIDE_ATTORNEY_OR_UNRESOLVED_CAPTION_ROUTE_UNSUPPORTED'},
@@ -309,7 +308,12 @@ const semantics:OfficialFormGenerationBindingSemantics={generationSchemaVersion:
   {dependency:D(CANONICAL_FILING_FACT_REFS.rentalAssistanceControl,CONTROL),allowedValues:['APPLICABLE'],blockerCode:'RENTAL_ASSISTANCE_CONTROL_UNRESOLVED',requiredProvenanceDependencies:[CANONICAL_FILING_FACT_REFS.rentalAssistanceFacts]},
   {dependency:D(CANONICAL_FILING_FACT_REFS.otherNoticesFact,CUSTOMER),allowedValues:['NO_OTHER_NOTICES'],blockerCode:'MULTIPLE_NOTICE_PATH_REQUIRES_SEPARATE_BINDING'},
   {dependency:D(CANONICAL_FILING_FACT_REFS.fixedTermExpirationElection,ELECTION),allowedValues:['DO_NOT_SELECT'],blockerCode:'FIXED_TERM_EXPIRATION_ALLEGATION_REQUIRES_SEPARATE_BINDING'},
-  {dependency:otherReliefDep,allowedValues:[allOptionalReliefFalse],blockerCode:'SELECTED_OPTIONAL_RELIEF_REQUIRES_EXACT_AMOUNT_TEXT_PREDICATE_BINDING'},
+  {dependency:otherReliefDep,allowedValues:[false],property:'statutoryDamages',blockerCode:'STATUTORY_DAMAGES_REQUIRES_SEPARATE_BINDING'},
+  {dependency:otherReliefDep,allowedValues:[false],property:'relocationDamages',blockerCode:'RELOCATION_DAMAGES_REQUIRES_SEPARATE_BINDING'},
+  {dependency:otherReliefDep,allowedValues:[false],property:'forfeiture',blockerCode:'FORFEITURE_RELIEF_REQUIRES_SEPARATE_BINDING'},
+  {dependency:otherReliefDep,allowedValues:[false],property:'attorneyFees',blockerCode:'ATTORNEY_FEE_RELIEF_REQUIRES_SEPARATE_BINDING'},
+  {dependency:otherReliefDep,allowedValues:[false],property:'otherRelief',blockerCode:'OTHER_RELIEF_REQUIRES_SEPARATE_BINDING'},
+  {dependency:otherReliefDep,allowedValues:[false],property:'otherAllegations',blockerCode:'OTHER_ALLEGATIONS_REQUIRES_SEPARATE_BINDING'},
   {dependency:udaDep,allowedValues:['NO_COMPENSATED_ASSISTANT'],blockerCode:'PAID_UDA_LDA_PATH_UNSUPPORTED'},
 ],fieldFamilyCoverage};
 export const UD100_GENERATION_BINDING=Object.freeze({...semantics,mapSnapshotId:computeGenerationMapSnapshotId(semantics)});
