@@ -556,13 +556,26 @@ const noUnitPersisted: NoticeFlowData = {
   productionSnapshot: { ...persisted.productionSnapshot!, producedAtISO: '2026-08-14T12:11:00.000Z' },
   createdNoticeArtifact: noUnitArtifact,
 };
+const noUnitCurrentOtherReliefSelections = {
+  state: 'KNOWN' as const,
+  value: allOptionalReliefFalse,
+  confirmation: {
+    confirmationId: 'other-relief-none-no-unit',
+    confirmedAtISO: '2026-08-14T12:12:00.000Z',
+  },
+};
 
-const unansweredUnit = evaluate(supplemental(), noUnitPersisted);
+const unansweredUnit = evaluate(supplemental({
+  preparation: { otherReliefSelections: noUnitCurrentOtherReliefSelections },
+}), noUnitPersisted);
 equal(unansweredUnit.result.status, 'BLOCKED', 'UNANSWERED property unit blocks rather than authorizing omission');
 equal(unansweredUnit.result.fieldWritePlan.length, 0, 'UNANSWERED unit blocker returns zero writes');
 
 const explicitNoUnit = evaluate(
-  supplemental({ propertyUnitConfirmation: { state: 'KNOWN', value: 'NO_UNIT' } }),
+  supplemental({
+    propertyUnitConfirmation: { state: 'KNOWN', value: 'NO_UNIT' },
+    preparation: { otherReliefSelections: noUnitCurrentOtherReliefSelections },
+  }),
   noUnitPersisted,
 );
 equal(explicitNoUnit.result.status, 'GENERATION_BINDING_READY', 'identity-bearing explicit NO_UNIT can resolve premises composition');
@@ -586,7 +599,10 @@ for (const propertyUnitConfirmation of [
   { state: 'REQUIRES_CONFIRMATION', reason: 'confirm unit' } as const,
   { state: 'CONFLICT', values: ['NO_UNIT'] as const, reason: 'unit conflict' } as const,
 ]) {
-  const result = evaluate(supplemental({ propertyUnitConfirmation }), noUnitPersisted).result;
+  const result = evaluate(supplemental({
+    propertyUnitConfirmation,
+    preparation: { otherReliefSelections: noUnitCurrentOtherReliefSelections },
+  }), noUnitPersisted).result;
   equal(result.status, 'BLOCKED', `${propertyUnitConfirmation.state} unit state cannot authorize omission`);
   equal(result.fieldWritePlan.length, 0, `${propertyUnitConfirmation.state} unit state yields zero writes`);
 }
