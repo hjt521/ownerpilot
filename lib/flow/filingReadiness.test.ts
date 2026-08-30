@@ -29,6 +29,10 @@ import {
 } from './outcomeEvents';
 import { OUTCOME_VERSION, type RestoredResolveOutcome } from './outcomePersistence';
 import { bindReviewApproval } from './reviewApproval';
+import type {
+  Ud100Attachment10cReadinessEvidenceInput,
+  Ud100Attachment10cServiceEventEvidence,
+} from './ud100Attachment10cCompositionPlan';
 
 let passed = 0;
 function equal<T>(actual: T, expected: T, message: string) {
@@ -597,13 +601,69 @@ equal(serviceReviewStageB.nextTask?.href, '/notice/3-day/resolve', 'Stage B serv
 const afterStageB = deriveNonpaymentLifecyclePresentation({ surface: 'resolve', data: served, noticePageIndex: 4, outcome: readyFor(served, [after]) });
 equal(afterStageB.nextTask?.href, '/notice/3-day/filing-readiness', 'only accepted no-resolution handoff routes to Filing Readiness');
 
-function finalPacketProjection(packetComposition?: FilingPacketCompositionInput) {
+function finalPacketProjection(
+  packetComposition?: FilingPacketCompositionInput,
+  attachment10cReadinessEvidence?: Ud100Attachment10cReadinessEvidenceInput,
+) {
   return deriveFilingReadiness({
     data: served,
     noticePageIndex: 4,
     outcome: readyFor(served, [after]),
     packetComposition,
+    attachment10cReadinessEvidence,
   });
+}
+
+function r2cEvidence(
+  overrides: Partial<Ud100Attachment10cReadinessEvidenceInput> = {},
+): Ud100Attachment10cReadinessEvidenceInput {
+  const artifact = restoreCreatedNoticeArtifact(served);
+  if (!artifact) throw new Error('R2-C fixture requires exact Created Notice identity.');
+  const serviceEvent: Ud100Attachment10cServiceEventEvidence = {
+    serviceEventId: 'r2c-service-1',
+    createdNotice: {
+      generation: artifact.generation,
+      createdAtISO: artifact.createdAtISO,
+    },
+    serviceDate: '2026-08-14',
+    method: 'personal',
+    outcome: 'SUCCESS',
+    recipient: { kind: 'NAMED_DEFENDANT', name: 'Synthetic Tenant' },
+    provenance: {
+      sourceId: 'synthetic-r2c-service-source',
+      eventId: 'r2c-service-1',
+      eventType: 'SERVICE_ATTEMPT',
+    },
+  };
+  return {
+    serviceEvents: [serviceEvent],
+    linkages: [{
+      defendantOrdinal: 0,
+      defendantName: 'Synthetic Tenant',
+      noticeArtifactId: 'synthetic-notice-1',
+      serviceEventId: 'r2c-service-1',
+    }],
+    serviceElection: {
+      state: 'KNOWN',
+      value: 'PERSONAL_HAND_DELIVERY',
+      confirmation: {
+        confirmationId: 'synthetic-r2c-personal-election',
+        confirmedAtISO: '2026-08-18T19:00:00.000Z',
+      },
+    },
+    serviceElectionConsistencyControl: {
+      state: 'KNOWN',
+      value: 'CONSISTENT',
+      control: {
+        controlId: 'ud100.service-election-consistency',
+        controlVersion: '1.0.0',
+        resultId: 'synthetic-r2c-consistency-current',
+        status: 'CURRENT',
+      },
+      dependencies: [],
+    },
+    ...overrides,
+  };
 }
 
 const omittedPacketFacts = projectFilingCanonicalFacts(created);
@@ -769,10 +829,59 @@ equal(finalPacketProjection(unresolvedProofPacket).state, 'Needs information', '
 
 const unsupported10cPacket = resolvedPacketComposition(served);
 unsupported10cPacket.attachment10c = currentControl<Attachment10cPacketState>({ kind: 'REQUIRED_BUT_UNSUPPORTED' }, '10c-required-unsupported');
-equal(finalPacketProjection(unsupported10cPacket).state, 'Cannot continue', 'required-but-unsupported 10c fails closed');
+equal(finalPacketProjection(unsupported10cPacket).state, 'Cannot continue', 'required-but-unsupported 10c fails closed when R2-C evidence is omitted');
+
+const resolved10cProjection = finalPacketProjection(unsupported10cPacket, r2cEvidence());
+equal(resolved10cProjection.state, 'Ready for packet review', 'exact R2-C plan evidence resolves required Attachment 10c only for packet-composition readiness');
+ok(/no Attachment 10c PDF was generated/i.test(resolved10cProjection.checklist.find(item => item.key === 'PACKET_COMPOSITION')?.ownerPilotKnows ?? ''), 'R2-C readiness explicitly creates no Attachment 10c PDF');
+ok(/has not filed, submitted, signed, paid court fees, or obtained court acceptance/i.test(resolved10cProjection.whatOwnerPilotHasNotDone), 'R2-C Ready for packet review creates no external filing authority');
+
+const missingElectionEvidence = r2cEvidence({ serviceElection: undefined });
+equal(finalPacketProjection(unsupported10cPacket, missingElectionEvidence).state, 'Needs information', 'missing complaint-side owner election remains Needs information and is never inferred from factual service');
+
+const staleConsistencyEvidence = r2cEvidence();
+if (staleConsistencyEvidence.serviceElectionConsistencyControl?.state !== 'KNOWN') throw new Error('R2-C consistency fixture failed.');
+staleConsistencyEvidence.serviceElectionConsistencyControl = {
+  ...staleConsistencyEvidence.serviceElectionConsistencyControl,
+  control: {
+    ...staleConsistencyEvidence.serviceElectionConsistencyControl.control!,
+    status: 'STALE',
+  },
+};
+equal(finalPacketProjection(unsupported10cPacket, staleConsistencyEvidence).state, 'Cannot continue', 'stale R2-C service-election consistency evidence fails closed');
+
+const substitutedEvidence = r2cEvidence();
+substitutedEvidence.serviceEvents = substitutedEvidence.serviceEvents?.map(event => ({
+  ...event,
+  method: 'substituted' as const,
+  mailingDate: '2026-08-14',
+}));
+equal(finalPacketProjection(unsupported10cPacket, substitutedEvidence).state, 'Cannot continue', 'factual substituted service does not create the existing personal complaint-side election');
+
+const otherRecipientEvidence = r2cEvidence();
+otherRecipientEvidence.serviceEvents = otherRecipientEvidence.serviceEvents?.map(event => ({
+  ...event,
+  recipient: { kind: 'OTHER_PERSON' as const, name: 'Synthetic Other Person' },
+}));
+equal(finalPacketProjection(unsupported10cPacket, otherRecipientEvidence).state, 'Cannot continue', 'OTHER_PERSON factual recipient cannot satisfy the bounded personal-election readiness profile');
+
+const failedR2cEvidence = r2cEvidence();
+failedR2cEvidence.serviceEvents = failedR2cEvidence.serviceEvents?.map(event => ({ ...event, outcome: 'FAILED' as const }));
+equal(finalPacketProjection(unsupported10cPacket, failedR2cEvidence).state, 'Cannot continue', 'failed R2-C service evidence fails closed rather than being omitted');
+
+const duplicateR2cEvidence = r2cEvidence();
+duplicateR2cEvidence.linkages = duplicateR2cEvidence.linkages
+  ? [...duplicateR2cEvidence.linkages, { ...duplicateR2cEvidence.linkages[0]! }]
+  : undefined;
+equal(finalPacketProjection(unsupported10cPacket, duplicateR2cEvidence).state, 'Cannot continue', 'duplicate R2-C linkage fails closed');
+
+const contradictoryNotApplicableEvidence = r2cEvidence();
+equal(finalPacketProjection(resolvedPacketComposition(served), contradictoryNotApplicableEvidence).state, 'Cannot continue', 'governed NOT_APPLICABLE plus supplied R2-C composition evidence is contradictory and fails closed');
+
 const unresolved10cPacket = resolvedPacketComposition(served);
 unresolved10cPacket.attachment10c = currentControl<Attachment10cPacketState>({ kind: 'UNRESOLVED' }, '10c-unresolved');
-equal(finalPacketProjection(unresolved10cPacket).state, 'Needs information', 'unresolved 10c blocks Ready without fabrication');
+equal(finalPacketProjection(unresolved10cPacket).state, 'Needs information', 'unresolved 10c blocks Ready without fabrication when R2-C evidence is omitted');
+equal(finalPacketProjection(unresolved10cPacket, r2cEvidence()).state, 'Cannot continue', 'supplied R2-C evidence cannot override governed UNRESOLVED Attachment 10c applicability');
 
 const preSeamInvalidPacket = resolvedPacketComposition(served);
 preSeamInvalidPacket.attachment10c = currentControl<Attachment10cPacketState>({ kind: 'REQUIRED_BUT_UNSUPPORTED' }, 'pre-seam-unsupported');
@@ -781,9 +890,10 @@ const preSeamProjection = deriveFilingReadiness({
   noticePageIndex: 4,
   outcome: absent,
   packetComposition: preSeamInvalidPacket,
+  attachment10cReadinessEvidence: r2cEvidence(),
 });
-equal(preSeamProjection.state, 'Not yet applicable', 'packet composition cannot outrank missing post-service outcome');
-equal(preSeamProjection.checklist.find(item => item.key === 'PACKET_COMPOSITION')?.status, 'Not yet applicable', 'packet composition is explicitly not yet applicable before final seam');
+equal(preSeamProjection.state, 'Not yet applicable', 'R2-C evidence cannot outrank missing post-service outcome');
+equal(preSeamProjection.checklist.find(item => item.key === 'PACKET_COMPOSITION')?.status, 'Not yet applicable', 'R2-C evidence is explicitly not yet applicable before final seam');
 
 equal(finalPacketProjection(resolvedPacketComposition(served)).state, 'Ready for packet review', 'fully resolved packet composition plus existing Stage C prerequisites reaches exact Ready for packet review');
 
@@ -847,6 +957,7 @@ const sampled = [
   blockedInvalid,
   finalPacketProjection(),
   finalPacketProjection(resolvedPacketComposition(served)),
+  resolved10cProjection,
 ];
 ok(sampled.every(result => allowedStates.has(result.state)), 'Stage C aggregate state vocabulary is closed to the five Product states');
 ok(sampled.every(result => result.checklist.length === 7), 'Stage C always presents the seven-category checklist including packet composition');

@@ -26,6 +26,10 @@ import {
   type NoticePacketState,
   type ProofOfServicePacketState,
 } from './filingCanonicalFacts';
+import {
+  evaluateUd100Attachment10cReadiness,
+  type Ud100Attachment10cReadinessEvidenceInput,
+} from './ud100Attachment10cCompositionPlan';
 
 export type FilingReadinessAggregateState =
   | 'Needs information'
@@ -85,6 +89,7 @@ export interface FilingReadinessProjectionInput {
   noticePageIndex: number | null;
   outcome: RestoredResolveOutcome;
   packetComposition?: FilingPacketCompositionInput;
+  attachment10cReadinessEvidence?: Ud100Attachment10cReadinessEvidenceInput;
 }
 
 interface CoreFactsEvaluation {
@@ -242,6 +247,7 @@ function evaluateControlEvidence(data: NoticeFlowData): ControlEvaluation {
 function evaluatePacketComposition(
   data: NoticeFlowData,
   packetComposition: FilingPacketCompositionInput | undefined,
+  attachment10cReadinessEvidence: Ud100Attachment10cReadinessEvidenceInput | undefined,
 ): PacketCompositionEvaluation {
   const projection = projectFilingCanonicalFacts(data, {
     preparation: { packetComposition },
@@ -286,11 +292,47 @@ function evaluatePacketComposition(
     };
   }
 
-  if (attachment10c.value.kind === 'REQUIRED_BUT_UNSUPPORTED') {
+  const attachment10cReadiness = attachment10cReadinessEvidence
+    ? evaluateUd100Attachment10cReadiness(projection, attachment10cReadinessEvidence)
+    : null;
+
+  if (attachment10cReadiness?.status === 'BLOCKED') {
     return {
       status: 'Cannot continue',
-      known: 'An additional attachment is required for this packet state.',
-      problem: 'That required attachment composition is not supported in this bounded preparation path.',
+      known: 'OwnerPilot evaluated supplied deterministic Attachment 10c composition-readiness evidence for this exact Notice.',
+      problem: attachment10cReadiness.reasons.join(' '),
+    };
+  }
+
+  if (attachment10c.value.kind === 'REQUIRED_BUT_UNSUPPORTED') {
+    if (!attachment10cReadiness) {
+      return {
+        status: 'Cannot continue',
+        known: 'An additional attachment is required for this packet state.',
+        problem: 'That required attachment composition is not supported in this bounded preparation path.',
+      };
+    }
+    if (attachment10cReadiness.status === 'NEEDS_INFORMATION') {
+      return {
+        status: 'Needs information',
+        known: 'The governed packet state requires Attachment 10c, and OwnerPilot has a bounded deterministic composition-readiness seam for this exact Notice.',
+        problem: attachment10cReadiness.reasons.join(' '),
+      };
+    }
+    if (attachment10cReadiness.status !== 'READY') {
+      return {
+        status: 'Cannot continue',
+        known: 'The governed packet state requires Attachment 10c.',
+        problem: 'Supplied Attachment 10c evidence did not resolve the required deterministic composition-readiness state.',
+      };
+    }
+  } else if (attachment10c.value.kind === 'NOT_APPLICABLE'
+    && attachment10cReadiness
+    && attachment10cReadiness.status !== 'NOT_APPLICABLE') {
+    return {
+      status: 'Cannot continue',
+      known: 'The governed packet state says Attachment 10c is not applicable.',
+      problem: 'Supplied Attachment 10c composition evidence contradicts the governed not-applicable state.',
     };
   }
 
@@ -308,7 +350,9 @@ function evaluatePacketComposition(
 
   return {
     status: 'Complete',
-    known: 'Agreement, Notice, proof-of-service, and additional-attachment composition states are deterministically resolved for this Notice.',
+    known: attachment10c.value.kind === 'REQUIRED_BUT_UNSUPPORTED'
+      ? 'Agreement, Notice, proof-of-service, and Attachment 10c deterministic composition readiness are resolved for packet-composition review only; no Attachment 10c PDF was generated and no filing authority was created.'
+      : 'Agreement, Notice, proof-of-service, and additional-attachment composition states are deterministically resolved for this Notice.',
     problem: null,
   };
 }
@@ -960,7 +1004,11 @@ export function deriveFilingReadiness(
   const frozen = context.artifact.createData;
   const core = evaluateCoreFacts(frozen);
   const controls = evaluateControlEvidence(frozen);
-  const packet = evaluatePacketComposition(data, input.packetComposition);
+  const packet = evaluatePacketComposition(
+    data,
+    input.packetComposition,
+    input.attachment10cReadinessEvidence,
+  );
   const checklist = buildChecklist({
     data,
     hasInvalidNoticeState: false,
