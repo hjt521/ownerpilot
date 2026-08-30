@@ -18,8 +18,15 @@ import {
   type OwnerReviewedDocumentEvidence,
   type OwnerReviewedDocumentIdentity,
 } from './officialFormOwnerReview';
+import {
+  evaluateUd100BootstrapV3CompatibilityBinding,
+  evaluateUd100PacketAwareGenerationBinding,
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING,
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION,
+  UD100_PACKET_AWARE_GENERATION_BINDING,
+  UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION,
+} from './ud100GeneratedDraft';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
-import { evaluateUd100GenerationBinding } from './ud100GenerationBinding';
 
 export const LEGACY_FILING_PREPARATION_CURRENT_STATE_SCHEMA_VERSION = 1 as const;
 export const FILING_PREPARATION_CURRENT_STATE_SCHEMA_VERSION = 2 as const;
@@ -448,6 +455,28 @@ function factsExactShape(value: unknown): value is Extract<FilingCanonicalFactsP
     && isPlainObject(value.facts)
     && jsonSerializable(value.facts);
 }
+function evaluateCommittedUd100GeneratedDraftFamily(
+  snapshot: FilingPreparationCanonicalSnapshot,
+  facts: FilingCanonicalFactsProjection,
+) {
+  if (snapshot.mapSnapshotId === UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId
+    && snapshot.generatorContractVersion === UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION) {
+    return evaluateUd100BootstrapV3CompatibilityBinding(
+      UD100_OFFICIAL_SOURCE_IDENTITY,
+      'CURRENT',
+      facts,
+    );
+  }
+  if (snapshot.mapSnapshotId === UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId
+    && snapshot.generatorContractVersion === UD100_PACKET_AWARE_GENERATOR_CONTRACT_VERSION) {
+    return evaluateUd100PacketAwareGenerationBinding(
+      UD100_OFFICIAL_SOURCE_IDENTITY,
+      'CURRENT',
+      facts,
+    );
+  }
+  return null;
+}
 function currentnessMaterialValidation(
   value: unknown,
   generatedBinding: FilingPreparationGeneratedDraftBinding | null,
@@ -481,13 +510,12 @@ function currentnessMaterialValidation(
       || authorization.snapshotId !== snapshot.preparationAuthorizationSnapshotId) {
       return { status: 'BLOCKED', blockReason: 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', detail: 'Preparation authorization does not reproduce the committed preparation-authorization snapshot.' };
     }
-    const evaluation = evaluateUd100GenerationBinding(
-      UD100_OFFICIAL_SOURCE_IDENTITY,
-      value.officialSourceHealth,
-      value.facts,
-    );
+    const evaluation = evaluateCommittedUd100GeneratedDraftFamily(snapshot, value.facts);
+    if (evaluation === null) {
+      return { status: 'BLOCKED', blockReason: 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', detail: 'Committed preparation snapshot does not identify an exact released generated-draft compatibility family.' };
+    }
     if (evaluation.status !== 'GENERATION_BINDING_READY') {
-      return { status: 'BLOCKED', blockReason: 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', detail: 'Canonical UD-100 generation binding is not ready for the supplied dynamic material.' };
+      return { status: 'BLOCKED', blockReason: 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', detail: 'Committed generated-draft compatibility binding is not ready for the supplied dynamic material.' };
     }
     if (evaluation.mapSnapshotId !== snapshot.mapSnapshotId
       || evaluation.referencedFactSnapshotId !== snapshot.referencedFactSnapshotId
