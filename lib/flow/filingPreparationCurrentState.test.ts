@@ -28,6 +28,11 @@ import {
   type GeneratedDraftIdentity,
 } from './officialFormGeneratedDraft';
 import { canonicalizeGenerationIdentity } from './officialFormGenerationBinding';
+import {
+  evaluateUd100BootstrapV3CompatibilityBinding,
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING,
+  UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION,
+} from './ud100GeneratedDraft';
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 import { evaluateUd100GenerationBinding } from './ud100GenerationBinding';
 
@@ -113,8 +118,10 @@ function fixture() {
   equal(leaseStatus.value, 'NO_AGREEMENT', 'R1 fixture preserves NO_AGREEMENT value');
   ok(leaseStatus.provenance.customerVerification !== undefined, 'R1 fixture preserves explicit lease-status customer verification before binding');
   equal(leaseStatus.provenance.customerVerification?.verificationId, 'lease-status-no-agreement-r1', 'R1 fixture preserves deterministic lease-status verification identity');
-  const evaluation = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts);
-  if (evaluation.status !== 'GENERATION_BINDING_READY') throw new Error(`R1 binding fixture blocked: ${JSON.stringify(evaluation)}`);
+  const evaluation = evaluateUd100BootstrapV3CompatibilityBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', facts);
+  if (evaluation.status !== 'GENERATION_BINDING_READY') throw new Error(`R1 frozen-B1 binding fixture blocked: ${JSON.stringify(evaluation)}`);
+  equal(evaluation.mapSnapshotId, UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, 'R1 fixture binds the exact frozen B1 map');
+  equal(evaluation.generatorContractVersion, UD100_BOOTSTRAP_V3_COMPATIBILITY_GENERATOR_CONTRACT_VERSION, 'R1 fixture binds the exact frozen B1 contract');
   const authorization: FormPreparationAuthorization = {
     authorizationId: 'prep-auth-r1', resultId: 'prep-result-r1', controlId: 'form-preparation-relevance', controlVersion: '1.0.0',
     status: 'CURRENT', decision: 'FORM_RELEVANT_FOR_PREPARATION',
@@ -201,6 +208,43 @@ function migrationReferencedFactSnapshot(facts: any): { id: string; directRefs: 
 }
 
 {
+  const liveEvaluation = evaluateUd100GenerationBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', f.facts);
+  equal(liveEvaluation.status, 'GENERATION_BINDING_READY', 'live R2-D D.1 remains independently READY');
+  if (liveEvaluation.status !== 'GENERATION_BINDING_READY') throw new Error('live R2-D D.1 fixture must be READY');
+  const liveSnapshot: FilingPreparationCanonicalSnapshot = {
+    ...f.snapshot,
+    mapSnapshotId: liveEvaluation.mapSnapshotId,
+    referencedFactSnapshotId: liveEvaluation.referencedFactSnapshotId,
+    generationInputId: liveEvaluation.generationInputId,
+    generatorContractVersion: liveEvaluation.generatorContractVersion,
+    fieldWritePlanDigest: computeFieldWritePlanDigest(liveEvaluation.fieldWritePlan),
+  };
+  const liveIdentity: GeneratedDraftIdentity = {
+    schemaVersion:1, artifactClass:'GENERATED_DRAFT', artifactRole:'OWNER_GENERATED_PREPARATION',
+    ...liveSnapshot,
+    preparedAtISO:f.draft.preparedAtISO,
+    generatedPdfSha256:f.draft.generatedPdfSha256,
+    generatedByteLength:f.draft.generatedByteLength,
+  };
+  const liveDraft: GeneratedDraftEvidence = {
+    ...liveIdentity,
+    generatedDocumentId: computeGeneratedDocumentId(liveIdentity),
+  };
+  const result = createFilingPreparationCurrentState({
+    authenticatedUserId:USER,
+    riskpathRecordId:RISKPATH,
+    revision:2,
+    preparationSnapshot:liveSnapshot,
+    generatedDraftBinding:{revision:2,generatedDraft:liveDraft},
+    generatedDraftBytes:f.bytes,
+    currentnessMaterialBinding:f.material,
+    ownerReviewBinding:null,
+  });
+  equal(result.status, 'BLOCKED', 'live R2-D D.1 map/contract is not admitted as a generated-draft currentness family');
+  if (result.status === 'BLOCKED') equal(result.blockReason, 'CURRENTNESS_MATERIAL_PREPARATION_MISMATCH', 'live D.1 generated-draft-family attempt fails closed at exact currentness binding');
+}
+
+{
   const result = createFilingPreparationCurrentState({ authenticatedUserId:USER, riskpathRecordId:RISKPATH, revision:2, preparationSnapshot:f.snapshot, generatedDraftBinding:{revision:2,generatedDraft:f.draft}, generatedDraftBytes:f.bytes, currentnessMaterialBinding:null, ownerReviewBinding:null });
   equal(result.status, 'BLOCKED', 'new generated revision cannot omit currentness material');
   if (result.status === 'BLOCKED') equal(result.blockReason, 'CURRENTNESS_MATERIAL_REQUIRED', 'missing material has exact blocker');
@@ -265,7 +309,9 @@ function migrationReferencedFactSnapshot(facts: any): { id: string; directRefs: 
 
 {
   const source = readFileSync('lib/flow/filingPreparationCurrentState.ts','utf8');
-  ok(source.includes('evaluateUd100GenerationBinding('), 'core reuses canonical UD-100 generation evaluator');
+  ok(source.includes('evaluateUd100BootstrapV3CompatibilityBinding('), 'core replays exact frozen B1 generated-draft family');
+  ok(source.includes('evaluateUd100PacketAwareGenerationBinding('), 'core replays exact frozen B2 generated-draft family');
+  ok(!source.includes('evaluateUd100GenerationBinding('), 'core does not admit live R2-D D.1 as a generated-draft family');
   ok(source.includes('validateFormPreparationAuthorization('), 'core reuses canonical preparation authorization validation');
   for (const prohibited of ['generatedDraftCurrentness', 'OUT_OF_DATE', 'service_role', 'createClient(', '.from(', 'Date.now(', 'Math.random(']) {
     ok(!source.includes(prohibited), `core excludes prohibited runtime/currentness authority token: ${prohibited}`);
