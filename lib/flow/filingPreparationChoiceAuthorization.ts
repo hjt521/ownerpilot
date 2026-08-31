@@ -175,6 +175,20 @@ const AUTHORIZATION_KEYS = [
   'filingChoiceSummaryId',
 ] as const;
 
+const CREATED_NOTICE_KEYS = ['generation', 'createdAtISO'] as const;
+const OFFICIAL_SOURCE_KEYS = [
+  'registryVersion',
+  'artifactId',
+  'authorityKey',
+  'formId',
+  'revisionEffective',
+  'sourceSnapshotId',
+  'repositoryPath',
+  'repositorySha256',
+  'artifactClass',
+  'repositoryStatus',
+] as const;
+
 function plainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -194,6 +208,14 @@ function validExactTimestamp(value: unknown): value is string {
 
 function digest(prefix: string, value: unknown): string {
   return `${prefix}:sha256:${createHash('sha256').update(canonicalizeGenerationIdentity(value)).digest('hex')}`;
+}
+
+function safeDigest(prefix: string, value: unknown): string | null {
+  try {
+    return digest(prefix, value);
+  } catch {
+    return null;
+  }
 }
 
 function computeFieldWritePlanDigest(plan: unknown): string {
@@ -234,7 +256,9 @@ function authorizationBlocked(
   };
 }
 
-function readyBinding(value: unknown): value is Extract<OfficialFormGenerationBindingEvaluation, { status: 'GENERATION_BINDING_READY' }> {
+function readyBinding(
+  value: unknown,
+): value is Extract<OfficialFormGenerationBindingEvaluation, { status: 'GENERATION_BINDING_READY' }> {
   if (!isExactObject(value, READY_BINDING_KEYS)) return false;
   return value.status === 'GENERATION_BINDING_READY'
     && typeof value.mapSnapshotId === 'string'
@@ -248,26 +272,19 @@ function readyBinding(value: unknown): value is Extract<OfficialFormGenerationBi
     && Array.isArray(value.fieldWritePlan);
 }
 
-function addDependency(
-  refs: Set<CanonicalFilingFactRef>,
-  ref: CanonicalFilingFactRef,
-): void {
-  refs.add(ref);
-}
-
 function collectLiveD1ReferencedRefs(
   facts: Extract<FilingCanonicalFactsProjection, { status: 'READY' }>,
 ): readonly CanonicalFilingFactRef[] {
   const refs = new Set<CanonicalFilingFactRef>();
   for (const requirement of UD100_GENERATION_BINDING.profileRequirements) {
-    addDependency(refs, requirement.dependency.ref);
+    refs.add(requirement.dependency.ref);
   }
   for (const rule of UD100_GENERATION_BINDING.fieldRules) {
     if (rule.disposition === 'WRITE') {
-      for (const dependency of rule.dependencies) addDependency(refs, dependency.ref);
-      if (rule.condition) addDependency(refs, rule.condition.dependency.ref);
+      for (const dependency of rule.dependencies) refs.add(dependency.ref);
+      if (rule.condition) refs.add(rule.condition.dependency.ref);
     } else if (rule.disposition === 'GOVERNED_PRESERVE_OFFICIAL_BLANK_NO_WRITE') {
-      addDependency(refs, rule.dependency.ref);
+      refs.add(rule.dependency.ref);
     }
   }
 
@@ -301,11 +318,18 @@ function exactCanonicalEqual(a: unknown, b: unknown): boolean {
   }
 }
 
-function factEntry(
-  ref: CanonicalFilingFactRef,
-  fact: FilingFactState<unknown>,
-): FilingChoiceSummaryFactEntry {
-  return { ref, fact };
+function exactOfficialSourceIdentity(value: unknown): value is OfficialSourceIdentity {
+  if (!isExactObject(value, OFFICIAL_SOURCE_KEYS)) return false;
+  return Number.isInteger(value.registryVersion)
+    && typeof value.artifactId === 'string'
+    && typeof value.authorityKey === 'string'
+    && typeof value.formId === 'string'
+    && typeof value.revisionEffective === 'string'
+    && typeof value.sourceSnapshotId === 'string'
+    && typeof value.repositoryPath === 'string'
+    && typeof value.repositorySha256 === 'string'
+    && typeof value.artifactClass === 'string'
+    && typeof value.repositoryStatus === 'string';
 }
 
 export function createFilingChoiceSummary(
@@ -315,9 +339,10 @@ export function createFilingChoiceSummary(
   if (facts.status !== 'READY') {
     return summaryBlocked('CANONICAL_FACTS_NOT_READY', `Canonical filing facts are ${facts.status}.`);
   }
-  if (!validExactTimestamp(facts.createdNoticeIdentity.createdAtISO)
+  if (!isExactObject(facts.createdNoticeIdentity, CREATED_NOTICE_KEYS)
     || typeof facts.createdNoticeIdentity.generation !== 'string'
-    || facts.createdNoticeIdentity.generation.trim() === '') {
+    || facts.createdNoticeIdentity.generation.trim() === ''
+    || !validExactTimestamp(facts.createdNoticeIdentity.createdAtISO)) {
     return summaryBlocked('INVALID_CREATED_NOTICE_IDENTITY', 'Created Notice identity must be exact and timestamp-valid.');
   }
   if (!readyBinding(suppliedBinding)) {
@@ -340,13 +365,12 @@ export function createFilingChoiceSummary(
     return summaryBlocked('FACTS_BINDING_IDENTITY_MISMATCH', 'Supplied live D.1 evaluation does not exactly match current canonical facts.');
   }
 
-  const refs = collectLiveD1ReferencedRefs(facts);
   const ownerChoices: FilingChoiceSummaryFactEntry[] = [];
   const governedControls: FilingChoiceSummaryFactEntry[] = [];
   const packetFacts: FilingChoiceSummaryFactEntry[] = [];
   const contextFacts: FilingChoiceSummaryFactEntry[] = [];
 
-  for (const ref of refs) {
+  for (const ref of collectLiveD1ReferencedRefs(facts)) {
     const fact = facts.facts[ref] as FilingFactState<unknown> | undefined;
     if (!fact) {
       return summaryBlocked('INVALID_CANONICAL_SUMMARY', `Current live D.1 referenced fact ${ref} is missing.`);
@@ -354,22 +378,20 @@ export function createFilingChoiceSummary(
     if (!sameCreatedNotice(fact.provenance.createdNotice, facts.createdNoticeIdentity)) {
       return summaryBlocked('CREATED_NOTICE_PROVENANCE_MISMATCH', `${ref} is not bound to the exact current Created Notice identity.`);
     }
-    const entry = factEntry(ref, fact);
+    const entry: FilingChoiceSummaryFactEntry = { ref, fact };
     if (String(ref).startsWith('ud100.packet.')) {
       packetFacts.push(entry);
-      continue;
-    }
-    if (fact.provenance.provenanceClass === 'GOVERNED_CONTROL_RESULT') {
+    } else if (fact.provenance.provenanceClass === 'GOVERNED_CONTROL_RESULT') {
       governedControls.push(entry);
-      continue;
-    }
-    if (fact.provenance.provenanceClass === 'FROZEN_CUSTOMER_CONFIRMED'
+    } else if (
+      fact.provenance.provenanceClass === 'FROZEN_CUSTOMER_CONFIRMED'
       || fact.provenance.provenanceClass === 'SUPPLEMENTAL_CUSTOMER_INPUT'
-      || fact.provenance.provenanceClass === 'CUSTOMER_CONFIRMED_LEGAL_ELECTION') {
+      || fact.provenance.provenanceClass === 'CUSTOMER_CONFIRMED_LEGAL_ELECTION'
+    ) {
       ownerChoices.push(entry);
-      continue;
+    } else {
+      contextFacts.push(entry);
     }
-    contextFacts.push(entry);
   }
 
   const identity: FilingChoiceSummaryIdentity = {
@@ -400,8 +422,8 @@ export function createFilingChoiceSummary(
 }
 
 function summaryIdentityFromUnknown(value: unknown): FilingChoiceSummaryIdentity | null {
-  if (!isExactObject(value, SUMMARY_KEYS)) return null;
-  if (value.schemaVersion !== FILING_CHOICE_SUMMARY_SCHEMA_VERSION
+  if (!isExactObject(value, SUMMARY_KEYS)
+    || value.schemaVersion !== FILING_CHOICE_SUMMARY_SCHEMA_VERSION
     || typeof value.filingChoiceSummaryId !== 'string'
     || typeof value.officialSourceArtifactId !== 'string'
     || typeof value.officialSourceSnapshotId !== 'string'
@@ -410,8 +432,10 @@ function summaryIdentityFromUnknown(value: unknown): FilingChoiceSummaryIdentity
     || typeof value.generationInputId !== 'string'
     || typeof value.generatorContractVersion !== 'string'
     || typeof value.fieldWritePlanDigest !== 'string'
-    || !plainObject(value.createdNoticeIdentity)
-    || !plainObject(value.officialSourceIdentity)
+    || !isExactObject(value.createdNoticeIdentity, CREATED_NOTICE_KEYS)
+    || typeof value.createdNoticeIdentity.generation !== 'string'
+    || !validExactTimestamp(value.createdNoticeIdentity.createdAtISO)
+    || !exactOfficialSourceIdentity(value.officialSourceIdentity)
     || !Array.isArray(value.ownerChoices)
     || !Array.isArray(value.governedControls)
     || !Array.isArray(value.packetFacts)
@@ -420,19 +444,22 @@ function summaryIdentityFromUnknown(value: unknown): FilingChoiceSummaryIdentity
   }
   return {
     schemaVersion: FILING_CHOICE_SUMMARY_SCHEMA_VERSION,
-    createdNoticeIdentity: value.createdNoticeIdentity as FilingChoiceSummaryIdentity['createdNoticeIdentity'],
+    createdNoticeIdentity: {
+      generation: value.createdNoticeIdentity.generation,
+      createdAtISO: value.createdNoticeIdentity.createdAtISO,
+    },
     officialSourceArtifactId: value.officialSourceArtifactId,
     officialSourceSnapshotId: value.officialSourceSnapshotId,
-    officialSourceIdentity: value.officialSourceIdentity as unknown as OfficialSourceIdentity,
+    officialSourceIdentity: value.officialSourceIdentity,
     mapSnapshotId: value.mapSnapshotId,
     referencedFactSnapshotId: value.referencedFactSnapshotId,
     generationInputId: value.generationInputId,
     generatorContractVersion: value.generatorContractVersion,
     fieldWritePlanDigest: value.fieldWritePlanDigest,
-    ownerChoices: value.ownerChoices as unknown as readonly FilingChoiceSummaryFactEntry[],
-    governedControls: value.governedControls as unknown as readonly FilingChoiceSummaryFactEntry[],
-    packetFacts: value.packetFacts as unknown as readonly FilingChoiceSummaryFactEntry[],
-    contextFacts: value.contextFacts as unknown as readonly FilingChoiceSummaryFactEntry[],
+    ownerChoices: value.ownerChoices as readonly FilingChoiceSummaryFactEntry[],
+    governedControls: value.governedControls as readonly FilingChoiceSummaryFactEntry[],
+    packetFacts: value.packetFacts as readonly FilingChoiceSummaryFactEntry[],
+    contextFacts: value.contextFacts as readonly FilingChoiceSummaryFactEntry[],
   };
 }
 
@@ -451,8 +478,8 @@ export function authorizeFilingChoicesForPreparation(
   if (!suppliedIdentity || !plainObject(suppliedSummary) || typeof suppliedSummary.filingChoiceSummaryId !== 'string') {
     return authorizationBlocked('INVALID_SUMMARY_SHAPE', 'Filing-choice summary must have the exact canonical summary shape.');
   }
-  const recomputedSuppliedId = computeFilingChoiceSummaryId(suppliedIdentity);
-  if (suppliedSummary.filingChoiceSummaryId !== recomputedSuppliedId) {
+  const recomputedSuppliedId = safeDigest('filing-choice-summary', suppliedIdentity);
+  if (!recomputedSuppliedId || suppliedSummary.filingChoiceSummaryId !== recomputedSuppliedId) {
     return authorizationBlocked('SUMMARY_IDENTITY_MISMATCH', 'Supplied filing-choice summary digest does not match its canonical payload.');
   }
   if (!exactCanonicalEqual(suppliedSummary, current.summary)) {
@@ -471,7 +498,7 @@ export function authorizeFilingChoicesForPreparation(
   if (!validExactTimestamp(authorizationInput.confirmedAtISO)) {
     return authorizationBlocked('MALFORMED_CONFIRMATION_TIMESTAMP', 'confirmedAtISO must be an exact valid timestamp.');
   }
-  if (Date.parse(authorizationInput.confirmedAtISO) < Date.parse(facts.createdNoticeIdentity.createdAtISO)) {
+  if (Date.parse(authorizationInput.confirmedAtISO) < Date.parse(current.summary.createdNoticeIdentity.createdAtISO)) {
     return authorizationBlocked('CONFIRMATION_PRECEDES_CREATED_NOTICE', 'Owner preparation-choice confirmation cannot precede the exact Created Notice.');
   }
   if (authorizationInput.filingChoiceSummaryId !== current.summary.filingChoiceSummaryId) {
