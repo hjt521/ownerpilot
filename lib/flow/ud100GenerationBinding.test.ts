@@ -318,12 +318,12 @@ equal(ready.result.pdfMutation, 'NOT_PERFORMED', 'GENERATION_BINDING_READY does 
 equal(ready.result.formApplicability, 'NOT_EVALUATED', 'D.1 does not decide applicability');
 equal(ready.result.formRequiredness, 'NOT_EVALUATED', 'D.1 does not decide requiredness');
 equal(UD100_GENERATION_BINDING.mapId, UD100_GENERATION_BINDING_MAP_ID, 'map id is explicit');
-equal(UD100_GENERATION_BINDING.mapId, 'ud100-2026-07-01-initial-prefiling-generation-binding', 'post-R2E forfeiture binding preserves exact map id');
-equal(UD100_GENERATION_BINDING.mapVersion, '1.5.0', 'post-R2E forfeiture binding advances exact live D.1 map version to 1.5.0');
+equal(UD100_GENERATION_BINDING.mapId, 'ud100-2026-07-01-initial-prefiling-generation-binding', 'post-R2E statutory-damages binding preserves exact map id');
+equal(UD100_GENERATION_BINDING.mapVersion, '1.6.0', 'post-R2E statutory-damages binding advances exact live D.1 map version to 1.6.0');
 equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'post-R2E map-version export matches definition');
-equal(UD100_GENERATION_BINDING.generatorContractVersion, 'ud100-field-write-plan-v5', 'post-R2E forfeiture binding advances live generator contract to v5');
+equal(UD100_GENERATION_BINDING.generatorContractVersion, 'ud100-field-write-plan-v6', 'post-R2E statutory-damages binding advances live generator contract to v6');
 equal(UD100_GENERATION_BINDING.profileId, UD100_GENERATION_PROFILE_ID, 'bounded initial pre-filing profile remains explicit');
-equal(UD100_GENERATION_BINDING.profileId, 'ud100-initial-prefiling-owner-preparation-v1', 'post-R2E forfeiture binding preserves exact profile id');
+equal(UD100_GENERATION_BINDING.profileId, 'ud100-initial-prefiling-owner-preparation-v1', 'post-R2E statutory-damages binding preserves exact profile id');
 ok(UD100_GENERATION_BINDING.mapSnapshotId.startsWith('map:sha256:'), 'map snapshot is content-addressed');
 equal(validateGenerationBindingDefinition(UD100_FIELD_MAP_FOUNDATION).status, 'BLOCKED', 'six-field Stage D foundation remains not generation-capable');
 equal(validateGenerationBindingDefinition(UD100_GENERATION_BINDING).status, 'VALID', 'post-R2E D.1 definition independently validates');
@@ -356,6 +356,23 @@ for (const [objectReference, action] of [
   ['896 0 R', 'PRESERVE_OFFICIAL_BLANK_NO_WRITE'],
 ] as const) {
   equal(ready.result.fieldWritePlan.find(item => item.objectReference === objectReference)?.action, action, `negative Item-14 route preserves exact ${objectReference} action`);
+}
+equal(ready.result.fieldWritePlan.find(item => item.objectReference === '602 0 R')?.action, 'SET_EXPLICIT_NONSELECTION', 'confirmed statutoryDamages=false explicitly nonselects exact Item 15 checkbox');
+equal(ready.result.fieldWritePlan.find(item => item.objectReference === '894 0 R')?.action, 'SET_EXPLICIT_NONSELECTION', 'confirmed statutoryDamages=false explicitly nonselects exact Item 17g checkbox');
+for (const objectReference of ['602 0 R', '894 0 R'] as const) {
+  const statutoryRule = UD100_GENERATION_BINDING.fieldRules.find(rule => rule.evidence.objectReference === objectReference);
+  ok(
+    statutoryRule?.disposition === 'WRITE'
+      && statutoryRule.dependencies.length === 1
+      && statutoryRule.dependencies[0]?.ref === CANONICAL_FILING_FACT_REFS.otherReliefSelections
+      && statutoryRule.dependencies[0]?.authorityClass === 'CUSTOMER_CONFIRMED_LEGAL_ELECTION',
+    `${objectReference} statutory-damages rule depends only on the customer-confirmed legal election`,
+  );
+  ok(
+    statutoryRule?.disposition !== 'WRITE'
+      || !statutoryRule.dependencies.some(dep => dep.ref === CANONICAL_FILING_FACT_REFS.serviceFacts || dep.ref === CANONICAL_FILING_FACT_REFS.initialComplaintLifecycle),
+    `${objectReference} excludes notice/service and complaint-lifecycle inference authority`,
+  );
 }
 
 const attorneyFor = ready.result.fieldWritePlan.find(item => item.objectReference === '855 0 R');
@@ -912,7 +929,116 @@ const preNoticeFairRentalConfirmation = evaluate(supplemental({
   },
 })).result;
 equal(preNoticeFairRentalConfirmation.status, 'BLOCKED', 'pre-Created-Notice Item-14 confirmation is not current and blocks');
-for (const heldRelief of ['statutoryDamages','relocationDamages','attorneyFees','otherRelief','otherAllegations'] as const) {
+
+const statutoryDamagesPositive = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...allOptionalReliefFalse, statutoryDamages: true },
+      confirmation: confirmation('statutory-damages-positive'),
+    },
+  },
+})).result;
+equal(statutoryDamagesPositive.status, 'GENERATION_BINDING_READY', 'exact confirmed owner statutoryDamages=true election is admitted without entitlement inference');
+if (statutoryDamagesPositive.status !== 'GENERATION_BINDING_READY') throw new Error(`statutory-damages positive fixture must resolve: ${JSON.stringify(statutoryDamagesPositive)}`);
+equal(statutoryDamagesPositive.fieldWritePlan.find(item => item.objectReference === '602 0 R')?.action, 'SET_SELECTED', 'owner statutoryDamages=true selects exact Item 15 checkbox');
+equal(statutoryDamagesPositive.fieldWritePlan.find(item => item.objectReference === '894 0 R')?.action, 'SET_SELECTED', 'owner statutoryDamages=true selects exact Item 17g checkbox');
+for (const objectReference of ['702 0 R','603 0 R','893 0 R','895 0 R','897 0 R','899 0 R','900 0 R','903 0 R'] as const) {
+  equal(statutoryDamagesPositive.fieldWritePlan.find(item => item.objectReference === objectReference)?.action, 'SET_EXPLICIT_NONSELECTION', `statutory-damages election does not select unrelated optional-relief checkbox ${objectReference}`);
+}
+for (const objectReference of ['604 0 R','892 0 R','896 0 R','898 0 R'] as const) {
+  equal(statutoryDamagesPositive.fieldWritePlan.find(item => item.objectReference === objectReference)?.action, 'PRESERVE_OFFICIAL_BLANK_NO_WRITE', `statutory-damages election generates no unrelated relief amount/text at ${objectReference}`);
+}
+equal(statutoryDamagesPositive.fieldWritePlan.find(item => item.objectReference === '901 0 R')?.action, 'SET_SELECTED', 'statutory-damages election does not alter existing past-due-rent selection');
+const statutoryPastDueAmount = statutoryDamagesPositive.fieldWritePlan.find(item => item.objectReference === '902 0 R');
+equal(statutoryPastDueAmount?.action, 'WRITE_TEXT', 'statutory-damages election does not alter existing past-due-rent amount action');
+if (statutoryPastDueAmount?.action === 'WRITE_TEXT') equal(statutoryPastDueAmount.value, '2400', 'statutory-damages election does not calculate or alter past-due-rent amount');
+ok(!statutoryDamagesPositive.fieldWritePlan.some(item => (item.objectReference === '602 0 R' || item.objectReference === '894 0 R') && item.action === 'WRITE_TEXT'), 'source-native statutory-damages labels, including printed up-to-$600 text, create no generated dollar amount');
+notEqual(statutoryDamagesPositive.generationInputId, ready.result.generationInputId, 'material statutory-damages owner election changes generation identity');
+equal(statutoryDamagesPositive.documentGeneration, 'NOT_PERFORMED', 'statutory-damages binding does not generate a document');
+equal(statutoryDamagesPositive.pdfMutation, 'NOT_PERFORMED', 'statutory-damages binding does not mutate PDF bytes');
+
+const serviceHistoryChangedStatutoryFalse = evaluate(supplemental({
+  preparation: {
+    serviceFacts: {
+      state: 'KNOWN',
+      value: {
+        defendantNames: ['Synthetic Tenant One', 'Synthetic Tenant Two'],
+        serviceDate: '2026-08-14',
+        noticeExpirationDate: '2026-08-19',
+        serviceMethod: 'PERSONAL_HAND_DELIVERY',
+        noticeIncludedForfeiture: false,
+      },
+      event: event('NOTICE_SERVICE_FACTS', 'service-history-changed-stat-false'),
+    },
+    serviceElectionConsistencyControl: {
+      state: 'KNOWN',
+      value: 'CONSISTENT',
+      control: control('service-election-consistency', 'consistent-stat-false-history'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.serviceComplaintElection, CANONICAL_FILING_FACT_REFS.serviceFacts],
+    },
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: allOptionalReliefFalse,
+      confirmation: confirmation('statutory-damages-false-history-changed'),
+    },
+  },
+})).result;
+equal(serviceHistoryChangedStatutoryFalse.status, 'GENERATION_BINDING_READY', 'notice/service history changes cannot create a statutory-damages complaint election from owner false');
+if (serviceHistoryChangedStatutoryFalse.status !== 'GENERATION_BINDING_READY') throw new Error(`statutory false/history fixture must resolve: ${JSON.stringify(serviceHistoryChangedStatutoryFalse)}`);
+equal(serviceHistoryChangedStatutoryFalse.fieldWritePlan.find(item => item.objectReference === '602 0 R')?.action, 'SET_EXPLICIT_NONSELECTION', 'service history cannot select Item 15 when owner statutoryDamages=false');
+equal(serviceHistoryChangedStatutoryFalse.fieldWritePlan.find(item => item.objectReference === '894 0 R')?.action, 'SET_EXPLICIT_NONSELECTION', 'service history cannot select Item 17g when owner statutoryDamages=false');
+
+const serviceHistoryChangedStatutoryTrue = evaluate(supplemental({
+  preparation: {
+    serviceFacts: {
+      state: 'KNOWN',
+      value: {
+        defendantNames: ['Synthetic Tenant One', 'Synthetic Tenant Two'],
+        serviceDate: '2026-08-14',
+        noticeExpirationDate: '2026-08-19',
+        serviceMethod: 'PERSONAL_HAND_DELIVERY',
+        noticeIncludedForfeiture: false,
+      },
+      event: event('NOTICE_SERVICE_FACTS', 'service-history-changed-stat-true'),
+    },
+    serviceElectionConsistencyControl: {
+      state: 'KNOWN',
+      value: 'CONSISTENT',
+      control: control('service-election-consistency', 'consistent-stat-true-history'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.serviceComplaintElection, CANONICAL_FILING_FACT_REFS.serviceFacts],
+    },
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...allOptionalReliefFalse, statutoryDamages: true },
+      confirmation: confirmation('statutory-damages-true-history-changed'),
+    },
+  },
+})).result;
+equal(serviceHistoryChangedStatutoryTrue.status, 'GENERATION_BINDING_READY', 'notice/service history changes cannot veto confirmed owner statutoryDamages=true');
+if (serviceHistoryChangedStatutoryTrue.status !== 'GENERATION_BINDING_READY') throw new Error(`statutory true/history fixture must resolve: ${JSON.stringify(serviceHistoryChangedStatutoryTrue)}`);
+equal(serviceHistoryChangedStatutoryTrue.fieldWritePlan.find(item => item.objectReference === '602 0 R')?.action, 'SET_SELECTED', 'owner election still selects Item 15 after unrelated service-history change');
+equal(serviceHistoryChangedStatutoryTrue.fieldWritePlan.find(item => item.objectReference === '894 0 R')?.action, 'SET_SELECTED', 'owner election still selects Item 17g after unrelated service-history change');
+
+const unconfirmedStatutoryDamages = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...allOptionalReliefFalse, statutoryDamages: true },
+    },
+  },
+})).result;
+equal(unconfirmedStatutoryDamages.status, 'BLOCKED', 'KNOWN statutoryDamages=true without customer legal-election confirmation fails closed');
+equal(unconfirmedStatutoryDamages.fieldWritePlan.length, 0, 'unconfirmed statutory-damages election produces zero writes');
+const unresolvedStatutoryDamages = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: { state: 'REQUIRES_CONFIRMATION', reason: 'confirm statutory-damages owner election' },
+  },
+})).result;
+equal(unresolvedStatutoryDamages.status, 'BLOCKED', 'unresolved statutory-damages owner election fails closed');
+equal(unresolvedStatutoryDamages.fieldWritePlan.length, 0, 'unresolved statutory-damages election produces zero writes');
+
+for (const heldRelief of ['relocationDamages','attorneyFees','otherRelief','otherAllegations'] as const) {
   const result = evaluate(supplemental({
     preparation: {
       otherReliefSelections: {
