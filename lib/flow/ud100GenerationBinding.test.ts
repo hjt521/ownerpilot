@@ -318,13 +318,15 @@ equal(ready.result.pdfMutation, 'NOT_PERFORMED', 'GENERATION_BINDING_READY does 
 equal(ready.result.formApplicability, 'NOT_EVALUATED', 'D.1 does not decide applicability');
 equal(ready.result.formRequiredness, 'NOT_EVALUATED', 'D.1 does not decide requiredness');
 equal(UD100_GENERATION_BINDING.mapId, UD100_GENERATION_BINDING_MAP_ID, 'map id is explicit');
-equal(UD100_GENERATION_BINDING.mapVersion, '1.4.0', 'R2-D advances exact live D.1 map version to 1.4.0');
-equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'R2-D map-version export matches definition');
-equal(UD100_GENERATION_BINDING.generatorContractVersion, 'ud100-field-write-plan-v4', 'R2-D advances live generator contract to v4');
+equal(UD100_GENERATION_BINDING.mapId, 'ud100-2026-07-01-initial-prefiling-generation-binding', 'post-R2E forfeiture binding preserves exact map id');
+equal(UD100_GENERATION_BINDING.mapVersion, '1.5.0', 'post-R2E forfeiture binding advances exact live D.1 map version to 1.5.0');
+equal(UD100_GENERATION_BINDING.mapVersion, UD100_GENERATION_BINDING_MAP_VERSION, 'post-R2E map-version export matches definition');
+equal(UD100_GENERATION_BINDING.generatorContractVersion, 'ud100-field-write-plan-v5', 'post-R2E forfeiture binding advances live generator contract to v5');
 equal(UD100_GENERATION_BINDING.profileId, UD100_GENERATION_PROFILE_ID, 'bounded initial pre-filing profile remains explicit');
+equal(UD100_GENERATION_BINDING.profileId, 'ud100-initial-prefiling-owner-preparation-v1', 'post-R2E forfeiture binding preserves exact profile id');
 ok(UD100_GENERATION_BINDING.mapSnapshotId.startsWith('map:sha256:'), 'map snapshot is content-addressed');
 equal(validateGenerationBindingDefinition(UD100_FIELD_MAP_FOUNDATION).status, 'BLOCKED', 'six-field Stage D foundation remains not generation-capable');
-equal(validateGenerationBindingDefinition(UD100_GENERATION_BINDING).status, 'VALID', 'R2-D D.1 definition independently validates');
+equal(validateGenerationBindingDefinition(UD100_GENERATION_BINDING).status, 'VALID', 'post-R2E D.1 definition independently validates');
 
 equal(UD100_GENERATION_BINDING.fieldRules.length, 186, 'all 186 exact-binary widgets receive executable classification');
 const fieldIds = new Set(UD100_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.fieldId));
@@ -388,6 +390,28 @@ const noticePayRent = ready.result.fieldWritePlan.find(item => item.objectRefere
 equal(noticePayRent?.action, 'SET_SELECTED', 'customer-confirmed complaint notice election selects pay-rent-or-quit');
 const forfeitureIncluded = ready.result.fieldWritePlan.find(item => item.objectReference === '661 0 R');
 equal(forfeitureIncluded?.action, 'SET_SELECTED', 'PROVEN Notice-content fact selects the exact forfeiture-included checkbox');
+const complaintForfeiture = ready.result.fieldWritePlan.find(item => item.objectReference === '899 0 R');
+equal(complaintForfeiture?.action, 'SET_EXPLICIT_NONSELECTION', 'Notice history indicating forfeiture cannot convert explicit owner complaint forfeiture=false into true');
+const complaintForfeitureRule = UD100_GENERATION_BINDING.fieldRules.find(rule => rule.evidence.objectReference === '899 0 R');
+ok(
+  complaintForfeitureRule?.disposition === 'WRITE'
+    && complaintForfeitureRule.dependencies.length === 1
+    && complaintForfeitureRule.dependencies[0]?.ref === CANONICAL_FILING_FACT_REFS.otherReliefSelections
+    && complaintForfeitureRule.dependencies[0]?.authorityClass === 'CUSTOMER_CONFIRMED_LEGAL_ELECTION',
+  'complaint forfeiture checkbox is bound only to the customer-confirmed otherReliefSelections election',
+);
+ok(
+  complaintForfeitureRule?.disposition !== 'WRITE'
+    || !complaintForfeitureRule.dependencies.some(dep => dep.ref === CANONICAL_FILING_FACT_REFS.serviceFacts),
+  'Notice/service history is not complaint forfeiture election authority',
+);
+const noticeForfeitureRule = UD100_GENERATION_BINDING.fieldRules.find(rule => rule.evidence.objectReference === '661 0 R');
+ok(
+  noticeForfeitureRule?.disposition === 'WRITE'
+    && noticeForfeitureRule.dependencies.length === 1
+    && noticeForfeitureRule.dependencies[0]?.ref === CANONICAL_FILING_FACT_REFS.serviceFacts,
+  'Notice forfeiture history remains separately bound to serviceFacts only',
+);
 const servicePersonal = ready.result.fieldWritePlan.find(item => item.objectReference === '652 0 R');
 equal(servicePersonal?.action, 'SET_SELECTED', 'customer-confirmed complaint service election selects personal hand delivery');
 const serviceDate = ready.result.fieldWritePlan.find(item => item.objectReference === '653 0 R');
@@ -888,7 +912,7 @@ const preNoticeFairRentalConfirmation = evaluate(supplemental({
   },
 })).result;
 equal(preNoticeFairRentalConfirmation.status, 'BLOCKED', 'pre-Created-Notice Item-14 confirmation is not current and blocks');
-for (const heldRelief of ['statutoryDamages','relocationDamages','forfeiture','attorneyFees','otherRelief','otherAllegations'] as const) {
+for (const heldRelief of ['statutoryDamages','relocationDamages','attorneyFees','otherRelief','otherAllegations'] as const) {
   const result = evaluate(supplemental({
     preparation: {
       otherReliefSelections: {
@@ -900,6 +924,66 @@ for (const heldRelief of ['statutoryDamages','relocationDamages','forfeiture','a
   })).result;
   equal(result.status, 'BLOCKED', `${heldRelief} remains held under property-level profile ceiling`);
 }
+
+const forfeiturePositive = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...allOptionalReliefFalse, forfeiture: true },
+      confirmation: confirmation('forfeiture-positive'),
+    },
+  },
+})).result;
+equal(forfeiturePositive.status, 'GENERATION_BINDING_READY', 'exact confirmed owner forfeiture=true election is admitted');
+if (forfeiturePositive.status !== 'GENERATION_BINDING_READY') throw new Error(`forfeiture positive fixture must resolve: ${JSON.stringify(forfeiturePositive)}`);
+equal(forfeiturePositive.fieldWritePlan.find(item => item.objectReference === '899 0 R')?.action, 'SET_SELECTED', 'owner forfeiture=true selects only exact complaint forfeiture checkbox');
+for (const objectReference of ['893 0 R','894 0 R','897 0 R','900 0 R','903 0 R'] as const) {
+  equal(forfeiturePositive.fieldWritePlan.find(item => item.objectReference === objectReference)?.action, 'SET_EXPLICIT_NONSELECTION', `forfeiture election does not select unrelated optional-relief checkbox ${objectReference}`);
+}
+equal(forfeiturePositive.documentGeneration, 'NOT_PERFORMED', 'forfeiture binding does not generate a document');
+equal(forfeiturePositive.pdfMutation, 'NOT_PERFORMED', 'forfeiture binding does not mutate PDF bytes');
+
+const noticeFalseOwnerForfeitureTrue = evaluate(supplemental({
+  preparation: {
+    serviceFacts: {
+      state: 'KNOWN',
+      value: {
+        defendantNames: ['Synthetic Tenant One', 'Synthetic Tenant Two'],
+        serviceDate: '2026-08-14',
+        noticeExpirationDate: '2026-08-19',
+        serviceMethod: 'PERSONAL_HAND_DELIVERY',
+        noticeIncludedForfeiture: false,
+      },
+      event: event('NOTICE_SERVICE_FACTS', 'service-no-forfeiture'),
+    },
+    serviceElectionConsistencyControl: {
+      state: 'KNOWN',
+      value: 'CONSISTENT',
+      control: control('service-election-consistency', 'consistent-no-notice-forfeiture'),
+      dependencies: [CANONICAL_FILING_FACT_REFS.serviceComplaintElection, CANONICAL_FILING_FACT_REFS.serviceFacts],
+    },
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...allOptionalReliefFalse, forfeiture: true },
+      confirmation: confirmation('forfeiture-positive-notice-false'),
+    },
+  },
+})).result;
+equal(noticeFalseOwnerForfeitureTrue.status, 'GENERATION_BINDING_READY', 'Notice history without forfeiture cannot veto confirmed owner complaint forfeiture=true');
+if (noticeFalseOwnerForfeitureTrue.status !== 'GENERATION_BINDING_READY') throw new Error(`notice-false owner-forfeiture fixture must resolve: ${JSON.stringify(noticeFalseOwnerForfeitureTrue)}`);
+equal(noticeFalseOwnerForfeitureTrue.fieldWritePlan.find(item => item.objectReference === '661 0 R')?.action, 'SET_EXPLICIT_NONSELECTION', 'Notice-history checkbox remains false when notice did not include forfeiture');
+equal(noticeFalseOwnerForfeitureTrue.fieldWritePlan.find(item => item.objectReference === '899 0 R')?.action, 'SET_SELECTED', 'separate confirmed owner complaint election independently selects forfeiture checkbox');
+
+const unconfirmedForfeiture = evaluate(supplemental({
+  preparation: {
+    otherReliefSelections: {
+      state: 'KNOWN',
+      value: { ...allOptionalReliefFalse, forfeiture: true },
+    },
+  },
+})).result;
+equal(unconfirmedForfeiture.status, 'BLOCKED', 'KNOWN forfeiture=true without customer legal-election confirmation fails closed');
+equal(unconfirmedForfeiture.fieldWritePlan.length, 0, 'unconfirmed forfeiture election produces zero writes');
 
 const selectedFairRentalUnsupported = evaluate(supplemental({
   preparation: {
@@ -1104,13 +1188,13 @@ equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, 'map:sha256:50bd84
 equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapVersion, '1.3.0', 'bootstrap-v3 compatibility map version remains B1 1.3.0');
 equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.generatorContractVersion, 'ud100-field-write-plan-v3', 'bootstrap-v3 compatibility generator contract remains B1 v3');
 equal(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.profileId, UD100_GENERATION_BINDING.profileId, 'bootstrap-v3 compatibility profile identity remains exact B1 profile');
-notEqual(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'live R2-D map is decoupled from frozen B1 compatibility');
+notEqual(UD100_BOOTSTRAP_V3_COMPATIBILITY_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'live post-R2E map is decoupled from frozen B1 compatibility');
 const b1Baseline = evaluateUd100BootstrapV3CompatibilityBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', ready.facts);
 equal(b1Baseline.status, 'GENERATION_BINDING_READY', 'frozen B1 evaluator still admits exact released baseline');
 if (b1Baseline.status !== 'GENERATION_BINDING_READY') throw new Error('frozen B1 baseline must remain ready');
 equal(b1Baseline.referencedFactSnapshotId, 'facts:sha256:4eb3d2c5ce8b0f5ea383121589d40c00d48fdfbbd18257daacdc4d1e0496d3af', 'frozen B1 referenced-fact snapshot remains exact released baseline');
 equal(b1Baseline.generationInputId, 'generation-input:sha256:1590fa08d313e2367e2e50d39d471e2badd32b6cfaf5ce77030a7926bd3dff20', 'frozen B1 generation-input identity remains exact released baseline');
-equal(JSON.stringify(b1Baseline.fieldWritePlan), JSON.stringify(ready.result.fieldWritePlan), 'negative baseline live R2-D and frozen B1 preserve byte-for-byte JSON-equivalent field plan');
+equal(JSON.stringify(b1Baseline.fieldWritePlan), JSON.stringify(ready.result.fieldWritePlan), 'negative baseline live post-R2E binding and frozen B1 preserve byte-for-byte JSON-equivalent field plan');
 const b1PositiveBlock = evaluateUd100BootstrapV3CompatibilityBinding(UD100_OFFICIAL_SOURCE_IDENTITY, 'CURRENT', projectFilingCanonicalFacts(persisted, supplemental({ preparation: { otherReliefSelections: { state: 'KNOWN', value: fairRentalValuePositive, confirmation: confirmation('b1-positive-block') } } })));
 equal(b1PositiveBlock.status, 'BLOCKED', 'frozen B1 compatibility evaluator does not consume R2-D Item-14 positive election');
 equal(b1PositiveBlock.fieldWritePlan.length, 0, 'frozen B1 positive Item-14 scenario yields zero writes');
@@ -1123,7 +1207,7 @@ equal(UD100_PACKET_AWARE_GENERATION_BINDING.generatorContractVersion, UD100_PACK
 equal(UD100_PACKET_AWARE_GENERATION_BINDING.profileId, 'ud100-initial-prefiling-owner-preparation-v2', 'packet-aware B2 profile identity remains v2');
 equal(UD100_PACKET_AWARE_GENERATION_BINDING.profileId, UD100_PACKET_AWARE_GENERATION_PROFILE_ID, 'packet-aware profile export matches binding');
 equal(UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId, 'map:sha256:715355e568143d4edc5edff7624b80128639c5195959bd984b828f685fde0223', 'packet-aware B2 map snapshot remains exact released baseline');
-notEqual(UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'packet-aware compatibility remains distinct from live R2-D map');
+notEqual(UD100_PACKET_AWARE_GENERATION_BINDING.mapSnapshotId, UD100_GENERATION_BINDING.mapSnapshotId, 'packet-aware compatibility remains distinct from live post-R2E map');
 equal(UD100_PACKET_AWARE_GENERATION_BINDING.fieldRules.length, 186, 'packet-aware binding preserves exact 186-field classification count');
 equal(new Set(UD100_PACKET_AWARE_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.fieldId)).size, 186, 'packet-aware field IDs remain unique');
 equal(new Set(UD100_PACKET_AWARE_GENERATION_BINDING.fieldRules.map(rule => rule.evidence.objectReference)).size, 186, 'packet-aware object references remain unique');

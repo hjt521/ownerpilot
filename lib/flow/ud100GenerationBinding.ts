@@ -17,8 +17,8 @@ import {
 import { UD100_OFFICIAL_SOURCE_IDENTITY } from './ud100FieldMapFoundation';
 
 export const UD100_GENERATION_BINDING_MAP_ID = 'ud100-2026-07-01-initial-prefiling-generation-binding' as const;
-export const UD100_GENERATION_BINDING_MAP_VERSION = '1.4.0' as const;
-export const UD100_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v4' as const;
+export const UD100_GENERATION_BINDING_MAP_VERSION = '1.5.0' as const;
+export const UD100_GENERATOR_CONTRACT_VERSION = 'ud100-field-write-plan-v5' as const;
 export const UD100_GENERATION_PROFILE_ID = 'ud100-initial-prefiling-owner-preparation-v1' as const;
 
 function evidence(fieldId: string, sourcePage: number, fieldType: '/Tx' | '/Btn', objectReference: string, visibleLabelEvidence: string): GenerationFieldEvidence {
@@ -310,7 +310,6 @@ const semantics:OfficialFormGenerationBindingSemantics={generationSchemaVersion:
   {dependency:D(CANONICAL_FILING_FACT_REFS.fixedTermExpirationElection,ELECTION),allowedValues:['DO_NOT_SELECT'],blockerCode:'FIXED_TERM_EXPIRATION_ALLEGATION_REQUIRES_SEPARATE_BINDING'},
   {dependency:otherReliefDep,allowedValues:[false],property:'statutoryDamages',blockerCode:'STATUTORY_DAMAGES_REQUIRES_SEPARATE_BINDING'},
   {dependency:otherReliefDep,allowedValues:[false],property:'relocationDamages',blockerCode:'RELOCATION_DAMAGES_REQUIRES_SEPARATE_BINDING'},
-  {dependency:otherReliefDep,allowedValues:[false],property:'forfeiture',blockerCode:'FORFEITURE_RELIEF_REQUIRES_SEPARATE_BINDING'},
   {dependency:otherReliefDep,allowedValues:[false],property:'attorneyFees',blockerCode:'ATTORNEY_FEE_RELIEF_REQUIRES_SEPARATE_BINDING'},
   {dependency:otherReliefDep,allowedValues:[false],property:'otherRelief',blockerCode:'OTHER_RELIEF_REQUIRES_SEPARATE_BINDING'},
   {dependency:otherReliefDep,allowedValues:[false],property:'otherAllegations',blockerCode:'OTHER_ALLEGATIONS_REQUIRES_SEPARATE_BINDING'},
