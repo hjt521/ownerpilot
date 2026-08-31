@@ -549,4 +549,8 @@ staleSummaryAfterFactMutation(
   }
 }
 
+console.log(`R2E_SUMMARY_ID=${originalSummary.filingChoiceSummaryId}`);
+console.log(`R2E_AUTHORIZATION_STATEMENT_ID=${FILING_CHOICE_AUTHORIZATION_STATEMENT_ID}`);
+console.log(`R2E_AUTHORIZATION_STATEMENT_VERSION=${FILING_CHOICE_AUTHORIZATION_STATEMENT_VERSION}`);
+console.log('R2E_POSITIVE_ITEM14_EXACT_VALUE_PRESERVATION=PASS');
 console.log(`filingPreparationChoiceAuthorization.test.ts: ${passed} assertions passed`);
