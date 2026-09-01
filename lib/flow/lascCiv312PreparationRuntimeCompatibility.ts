@@ -37,6 +37,7 @@ export const LASC_CIV_312_RUNTIME_COMPATIBILITY_PROFILE_ID = 'lasc-civ312-prepar
 export const LASC_CIV_312_RUNTIME_COMPATIBILITY_PROFILE_VERSION = '2026-09-01.r1' as const;
 export const LASC_CIV_312_SOURCE_BYTE_LENGTH = 741498 as const;
 export const LASC_CIV_312_PDF_LIB_VERSION = '1.17.1' as const;
+export const LASC_CIV_312_TOPOLOGY_PROOF_MODE = 'LOW_LEVEL_EXACT_FROZEN_REF_HIERARCHY' as const;
 
 export const LASC_CIV_312_PDF_LIB_LOAD_PROFILE = Object.freeze({
   updateMetadata: false,
@@ -104,25 +105,28 @@ export interface LascCiv312RuntimeInspectionEvidence {
   topologyProvableReadOnly: boolean;
 }
 
-export interface LascCiv312RootWidgetTopologyEvidence {
+export interface LascCiv312HierarchyNodeEvidence {
+  objectReference: string;
   resolvedToDictionary: boolean;
   subtype: string | null;
   parentObjectReference: string | null;
-  hasFieldId: boolean;
-  hasFieldType: boolean;
-}
-
-export interface LascCiv312RootFieldTopologyEvidence {
-  resolvedToDictionary: boolean;
-  fieldTypeProvableReadOnly: boolean;
   fieldId: string | null;
   fieldType: string | null;
-  objectReference: string | null;
-  children: readonly LascCiv312RootWidgetTopologyEvidence[];
+  fieldTypeProvableReadOnly: boolean;
+  childObjectReferences: readonly string[];
 }
 
-export type LascCiv312RootAnchoredTopologyValidation =
-  | { status: 'VALID'; terminalFields: readonly LascCiv312RuntimeTerminalEvidence[] }
+export interface LascCiv312HierarchyEvidence {
+  rawRootObjectReferences: readonly string[];
+  nodes: readonly LascCiv312HierarchyNodeEvidence[];
+}
+
+export type LascCiv312HierarchyValidation =
+  | {
+      status: 'VALID';
+      rawRootObjectReferences: readonly string[];
+      terminalFields: readonly LascCiv312RuntimeTerminalEvidence[];
+    }
   | { status: 'BLOCKED'; detail: string };
 
 export type LascCiv312RuntimeCompatibilityBlockerCode =
@@ -158,12 +162,15 @@ export type LascCiv312PreparationRuntimeCompatibilityResult =
       sourceIdentity: typeof LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY;
       pdfLibVersion: typeof LASC_CIV_312_PDF_LIB_VERSION;
       loadProfile: typeof LASC_CIV_312_PDF_LIB_LOAD_PROFILE;
+      topologyProofMode: typeof LASC_CIV_312_TOPOLOGY_PROOF_MODE;
       sourceSha256BeforeInspection: string;
       sourceSha256AfterInspection: string;
       sourceByteLength: typeof LASC_CIV_312_SOURCE_BYTE_LENGTH;
       pageCount: typeof LASC_CIV_312_EXPECTED_PAGE_COUNT;
       acroFormPresent: true;
       xfaPresent: false;
+      rawFieldRootCount: number;
+      rawFieldRootObjectReferences: readonly string[];
       terminalFieldCount: typeof LASC_CIV_312_EXPECTED_TERMINAL_FIELD_COUNT;
       terminalFields: readonly LascCiv312RuntimeTerminalEvidence[];
       topologyProvableReadOnly: true;
@@ -188,6 +195,7 @@ export type LascCiv312PreparationRuntimeCompatibilityResult =
 const EXPECTED_IDENTITY_KEYS = Object.keys(LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY).sort();
 const EXPECTED_TERMINAL_REFS = Object.freeze(LASC_CIV_312_TERMINAL_FIELDS.map(field => field.objectReference));
 const EXPECTED_TERMINAL_REF_SET = new Set(EXPECTED_TERMINAL_REFS);
+const EXPECTED_TERMINAL_BY_REF = new Map(LASC_CIV_312_TERMINAL_FIELDS.map(field => [field.objectReference, field]));
 
 function sha256(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
@@ -250,238 +258,338 @@ function readText(value: unknown): string | null {
   return null;
 }
 
-function deterministicRootRefDetail(roots: readonly LascCiv312RootFieldTopologyEvidence[]): string {
-  const refs = roots.map(root => root.objectReference ?? '<NON_REF_ROOT>');
-  const uniqueRefs = new Set(refs);
-  return `observedRootCount=${roots.length};observedUniqueRootCount=${uniqueRefs.size};observedRootRefs=${JSON.stringify([...refs].sort())}`;
+function readName(document: PDFDocument, raw: unknown): { value: string | null; provable: boolean } {
+  if (raw === undefined) return { value: null, provable: true };
+  const resolved = document.context.lookup(raw as never);
+  return resolved instanceof PDFName
+    ? { value: resolved.toString(), provable: true }
+    : { value: null, provable: false };
 }
 
-/**
- * Exact-source root anchoring only. This does not discover logical fields from
- * /Kids. The frozen 22 top-level object references are the authority; child
- * objects are widget-topology evidence only.
- */
-export function validateLascCiv312RootAnchoredTopologyEvidence(
-  roots: readonly LascCiv312RootFieldTopologyEvidence[],
-): LascCiv312RootAnchoredTopologyValidation {
-  const detail = deterministicRootRefDetail(roots);
-  if (roots.length !== LASC_CIV_312_TERMINAL_INPUT_COUNT) {
-    return { status: 'BLOCKED', detail: `Raw /Fields root count does not equal the frozen 22-root topology; ${detail}.` };
-  }
-
-  const refs = roots.map(root => root.objectReference);
-  if (refs.some(ref => ref === null)) {
-    return { status: 'BLOCKED', detail: `Every raw /Fields entry must be an indirect object reference; ${detail}.` };
-  }
-  const concreteRefs = refs as string[];
-  const uniqueRefs = new Set(concreteRefs);
-  if (uniqueRefs.size !== LASC_CIV_312_TERMINAL_INPUT_COUNT) {
-    return { status: 'BLOCKED', detail: `Raw /Fields contains a duplicate top-level object reference; ${detail}.` };
-  }
-  if (concreteRefs.some(ref => !EXPECTED_TERMINAL_REF_SET.has(ref))
-    || EXPECTED_TERMINAL_REFS.some(ref => !uniqueRefs.has(ref))) {
-    return { status: 'BLOCKED', detail: `Raw /Fields ref set does not equal the frozen 22-ref topology; ${detail}.` };
-  }
-
-  const terminalFields: LascCiv312RuntimeTerminalEvidence[] = [];
-  for (const expected of LASC_CIV_312_TERMINAL_FIELDS) {
-    const root = roots.find(candidate => candidate.objectReference === expected.objectReference)!;
-    if (!root.resolvedToDictionary) {
-      return { status: 'BLOCKED', detail: `Frozen root ${expected.objectReference} did not resolve to a dictionary; ${detail}.` };
-    }
-    if (!root.fieldTypeProvableReadOnly) {
-      return { status: 'BLOCKED', detail: `Inherited /FT was not provable read-only for ${expected.objectReference}; ${detail}.` };
-    }
-    for (const child of root.children) {
-      if (!child.resolvedToDictionary) {
-        return { status: 'BLOCKED', detail: `A /Kids entry under ${expected.objectReference} did not resolve to a dictionary; ${detail}.` };
-      }
-      if (child.subtype !== '/Widget') {
-        return { status: 'BLOCKED', detail: `A /Kids entry under ${expected.objectReference} was not /Subtype /Widget; ${detail}.` };
-      }
-      if (child.parentObjectReference !== expected.objectReference) {
-        return { status: 'BLOCKED', detail: `A widget /Parent did not bind back to owning frozen root ${expected.objectReference}; ${detail}.` };
-      }
-      // /T and /FT on a proven widget child are explicitly non-authoritative
-      // for logical-field counting. They remain child-widget state only.
-      void child.hasFieldId;
-      void child.hasFieldType;
-    }
-    terminalFields.push({
-      fieldId: root.fieldId ?? '<UNNAMED_TERMINAL_FIELD>',
-      fieldType: root.fieldType,
-      objectReference: expected.objectReference,
-    });
-  }
-  return { status: 'VALID', terminalFields };
-}
-
-function objectReferenceForReadOnly(document: PDFDocument, value: unknown): string | null {
-  if (value instanceof PDFRef) return value.toString();
-  if (value instanceof PDFDict) return document.context.getObjectRef(value)?.toString() ?? null;
-  return null;
+function readParentReferenceReadOnly(
+  node: PDFDict,
+): { parentObjectReference: string | null; provable: boolean } {
+  const raw = node.get(PDFName.of('Parent'));
+  if (raw === undefined) return { parentObjectReference: null, provable: true };
+  return raw instanceof PDFRef
+    ? { parentObjectReference: raw.toString(), provable: true }
+    : { parentObjectReference: null, provable: false };
 }
 
 function readInheritedFieldTypeReadOnly(
   document: PDFDocument,
-  root: PDFDict,
+  initialReference: PDFRef,
+  initial: PDFDict,
 ): { fieldType: string | null; provable: boolean } {
-  let current = root;
+  let currentReference = initialReference;
+  let current = initial;
   const visited = new Set<string>();
-  for (let depth = 0; depth < 64; depth += 1) {
+  for (let depth = 0; depth < 128; depth += 1) {
+    const currentRef = currentReference.toString();
+    if (visited.has(currentRef)) return { fieldType: null, provable: false };
+    visited.add(currentRef);
+
     const directTypeRaw = current.get(PDFName.of('FT'));
     if (directTypeRaw !== undefined) {
-      const directType = document.context.lookup(directTypeRaw);
-      return directType instanceof PDFName
-        ? { fieldType: directType.toString(), provable: true }
+      const directType = readName(document, directTypeRaw);
+      return directType.provable
+        ? { fieldType: directType.value, provable: true }
         : { fieldType: null, provable: false };
     }
 
     const parentRaw = current.get(PDFName.of('Parent'));
     if (parentRaw === undefined) return { fieldType: null, provable: true };
-    const parentReference = objectReferenceForReadOnly(document, parentRaw);
-    if (!parentReference || visited.has(parentReference)) return { fieldType: null, provable: false };
-    visited.add(parentReference);
+    if (!(parentRaw instanceof PDFRef)) return { fieldType: null, provable: false };
     const parent = document.context.lookup(parentRaw);
     if (!(parent instanceof PDFDict)) return { fieldType: null, provable: false };
+    currentReference = parentRaw;
     current = parent;
   }
   return { fieldType: null, provable: false };
 }
 
-function inspectRootFieldReadOnly(
-  document: PDFDocument,
-  rawRoot: unknown,
-): LascCiv312RootFieldTopologyEvidence {
-  if (!(rawRoot instanceof PDFRef)) {
-    return {
-      resolvedToDictionary: false,
-      fieldTypeProvableReadOnly: false,
-      fieldId: null,
-      fieldType: null,
-      objectReference: null,
-      children: [],
-    };
+function deterministicHierarchyDetail(evidence: LascCiv312HierarchyEvidence): string {
+  return `observedRootCount=${evidence.rawRootObjectReferences.length};observedRootRefs=${JSON.stringify([...evidence.rawRootObjectReferences].sort())};observedNodeCount=${evidence.nodes.length}`;
+}
+
+export function validateLascCiv312HierarchyEvidence(
+  evidence: LascCiv312HierarchyEvidence,
+): LascCiv312HierarchyValidation {
+  const detail = deterministicHierarchyDetail(evidence);
+  if (evidence.rawRootObjectReferences.length === 0) {
+    return { status: 'BLOCKED', detail: `Raw /Fields must contain at least one indirect root; ${detail}.` };
   }
-  const objectReference = rawRoot.toString();
-  const resolved = document.context.lookup(rawRoot);
-  if (!(resolved instanceof PDFDict)) {
-    return {
-      resolvedToDictionary: false,
-      fieldTypeProvableReadOnly: false,
-      fieldId: null,
-      fieldType: null,
-      objectReference,
-      children: [],
-    };
+  if (new Set(evidence.rawRootObjectReferences).size !== evidence.rawRootObjectReferences.length) {
+    return { status: 'BLOCKED', detail: `Raw /Fields contains duplicate root refs; ${detail}.` };
   }
 
-  const fieldId = readText(document.context.lookup(resolved.get(PDFName.of('T'))));
-  const inheritedFieldType = readInheritedFieldTypeReadOnly(document, resolved);
-  const children: LascCiv312RootWidgetTopologyEvidence[] = [];
-  const kidsRaw = resolved.get(PDFName.of('Kids'));
-  if (kidsRaw !== undefined) {
-    const kids = document.context.lookup(kidsRaw);
-    if (!(kids instanceof PDFArray)) {
-      children.push({
-        resolvedToDictionary: false,
-        subtype: null,
-        parentObjectReference: null,
-        hasFieldId: false,
-        hasFieldType: false,
+  const nodeByRef = new Map<string, LascCiv312HierarchyNodeEvidence>();
+  for (const node of evidence.nodes) {
+    if (nodeByRef.has(node.objectReference)) {
+      return { status: 'BLOCKED', detail: `Duplicate hierarchy node evidence for ${node.objectReference}; ${detail}.` };
+    }
+    nodeByRef.set(node.objectReference, node);
+  }
+
+  const reached = new Set<string>();
+  const active = new Set<string>();
+  const emitted = new Set<string>();
+  const terminalFields: LascCiv312RuntimeTerminalEvidence[] = [];
+  let failure: string | null = null;
+
+  const visit = (objectReference: string, expectedParent: string | null): void => {
+    if (failure) return;
+    if (active.has(objectReference)) {
+      failure = `Cycle detected at ${objectReference}; ${detail}.`;
+      return;
+    }
+    if (reached.has(objectReference)) {
+      failure = `Hierarchy ref ${objectReference} is reachable more than once; ${detail}.`;
+      return;
+    }
+    const node = nodeByRef.get(objectReference);
+    if (!node || !node.resolvedToDictionary) {
+      failure = `Hierarchy ref ${objectReference} did not resolve to a dictionary; ${detail}.`;
+      return;
+    }
+    if (node.parentObjectReference !== expectedParent) {
+      failure = `Parent relationship mismatch for ${objectReference}: expected ${expectedParent ?? '<ROOT>'}, observed ${node.parentObjectReference ?? '<ROOT>'}; ${detail}.`;
+      return;
+    }
+
+    reached.add(objectReference);
+    active.add(objectReference);
+
+    const expectedTerminal = EXPECTED_TERMINAL_BY_REF.get(objectReference);
+    if (expectedTerminal) {
+      if (emitted.has(objectReference)) {
+        failure = `Frozen terminal ${objectReference} emitted more than once; ${detail}.`;
+        active.delete(objectReference);
+        return;
+      }
+      if (node.fieldId !== expectedTerminal.fieldId) {
+        failure = `Frozen terminal identity mismatch at ${objectReference}; ${detail}.`;
+        active.delete(objectReference);
+        return;
+      }
+      if (!node.fieldTypeProvableReadOnly || node.fieldType !== expectedTerminal.fieldType) {
+        failure = `Frozen terminal /FT mismatch or inheritance not provable at ${objectReference}; ${detail}.`;
+        active.delete(objectReference);
+        return;
+      }
+      emitted.add(objectReference);
+      terminalFields.push({
+        fieldId: expectedTerminal.fieldId,
+        fieldType: expectedTerminal.fieldType,
+        objectReference,
       });
-    } else {
-      for (let index = 0; index < kids.size(); index += 1) {
-        const childRaw = kids.get(index);
-        const child = document.context.lookup(childRaw);
-        if (!(child instanceof PDFDict)) {
-          children.push({
-            resolvedToDictionary: false,
-            subtype: null,
-            parentObjectReference: null,
-            hasFieldId: false,
-            hasFieldType: false,
-          });
-          continue;
+
+      for (const childReference of node.childObjectReferences) {
+        const child = nodeByRef.get(childReference);
+        if (!child || !child.resolvedToDictionary) {
+          failure = `Child ${childReference} under frozen terminal ${objectReference} did not resolve; ${detail}.`;
+          break;
         }
-        const subtypeRaw = child.get(PDFName.of('Subtype'));
-        const subtype = subtypeRaw === undefined ? undefined : document.context.lookup(subtypeRaw);
-        const parentRaw = child.get(PDFName.of('Parent'));
-        children.push({
-          resolvedToDictionary: true,
-          subtype: subtype instanceof PDFName ? subtype.toString() : null,
-          parentObjectReference: parentRaw === undefined ? null : objectReferenceForReadOnly(document, parentRaw),
-          hasFieldId: child.has(PDFName.of('T')),
-          hasFieldType: child.has(PDFName.of('FT')),
-        });
+        if (EXPECTED_TERMINAL_REF_SET.has(childReference) || child.subtype !== '/Widget') {
+          failure = `Frozen terminal ${objectReference} contains a non-widget field child ${childReference}; ${detail}.`;
+          break;
+        }
+        visit(childReference, objectReference);
+        if (failure) break;
+      }
+      active.delete(objectReference);
+      return;
+    }
+
+    if (node.subtype === '/Widget') {
+      active.delete(objectReference);
+      return;
+    }
+
+    if (node.childObjectReferences.length === 0) {
+      failure = `Non-frozen reachable leaf ${objectReference} is neither a frozen terminal nor widget annotation; ${detail}.`;
+      active.delete(objectReference);
+      return;
+    }
+
+    for (const childReference of node.childObjectReferences) {
+      const child = nodeByRef.get(childReference);
+      if (!child || !child.resolvedToDictionary) {
+        failure = `Child ${childReference} under structural node ${objectReference} did not resolve; ${detail}.`;
+        break;
+      }
+      visit(childReference, objectReference);
+      if (failure) break;
+    }
+    active.delete(objectReference);
+  };
+
+  for (const rootReference of evidence.rawRootObjectReferences) {
+    visit(rootReference, null);
+    if (failure) return { status: 'BLOCKED', detail: failure };
+  }
+
+  if (emitted.size !== LASC_CIV_312_TERMINAL_INPUT_COUNT) {
+    const missing = EXPECTED_TERMINAL_REFS.filter(ref => !emitted.has(ref));
+    return {
+      status: 'BLOCKED',
+      detail: `Hierarchy did not prove exactly ${LASC_CIV_312_TERMINAL_INPUT_COUNT} frozen terminals; observed=${emitted.size};missing=${JSON.stringify(missing)}; ${detail}.`,
+    };
+  }
+  if (EXPECTED_TERMINAL_REFS.some(ref => !emitted.has(ref))) {
+    return { status: 'BLOCKED', detail: `Frozen terminal ref set incomplete after traversal; ${detail}.` };
+  }
+
+  const normalized = LASC_CIV_312_TERMINAL_FIELDS.map(expected => {
+    const observed = terminalFields.find(field => field.objectReference === expected.objectReference)!;
+    return { fieldId: observed.fieldId, fieldType: observed.fieldType, objectReference: observed.objectReference };
+  });
+  return {
+    status: 'VALID',
+    rawRootObjectReferences: [...evidence.rawRootObjectReferences],
+    terminalFields: normalized,
+  };
+}
+
+export const validateLascCiv312RootAnchoredTopologyEvidence = validateLascCiv312HierarchyEvidence;
+
+function buildLascCiv312HierarchyEvidenceReadOnly(
+  document: PDFDocument,
+  acroForm: PDFDict,
+):
+  | { status: 'VALID'; evidence: LascCiv312HierarchyEvidence }
+  | { status: 'BLOCKED'; detail: string } {
+  const fieldsRaw = acroForm.get(PDFName.of('Fields'));
+  if (fieldsRaw === undefined) return { status: 'BLOCKED', detail: 'Existing AcroForm has no raw /Fields entry.' };
+  const fields = document.context.lookup(fieldsRaw);
+  if (!(fields instanceof PDFArray)) return { status: 'BLOCKED', detail: 'Raw AcroForm /Fields did not resolve to a PDF array.' };
+
+  const rawRootObjectReferences: string[] = [];
+  const queue: PDFRef[] = [];
+  for (let index = 0; index < fields.size(); index += 1) {
+    const rawRoot = fields.get(index);
+    if (!(rawRoot instanceof PDFRef)) {
+      return { status: 'BLOCKED', detail: `Raw /Fields entry ${index} is not an indirect object reference.` };
+    }
+    rawRootObjectReferences.push(rawRoot.toString());
+    queue.push(rawRoot);
+  }
+
+  const nodes: LascCiv312HierarchyNodeEvidence[] = [];
+  const inspected = new Set<string>();
+  while (queue.length > 0) {
+    const reference = queue.shift()!;
+    const objectReference = reference.toString();
+    if (inspected.has(objectReference)) continue;
+    inspected.add(objectReference);
+
+    const resolved = document.context.lookup(reference);
+    if (!(resolved instanceof PDFDict)) {
+      return { status: 'BLOCKED', detail: `Hierarchy ref ${objectReference} did not resolve to a dictionary.` };
+    }
+
+    const subtypeRaw = resolved.get(PDFName.of('Subtype'));
+    const subtype = readName(document, subtypeRaw);
+    if (!subtype.provable) {
+      return { status: 'BLOCKED', detail: `Hierarchy ref ${objectReference} has an unprovable /Subtype.` };
+    }
+    const parent = readParentReferenceReadOnly(resolved);
+    if (!parent.provable) {
+      return { status: 'BLOCKED', detail: `Hierarchy ref ${objectReference} has a non-indirect /Parent.` };
+    }
+
+    const fieldIdRaw = resolved.get(PDFName.of('T'));
+    const fieldId = fieldIdRaw === undefined ? null : readText(document.context.lookup(fieldIdRaw));
+    if (fieldIdRaw !== undefined && fieldId === null) {
+      return { status: 'BLOCKED', detail: `Hierarchy ref ${objectReference} has an unprovable /T identity.` };
+    }
+
+    const frozenTerminal = EXPECTED_TERMINAL_REF_SET.has(objectReference);
+    const inheritedFieldType = frozenTerminal || subtype.value !== '/Widget'
+      ? readInheritedFieldTypeReadOnly(document, reference, resolved)
+      : { fieldType: null, provable: true };
+
+    const childObjectReferences: string[] = [];
+    if (frozenTerminal || subtype.value !== '/Widget') {
+      const kidsRaw = resolved.get(PDFName.of('Kids'));
+      if (kidsRaw !== undefined) {
+        const kids = document.context.lookup(kidsRaw);
+        if (!(kids instanceof PDFArray)) {
+          return { status: 'BLOCKED', detail: `Hierarchy ref ${objectReference} has a non-array /Kids entry.` };
+        }
+        for (let index = 0; index < kids.size(); index += 1) {
+          const childRaw = kids.get(index);
+          if (!(childRaw instanceof PDFRef)) {
+            return { status: 'BLOCKED', detail: `Hierarchy child ${index} under ${objectReference} is not an indirect ref.` };
+          }
+          childObjectReferences.push(childRaw.toString());
+          queue.push(childRaw);
+        }
       }
     }
+
+    nodes.push({
+      objectReference,
+      resolvedToDictionary: true,
+      subtype: subtype.value,
+      parentObjectReference: parent.parentObjectReference,
+      fieldId,
+      fieldType: inheritedFieldType.fieldType,
+      fieldTypeProvableReadOnly: inheritedFieldType.provable,
+      childObjectReferences,
+    });
   }
 
   return {
-    resolvedToDictionary: true,
-    fieldTypeProvableReadOnly: inheritedFieldType.provable,
-    fieldId,
-    fieldType: inheritedFieldType.fieldType,
-    objectReference,
-    children,
+    status: 'VALID',
+    evidence: { rawRootObjectReferences, nodes },
   };
 }
 
 export function inspectLascCiv312TerminalFieldsReadOnly(
   document: PDFDocument,
-  acroForm: NonNullable<ReturnType<PDFDocument['catalog']['getAcroForm']>>,
+  acroForm: PDFDict,
 ): {
+  rawRootObjectReferences: readonly string[];
   terminalFields: readonly LascCiv312RuntimeTerminalEvidence[];
   topologyProvableReadOnly: boolean;
   diagnostic: string;
 } {
-  const fields = acroForm.Fields();
-  if (!(fields instanceof PDFArray)) {
+  const built = buildLascCiv312HierarchyEvidenceReadOnly(document, acroForm);
+  if (built.status === 'BLOCKED') {
     return {
+      rawRootObjectReferences: [],
       terminalFields: [],
       topologyProvableReadOnly: false,
-      diagnostic: 'fieldsPdfArray=false;observedRootCount=unavailable;observedRootRefs=[]',
+      diagnostic: built.detail,
     };
   }
-
-  const roots: LascCiv312RootFieldTopologyEvidence[] = [];
-  for (let index = 0; index < fields.size(); index += 1) {
-    roots.push(inspectRootFieldReadOnly(document, fields.get(index)));
-  }
-  const validation = validateLascCiv312RootAnchoredTopologyEvidence(roots);
-  const diagnostic = `fieldsPdfArray=true;${deterministicRootRefDetail(roots)}`;
+  const validation = validateLascCiv312HierarchyEvidence(built.evidence);
+  const diagnostic = deterministicHierarchyDetail(built.evidence);
   return validation.status === 'VALID'
-    ? { terminalFields: validation.terminalFields, topologyProvableReadOnly: true, diagnostic }
-    : { terminalFields: [], topologyProvableReadOnly: false, diagnostic: `${diagnostic};topologyDetail=${validation.detail}` };
+    ? {
+        rawRootObjectReferences: validation.rawRootObjectReferences,
+        terminalFields: validation.terminalFields,
+        topologyProvableReadOnly: true,
+        diagnostic,
+      }
+    : {
+        rawRootObjectReferences: built.evidence.rawRootObjectReferences,
+        terminalFields: [],
+        topologyProvableReadOnly: false,
+        diagnostic: `${diagnostic};topologyDetail=${validation.detail}`,
+      };
 }
 
-function captureInspectionStructuralSnapshot(
-  document: PDFDocument,
-  acroForm: NonNullable<ReturnType<PDFDocument['catalog']['getAcroForm']>>,
-): string {
-  const fields = acroForm.Fields();
-  const fieldDictionaries: Array<{ ref: string | null; dictionary: string }> = [];
-  if (fields instanceof PDFArray) {
-    for (let index = 0; index < fields.size(); index += 1) {
-      const raw = fields.get(index);
-      const ref = raw instanceof PDFRef ? raw : null;
-      const resolved = document.context.lookup(raw);
-      if (resolved instanceof PDFDict) {
-        fieldDictionaries.push({
-          ref: ref?.toString() ?? document.context.getObjectRef(resolved)?.toString() ?? null,
-          dictionary: resolved.toString(),
-        });
-      }
-    }
-  }
+function captureInspectionStructuralSnapshot(document: PDFDocument): string {
   return digest('civ312-runtime-structure', {
     indirectObjectCount: document.context.enumerateIndirectObjects().length,
     largestObjectNumber: document.context.largestObjectNumber,
     catalog: document.catalog.toString(),
-    acroForm: acroForm.dict.toString(),
-    fields: fields?.toString() ?? null,
-    fieldDictionaries,
+    indirectObjects: document.context.enumerateIndirectObjects().map(([reference, object]) => ({
+      reference: reference.toString(),
+      object: object.toString(),
+    })),
   });
 }
 
@@ -493,11 +601,6 @@ export function classifyLascCiv312PdfLoadFailure(error: unknown): LascCiv312Runt
     : 'PDF_LOAD_FAILED';
 }
 
-/**
- * Validates read-only inspection evidence only. This function cannot grant
- * direct-runtime compatibility; only evaluateLascCiv312PreparationRuntimeCompatibility
- * can issue DIRECT_RUNTIME_COMPATIBLE after inspecting the exact frozen bytes.
- */
 export function validateLascCiv312RuntimeInspectionEvidence(
   evidence: LascCiv312RuntimeInspectionEvidence,
 ): LascCiv312RuntimeInspectionValidation {
@@ -552,7 +655,7 @@ export function validateLascCiv312RuntimeInspectionEvidence(
 
 function normalizedTerminalEvidence(fields: readonly LascCiv312RuntimeTerminalEvidence[]): readonly LascCiv312RuntimeTerminalEvidence[] {
   return LASC_CIV_312_TERMINAL_FIELDS.map(expected => {
-    const observed = fields.find(field => field.fieldId === expected.fieldId)!;
+    const observed = fields.find(field => field.objectReference === expected.objectReference)!;
     return { fieldId: observed.fieldId, fieldType: observed.fieldType, objectReference: observed.objectReference };
   });
 }
@@ -593,8 +696,10 @@ export async function evaluateLascCiv312PreparationRuntimeCompatibility(
   }
 
   const pageCount = document.getPageCount();
-  const existingAcroForm = document.catalog.getAcroForm();
-  const xfaPresent = existingAcroForm ? existingAcroForm.dict.has(PDFName.of('XFA')) : null;
+  const acroFormRaw = document.catalog.get(PDFName.of('AcroForm'));
+  const acroFormResolved = acroFormRaw === undefined ? undefined : document.context.lookup(acroFormRaw);
+  const existingAcroForm = acroFormResolved instanceof PDFDict ? acroFormResolved : null;
+  const xfaPresent = existingAcroForm ? existingAcroForm.has(PDFName.of('XFA')) : null;
 
   if (pageCount !== LASC_CIV_312_EXPECTED_PAGE_COUNT) {
     return blocked('PAGE_COUNT_MISMATCH', `Exact CIV 312 source must contain ${LASC_CIV_312_EXPECTED_PAGE_COUNT} page.`);
@@ -614,9 +719,9 @@ export async function evaluateLascCiv312PreparationRuntimeCompatibility(
     return blocked('SOURCE_IDENTITY_CHANGED_AFTER_INSPECTION', 'Source bytes changed during read-only load/preflight.');
   }
 
-  const inspectionStructuralSnapshotBefore = captureInspectionStructuralSnapshot(document, existingAcroForm);
+  const inspectionStructuralSnapshotBefore = captureInspectionStructuralSnapshot(document);
   const inspected = inspectLascCiv312TerminalFieldsReadOnly(document, existingAcroForm);
-  const inspectionStructuralSnapshotAfter = captureInspectionStructuralSnapshot(document, existingAcroForm);
+  const inspectionStructuralSnapshotAfter = captureInspectionStructuralSnapshot(document);
   if (inspectionStructuralSnapshotAfter !== inspectionStructuralSnapshotBefore) {
     return blocked('INSPECTION_MUTATION_OBSERVED', 'Read-only inspection changed the observed PDF structure.');
   }
@@ -627,7 +732,7 @@ export async function evaluateLascCiv312PreparationRuntimeCompatibility(
   }
 
   if (!inspected.topologyProvableReadOnly) {
-    return blocked('TOPOLOGY_NOT_PROVABLE_READ_ONLY', `Exact frozen-root topology was not provable read-only. ${inspected.diagnostic}.`);
+    return blocked('TOPOLOGY_NOT_PROVABLE_READ_ONLY', `Exact frozen-ref hierarchy was not provable read-only. ${inspected.diagnostic}.`);
   }
 
   const inspectionEvidence: LascCiv312RuntimeInspectionEvidence = {
@@ -643,18 +748,21 @@ export async function evaluateLascCiv312PreparationRuntimeCompatibility(
   }
 
   const terminalFields = normalizedTerminalEvidence(inspected.terminalFields);
+  const rawFieldRootObjectReferences = [...inspected.rawRootObjectReferences];
   const compatibilitySnapshot = digest('civ312-runtime-compatibility', {
     schemaVersion: LASC_CIV_312_RUNTIME_COMPATIBILITY_SCHEMA_VERSION,
     profileSnapshot: LASC_CIV_312_RUNTIME_COMPATIBILITY_PROFILE_SNAPSHOT,
     sourceIdentity: LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY,
     pdfLibVersion: LASC_CIV_312_PDF_LIB_VERSION,
     loadProfile: LASC_CIV_312_PDF_LIB_LOAD_PROFILE,
+    topologyProofMode: LASC_CIV_312_TOPOLOGY_PROOF_MODE,
     sourceSha256BeforeInspection,
     sourceSha256AfterInspection,
     sourceByteLength: sourceBytes.byteLength,
     pageCount,
     acroFormPresent: true,
     xfaPresent: false,
+    rawFieldRootObjectReferences,
     terminalFields,
     topologyProvableReadOnly: true,
     inspectionStructuralSnapshotBefore,
@@ -673,12 +781,15 @@ export async function evaluateLascCiv312PreparationRuntimeCompatibility(
     sourceIdentity: LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY,
     pdfLibVersion: LASC_CIV_312_PDF_LIB_VERSION,
     loadProfile: LASC_CIV_312_PDF_LIB_LOAD_PROFILE,
+    topologyProofMode: LASC_CIV_312_TOPOLOGY_PROOF_MODE,
     sourceSha256BeforeInspection,
     sourceSha256AfterInspection,
     sourceByteLength: LASC_CIV_312_SOURCE_BYTE_LENGTH,
     pageCount: LASC_CIV_312_EXPECTED_PAGE_COUNT,
     acroFormPresent: true,
     xfaPresent: false,
+    rawFieldRootCount: rawFieldRootObjectReferences.length,
+    rawFieldRootObjectReferences,
     terminalFieldCount: LASC_CIV_312_EXPECTED_TERMINAL_FIELD_COUNT,
     terminalFields,
     topologyProvableReadOnly: true,

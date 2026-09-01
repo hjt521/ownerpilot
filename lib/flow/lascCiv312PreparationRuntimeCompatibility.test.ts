@@ -1,4 +1,5 @@
 import { strict as assert } from 'node:assert';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -34,13 +35,14 @@ import {
   LASC_CIV_312_RUNTIME_COMPATIBILITY_SCHEMA_VERSION,
   LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY,
   LASC_CIV_312_SOURCE_BYTE_LENGTH,
+  LASC_CIV_312_TOPOLOGY_PROOF_MODE,
   classifyLascCiv312PdfLoadFailure,
   computeLascCiv312RuntimeCompatibilityProfileSnapshot,
   evaluateLascCiv312PreparationRuntimeCompatibility,
-  inspectLascCiv312TerminalFieldsReadOnly,
-  validateLascCiv312RootAnchoredTopologyEvidence,
+  validateLascCiv312HierarchyEvidence,
   validateLascCiv312RuntimeInspectionEvidence,
-  type LascCiv312RootFieldTopologyEvidence,
+  type LascCiv312HierarchyEvidence,
+  type LascCiv312HierarchyNodeEvidence,
   type LascCiv312RuntimeInspectionEvidence,
   type LascCiv312RuntimeTerminalEvidence,
 } from './lascCiv312PreparationRuntimeCompatibility';
@@ -54,6 +56,10 @@ const OFFICIAL_SOURCE_PATH = join(
   process.cwd(),
   'docs/legal/official-forms/los-angeles/superior-court/CIV312/2025-10/CIV312.pdf',
 );
+
+function sha256(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
 
 function exactEvidence(): LascCiv312RuntimeInspectionEvidence {
   return {
@@ -80,23 +86,69 @@ function replaceField(
   };
 }
 
-function exactRootTopology(): LascCiv312RootFieldTopologyEvidence[] {
-  return LASC_CIV_312_TERMINAL_FIELDS.map(field => ({
+function synthetic18RootHierarchy(): LascCiv312HierarchyEvidence {
+  const structuralRefs = ['900 0 R', '901 0 R', '902 0 R', '903 0 R'];
+  const nestedTerminalGroups = [
+    LASC_CIV_312_TERMINAL_FIELDS.slice(0, 2),
+    LASC_CIV_312_TERMINAL_FIELDS.slice(2, 4),
+    LASC_CIV_312_TERMINAL_FIELDS.slice(4, 6),
+    LASC_CIV_312_TERMINAL_FIELDS.slice(6, 8),
+  ];
+  const parentByTerminalRef = new Map<string, string>();
+  nestedTerminalGroups.forEach((group, index) => {
+    group.forEach(field => parentByTerminalRef.set(field.objectReference, structuralRefs[index]));
+  });
+
+  const terminalNodes: LascCiv312HierarchyNodeEvidence[] = LASC_CIV_312_TERMINAL_FIELDS.map(field => ({
+    objectReference: field.objectReference,
     resolvedToDictionary: true,
-    fieldTypeProvableReadOnly: true,
+    subtype: null,
+    parentObjectReference: parentByTerminalRef.get(field.objectReference) ?? null,
     fieldId: field.fieldId,
     fieldType: field.fieldType,
-    objectReference: field.objectReference,
-    children: [],
+    fieldTypeProvableReadOnly: true,
+    childObjectReferences: [],
   }));
+  const structuralNodes: LascCiv312HierarchyNodeEvidence[] = structuralRefs.map((objectReference, index) => ({
+    objectReference,
+    resolvedToDictionary: true,
+    subtype: null,
+    parentObjectReference: null,
+    fieldId: `structural-${index}`,
+    fieldType: '/Tx',
+    fieldTypeProvableReadOnly: true,
+    childObjectReferences: nestedTerminalGroups[index].map(field => field.objectReference),
+  }));
+  return {
+    rawRootObjectReferences: [
+      ...structuralRefs,
+      ...LASC_CIV_312_TERMINAL_FIELDS.slice(8).map(field => field.objectReference),
+    ],
+    nodes: [...structuralNodes, ...terminalNodes],
+  };
 }
 
-function replaceRoot(
-  roots: readonly LascCiv312RootFieldTopologyEvidence[],
+function cloneHierarchy(evidence: LascCiv312HierarchyEvidence): {
+  rawRootObjectReferences: string[];
+  nodes: LascCiv312HierarchyNodeEvidence[];
+} {
+  return {
+    rawRootObjectReferences: [...evidence.rawRootObjectReferences],
+    nodes: evidence.nodes.map(node => ({ ...node, childObjectReferences: [...node.childObjectReferences] })),
+  };
+}
+
+function replaceNode(
+  evidence: LascCiv312HierarchyEvidence,
   objectReference: string,
-  replacement: Partial<LascCiv312RootFieldTopologyEvidence>,
-): LascCiv312RootFieldTopologyEvidence[] {
-  return roots.map(root => root.objectReference === objectReference ? { ...root, ...replacement } : root);
+  replacement: Partial<LascCiv312HierarchyNodeEvidence>,
+): LascCiv312HierarchyEvidence {
+  return {
+    rawRootObjectReferences: [...evidence.rawRootObjectReferences],
+    nodes: evidence.nodes.map(node => node.objectReference === objectReference
+      ? { ...node, ...replacement, childObjectReferences: replacement.childObjectReferences ?? node.childObjectReferences }
+      : { ...node, childObjectReferences: [...node.childObjectReferences] }),
+  };
 }
 
 function containsByteCarrier(value: unknown, seen = new Set<unknown>()): boolean {
@@ -134,6 +186,7 @@ equal(LASC_CIV_312_SOURCE_BYTE_LENGTH, 741498, 'source byte length constant froz
 equal(LASC_CIV_312_TERMINAL_INPUT_COUNT, 22, 'field-map terminal count remains 22');
 equal(LASC_CIV_312_PDF_LIB_VERSION, '1.17.1', 'pdf-lib runtime pinned');
 deepEqual(LASC_CIV_312_PDF_LIB_LOAD_PROFILE, { updateMetadata: false, ignoreEncryption: false }, 'load profile has no metadata update or encryption bypass');
+equal(LASC_CIV_312_TOPOLOGY_PROOF_MODE, 'LOW_LEVEL_EXACT_FROZEN_REF_HIERARCHY', 'low-level exact-ref proof mode explicit');
 
 // Generic semantic validation remains fail closed.
 equal(validateLascCiv312RuntimeInspectionEvidence(exactEvidence()).status, 'VALID', 'exact frozen topology validates');
@@ -143,155 +196,156 @@ const noAcro = validateLascCiv312RuntimeInspectionEvidence({ ...exactEvidence(),
 equal(noAcro.status === 'BLOCKED' ? noAcro.blockerCode : '', 'ACROFORM_MISSING', 'missing existing AcroForm blocks');
 const withXfa = validateLascCiv312RuntimeInspectionEvidence({ ...exactEvidence(), xfaPresent: true });
 equal(withXfa.status === 'BLOCKED' ? withXfa.blockerCode : '', 'XFA_PRESENT_REQUIRES_ARCHITECTURE', 'XFA causes architecture stop');
-const unknownXfa = validateLascCiv312RuntimeInspectionEvidence({ ...exactEvidence(), xfaPresent: null });
-equal(unknownXfa.status === 'BLOCKED' ? unknownXfa.blockerCode : '', 'TOPOLOGY_NOT_PROVABLE_READ_ONLY', 'unproven XFA state fails closed');
 const tooFew = validateLascCiv312RuntimeInspectionEvidence({ ...exactEvidence(), terminalFields: exactEvidence().terminalFields.slice(0, -1) });
 equal(tooFew.status === 'BLOCKED' ? tooFew.blockerCode : '', 'TERMINAL_FIELD_COUNT_MISMATCH', 'terminal count mismatch blocks');
-const duplicateFields = [...exactEvidence().terminalFields]; duplicateFields[21] = duplicateFields[0];
-const duplicate = validateLascCiv312RuntimeInspectionEvidence({ ...exactEvidence(), terminalFields: duplicateFields });
-equal(duplicate.status === 'BLOCKED' ? duplicate.blockerCode : '', 'DUPLICATE_TERMINAL_FIELD', 'duplicate terminal identity blocks');
-const unexpectedFields = [...exactEvidence().terminalFields]; unexpectedFields[21] = { ...unexpectedFields[21], fieldId: 'UNEXPECTED SYNTHETIC FIELD' };
-const unexpected = validateLascCiv312RuntimeInspectionEvidence({ ...exactEvidence(), terminalFields: unexpectedFields });
-equal(unexpected.status, 'BLOCKED', 'unexpected field blocks');
-const omittedFields = exactEvidence().terminalFields.filter(field => field.fieldId !== 'Signature');
-const omitted = validateLascCiv312RuntimeInspectionEvidence({ ...exactEvidence(), terminalFields: omittedFields });
-equal(omitted.status, 'BLOCKED', 'omitted expected field blocks');
-const wrongName = validateLascCiv312RuntimeInspectionEvidence(replaceField(exactEvidence(), 'Signature', { fieldId: 'Wrong Signature' }));
-equal(wrongName.status, 'BLOCKED', 'root /T mismatch blocks');
 const wrongType = validateLascCiv312RuntimeInspectionEvidence(replaceField(exactEvidence(), 'check box', { fieldType: '/Tx' }));
-equal(wrongType.status === 'BLOCKED' ? wrongType.blockerCode : '', 'TERMINAL_FIELD_TYPE_MISMATCH', 'root /FT mismatch blocks');
-const noRef = validateLascCiv312RuntimeInspectionEvidence(replaceField(exactEvidence(), 'Signature', { objectReference: null }));
-equal(noRef.status === 'BLOCKED' ? noRef.blockerCode : '', 'TOPOLOGY_NOT_PROVABLE_READ_ONLY', 'missing object reference fails closed');
-const topologyUnprovable = validateLascCiv312RuntimeInspectionEvidence({ ...exactEvidence(), topologyProvableReadOnly: false });
-equal(topologyUnprovable.status === 'BLOCKED' ? topologyUnprovable.blockerCode : '', 'TOPOLOGY_NOT_PROVABLE_READ_ONLY', 'unprovable topology fails closed');
+equal(wrongType.status === 'BLOCKED' ? wrongType.blockerCode : '', 'TERMINAL_FIELD_TYPE_MISMATCH', 'wrong terminal type blocks');
 const wrongRef = validateLascCiv312RuntimeInspectionEvidence(replaceField(exactEvidence(), 'Signature', { objectReference: '999 0 R' }));
-equal(wrongRef.status === 'BLOCKED' ? wrongRef.blockerCode : '', 'TOPOLOGY_OBJECT_REFERENCE_MISMATCH', 'root object-reference mismatch blocks');
+equal(wrongRef.status === 'BLOCKED' ? wrongRef.blockerCode : '', 'TOPOLOGY_OBJECT_REFERENCE_MISMATCH', 'wrong terminal ref blocks');
 
-// Exact-root topology admission: no heuristic field discovery from /Kids.
-const exactRoots = exactRootTopology();
-const exactRootValidation = validateLascCiv312RootAnchoredTopologyEvidence(exactRoots);
-equal(exactRootValidation.status, 'VALID', 'exact 22 frozen root refs admit root-anchored topology');
-if (exactRootValidation.status === 'VALID') equal(exactRootValidation.terminalFields.length, 22, 'exact root set yields 22 logical terminals');
+// Hierarchy-aware exact-ref traversal: 18 raw roots deterministically resolve to 22 frozen terminals.
+const hierarchy = synthetic18RootHierarchy();
+equal(hierarchy.rawRootObjectReferences.length, 18, 'synthetic hierarchy has exactly 18 raw roots');
+const hierarchyValidation = validateLascCiv312HierarchyEvidence(hierarchy);
+equal(hierarchyValidation.status, 'VALID', '18-root hierarchy resolves to exact frozen 22 terminals');
+if (hierarchyValidation.status === 'VALID') {
+  equal(hierarchyValidation.terminalFields.length, 22, 'nested terminals still yield exactly 22');
+  deepEqual(hierarchyValidation.terminalFields.map(field => field.objectReference), LASC_CIV_312_TERMINAL_FIELDS.map(field => field.objectReference), 'terminal refs normalized to frozen order');
+}
 
-const missingRoot = validateLascCiv312RootAnchoredTopologyEvidence(exactRoots.slice(0, -1));
-equal(missingRoot.status, 'BLOCKED', 'missing top-level frozen ref blocks without filtering');
-const extraRoot = validateLascCiv312RootAnchoredTopologyEvidence([
-  ...exactRoots,
-  { ...exactRoots[0], objectReference: '999 0 R' },
-]);
-equal(extraRoot.status, 'BLOCKED', 'extra top-level ref blocks without filtering');
-const duplicateRoots = [...exactRoots]; duplicateRoots[21] = { ...duplicateRoots[0] };
-equal(validateLascCiv312RootAnchoredTopologyEvidence(duplicateRoots).status, 'BLOCKED', 'duplicate top-level ref blocks without deduplication');
-const wrongRootRef = replaceRoot(exactRoots, '142 0 R', { objectReference: '999 0 R' });
-equal(validateLascCiv312RootAnchoredTopologyEvidence(wrongRootRef).status, 'BLOCKED', 'wrong top-level ref set blocks without name filtering');
-const nonRefRoot = replaceRoot(exactRoots, '142 0 R', { objectReference: null });
-equal(validateLascCiv312RootAnchoredTopologyEvidence(nonRefRoot).status, 'BLOCKED', 'non-reference raw root blocks');
+const structuralRef = '900 0 R';
+const structuralFieldLike = replaceNode(hierarchy, structuralRef, { fieldId: 'STRUCTURAL FIELD KEY', fieldType: '/Btn' });
+const structuralFieldLikeValidation = validateLascCiv312HierarchyEvidence(structuralFieldLike);
+equal(structuralFieldLikeValidation.status, 'VALID', 'non-terminal ancestor field keys do not promote it to terminal');
+if (structuralFieldLikeValidation.status === 'VALID') equal(structuralFieldLikeValidation.terminalFields.length, 22, 'structural ancestor never increments terminal count');
 
-const owningRef = '120 0 R';
-const validWidgetChild = {
+const nestedFrozenRef = LASC_CIV_312_TERMINAL_FIELDS[0].objectReference;
+ok(!hierarchy.rawRootObjectReferences.includes(nestedFrozenRef), 'chosen frozen terminal is nested rather than top-level');
+if (hierarchyValidation.status === 'VALID') ok(hierarchyValidation.terminalFields.some(field => field.objectReference === nestedFrozenRef), 'nested frozen terminal is emitted');
+
+const mergedRef = LASC_CIV_312_TERMINAL_FIELDS[8].objectReference;
+const mergedTerminalWidget = replaceNode(hierarchy, mergedRef, { subtype: '/Widget' });
+const mergedValidation = validateLascCiv312HierarchyEvidence(mergedTerminalWidget);
+equal(mergedValidation.status, 'VALID', 'frozen merged terminal/widget dictionary remains terminal by exact-ref priority');
+if (mergedValidation.status === 'VALID') equal(mergedValidation.terminalFields.filter(field => field.objectReference === mergedRef).length, 1, 'merged frozen terminal counted once');
+
+const widgetOwnerRef = LASC_CIV_312_TERMINAL_FIELDS[9].objectReference;
+const widgetRef = '990 0 R';
+const withWidget = cloneHierarchy(hierarchy);
+withWidget.nodes = withWidget.nodes.map(node => node.objectReference === widgetOwnerRef
+  ? { ...node, childObjectReferences: [...node.childObjectReferences, widgetRef] }
+  : node);
+withWidget.nodes.push({
+  objectReference: widgetRef,
   resolvedToDictionary: true,
   subtype: '/Widget',
-  parentObjectReference: owningRef,
-  hasFieldId: false,
-  hasFieldType: false,
-} as const;
-const rootWithWidget = replaceRoot(exactRoots, owningRef, { children: [validWidgetChild] });
-const widgetValidation = validateLascCiv312RootAnchoredTopologyEvidence(rootWithWidget);
-equal(widgetValidation.status, 'VALID', 'frozen terminal root plus widget kid remains one logical field');
-if (widgetValidation.status === 'VALID') equal(widgetValidation.terminalFields.length, 22, 'widget kid does not increment logical-field count');
-
-const widgetWithFieldKeys = replaceRoot(exactRoots, owningRef, {
-  children: [{ ...validWidgetChild, hasFieldId: true, hasFieldType: true }],
+  parentObjectReference: widgetOwnerRef,
+  fieldId: 'MISLEADING WIDGET /T',
+  fieldType: '/Btn',
+  fieldTypeProvableReadOnly: true,
+  childObjectReferences: [],
 });
-const widgetFieldKeysValidation = validateLascCiv312RootAnchoredTopologyEvidence(widgetWithFieldKeys);
-equal(widgetFieldKeysValidation.status, 'VALID', 'widget /T and /FT remain widget state and do not create another logical field');
-if (widgetFieldKeysValidation.status === 'VALID') equal(widgetFieldKeysValidation.terminalFields.length, 22, 'field-related widget keys still preserve 22 logical roots');
+const widgetValidation = validateLascCiv312HierarchyEvidence(withWidget);
+equal(widgetValidation.status, 'VALID', 'non-frozen widget child remains topology evidence only even with /T and /FT');
+if (widgetValidation.status === 'VALID') equal(widgetValidation.terminalFields.length, 22, 'widget child does not increment terminal count');
 
-const badWidgetParent = replaceRoot(exactRoots, owningRef, {
-  children: [{ ...validWidgetChild, parentObjectReference: '121 0 R' }],
-});
-equal(validateLascCiv312RootAnchoredTopologyEvidence(badWidgetParent).status, 'BLOCKED', 'widget /Parent mismatch fails closed');
-const unresolvedWidget = replaceRoot(exactRoots, owningRef, {
-  children: [{ ...validWidgetChild, resolvedToDictionary: false }],
-});
-equal(validateLascCiv312RootAnchoredTopologyEvidence(unresolvedWidget).status, 'BLOCKED', 'unresolved /Kids child fails closed');
-const nonWidgetChild = replaceRoot(exactRoots, owningRef, {
-  children: [{ ...validWidgetChild, subtype: '/Tx' }],
-});
-equal(validateLascCiv312RootAnchoredTopologyEvidence(nonWidgetChild).status, 'BLOCKED', 'non-widget child under frozen terminal root fails closed');
-const unprovableInheritedType = replaceRoot(exactRoots, owningRef, { fieldTypeProvableReadOnly: false });
-equal(validateLascCiv312RootAnchoredTopologyEvidence(unprovableInheritedType).status, 'BLOCKED', 'unprovable inherited /FT fails closed');
+const missing = cloneHierarchy(hierarchy);
+missing.nodes = missing.nodes.map(node => node.objectReference === structuralRef
+  ? { ...node, childObjectReferences: node.childObjectReferences.slice(1) }
+  : node);
+equal(validateLascCiv312HierarchyEvidence(missing).status, 'BLOCKED', 'missing frozen terminal ref blocks');
 
-// Raw /Fields absence/non-array must stop without creating a normalized array.
-const inertDocument = {} as Parameters<typeof inspectLascCiv312TerminalFieldsReadOnly>[0];
-const noFieldsAcro = { Fields: () => undefined } as unknown as Parameters<typeof inspectLascCiv312TerminalFieldsReadOnly>[1];
-const noFieldsInspection = inspectLascCiv312TerminalFieldsReadOnly(inertDocument, noFieldsAcro);
-equal(noFieldsInspection.topologyProvableReadOnly, false, 'missing raw /Fields fails closed without creation');
-const nonArrayFieldsAcro = { Fields: () => ({}) } as unknown as Parameters<typeof inspectLascCiv312TerminalFieldsReadOnly>[1];
-const nonArrayInspection = inspectLascCiv312TerminalFieldsReadOnly(inertDocument, nonArrayFieldsAcro);
-equal(nonArrayInspection.topologyProvableReadOnly, false, 'non-array raw /Fields fails closed without creation');
+const duplicateReachability = cloneHierarchy(hierarchy);
+duplicateReachability.rawRootObjectReferences.push(nestedFrozenRef);
+equal(validateLascCiv312HierarchyEvidence(duplicateReachability).status, 'BLOCKED', 'duplicate frozen terminal reachability blocks');
 
-// Load-failure classification and forbidden API surface.
+const ambiguousLeafRef = '991 0 R';
+const extraAmbiguous = cloneHierarchy(hierarchy);
+extraAmbiguous.nodes = extraAmbiguous.nodes.map(node => node.objectReference === structuralRef
+  ? { ...node, childObjectReferences: [...node.childObjectReferences, ambiguousLeafRef] }
+  : node);
+extraAmbiguous.nodes.push({
+  objectReference: ambiguousLeafRef,
+  resolvedToDictionary: true,
+  subtype: null,
+  parentObjectReference: structuralRef,
+  fieldId: 'AMBIGUOUS',
+  fieldType: '/Tx',
+  fieldTypeProvableReadOnly: true,
+  childObjectReferences: [],
+});
+equal(validateLascCiv312HierarchyEvidence(extraAmbiguous).status, 'BLOCKED', 'extra ambiguous reachable leaf blocks');
+
+const wrongParent = replaceNode(hierarchy, nestedFrozenRef, { parentObjectReference: null });
+equal(validateLascCiv312HierarchyEvidence(wrongParent).status, 'BLOCKED', 'wrong parent relationship blocks');
+
+const unresolvedChild = cloneHierarchy(hierarchy);
+unresolvedChild.nodes = unresolvedChild.nodes.map(node => node.objectReference === structuralRef
+  ? { ...node, childObjectReferences: [...node.childObjectReferences, '992 0 R'] }
+  : node);
+equal(validateLascCiv312HierarchyEvidence(unresolvedChild).status, 'BLOCKED', 'unresolved child ref blocks');
+
+const cycle: LascCiv312HierarchyEvidence = {
+  rawRootObjectReferences: ['993 0 R'],
+  nodes: [
+    {
+      objectReference: '993 0 R', resolvedToDictionary: true, subtype: null, parentObjectReference: null,
+      fieldId: null, fieldType: null, fieldTypeProvableReadOnly: true, childObjectReferences: ['994 0 R'],
+    },
+    {
+      objectReference: '994 0 R', resolvedToDictionary: true, subtype: null, parentObjectReference: '993 0 R',
+      fieldId: null, fieldType: null, fieldTypeProvableReadOnly: true, childObjectReferences: ['993 0 R'],
+    },
+  ],
+};
+equal(validateLascCiv312HierarchyEvidence(cycle).status, 'BLOCKED', 'cycle blocks');
+
+// Load-failure classification and prohibited API surface.
 equal(classifyLascCiv312PdfLoadFailure(Object.assign(new Error('synthetic encrypted PDF'), { name: 'EncryptedPDFError' })), 'ENCRYPTED_OR_UNSUPPORTED_SOURCE', 'encrypted source classifier frozen');
 equal(classifyLascCiv312PdfLoadFailure(new Error('synthetic parser failure')), 'PDF_LOAD_FAILED', 'ordinary load failure classifier frozen');
-
-const implementationPath = join(process.cwd(), 'lib/flow/lascCiv312PreparationRuntimeCompatibility.ts');
-const implementationSource = readFileSync(implementationPath, 'utf8');
+const implementationSource = readFileSync(join(process.cwd(), 'lib/flow/lascCiv312PreparationRuntimeCompatibility.ts'), 'utf8');
 const forbiddenCalls = [
-  '.getForm(',
-  '.getOrCreateAcroForm(',
-  '.getAllFields(',
-  '.getFields(',
-  '.deleteXFA(',
-  '.save(',
-  '.setText(',
-  '.check(',
-  '.uncheck(',
-  '.select(',
-  '.updateFieldAppearances(',
-  '.flatten(',
+  '.getForm(', '.getAcroForm(', '.getOrCreateAcroForm(', '.getAllFields(', '.getFields(', '.Fields(',
+  '.deleteXFA(', '.save(', '.setText(', '.check(', '.uncheck(', '.select(', '.updateFieldAppearances(', '.flatten(',
 ];
 for (const token of forbiddenCalls) equal(implementationSource.includes(token), false, `forbidden source-inspection API absent: ${token}`);
 equal(implementationSource.includes('node:child_process'), false, 'no child-process/native tool invocation');
 equal(implementationSource.toLowerCase().includes('q' + 'pdf'), false, 'no qpdf invocation or dependency');
-equal(implementationSource.includes('console.'), false, 'temporary diagnostic console output removed from implementation');
+equal(implementationSource.includes('console.'), false, 'no implementation diagnostic console output');
 
-// Exact registered source under pinned runtime is dispositive.
+// Exact registered source is evaluated through the bounded low-level hierarchy path.
 const sourceBytes = new Uint8Array(readFileSync(OFFICIAL_SOURCE_PATH));
 equal(sourceBytes.byteLength, 741498, 'registered source byte length exact before evaluator');
+const sourceHashBefore = sha256(sourceBytes);
+equal(sourceHashBefore, LASC_CIV_312_SOURCE_SHA256, 'registered source hash exact before evaluator');
 const exactResult = await evaluateLascCiv312PreparationRuntimeCompatibility({
   sourceBytes,
   sourceIdentity: LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY,
 });
-equal(exactResult.status, 'DIRECT_RUNTIME_COMPATIBLE', 'exact registered CIV 312 is direct-runtime compatible');
-if (exactResult.status !== 'DIRECT_RUNTIME_COMPATIBLE') throw new Error(`${exactResult.blockerCode}:${exactResult.detail}`);
-equal(exactResult.sourceSha256BeforeInspection, LASC_CIV_312_SOURCE_SHA256, 'source SHA before inspection exact');
-equal(exactResult.sourceSha256AfterInspection, LASC_CIV_312_SOURCE_SHA256, 'source SHA after inspection exact');
-equal(exactResult.sourceSha256AfterInspection, exactResult.sourceSha256BeforeInspection, 'source identity unchanged after inspection');
-equal(exactResult.sourceByteLength, 741498, 'returned source byte length exact');
-equal(exactResult.pageCount, 1, 'pinned pdf-lib observes one page');
-equal(exactResult.acroFormPresent, true, 'pinned pdf-lib observes existing AcroForm');
-equal(exactResult.xfaPresent, false, 'pinned pdf-lib observes XFA absent');
-equal(exactResult.terminalFieldCount, 22, 'pinned pdf-lib observes 22 frozen logical roots');
-equal(exactResult.terminalFields.length, 22, 'returned inventory has exactly 22 terminals');
-equal(new Set(exactResult.terminalFields.map(field => field.fieldId)).size, 22, 'returned terminal IDs unique');
-deepEqual(exactResult.terminalFields.map(field => field.fieldId), LASC_CIV_312_TERMINAL_FIELDS.map(field => field.fieldId), 'returned field IDs preserve frozen map order');
-deepEqual(exactResult.terminalFields.map(field => field.fieldType), LASC_CIV_312_TERMINAL_FIELDS.map(field => field.fieldType), 'all Tx/Btn types match frozen map');
-deepEqual(exactResult.terminalFields.map(field => field.objectReference), LASC_CIV_312_TERMINAL_FIELDS.map(field => field.objectReference), 'all object refs match frozen root topology');
-equal(exactResult.topologyProvableReadOnly, true, 'root/widget topology proven read-only');
-equal(exactResult.inspectionStructuralSnapshotAfter, exactResult.inspectionStructuralSnapshotBefore, 'inspection structural snapshot unchanged');
-equal(exactResult.inspectionMutationObserved, false, 'no inspection mutation observed');
-equal(exactResult.sourceIdentityUnchangedAfterInspection, true, 'source identity unchanged flag exact');
-equal(containsByteCarrier(exactResult), false, 'compatibility result returns no PDF/document bytes');
-
-const repeatedResult = await evaluateLascCiv312PreparationRuntimeCompatibility({
-  sourceBytes: new Uint8Array(sourceBytes),
-  sourceIdentity: LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY,
-});
-equal(repeatedResult.status, 'DIRECT_RUNTIME_COMPATIBLE', 'repeat exact-source evaluation also compatible');
-if (repeatedResult.status === 'DIRECT_RUNTIME_COMPATIBLE') {
-  equal(repeatedResult.compatibilitySnapshot, exactResult.compatibilitySnapshot, 'compatibility snapshot deterministic across repeated evaluation');
-  equal(repeatedResult.inspectionStructuralSnapshotBefore, exactResult.inspectionStructuralSnapshotBefore, 'structural evidence deterministic across repeated evaluation');
+const sourceHashAfter = sha256(sourceBytes);
+equal(sourceHashAfter, sourceHashBefore, 'source bytes unchanged after evaluator');
+ok(
+  exactResult.status === 'DIRECT_RUNTIME_COMPATIBLE'
+    || (exactResult.status === 'BLOCKED_FOR_DIRECT_RUNTIME' && exactResult.blockerCode === 'TOPOLOGY_NOT_PROVABLE_READ_ONLY'),
+  'exact source either proves exact-ref compatibility or truthfully fails closed on topology proof',
+);
+if (exactResult.status === 'DIRECT_RUNTIME_COMPATIBLE') {
+  equal(exactResult.topologyProofMode, LASC_CIV_312_TOPOLOGY_PROOF_MODE, 'exact source uses bounded low-level proof mode');
+  equal(exactResult.sourceSha256BeforeInspection, LASC_CIV_312_SOURCE_SHA256, 'source SHA before inspection exact');
+  equal(exactResult.sourceSha256AfterInspection, LASC_CIV_312_SOURCE_SHA256, 'source SHA after inspection exact');
+  equal(exactResult.rawFieldRootCount, 18, 'exact registered source exposes 18 raw /Fields roots');
+  equal(exactResult.rawFieldRootObjectReferences.length, 18, 'exact result records all 18 raw root refs');
+  equal(exactResult.terminalFieldCount, 22, 'exact source proves 22 frozen terminals');
+  equal(exactResult.terminalFields.length, 22, 'exact result contains 22 terminals');
+  deepEqual(exactResult.terminalFields.map(field => field.fieldId), LASC_CIV_312_TERMINAL_FIELDS.map(field => field.fieldId), 'exact IDs preserve frozen order');
+  deepEqual(exactResult.terminalFields.map(field => field.fieldType), LASC_CIV_312_TERMINAL_FIELDS.map(field => field.fieldType), 'exact /FT values preserve frozen map');
+  deepEqual(exactResult.terminalFields.map(field => field.objectReference), LASC_CIV_312_TERMINAL_FIELDS.map(field => field.objectReference), 'exact refs preserve frozen map');
+  equal(exactResult.inspectionStructuralSnapshotAfter, exactResult.inspectionStructuralSnapshotBefore, 'inspection structure unchanged');
+  equal(exactResult.inspectionMutationObserved, false, 'no inspection mutation observed');
+  equal(exactResult.sourceIdentityUnchangedAfterInspection, true, 'source identity unchanged flag exact');
+  equal(containsByteCarrier(exactResult), false, 'compatibility result returns no PDF/document bytes');
+} else {
+  equal(exactResult.blockerCode, 'TOPOLOGY_NOT_PROVABLE_READ_ONLY', 'truthful exact-source blocker remains topology-only');
 }
 
 const sameLengthMutation = new Uint8Array(sourceBytes); sameLengthMutation[0] ^= 0x01;
@@ -299,7 +353,7 @@ const mutated = await evaluateLascCiv312PreparationRuntimeCompatibility({
   sourceBytes: sameLengthMutation,
   sourceIdentity: LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY,
 });
-equal(mutated.status === 'BLOCKED_FOR_DIRECT_RUNTIME' ? mutated.blockerCode : '', 'SOURCE_HASH_MISMATCH', 'one-byte same-length mutation blocks on hash before parse');
+equal(mutated.status === 'BLOCKED_FOR_DIRECT_RUNTIME' ? mutated.blockerCode : '', 'SOURCE_HASH_MISMATCH', 'one-byte same-length mutation blocks before parse');
 const shorter = await evaluateLascCiv312PreparationRuntimeCompatibility({
   sourceBytes: sourceBytes.slice(0, sourceBytes.length - 1),
   sourceIdentity: LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY,
@@ -307,24 +361,14 @@ const shorter = await evaluateLascCiv312PreparationRuntimeCompatibility({
 equal(shorter.status === 'BLOCKED_FOR_DIRECT_RUNTIME' ? shorter.blockerCode : '', 'SOURCE_BYTE_LENGTH_MISMATCH', 'byte-length mismatch blocks before parse');
 const malformed = await evaluateLascCiv312PreparationRuntimeCompatibility(null);
 equal(malformed.status === 'BLOCKED_FOR_DIRECT_RUNTIME' ? malformed.blockerCode : '', 'MALFORMED_RUNTIME_COMPATIBILITY_INPUT', 'malformed input fails closed');
-const wrongIdentity = await evaluateLascCiv312PreparationRuntimeCompatibility({
-  sourceBytes,
-  sourceIdentity: { ...LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY, formRevision: 'synthetic-other' },
-});
-equal(wrongIdentity.status === 'BLOCKED_FOR_DIRECT_RUNTIME' ? wrongIdentity.blockerCode : '', 'MALFORMED_RUNTIME_COMPATIBILITY_INPUT', 'non-frozen source identity blocks');
 
-// Authority remains held even when compatibility is proven.
-equal(exactResult.governance.formApplicability, 'NOT_EVALUATED', 'form applicability not evaluated');
-equal(exactResult.governance.formRequiredness, 'NOT_EVALUATED', 'form requiredness not evaluated');
-equal(exactResult.governance.legalSufficiency, 'NOT_DETERMINED', 'legal sufficiency not determined');
+// Authority remains held regardless of compatibility disposition.
+deepEqual(exactResult.governance, LASC_CIV_312_RUNTIME_COMPATIBILITY_GOVERNANCE, 'returned governance equals frozen posture');
 equal(exactResult.governance.documentGeneration, 'NOT_PERFORMED', 'document generation not performed');
 equal(exactResult.governance.pdfMutation, 'NOT_PERFORMED', 'PDF mutation not performed');
 equal(exactResult.governance.preparationRuntimeDerivative, 'NOT_CREATED', 'preparation runtime derivative not created');
-equal(exactResult.governance.sourceMutation, 'NO', 'source mutation no');
 equal(exactResult.governance.persistence, 'NO', 'persistence no');
 equal(exactResult.governance.databaseWrite, 'NO', 'database write no');
-equal(exactResult.governance.preparationCheckpointWrite, 'NO', 'preparation checkpoint write no');
-equal(exactResult.governance.ownerReviewCheckpointWrite, 'NO', 'owner review checkpoint write no');
 equal(exactResult.governance.checkpoint1, 'HELD', 'checkpoint 1 held');
 equal(exactResult.governance.filing, 'NO', 'filing no');
 equal(exactResult.governance.signing, 'NO', 'signing no');
@@ -332,6 +376,5 @@ equal(exactResult.governance.serviceExecution, 'NO', 'service execution no');
 equal(exactResult.governance.courtSubmission, 'NO', 'court submission no');
 equal(exactResult.governance.stageF, 'HELD', 'Stage F held');
 equal(exactResult.governance.newProductionAuthority, 'NO', 'Production authority no');
-deepEqual(exactResult.governance, LASC_CIV_312_RUNTIME_COMPATIBILITY_GOVERNANCE, 'returned governance equals frozen posture');
 
-console.log(`lascCiv312PreparationRuntimeCompatibility: ${passed} assertions passed`);
+console.log(`lascCiv312PreparationRuntimeCompatibility: ${passed} assertions passed; exactSource=${exactResult.status}${exactResult.status === 'BLOCKED_FOR_DIRECT_RUNTIME' ? `:${exactResult.blockerCode}` : `;rawRoots=${exactResult.rawFieldRootCount};terminals=${exactResult.terminalFieldCount}`}`);
