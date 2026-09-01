@@ -306,14 +306,24 @@ function inspectFieldEntry(
 function inspectTerminalFieldsReadOnly(document: PDFDocument, acroForm: NonNullable<ReturnType<PDFDocument['catalog']['getAcroForm']>>): {
   terminalFields: readonly LascCiv312RuntimeTerminalEvidence[];
   topologyProvableReadOnly: boolean;
+  diagnostic: string;
 } {
   const fields = acroForm.Fields();
-  if (!(fields instanceof PDFArray)) return { terminalFields: [], topologyProvableReadOnly: false };
+  if (!(fields instanceof PDFArray)) {
+    return {
+      terminalFields: [],
+      topologyProvableReadOnly: false,
+      diagnostic: 'fieldsPdfArray=false;topLevelFieldCount=unavailable;firstEntryPdfRef=false;firstEntryPdfDict=false;firstResolvedPdfDict=false',
+    };
+  }
+  const firstEntry = fields.size() > 0 ? fields.get(0) : undefined;
+  const firstResolved = firstEntry === undefined ? undefined : document.context.lookup(firstEntry);
+  const diagnostic = `fieldsPdfArray=true;topLevelFieldCount=${fields.size()};firstEntryPdfRef=${firstEntry instanceof PDFRef};firstEntryPdfDict=${firstEntry instanceof PDFDict};firstResolvedPdfDict=${firstResolved instanceof PDFDict}`;
   const state: WalkState = { terminalFields: [], topologyProvableReadOnly: true, visitedRefs: new Set<string>() };
   for (let index = 0; index < fields.size(); index += 1) {
     inspectFieldEntry(document, fields.get(index), '', null, state);
   }
-  return { terminalFields: state.terminalFields, topologyProvableReadOnly: state.topologyProvableReadOnly };
+  return { terminalFields: state.terminalFields, topologyProvableReadOnly: state.topologyProvableReadOnly, diagnostic };
 }
 
 function captureInspectionStructuralSnapshot(
@@ -492,7 +502,12 @@ export async function evaluateLascCiv312PreparationRuntimeCompatibility(
     topologyProvableReadOnly: inspected.topologyProvableReadOnly,
   };
   const validation = validateLascCiv312RuntimeInspectionEvidence(inspectionEvidence);
-  if (validation.status === 'BLOCKED') return blocked(validation.blockerCode, validation.detail);
+  if (validation.status === 'BLOCKED') {
+    return blocked(
+      validation.blockerCode,
+      `${validation.detail} Observed terminal fields=${inspected.terminalFields.length}; topologyProvableReadOnly=${inspected.topologyProvableReadOnly}; ${inspected.diagnostic}.`,
+    );
+  }
 
   const terminalFields = normalizedTerminalEvidence(inspected.terminalFields);
   const compatibilitySnapshot = digest('civ312-runtime-compatibility', {
