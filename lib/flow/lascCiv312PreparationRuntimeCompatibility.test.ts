@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { PDFArray, PDFDocument } from 'pdf-lib';
 import {
   LASC_CIV_312_FIELD_MAP_ID,
   LASC_CIV_312_FIELD_MAP_SNAPSHOT,
@@ -165,6 +166,14 @@ equal(implementationSource.toLowerCase().includes('q' + 'pdf'), false, 'no qpdf 
 
 const sourceBytes = new Uint8Array(readFileSync(OFFICIAL_SOURCE_PATH));
 equal(sourceBytes.byteLength, 741498, 'registered source byte length exact before evaluator');
+const diagnosticDocument = await PDFDocument.load(sourceBytes, LASC_CIV_312_PDF_LIB_LOAD_PROFILE);
+const diagnosticAcroForm = diagnosticDocument.catalog.getAcroForm();
+const diagnosticFields = diagnosticAcroForm?.Fields();
+if (diagnosticFields instanceof PDFArray) {
+  const topLevelRefs = Array.from({ length: diagnosticFields.size() }, (_, index) => diagnosticFields.get(index).toString());
+  console.error(`CIV312_RUNTIME_TOP_LEVEL_REFS=${topLevelRefs.join(',')}`);
+  console.error(`CIV312_RUNTIME_PARSED_ACROFORM=${diagnosticAcroForm?.dict.toString() ?? '<missing>'}`);
+}
 const exactResult = await evaluateLascCiv312PreparationRuntimeCompatibility({
   sourceBytes,
   sourceIdentity: LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY,
