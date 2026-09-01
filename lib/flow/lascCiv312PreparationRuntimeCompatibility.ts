@@ -17,7 +17,6 @@ import {
   LASC_CIV_312_SOURCE_SHA256,
   LASC_CIV_312_TERMINAL_FIELDS,
   LASC_CIV_312_TERMINAL_INPUT_COUNT,
-  type LascCiv312FieldType,
 } from './lascCiv312FieldMapFoundation';
 import {
   LASC_CIV_312_GENERATION_BINDING_PROFILE_ID,
@@ -105,6 +104,27 @@ export interface LascCiv312RuntimeInspectionEvidence {
   topologyProvableReadOnly: boolean;
 }
 
+export interface LascCiv312RootWidgetTopologyEvidence {
+  resolvedToDictionary: boolean;
+  subtype: string | null;
+  parentObjectReference: string | null;
+  hasFieldId: boolean;
+  hasFieldType: boolean;
+}
+
+export interface LascCiv312RootFieldTopologyEvidence {
+  resolvedToDictionary: boolean;
+  fieldTypeProvableReadOnly: boolean;
+  fieldId: string | null;
+  fieldType: string | null;
+  objectReference: string | null;
+  children: readonly LascCiv312RootWidgetTopologyEvidence[];
+}
+
+export type LascCiv312RootAnchoredTopologyValidation =
+  | { status: 'VALID'; terminalFields: readonly LascCiv312RuntimeTerminalEvidence[] }
+  | { status: 'BLOCKED'; detail: string };
+
 export type LascCiv312RuntimeCompatibilityBlockerCode =
   | 'SOURCE_HASH_MISMATCH'
   | 'SOURCE_BYTE_LENGTH_MISMATCH'
@@ -166,6 +186,8 @@ export type LascCiv312PreparationRuntimeCompatibilityResult =
     };
 
 const EXPECTED_IDENTITY_KEYS = Object.keys(LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY).sort();
+const EXPECTED_TERMINAL_REFS = Object.freeze(LASC_CIV_312_TERMINAL_FIELDS.map(field => field.objectReference));
+const EXPECTED_TERMINAL_REF_SET = new Set(EXPECTED_TERMINAL_REFS);
 
 function sha256(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
@@ -228,82 +250,188 @@ function readText(value: unknown): string | null {
   return null;
 }
 
-interface WalkState {
-  terminalFields: LascCiv312RuntimeTerminalEvidence[];
-  topologyProvableReadOnly: boolean;
-  visitedRefs: Set<string>;
+function deterministicRootRefDetail(roots: readonly LascCiv312RootFieldTopologyEvidence[]): string {
+  const refs = roots.map(root => root.objectReference ?? '<NON_REF_ROOT>');
+  const uniqueRefs = new Set(refs);
+  return `observedRootCount=${roots.length};observedUniqueRootCount=${uniqueRefs.size};observedRootRefs=${JSON.stringify([...refs].sort())}`;
 }
 
-function inspectFieldEntry(
+/**
+ * Exact-source root anchoring only. This does not discover logical fields from
+ * /Kids. The frozen 22 top-level object references are the authority; child
+ * objects are widget-topology evidence only.
+ */
+export function validateLascCiv312RootAnchoredTopologyEvidence(
+  roots: readonly LascCiv312RootFieldTopologyEvidence[],
+): LascCiv312RootAnchoredTopologyValidation {
+  const detail = deterministicRootRefDetail(roots);
+  if (roots.length !== LASC_CIV_312_TERMINAL_INPUT_COUNT) {
+    return { status: 'BLOCKED', detail: `Raw /Fields root count does not equal the frozen 22-root topology; ${detail}.` };
+  }
+
+  const refs = roots.map(root => root.objectReference);
+  if (refs.some(ref => ref === null)) {
+    return { status: 'BLOCKED', detail: `Every raw /Fields entry must be an indirect object reference; ${detail}.` };
+  }
+  const concreteRefs = refs as string[];
+  const uniqueRefs = new Set(concreteRefs);
+  if (uniqueRefs.size !== LASC_CIV_312_TERMINAL_INPUT_COUNT) {
+    return { status: 'BLOCKED', detail: `Raw /Fields contains a duplicate top-level object reference; ${detail}.` };
+  }
+  if (concreteRefs.some(ref => !EXPECTED_TERMINAL_REF_SET.has(ref))
+    || EXPECTED_TERMINAL_REFS.some(ref => !uniqueRefs.has(ref))) {
+    return { status: 'BLOCKED', detail: `Raw /Fields ref set does not equal the frozen 22-ref topology; ${detail}.` };
+  }
+
+  const terminalFields: LascCiv312RuntimeTerminalEvidence[] = [];
+  for (const expected of LASC_CIV_312_TERMINAL_FIELDS) {
+    const root = roots.find(candidate => candidate.objectReference === expected.objectReference)!;
+    if (!root.resolvedToDictionary) {
+      return { status: 'BLOCKED', detail: `Frozen root ${expected.objectReference} did not resolve to a dictionary; ${detail}.` };
+    }
+    if (!root.fieldTypeProvableReadOnly) {
+      return { status: 'BLOCKED', detail: `Inherited /FT was not provable read-only for ${expected.objectReference}; ${detail}.` };
+    }
+    for (const child of root.children) {
+      if (!child.resolvedToDictionary) {
+        return { status: 'BLOCKED', detail: `A /Kids entry under ${expected.objectReference} did not resolve to a dictionary; ${detail}.` };
+      }
+      if (child.subtype !== '/Widget') {
+        return { status: 'BLOCKED', detail: `A /Kids entry under ${expected.objectReference} was not /Subtype /Widget; ${detail}.` };
+      }
+      if (child.parentObjectReference !== expected.objectReference) {
+        return { status: 'BLOCKED', detail: `A widget /Parent did not bind back to owning frozen root ${expected.objectReference}; ${detail}.` };
+      }
+      // /T and /FT on a proven widget child are explicitly non-authoritative
+      // for logical-field counting. They remain child-widget state only.
+      void child.hasFieldId;
+      void child.hasFieldType;
+    }
+    terminalFields.push({
+      fieldId: root.fieldId ?? '<UNNAMED_TERMINAL_FIELD>',
+      fieldType: root.fieldType,
+      objectReference: expected.objectReference,
+    });
+  }
+  return { status: 'VALID', terminalFields };
+}
+
+function objectReferenceForReadOnly(document: PDFDocument, value: unknown): string | null {
+  if (value instanceof PDFRef) return value.toString();
+  if (value instanceof PDFDict) return document.context.getObjectRef(value)?.toString() ?? null;
+  return null;
+}
+
+function readInheritedFieldTypeReadOnly(
   document: PDFDocument,
-  entry: unknown,
-  parentName: string,
-  inheritedFieldType: string | null,
-  state: WalkState,
-): void {
-  let objectReference: string | null = null;
-  let dict: PDFDict | null = null;
-
-  if (entry instanceof PDFRef) {
-    objectReference = entry.toString();
-    if (state.visitedRefs.has(objectReference)) {
-      state.terminalFields.push({ fieldId: parentName || '<CYCLIC_FIELD>', fieldType: inheritedFieldType, objectReference });
-      return;
+  root: PDFDict,
+): { fieldType: string | null; provable: boolean } {
+  let current = root;
+  const visited = new Set<string>();
+  for (let depth = 0; depth < 64; depth += 1) {
+    const directTypeRaw = current.get(PDFName.of('FT'));
+    if (directTypeRaw !== undefined) {
+      const directType = document.context.lookup(directTypeRaw);
+      return directType instanceof PDFName
+        ? { fieldType: directType.toString(), provable: true }
+        : { fieldType: null, provable: false };
     }
-    state.visitedRefs.add(objectReference);
-    const resolved = document.context.lookup(entry);
-    if (resolved instanceof PDFDict) dict = resolved;
-    else {
-      state.topologyProvableReadOnly = false;
-      return;
-    }
-  } else if (entry instanceof PDFDict) {
-    dict = entry;
-    objectReference = document.context.getObjectRef(entry)?.toString() ?? null;
-    if (!objectReference) state.topologyProvableReadOnly = false;
-  } else {
-    state.topologyProvableReadOnly = false;
-    return;
+
+    const parentRaw = current.get(PDFName.of('Parent'));
+    if (parentRaw === undefined) return { fieldType: null, provable: true };
+    const parentReference = objectReferenceForReadOnly(document, parentRaw);
+    if (!parentReference || visited.has(parentReference)) return { fieldType: null, provable: false };
+    visited.add(parentReference);
+    const parent = document.context.lookup(parentRaw);
+    if (!(parent instanceof PDFDict)) return { fieldType: null, provable: false };
+    current = parent;
   }
-
-  const partialName = readText(document.context.lookup(dict.get(PDFName.of('T'))));
-  const fieldId = partialName ? (parentName ? `${parentName}.${partialName}` : partialName) : parentName;
-  const directType = document.context.lookup(dict.get(PDFName.of('FT')));
-  const fieldType = directType instanceof PDFName ? directType.toString() : inheritedFieldType;
-  const kidsObject = document.context.lookup(dict.get(PDFName.of('Kids')));
-  const childFields: unknown[] = [];
-
-  if (kidsObject instanceof PDFArray) {
-    for (let index = 0; index < kidsObject.size(); index += 1) {
-      const childEntry = kidsObject.get(index);
-      const childResolved = document.context.lookup(childEntry);
-      if (!(childResolved instanceof PDFDict)) {
-        state.topologyProvableReadOnly = false;
-        continue;
-      }
-      const subtype = document.context.lookup(childResolved.get(PDFName.of('Subtype')));
-      const childHasFieldIdentity = childResolved.has(PDFName.of('T'))
-        || childResolved.has(PDFName.of('FT'))
-        || childResolved.has(PDFName.of('Kids'));
-      if (!(subtype instanceof PDFName && subtype.toString() === '/Widget' && !childHasFieldIdentity)) {
-        childFields.push(childEntry);
-      }
-    }
-  }
-
-  if (childFields.length > 0) {
-    for (const child of childFields) inspectFieldEntry(document, child, fieldId, fieldType, state);
-    return;
-  }
-
-  state.terminalFields.push({
-    fieldId: fieldId || '<UNNAMED_TERMINAL_FIELD>',
-    fieldType,
-    objectReference,
-  });
+  return { fieldType: null, provable: false };
 }
 
-function inspectTerminalFieldsReadOnly(document: PDFDocument, acroForm: NonNullable<ReturnType<PDFDocument['catalog']['getAcroForm']>>): {
+function inspectRootFieldReadOnly(
+  document: PDFDocument,
+  rawRoot: unknown,
+): LascCiv312RootFieldTopologyEvidence {
+  if (!(rawRoot instanceof PDFRef)) {
+    return {
+      resolvedToDictionary: false,
+      fieldTypeProvableReadOnly: false,
+      fieldId: null,
+      fieldType: null,
+      objectReference: null,
+      children: [],
+    };
+  }
+  const objectReference = rawRoot.toString();
+  const resolved = document.context.lookup(rawRoot);
+  if (!(resolved instanceof PDFDict)) {
+    return {
+      resolvedToDictionary: false,
+      fieldTypeProvableReadOnly: false,
+      fieldId: null,
+      fieldType: null,
+      objectReference,
+      children: [],
+    };
+  }
+
+  const fieldId = readText(document.context.lookup(resolved.get(PDFName.of('T'))));
+  const inheritedFieldType = readInheritedFieldTypeReadOnly(document, resolved);
+  const children: LascCiv312RootWidgetTopologyEvidence[] = [];
+  const kidsRaw = resolved.get(PDFName.of('Kids'));
+  if (kidsRaw !== undefined) {
+    const kids = document.context.lookup(kidsRaw);
+    if (!(kids instanceof PDFArray)) {
+      children.push({
+        resolvedToDictionary: false,
+        subtype: null,
+        parentObjectReference: null,
+        hasFieldId: false,
+        hasFieldType: false,
+      });
+    } else {
+      for (let index = 0; index < kids.size(); index += 1) {
+        const childRaw = kids.get(index);
+        const child = document.context.lookup(childRaw);
+        if (!(child instanceof PDFDict)) {
+          children.push({
+            resolvedToDictionary: false,
+            subtype: null,
+            parentObjectReference: null,
+            hasFieldId: false,
+            hasFieldType: false,
+          });
+          continue;
+        }
+        const subtypeRaw = child.get(PDFName.of('Subtype'));
+        const subtype = subtypeRaw === undefined ? undefined : document.context.lookup(subtypeRaw);
+        const parentRaw = child.get(PDFName.of('Parent'));
+        children.push({
+          resolvedToDictionary: true,
+          subtype: subtype instanceof PDFName ? subtype.toString() : null,
+          parentObjectReference: parentRaw === undefined ? null : objectReferenceForReadOnly(document, parentRaw),
+          hasFieldId: child.has(PDFName.of('T')),
+          hasFieldType: child.has(PDFName.of('FT')),
+        });
+      }
+    }
+  }
+
+  return {
+    resolvedToDictionary: true,
+    fieldTypeProvableReadOnly: inheritedFieldType.provable,
+    fieldId,
+    fieldType: inheritedFieldType.fieldType,
+    objectReference,
+    children,
+  };
+}
+
+export function inspectLascCiv312TerminalFieldsReadOnly(
+  document: PDFDocument,
+  acroForm: NonNullable<ReturnType<PDFDocument['catalog']['getAcroForm']>>,
+): {
   terminalFields: readonly LascCiv312RuntimeTerminalEvidence[];
   topologyProvableReadOnly: boolean;
   diagnostic: string;
@@ -313,17 +441,19 @@ function inspectTerminalFieldsReadOnly(document: PDFDocument, acroForm: NonNulla
     return {
       terminalFields: [],
       topologyProvableReadOnly: false,
-      diagnostic: 'fieldsPdfArray=false;topLevelFieldCount=unavailable;firstEntryPdfRef=false;firstEntryPdfDict=false;firstResolvedPdfDict=false',
+      diagnostic: 'fieldsPdfArray=false;observedRootCount=unavailable;observedRootRefs=[]',
     };
   }
-  const firstEntry = fields.size() > 0 ? fields.get(0) : undefined;
-  const firstResolved = firstEntry === undefined ? undefined : document.context.lookup(firstEntry);
-  const diagnostic = `fieldsPdfArray=true;topLevelFieldCount=${fields.size()};firstEntryPdfRef=${firstEntry instanceof PDFRef};firstEntryPdfDict=${firstEntry instanceof PDFDict};firstResolvedPdfDict=${firstResolved instanceof PDFDict}`;
-  const state: WalkState = { terminalFields: [], topologyProvableReadOnly: true, visitedRefs: new Set<string>() };
+
+  const roots: LascCiv312RootFieldTopologyEvidence[] = [];
   for (let index = 0; index < fields.size(); index += 1) {
-    inspectFieldEntry(document, fields.get(index), '', null, state);
+    roots.push(inspectRootFieldReadOnly(document, fields.get(index)));
   }
-  return { terminalFields: state.terminalFields, topologyProvableReadOnly: state.topologyProvableReadOnly, diagnostic };
+  const validation = validateLascCiv312RootAnchoredTopologyEvidence(roots);
+  const diagnostic = `fieldsPdfArray=true;${deterministicRootRefDetail(roots)}`;
+  return validation.status === 'VALID'
+    ? { terminalFields: validation.terminalFields, topologyProvableReadOnly: true, diagnostic }
+    : { terminalFields: [], topologyProvableReadOnly: false, diagnostic: `${diagnostic};topologyDetail=${validation.detail}` };
 }
 
 function captureInspectionStructuralSnapshot(
@@ -338,7 +468,10 @@ function captureInspectionStructuralSnapshot(
       const ref = raw instanceof PDFRef ? raw : null;
       const resolved = document.context.lookup(raw);
       if (resolved instanceof PDFDict) {
-        fieldDictionaries.push({ ref: ref?.toString() ?? document.context.getObjectRef(resolved)?.toString() ?? null, dictionary: resolved.toString() });
+        fieldDictionaries.push({
+          ref: ref?.toString() ?? document.context.getObjectRef(resolved)?.toString() ?? null,
+          dictionary: resolved.toString(),
+        });
       }
     }
   }
@@ -461,7 +594,6 @@ export async function evaluateLascCiv312PreparationRuntimeCompatibility(
 
   const pageCount = document.getPageCount();
   const existingAcroForm = document.catalog.getAcroForm();
-  const acroFormPresent = existingAcroForm !== undefined;
   const xfaPresent = existingAcroForm ? existingAcroForm.dict.has(PDFName.of('XFA')) : null;
 
   if (pageCount !== LASC_CIV_312_EXPECTED_PAGE_COUNT) {
@@ -483,7 +615,7 @@ export async function evaluateLascCiv312PreparationRuntimeCompatibility(
   }
 
   const inspectionStructuralSnapshotBefore = captureInspectionStructuralSnapshot(document, existingAcroForm);
-  const inspected = inspectTerminalFieldsReadOnly(document, existingAcroForm);
+  const inspected = inspectLascCiv312TerminalFieldsReadOnly(document, existingAcroForm);
   const inspectionStructuralSnapshotAfter = captureInspectionStructuralSnapshot(document, existingAcroForm);
   if (inspectionStructuralSnapshotAfter !== inspectionStructuralSnapshotBefore) {
     return blocked('INSPECTION_MUTATION_OBSERVED', 'Read-only inspection changed the observed PDF structure.');
@@ -494,19 +626,20 @@ export async function evaluateLascCiv312PreparationRuntimeCompatibility(
     return blocked('SOURCE_IDENTITY_CHANGED_AFTER_INSPECTION', 'Source bytes changed during read-only inspection.');
   }
 
+  if (!inspected.topologyProvableReadOnly) {
+    return blocked('TOPOLOGY_NOT_PROVABLE_READ_ONLY', `Exact frozen-root topology was not provable read-only. ${inspected.diagnostic}.`);
+  }
+
   const inspectionEvidence: LascCiv312RuntimeInspectionEvidence = {
     pageCount,
     acroFormPresent: true,
     xfaPresent: false,
     terminalFields: inspected.terminalFields,
-    topologyProvableReadOnly: inspected.topologyProvableReadOnly,
+    topologyProvableReadOnly: true,
   };
   const validation = validateLascCiv312RuntimeInspectionEvidence(inspectionEvidence);
   if (validation.status === 'BLOCKED') {
-    return blocked(
-      validation.blockerCode,
-      `${validation.detail} Observed terminal fields=${inspected.terminalFields.length}; topologyProvableReadOnly=${inspected.topologyProvableReadOnly}; ${inspected.diagnostic}.`,
-    );
+    return blocked(validation.blockerCode, validation.detail);
   }
 
   const terminalFields = normalizedTerminalEvidence(inspected.terminalFields);
