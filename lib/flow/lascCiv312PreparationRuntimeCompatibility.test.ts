@@ -169,6 +169,9 @@ const exactResult = await evaluateLascCiv312PreparationRuntimeCompatibility({
   sourceBytes,
   sourceIdentity: LASC_CIV_312_RUNTIME_COMPATIBILITY_SOURCE_IDENTITY,
 });
+if (exactResult.status === 'BLOCKED_FOR_DIRECT_RUNTIME') {
+  console.error(`CIV312_RUNTIME_COMPATIBILITY_BLOCKER=${exactResult.blockerCode}:${exactResult.detail}`);
+}
 equal(exactResult.status, 'DIRECT_RUNTIME_COMPATIBLE', 'exact registered CIV 312 is direct-runtime compatible');
 if (exactResult.status !== 'DIRECT_RUNTIME_COMPATIBLE') throw new Error(`${exactResult.blockerCode}:${exactResult.detail}`);
 equal(exactResult.sourceSha256BeforeInspection, LASC_CIV_312_SOURCE_SHA256, 'source SHA before inspection exact');
